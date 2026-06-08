@@ -14,7 +14,7 @@
   --gray-cover: #2a2a2a;
   --sidebar-width: 200px;
 }
-body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; min-height: 100vh; overflow-x: hidden; display: flex; }
+body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; min-height: 100vh; overflow-x: hidden; }
 
 /* Sidebar */
 .sidebar {
@@ -29,6 +29,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', syste
   left: 0;
   bottom: 0;
   z-index: 100;
+  overflow-y: auto;
 }
 .sidebar-title {
   padding: 20px;
@@ -71,9 +72,9 @@ body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', syste
 
 /* Main content */
 .main-content {
-  flex: 1;
   margin-left: var(--sidebar-width);
   min-height: 100vh;
+  width: calc(100% - var(--sidebar-width));
 }
 
 /* Views */

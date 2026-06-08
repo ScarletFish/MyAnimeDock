@@ -8,13 +8,7 @@ function showView(view) {
     if (el) el.classList.toggle('hidden', v !== view);
   }
 
-  // Update header
-  document.getElementById('btnBack').style.display = view === 'detail' ? '' : 'none';
-  document.getElementById('headerTitle').textContent = view === 'detail'
-    ? (currentAnime ? (currentAnime.bangumiTitle || currentAnime.title) : '详情')
-    : 'MyAnimeDocker';
-
-  // Update active nav button
+  // Update sidebar active state
   document.getElementById('btnDiscovery').classList.toggle('active', view === 'discovery');
   document.getElementById('btnLibrary').classList.toggle('active', view === 'library');
   document.getElementById('btnMemories').classList.toggle('active', view === 'memories');
@@ -25,10 +19,6 @@ function showView(view) {
   if (view === 'discovery') loadDiscovery();
   if (view === 'library') loadLibrary();
   if (view === 'memories') loadMemories();
-}
-
-function goBack() {
-  showView('library');
 }
 
 // Settings
@@ -77,13 +67,22 @@ document.getElementById('settingsPlayerMode').addEventListener('change', functio
     this.value === 'mpv' ? '' : 'none';
 });
 
-// Quit
+// Quit - auto close browser page
 async function quitApp() {
   if (!confirm('确定要退出吗？')) return;
   try {
-    await API.post('/api/quit');
-  } catch (e) { /* ignore */ }
-  document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-size:20px;color:#999">服务器已停止</div>';
+    const res = await API.post('/api/quit');
+    if (res.shutdown) {
+      // Server is shutting down, close this tab
+      window.close();
+      // Fallback: show message if window.close() is blocked
+      document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-size:20px;color:#999">服务器已停止，可以关闭此页面</div>';
+    }
+  } catch (e) {
+    // Server already stopped
+    window.close();
+    document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-size:20px;color:#999">服务器已停止</div>';
+  }
 }
 
 // Toast

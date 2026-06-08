@@ -169,7 +169,7 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // --- API: refresh (scan media dir) ---
+  // --- API: refresh (scan media dir + auto-import) ---
   if (urlPath === '/api/refresh' && req.method === 'GET') {
     if (!config.mediaDir) {
       jsonResp(res, 400, { error: 'Media directory not configured' });
@@ -177,14 +177,50 @@ const server = http.createServer((req, res) => {
     }
     try {
       const scanResult = scanMediaDir(config.mediaDir);
-      // Update discovered list
-      data.discovered = scanResult;
+      // Auto-import: add new anime to library
+      for (const item of scanResult) {
+        const existing = data.library.find(a => a.folderPath === item.folderPath);
+        if (!existing) {
+          const anime = {
+            id: item.parsedTitle + (item.parsedSeason ? `-Season ${item.parsedSeason}` : ''),
+            folderPath: item.folderPath,
+            folderName: item.folderName,
+            title: item.parsedTitle,
+            season: item.parsedSeason || null,
+            importedAt: new Date().toISOString(),
+            downloaded: true,
+            bangumiId: null,
+            bangumiTitle: null,
+            bangumiTitleJp: null,
+            summary: null,
+            coverUrl: null,
+            localCover: null,
+            rating: null,
+            episodes: [],
+          };
+          data.library.push(anime);
+        }
+      }
       // Update downloaded status in library
       for (const item of data.library) {
         item.downloaded = fs.existsSync(item.folderPath);
+        // If downloaded, populate episodes from local files
+        if (item.downloaded && (!item.episodes || item.episodes.length === 0)) {
+          const { findVideos } = require('./scanner');
+          const videos = findVideos(item.folderPath);
+          item.episodes = videos.map((v, i) => ({
+            number: i + 1,
+            filePath: v.path,
+            fileName: v.name,
+            fileSize: v.size,
+            duration: null,
+            watched: false,
+            progress: 0,
+          }));
+        }
       }
       saveData(data);
-      jsonResp(res, 200, { discovered: data.discovered, library: data.library });
+      jsonResp(res, 200, { library: data.library });
     } catch (e) {
       jsonResp(res, 500, { error: e.message });
     }
@@ -353,7 +389,7 @@ const server = http.createServer((req, res) => {
 
   // --- API: quit server ---
   if (urlPath === '/api/quit' && req.method === 'POST') {
-    jsonResp(res, 200, { ok: true });
+    jsonResp(res, 200, { ok: true, shutdown: true });
     console.log('Shutdown requested via web UI.');
     server.close(() => {
       console.log('Server stopped.');

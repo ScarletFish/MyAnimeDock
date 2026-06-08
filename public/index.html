@@ -4,87 +4,125 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MyAnimeDocker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
 
 <!-- Sidebar -->
-<div class="sidebar">
+<aside class="sidebar">
   <div class="sidebar-title">MyAnimeDocker</div>
   <nav class="sidebar-nav">
     <button class="nav-btn active" id="btnDiscovery" onclick="showView('discovery')">
-      <svg viewBox="0 0 24 24"><path d="M12 10.9c-.61 0-1.1.49-1.1 1.1s.49 1.1 1.1 1.1c.61 0 1.1-.49 1.1-1.1s-.49-1.1-1.1-1.1zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm2.19 12.19L6 18l3.81-8.19L18 6l-3.81 8.19z"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"></circle>
+        <path d="m21 21-4.35-4.35"></path>
+      </svg>
       发现
     </button>
     <button class="nav-btn" id="btnLibrary" onclick="showView('library')">
-      <svg viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-1 9h-4v4h-2v-4H9V9h4V5h2v4h4v2z"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path>
+      </svg>
       资料库
     </button>
     <button class="nav-btn" id="btnMemories" onclick="showView('memories')">
-      <svg viewBox="0 0 24 24"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 8v4l3 3"></path>
+        <circle cx="12" cy="12" r="10"></circle>
+      </svg>
       观看历史
     </button>
   </nav>
   <div class="sidebar-bottom">
     <button class="nav-btn" id="btnSettings" onclick="openSettings()">
-      <svg viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+        <circle cx="12" cy="12" r="3"></circle>
+      </svg>
       设置
     </button>
     <button class="nav-btn nav-btn-danger" id="btnQuit" onclick="quitApp()">
-      <svg viewBox="0 0 24 24"><path d="M10.09 15.59L11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5c-1.11 0-2 .9-2 2v4h2V5h14v14H5v-4H3v4c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+        <polyline points="16 17 21 12 16 7"></polyline>
+        <line x1="21" y1="12" x2="9" y2="12"></line>
+      </svg>
       退出
     </button>
   </div>
-</div>
+</aside>
 
 <!-- Main Content -->
-<div class="main-content">
+<main class="main-content">
 
   <!-- Discovery View -->
-  <div class="view" id="discoveryView">
+  <section class="view" id="discoveryView">
     <div class="view-header">
       <h2>发现动漫</h2>
-      <button class="btn" onclick="refreshDiscovery()">刷新扫描</button>
+      <div class="view-header-right">
+        <button class="btn" onclick="refreshDiscovery()">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"></path>
+          </svg>
+          刷新扫描
+        </button>
+      </div>
     </div>
     <div class="grid-container" id="discoveryGrid"></div>
     <div class="empty-state" id="discoveryEmpty" style="display:none">
-      <svg viewBox="0 0 24 24" width="64" height="64" fill="#555"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+      <svg viewBox="0 0 24 24" width="64" height="64" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"></circle>
+        <path d="m21 21-4.35-4.35"></path>
+      </svg>
       <p>未配置媒体目录</p>
-      <p>请先在设置中配置媒体目录路径</p>
+      <p style="font-size: 14px; color: var(--fg-muted)">请先在设置中配置媒体目录路径</p>
     </div>
-  </div>
+  </section>
 
   <!-- Library View -->
-  <div class="view hidden" id="libraryView">
+  <section class="view hidden" id="libraryView">
     <div class="view-header">
       <h2>资料库</h2>
       <div class="view-header-right">
-        <input type="text" class="search-input" id="librarySearch" placeholder="搜索..." oninput="filterLibrary()">
-        <button class="btn" onclick="refreshDiscovery()">刷新</button>
+        <input type="text" class="search-input" id="librarySearch" placeholder="搜索动漫..." oninput="filterLibrary()">
+        <button class="btn" onclick="refreshDiscovery()">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"></path>
+          </svg>
+          刷新
+        </button>
       </div>
     </div>
     <div class="grid-container" id="libraryGrid"></div>
     <div class="empty-state" id="libraryEmpty" style="display:none">
-      <svg viewBox="0 0 24 24" width="64" height="64" fill="#555"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-1 9h-4v4h-2v-4H9V9h4V5h2v4h4v2z"/></svg>
+      <svg viewBox="0 0 24 24" width="64" height="64" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path>
+      </svg>
       <p>资料库为空</p>
-      <p>设置媒体目录后自动导入动漫</p>
+      <p style="font-size: 14px; color: var(--fg-muted)">设置媒体目录后自动导入动漫</p>
     </div>
-  </div>
+  </section>
 
   <!-- Memories View -->
-  <div class="view hidden" id="memoriesView">
+  <section class="view hidden" id="memoriesView">
     <div class="view-header">
       <h2>观看历史</h2>
     </div>
     <div class="memories-container" id="memoriesList"></div>
     <div class="empty-state" id="memoriesEmpty" style="display:none">
-      <svg viewBox="0 0 24 24" width="64" height="64" fill="#555"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
+      <svg viewBox="0 0 24 24" width="64" height="64" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 8v4l3 3"></path>
+        <circle cx="12" cy="12" r="10"></circle>
+      </svg>
       <p>暂无观看记录</p>
     </div>
-  </div>
+  </section>
 
   <!-- Anime Detail View -->
-  <div class="view hidden" id="detailView">
+  <section class="view hidden" id="detailView">
     <div class="detail-content">
       <div class="detail-header">
         <div class="detail-cover" id="detailCover"></div>
@@ -97,8 +135,21 @@
           </div>
           <p id="detailSummary" class="detail-summary"></p>
           <div class="detail-actions">
-            <button class="btn btn-primary" id="btnWriteMemory" onclick="openMemoryEditor()">写感想</button>
-            <button class="btn btn-danger" id="btnDeleteAnime" onclick="deleteAnime()">从资料库移除</button>
+            <button class="btn btn-primary" id="btnWriteMemory" onclick="openMemoryEditor()">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
+                <path d="m15 5 4 4"></path>
+              </svg>
+              写感想
+            </button>
+            <button class="btn btn-danger" id="btnDeleteAnime" onclick="deleteAnime()">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 6h18"></path>
+                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+              </svg>
+              移除
+            </button>
           </div>
         </div>
       </div>
@@ -107,25 +158,25 @@
         <div class="episode-list" id="episodeList"></div>
       </div>
     </div>
-  </div>
+  </section>
 
-</div>
+</main>
 
 <!-- Memory Editor Modal -->
 <div class="modal-overlay" id="memoryModal">
   <div class="modal">
     <h2>写感想</h2>
     <div class="form-group">
-      <label>评分 (1-10)</label>
+      <label for="memoryRating">评分 (1-10)</label>
       <input type="range" id="memoryRating" min="1" max="10" step="0.5" value="7">
-      <span id="memoryRatingValue">7</span>
+      <span id="memoryRatingValue" style="color: var(--accent); font-weight: 600; margin-left: 8px;">7</span>
     </div>
     <div class="form-group">
-      <label>感想</label>
+      <label for="memoryThoughts">感想</label>
       <textarea id="memoryThoughts" rows="3" placeholder="简单记录一下观感..."></textarea>
     </div>
     <div class="form-group">
-      <label>详细笔记</label>
+      <label for="memoryNotes">详细笔记</label>
       <textarea id="memoryNotes" rows="6" placeholder="详细的观后感、印象深刻的场景、喜欢的角色..."></textarea>
     </div>
     <div class="modal-actions">
@@ -140,19 +191,19 @@
   <div class="modal">
     <h2>设置</h2>
     <div class="form-group">
-      <label>媒体目录路径</label>
+      <label for="settingsMediaDir">媒体目录路径</label>
       <input type="text" id="settingsMediaDir" placeholder="E:/Anime">
       <p class="form-hint">动漫文件夹所在的根目录</p>
     </div>
     <div class="form-group">
-      <label>播放器模式</label>
+      <label for="settingsPlayerMode">播放器模式</label>
       <select id="settingsPlayerMode">
         <option value="system">系统默认播放器</option>
         <option value="mpv">mpv 播放器</option>
       </select>
     </div>
     <div class="form-group" id="mpvPathGroup" style="display:none">
-      <label>mpv 可执行文件路径</label>
+      <label for="settingsMpvPath">mpv 可执行文件路径</label>
       <input type="text" id="settingsMpvPath" placeholder="mpv">
     </div>
     <div id="settingsError" class="error-msg"></div>

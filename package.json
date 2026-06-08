@@ -1,0 +1,28 @@
+{
+  "name": "anime-manager",
+  "version": "1.0.0",
+  "description": "Local anime management library with Bangumi metadata and mpv integration",
+  "main": "server.js",
+  "bin": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "build": "pkg . --target node18-win-x64 --output dist/anime-manager.exe"
+  },
+  "pkg": {
+    "assets": [
+      "public/**/*"
+    ],
+    "scripts": [
+      "scanner.js",
+      "bangumi.js",
+      "mpv-controller.js"
+    ]
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "sharp": "^0.34.5"
+  }
+}

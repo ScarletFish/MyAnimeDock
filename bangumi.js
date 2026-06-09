@@ -70,10 +70,11 @@ async function searchSubjects(keyword) {
   const res = await tryFetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'User-Agent': USER_AGENT },
-    body: JSON.stringify({ keyword, filter: { type: '2' } }),
+    body: JSON.stringify({ keyword }),
   });
   const data = await res.json();
-  return data.data || [];
+  // filter.type is unreliable on some API versions; filter client-side
+  return (data.data || []).filter(r => r.type === 2);
 }
 
 async function getSubjectDetail(id) {

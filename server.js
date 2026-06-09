@@ -363,7 +363,7 @@ const server = http.createServer((req, res) => {
   // --- API: play video ---
   if (urlPath === '/api/play' && req.method === 'POST') {
     readBody(req).then(body => {
-      const { filePath } = JSON.parse(body);
+      const { filePath, position } = JSON.parse(body);
       if (!filePath) {
         jsonResp(res, 400, { error: 'filePath is required' });
         return;
@@ -372,9 +372,21 @@ const server = http.createServer((req, res) => {
         jsonResp(res, 404, { error: 'File not found' });
         return;
       }
-      const cmd = process.platform === 'win32' ? `start "" "${filePath}"`
-        : process.platform === 'darwin' ? `open "${filePath}"`
-        : `xdg-open "${filePath}"`;
+      let cmd;
+      if (config.playerMode === 'mpv') {
+        const mpvPath = config.mpvPath || 'mpv';
+        cmd = `"${mpvPath}" "${filePath}"`;
+        if (position > 0) {
+          const h = Math.floor(position / 3600);
+          const m = Math.floor((position % 3600) / 60);
+          const s = Math.floor(position % 60);
+          cmd += ` --start=${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+        }
+      } else {
+        cmd = process.platform === 'win32' ? `start "" "${filePath}"`
+          : process.platform === 'darwin' ? `open "${filePath}"`
+          : `xdg-open "${filePath}"`;
+      }
       exec(cmd, (err) => {
         if (err) {
           jsonResp(res, 500, { error: err.message });
@@ -385,6 +397,80 @@ const server = http.createServer((req, res) => {
     }).catch(e => {
       jsonResp(res, 400, { error: 'Invalid request body' });
     });
+    return;
+  }
+
+  // --- API: update episode progress ---
+  if (urlPath === '/api/progress' && req.method === 'POST') {
+    readBody(req).then(body => {
+      const { animeId, episodeNumber, progress, watched, duration } = JSON.parse(body);
+      if (!animeId || episodeNumber === undefined) {
+        jsonResp(res, 400, { error: 'animeId and episodeNumber are required' });
+        return;
+      }
+      const anime = data.library.find(a => a.id === animeId);
+      if (!anime) { jsonResp(res, 404, { error: 'Anime not found' }); return; }
+      const ep = anime.episodes.find(e => e.number === episodeNumber);
+      if (!ep) { jsonResp(res, 404, { error: 'Episode not found' }); return; }
+      if (progress !== undefined) ep.progress = progress;
+      if (duration !== undefined) ep.duration = duration;
+      if (watched !== undefined) ep.watched = watched;
+      saveData(data);
+      jsonResp(res, 200, { ok: true, episode: ep });
+    }).catch(e => jsonResp(res, 400, { error: 'Invalid request body' }));
+    return;
+  }
+
+  // --- API: Bangumi search ---
+  if (urlPath === '/api/bangumi/search' && req.method === 'POST') {
+    readBody(req).then(async body => {
+      try {
+        const { keyword } = JSON.parse(body);
+        if (!keyword) { jsonResp(res, 400, { error: 'keyword is required' }); return; }
+
+        const { searchSubjects } = require('./bangumi');
+        const results = await searchSubjects(keyword);
+        jsonResp(res, 200, { results });
+      } catch (e) {
+        jsonResp(res, 500, { error: e.message });
+      }
+    }).catch(e => jsonResp(res, 400, { error: 'Invalid request body' }));
+    return;
+  }
+
+  // --- API: Bangumi metadata fetch ---
+  if (urlPath === '/api/bangumi/fetch' && req.method === 'POST') {
+    readBody(req).then(async body => {
+      try {
+        const { animeId, subjectId } = JSON.parse(body);
+        if (!animeId) { jsonResp(res, 400, { error: 'animeId is required' }); return; }
+
+        const anime = data.library.find(a => a.id === animeId);
+        if (!anime) { jsonResp(res, 404, { error: 'Anime not found' }); return; }
+
+        const { searchSubjects, fetchMetadata } = require('./bangumi');
+        const coverDir = path.join(APP_DIR, 'covers');
+        // If no subjectId provided, search first and return results for user to pick
+        if (!subjectId) {
+          const results = await searchSubjects(anime.title);
+          if (results.length === 0) {
+            jsonResp(res, 404, { error: '在 Bangumi 未找到匹配结果' });
+            return;
+          }
+          jsonResp(res, 200, { results, animeId: anime.id });
+          return;
+        }
+        const meta = await fetchMetadata(anime.title, coverDir, subjectId);
+
+        if (!meta) { jsonResp(res, 404, { error: '在 Bangumi 未找到匹配结果' }); return; }
+
+        Object.assign(anime, meta);
+        saveData(data);
+        jsonResp(res, 200, { ok: true, anime });
+      } catch (e) {
+        jsonResp(res, 500, { error: e.message });
+      }
+    }).catch(e => jsonResp(res, 400, { error: 'Invalid request body' }));
     return;
   }
 

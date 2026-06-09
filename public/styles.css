@@ -273,6 +273,12 @@ body::after {
 [data-theme="light"] .episode-status.unwatched {
   background: rgba(44, 36, 24, 0.04);
 }
+[data-theme="light"] .episode-progress-wrap {
+  background: rgba(44, 36, 24, 0.08);
+}
+[data-theme="light"] .btn-accent {
+  box-shadow: none;
+}
 
 /* Memory cards */
 [data-theme="light"] .memory-card {
@@ -312,6 +318,14 @@ body::after {
 }
 [data-theme="light"] input[type="range"]::-webkit-slider-thumb {
   border-color: #fff;
+}
+
+/* Bangumi search results in light mode */
+[data-theme="light"] .search-result-item {
+  background: var(--bg-surface);
+}
+[data-theme="light"] .search-result-item:hover {
+  border-color: var(--accent);
 }
 
 /* Detail cover wrap shadow */
@@ -891,6 +905,79 @@ body {
   letter-spacing: -0.01em;
 }
 
+.bangumi-search-results {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.search-result-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.search-result-item:hover {
+  background: var(--bg-surface);
+  border-color: var(--accent);
+}
+
+.search-result-cover {
+  width: 40px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
+  background: var(--bg-surface);
+}
+
+.search-result-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.search-result-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.search-result-subtitle {
+  font-size: 0.8rem;
+  color: var(--text2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.search-result-meta {
+  font-size: 0.75rem;
+  color: var(--text3);
+  margin-top: 2px;
+}
+
+.search-result-btn {
+  flex-shrink: 0;
+  font-size: 0.85rem;
+  padding: 6px 14px;
+}
+
+.search-result-empty {
+  text-align: center;
+  color: var(--text2);
+  padding: 24px;
+}
+
 .episode-list {
   display: flex;
   flex-direction: column;
@@ -965,6 +1052,42 @@ body {
 .episode-actions .btn {
   padding: 5px 12px;
   font-size: 12px;
+}
+
+.episode-progress-wrap {
+  width: 80px;
+  height: 4px;
+  background: var(--bg-surface);
+  border-radius: 2px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.episode-progress-bar {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width var(--duration-fast) var(--ease-out);
+}
+
+.episode-progress-bar.done {
+  background: var(--success);
+}
+
+.btn-xs {
+  padding: 4px 10px;
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+
+.btn-accent {
+  background: var(--accent);
+  color: #fff;
+}
+
+.btn-accent:hover {
+  background: var(--accent-soft);
+  box-shadow: 0 0 16px var(--accent-glow);
 }
 
 /* ─── Memories ─── */

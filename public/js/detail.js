@@ -46,6 +46,21 @@ function renderDetail() {
   const summaryEl = document.getElementById('detailSummary');
   summaryEl.textContent = anime.summary || '暂无简介';
 
+  // Clear search results
+  document.getElementById('bangumiSearchResults').innerHTML = '';
+
+  // Bangumi button visibility
+  const fetchBtn = document.getElementById('btnFetchBangumi');
+  if (fetchBtn) {
+    if (anime.bangumiId) {
+      fetchBtn.style.display = 'none';
+    } else {
+      fetchBtn.style.display = 'inline-flex';
+      fetchBtn.disabled = false;
+      fetchBtn.textContent = '获取元数据';
+    }
+  }
+
   // Episodes
   renderEpisodes(anime);
 }
@@ -60,27 +75,112 @@ function renderEpisodes(anime) {
 
   list.innerHTML = anime.episodes.map(ep => {
     const sizeStr = formatSize(ep.fileSize);
-    const watchedClass = ep.watched ? 'watched' : 'unwatched';
+    const pct = ep.duration > 0 ? Math.min(100, Math.round(ep.progress / ep.duration * 100)) : 0;
+    const showResume = ep.progress > 0 && !ep.watched;
     return `
       <div class="episode-item">
         <span class="episode-num">${ep.number}</span>
         <span class="episode-name">${escHtml(ep.fileName)}</span>
         <span class="episode-size">${sizeStr}</span>
-        <span class="episode-status ${watchedClass}">${ep.watched ? '已看' : '未看'}</span>
+        <div class="episode-progress-wrap">
+          <div class="episode-progress-bar ${ep.watched ? 'done' : ''}" style="width:${ep.watched ? 100 : pct}%"></div>
+        </div>
+        <span class="episode-status ${ep.watched ? 'watched' : 'unwatched'}">${ep.watched ? '已看' : '未看'}</span>
         <div class="episode-actions">
-          ${anime.downloaded ? `<button class="btn btn-primary" onclick="playEpisode('${escAttr(ep.filePath)}')">播放</button>` : ''}
+          ${anime.downloaded ? `
+            <button class="btn btn-xs" onclick="toggleWatched('${escAttr(anime.id)}', ${ep.number}, ${!ep.watched})">${ep.watched ? '取消标记' : '标记已看'}</button>
+            <button class="btn ${showResume ? 'btn-accent' : 'btn-primary'} btn-xs" onclick="playEpisode('${escAttr(ep.filePath)}', ${ep.progress})">${showResume ? '继续播放' : '播放'}</button>
+          ` : ''}
         </div>
       </div>
     `;
   }).join('');
 }
 
-async function playEpisode(filePath) {
+async function playEpisode(filePath, position = 0) {
   try {
-    await API.post('/api/play', { filePath });
+    await API.post('/api/play', { filePath, position });
     showToast('正在播放...');
   } catch (e) {
     showToast('播放失败: ' + e.message);
+  }
+}
+
+async function toggleWatched(animeId, epNumber, watched) {
+  try {
+    const result = await API.post('/api/progress', { animeId, episodeNumber: epNumber, watched, progress: watched ? 999999 : 0 });
+    if (currentAnime) {
+      const ep = currentAnime.episodes.find(e => e.number === epNumber);
+      if (ep) { ep.watched = result.episode.watched; ep.progress = result.episode.progress; }
+      renderEpisodes(currentAnime);
+    }
+  } catch (e) {
+    showToast('操作失败: ' + e.message);
+  }
+}
+
+async function fetchBangumiMetadata() {
+  if (!currentAnime) return;
+  const btn = document.getElementById('btnFetchBangumi');
+  const resultsEl = document.getElementById('bangumiSearchResults');
+  btn.disabled = true;
+  btn.textContent = '搜索中...';
+  resultsEl.innerHTML = '';
+  try {
+    const result = await API.post('/api/bangumi/fetch', { animeId: currentAnime.id });
+    if (result.anime) {
+      currentAnime = result.anime;
+      renderDetail();
+      showToast('Bangumi 元数据获取成功');
+      return;
+    }
+    if (result.results) {
+      showSearchResults(result.results, result.animeId);
+      btn.textContent = '重新搜索';
+      btn.disabled = false;
+    }
+  } catch (e) {
+    showToast('搜索失败: ' + e.message);
+    btn.disabled = false;
+    btn.textContent = '获取元数据';
+  }
+}
+
+function showSearchResults(results, animeId) {
+  const el = document.getElementById('bangumiSearchResults');
+  if (!results || results.length === 0) {
+    el.innerHTML = '<p class="search-result-empty">未找到匹配结果</p>';
+    return;
+  }
+  el.innerHTML = '<h4 style="margin:0 0 12px 0;color:var(--text1)">请选择匹配的条目：</h4>' +
+    results.map(r => `
+      <div class="search-result-item" onclick="attachBangumiSubject('${animeId}', ${r.id})">
+        <img class="search-result-cover" src="${r.images?.small || r.images?.grid || ''}" alt=""
+          onerror="this.style.display='none'">
+        <div class="search-result-info">
+          <div class="search-result-title">${escHtml(r.name_cn || r.name)}</div>
+          <div class="search-result-subtitle">${escHtml(r.name)}</div>
+          <div class="search-result-meta">${r.date || ''}${r.rating?.score ? ' · ★' + r.rating.score.toFixed(1) : ''}</div>
+        </div>
+        <button class="btn btn-primary search-result-btn">选择</button>
+      </div>
+    `).join('');
+}
+
+async function attachBangumiSubject(animeId, subjectId) {
+  const resultsEl = document.getElementById('bangumiSearchResults');
+  resultsEl.innerHTML = '<p style="text-align:center;color:var(--text2);padding:16px">正在获取元数据...</p>';
+  try {
+    const result = await API.post('/api/bangumi/fetch', { animeId, subjectId });
+    currentAnime = result.anime;
+    renderDetail();
+    showToast('Bangumi 元数据获取成功');
+  } catch (e) {
+    showToast('获取失败: ' + e.message);
+    resultsEl.innerHTML = '';
+    const btn = document.getElementById('btnFetchBangumi');
+    btn.textContent = '获取元数据';
+    btn.disabled = false;
   }
 }
 

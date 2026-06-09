@@ -139,14 +139,22 @@
           </div>
           <p id="detailSummary" class="detail-summary"></p>
           <div class="detail-actions">
-            <button class="btn btn-primary" id="btnWriteMemory" onclick="openMemoryEditor()">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
-                <path d="m15 5 4 4"></path>
-              </svg>
-              写感想
-            </button>
-            <button class="btn btn-danger" id="btnDeleteAnime" onclick="deleteAnime()">
+              <button class="btn btn-primary" id="btnWriteMemory" onclick="openMemoryEditor()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
+                  <path d="m15 5 4 4"></path>
+                </svg>
+                写感想
+              </button>
+              <button class="btn" id="btnFetchBangumi" onclick="fetchBangumiMetadata()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <path d="M12 16v-4"></path>
+                  <path d="M12 8h.01"></path>
+                </svg>
+                获取元数据
+              </button>
+              <button class="btn btn-danger" id="btnDeleteAnime" onclick="deleteAnime()">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M3 6h18"></path>
                 <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
@@ -155,6 +163,7 @@
               移除
             </button>
           </div>
+          <div class="bangumi-search-results" id="bangumiSearchResults"></div>
         </div>
       </div>
       <div class="detail-episodes">

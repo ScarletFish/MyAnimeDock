@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { spawnSync } = require('child_process');
 
 const BANGUMI_API = 'https://api.bgm.tv';
 const USER_AGENT = 'anime-manager (https://github.com/ScarletFish/Gallery)';
@@ -15,11 +15,10 @@ function curlFetch(method, url, body) {
   const args = ['-s', '--max-time', String(TIMEOUT / 1000), '-X', method];
   if (body) args.push('-H', 'Content-Type: application/json', '-d', body);
   args.push('-H', `User-Agent: ${USER_AGENT}`, url);
-  const stdout = execSync('curl ' + args.map(a => `'${a.replace(/'/g, "'\\''")}'`).join(' '), {
-    timeout: TIMEOUT,
-    encoding: 'utf-8',
-  });
-  return JSON.parse(stdout);
+  const result = spawnSync('curl', args, { timeout: TIMEOUT, encoding: 'utf-8' });
+  if (result.error) throw new Error(`curl 调用失败: ${result.error.message}`);
+  if (result.stderr) console.error('curl stderr:', result.stderr);
+  return JSON.parse(result.stdout);
 }
 
 async function fetchWithTimeout(url, options = {}) {
@@ -96,8 +95,9 @@ async function downloadCover(imageUrl, coverDir, subjectId) {
 
   let buffer;
   if (useCurlFallback) {
-    const raw = execSync(`curl -s --max-time ${TIMEOUT/1000} "${imageUrl}"`, { timeout: TIMEOUT });
-    buffer = raw;
+    const result = spawnSync('curl', ['-s', '--max-time', String(TIMEOUT/1000), imageUrl], { timeout: TIMEOUT });
+    if (result.error) throw new Error(`封面下载失败: ${result.error.message}`);
+    buffer = result.stdout;
   } else {
     const res = await fetchWithTimeout(imageUrl);
     if (!res.ok) throw new Error(`Cover download failed: ${res.status}`);

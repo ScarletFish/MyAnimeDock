@@ -375,28 +375,41 @@ const server = http.createServer((req, res) => {
         jsonResp(res, 404, { error: 'File not found' });
         return;
       }
-      let cmd;
       if (config.playerMode === 'mpv') {
         const mpvPath = config.mpvPath || 'mpv';
-        cmd = `"${mpvPath}" "${filePath}"`;
-        if (position > 0) {
-          const h = Math.floor(position / 3600);
-          const m = Math.floor((position % 3600) / 60);
-          const s = Math.floor(position % 60);
-          cmd += ` --start=${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+        const { startMpv } = require('./mpv-controller');
+        try {
+          startMpv(mpvPath, filePath, position || 0, {
+            onProgress: ({ progress, watched, duration }) => {
+              for (const anime of data.library) {
+                const ep = anime.episodes.find(e => e.filePath === filePath);
+                if (ep) {
+                  ep.progress = progress;
+                  if (duration > 0) ep.duration = duration;
+                  if (watched) ep.watched = true;
+                  saveData(data);
+                  break;
+                }
+              }
+            },
+            onError: (msg) => console.error('mpv error:', msg),
+          });
+          jsonResp(res, 200, { ok: true });
+        } catch (e) {
+          jsonResp(res, 500, { error: e.message });
         }
       } else {
-        cmd = process.platform === 'win32' ? `start "" "${filePath}"`
+        const cmd = process.platform === 'win32' ? `start "" "${filePath}"`
           : process.platform === 'darwin' ? `open "${filePath}"`
           : `xdg-open "${filePath}"`;
+        exec(cmd, (err) => {
+          if (err) {
+            jsonResp(res, 500, { error: err.message });
+          } else {
+            jsonResp(res, 200, { ok: true });
+          }
+        });
       }
-      exec(cmd, (err) => {
-        if (err) {
-          jsonResp(res, 500, { error: err.message });
-        } else {
-          jsonResp(res, 200, { ok: true });
-        }
-      });
     }).catch(e => {
       jsonResp(res, 400, { error: 'Invalid request body' });
     });

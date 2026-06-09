@@ -1,10 +1,26 @@
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 
 const BANGUMI_API = 'https://api.bgm.tv';
 const USER_AGENT = 'anime-manager (https://github.com/ScarletFish/Gallery)';
+const TIMEOUT = 15000;
 
-const TIMEOUT = 10000;
+// Some proxy/VPN setups intercept Node.js HTTPS but not curl.
+// If native fetch fails with the known proxy body-mangling error,
+// we fall back to calling curl via child_process.
+let useCurlFallback = false;
+
+function curlFetch(method, url, body) {
+  const args = ['-s', '--max-time', String(TIMEOUT / 1000), '-X', method];
+  if (body) args.push('-H', 'Content-Type: application/json', '-d', body);
+  args.push('-H', `User-Agent: ${USER_AGENT}`, url);
+  const stdout = execSync('curl ' + args.map(a => `'${a.replace(/'/g, "'\\''")}'`).join(' '), {
+    timeout: TIMEOUT,
+    encoding: 'utf-8',
+  });
+  return JSON.parse(stdout);
+}
 
 async function fetchWithTimeout(url, options = {}) {
   const controller = new AbortController();
@@ -21,22 +37,49 @@ async function fetchWithTimeout(url, options = {}) {
   }
 }
 
+async function tryFetch(url, options = {}) {
+  if (!useCurlFallback) {
+    try {
+      const res = await fetchWithTimeout(url, options);
+      if (res.ok) return res;
+      const text = await res.text();
+      // Detect proxy body-mangling: base64 decode error on JSON POST
+      if (text.includes('illegal base64 data') || text.includes('can\'t decode request body')) {
+        useCurlFallback = true;
+        console.log('Detected proxy interference, falling back to curl');
+      } else {
+        throw new Error(`Bangumi API error (${res.status}): ${text.substring(0, 200)}`);
+      }
+    } catch (e) {
+      if (e.message.includes('fetch failed') || e.message.includes('ECONNREFUSED') || e.message.includes('ENOTFOUND')) {
+        useCurlFallback = true;
+        console.log('Network fetch failed, falling back to curl');
+      } else {
+        throw e;
+      }
+    }
+  }
+
+  // Fallback: use curl via child_process
+  const method = (options.method || 'GET').toUpperCase();
+  const body = options.body || null;
+  return { json: () => Promise.resolve(curlFetch(method, url, body)) };
+}
+
 async function searchSubjects(keyword) {
   const url = `${BANGUMI_API}/v0/search/subjects`;
-  const res = await fetchWithTimeout(url, {
+  const res = await tryFetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'User-Agent': USER_AGENT },
-    body: JSON.stringify({ keyword, filter: { type: 2 } }),
+    body: JSON.stringify({ keyword, filter: { type: '2' } }),
   });
-  if (!res.ok) throw new Error(`Bangumi search failed: ${res.status}`);
   const data = await res.json();
   return data.data || [];
 }
 
 async function getSubjectDetail(id) {
   const url = `${BANGUMI_API}/v0/subjects/${id}`;
-  const res = await fetchWithTimeout(url, { headers: { 'User-Agent': USER_AGENT } });
-  if (!res.ok) throw new Error(`Bangumi subject fetch failed: ${res.status}`);
+  const res = await tryFetch(url, { headers: { 'User-Agent': USER_AGENT } });
   return res.json();
 }
 
@@ -51,9 +94,15 @@ async function downloadCover(imageUrl, coverDir, subjectId) {
 
   if (fs.existsSync(filepath)) return filepath;
 
-  const res = await fetchWithTimeout(imageUrl);
-  if (!res.ok) throw new Error(`Cover download failed: ${res.status}`);
-  const buffer = Buffer.from(await res.arrayBuffer());
+  let buffer;
+  if (useCurlFallback) {
+    const raw = execSync(`curl -s --max-time ${TIMEOUT/1000} "${imageUrl}"`, { timeout: TIMEOUT });
+    buffer = raw;
+  } else {
+    const res = await fetchWithTimeout(imageUrl);
+    if (!res.ok) throw new Error(`Cover download failed: ${res.status}`);
+    buffer = Buffer.from(await res.arrayBuffer());
+  }
   fs.writeFileSync(filepath, buffer);
   return filepath;
 }

@@ -202,22 +202,25 @@ const server = http.createServer((req, res) => {
           data.library.push(anime);
         }
       }
-      // Update downloaded status in library
+      // Update downloaded status and refresh episodes from disk
       for (const item of data.library) {
         item.downloaded = fs.existsSync(item.folderPath);
-        // If downloaded, populate episodes from local files
-        if (item.downloaded && (!item.episodes || item.episodes.length === 0)) {
+        if (item.downloaded) {
           const { findVideos } = require('./scanner');
           const videos = findVideos(item.folderPath);
-          item.episodes = videos.map((v, i) => ({
-            number: i + 1,
-            filePath: v.path,
-            fileName: v.name,
-            fileSize: v.size,
-            duration: null,
-            watched: false,
-            progress: 0,
-          }));
+          const oldEpisodes = item.episodes || [];
+          item.episodes = videos.map((v, i) => {
+            const existing = oldEpisodes.find(e => e.filePath === v.path);
+            return existing || {
+              number: i + 1,
+              filePath: v.path,
+              fileName: v.name,
+              fileSize: v.size,
+              duration: null,
+              watched: false,
+              progress: 0,
+            };
+          });
         }
       }
       saveData(data);

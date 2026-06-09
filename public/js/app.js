@@ -117,7 +117,7 @@ function escHtml(s) {
 }
 
 function escAttr(s) {
-  return String(s).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+  return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
 }
 
 function formatSize(bytes) {

@@ -2,4 +2,10 @@ node_modules/
 dist/
 anime-data.json
 covers/
+test-media/
+config.json
+DESIGN-SYSTEM.md
+skills-lock.json
+.agents/
 *.log
+

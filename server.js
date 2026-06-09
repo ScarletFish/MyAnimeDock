@@ -11,7 +11,7 @@ const DATA_PATH = path.join(APP_DIR, 'anime-data.json');
 const PORT = 3456;
 
 // --- Config ---
-const DEFAULT_CONFIG = { mediaDir: '', playerMode: 'system', mpvPath: 'mpv' };
+const DEFAULT_CONFIG = { mediaDir: '', playerMode: 'system', mpvPath: 'mpv', theme: 'dark' };
 
 function loadConfig() {
   try {
@@ -161,6 +161,7 @@ const server = http.createServer((req, res) => {
       }
       if (parsed.playerMode !== undefined) config.playerMode = parsed.playerMode;
       if (parsed.mpvPath !== undefined) config.mpvPath = parsed.mpvPath;
+      if (parsed.theme !== undefined) config.theme = parsed.theme;
       saveConfig(config);
       jsonResp(res, 200, { ok: true, ...config });
     }).catch(e => {
@@ -415,7 +416,7 @@ const server = http.createServer((req, res) => {
   fs.readFile(filePath, (e, d) => {
     if (e) { res.writeHead(404); res.end('Not found'); return; }
     const ext = path.extname(filePath).toLowerCase();
-    const cacheCtrl = ext === '.html' ? 'no-cache' : 'public, max-age=3600';
+    const cacheCtrl = ext === '.html' || ext === '.js' || ext === '.css' ? 'no-cache' : 'public, max-age=3600';
     res.writeHead(200, { 'Content-Type': mime[ext] || 'application/octet-stream', 'Cache-Control': cacheCtrl });
     res.end(d);
   });

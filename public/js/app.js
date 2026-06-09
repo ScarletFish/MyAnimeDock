@@ -1,5 +1,6 @@
 // Main app logic
 let currentView = 'discovery';
+let configCache = null;
 
 function showView(view) {
   const views = ['discovery', 'library', 'memories', 'detail'];
@@ -21,11 +22,25 @@ function showView(view) {
   if (view === 'memories') loadMemories();
 }
 
+// Theme
+function loadTheme() {
+  const theme = localStorage.getItem('theme') || configCache?.theme || 'dark';
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('theme', theme);
+}
+
+function applyTheme(theme) {
+  localStorage.setItem('theme', theme);
+  document.documentElement.setAttribute('data-theme', theme);
+}
+
 // Settings
 async function openSettings() {
   try {
     const config = await API.get('/api/config');
+    configCache = config;
     document.getElementById('settingsMediaDir').value = config.mediaDir || '';
+    document.getElementById('settingsTheme').value = localStorage.getItem('theme') || config.theme || 'dark';
     document.getElementById('settingsPlayerMode').value = config.playerMode || 'system';
     document.getElementById('settingsMpvPath').value = config.mpvPath || 'mpv';
     document.getElementById('mpvPathGroup').style.display =
@@ -43,8 +58,11 @@ function closeSettings() {
 
 async function saveSettings() {
   const mediaDir = document.getElementById('settingsMediaDir').value.trim();
+  const theme = document.getElementById('settingsTheme').value;
   const playerMode = document.getElementById('settingsPlayerMode').value;
   const mpvPath = document.getElementById('settingsMpvPath').value.trim();
+
+  applyTheme(theme);
 
   if (!mediaDir) {
     document.getElementById('settingsError').textContent = '请输入媒体目录路径';
@@ -52,7 +70,7 @@ async function saveSettings() {
   }
 
   try {
-    await API.post('/api/config', { mediaDir, playerMode, mpvPath });
+    await API.post('/api/config', { mediaDir, playerMode, mpvPath, theme });
     showToast('设置已保存');
     closeSettings();
     refreshDiscovery();
@@ -119,6 +137,10 @@ const path = {
 };
 
 // Init
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    configCache = await API.get('/api/config');
+  } catch (_) {}
+  loadTheme();
   showView('discovery');
 });

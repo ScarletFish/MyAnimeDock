@@ -1,5 +1,6 @@
 {
   "mediaDir": "/home/scarletfish/Projects/MyAnimeDocker/test-media",
   "playerMode": "system",
-  "mpvPath": "mpv"
+  "mpvPath": "mpv",
+  "theme": "light"
 }

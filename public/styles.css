@@ -1,36 +1,36 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 :root {
-  --bg-deep: #07070d;
-  --bg-base: #0c0c14;
-  --bg-elevated: #12121e;
-  --bg-surface: #1a1a2e;
-  --bg-card: #14142a;
+  --bg-deep: #0f0c09;
+  --bg-base: #1a1410;
+  --bg-elevated: #221b16;
+  --bg-surface: #2a221c;
+  --bg-card: #241d18;
 
-  --fg-primary: #eeeef5;
-  --fg-secondary: #9090a8;
-  --fg-muted: #585870;
+  --fg-primary: #ede8e2;
+  --fg-secondary: #9c9187;
+  --fg-muted: #6b6056;
 
   --accent: #e13a5a;
   --accent-soft: #ff6b8a;
-  --accent-glow: rgba(225, 58, 90, 0.35);
+  --accent-glow: rgba(225, 58, 90, 0.3);
   --accent-gradient: linear-gradient(135deg, #e13a5a, #ff2d55);
   --accent-secondary: #4a6cf7;
-  --accent-secondary-glow: rgba(74, 108, 247, 0.25);
+  --accent-secondary-glow: rgba(74, 108, 247, 0.2);
 
   --success: #22c55e;
   --warning: #f59e0b;
   --error: #ef4444;
 
-  --border: rgba(255, 255, 255, 0.06);
-  --border-hover: rgba(255, 255, 255, 0.12);
+  --border: rgba(237, 232, 226, 0.06);
+  --border-hover: rgba(237, 232, 226, 0.12);
 
-  --glass-bg: rgba(12, 12, 20, 0.82);
+  --glass-bg: rgba(26, 20, 16, 0.82);
   --glass-blur: blur(24px);
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 4px 24px rgba(0, 0, 0, 0.5);
-  --shadow-lg: 0 8px 48px rgba(0, 0, 0, 0.6);
-  --shadow-glow: 0 0 60px rgba(225, 58, 90, 0.12);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 24px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 8px 48px rgba(0, 0, 0, 0.7);
+  --shadow-glow: 0 0 60px rgba(225, 58, 90, 0.15);
 
   --space-1: 4px;
   --space-2: 8px;
@@ -94,8 +94,8 @@ body::before {
   inset: 0;
   z-index: -2;
   background:
-    radial-gradient(ellipse 80% 60% at 0% 20%, rgba(225, 58, 90, 0.08) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 50% at 100% 80%, rgba(74, 108, 247, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse 80% 60% at 0% 20%, rgba(225, 58, 90, 0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 100% 80%, rgba(225, 58, 90, 0.04) 0%, transparent 50%),
     var(--bg-deep);
 }
 

@@ -102,7 +102,7 @@ npm run build
 - **动画**: GSAP + Flip 插件，已拷贝到 `public/vendor/gsap/`
 - **图片处理**: sharp（查询参数控制实时缩放）
 - **元数据**: Bangumi API（bangumi.tv）
-- **播放器**: mpv 通过 `node-mpv`（可选）
+- **播放器**: mpv IPC（TCP 端口模式，进度追踪）
 - **存储**: JSON 文件（`anime-data.json`），无数据库
 
 ## 项目结构

@@ -1,4 +1,5 @@
-const MPV = require('node-mpv');
+const net = require('net');
+const { spawn } = require('child_process');
 
 const SAVE_INTERVAL_MS = 10000;
 const WATCHED_RATIO = 0.9;
@@ -11,16 +12,31 @@ function startMpv(mpvPath, filePath, position, callbacks) {
   let isPaused = false;
   let saveTimer = null;
   let running = true;
+  let mpvProcess = null;
+  let socket = null;
+  let buf = '';
 
-  const mpv = new MPV({
-    binary: mpvPath,
-    socket: process.platform === 'win32'
-      ? '\\\\.\\pipe\\mpv-anime-manager'
-      : '/tmp/mpv-anime-manager.sock',
-    time_update: 1,
-    debug: false,
-    verbose: false,
-  });
+  function sendCommand(command, args) {
+    if (!socket || !socket.writable) return;
+    const msg = JSON.stringify({ command: [command, ...(args || [])] }) + '\n';
+    socket.write(msg);
+  }
+
+  function cleanup() {
+    if (!running) return;
+    running = false;
+    clearInterval(saveTimer);
+    if (socket) {
+      socket.removeAllListeners();
+      try { socket.end(); socket.destroy(); } catch (e) {}
+      socket = null;
+    }
+    if (mpvProcess) {
+      mpvProcess.removeAllListeners();
+      try { mpvProcess.kill('SIGTERM'); } catch (e) {}
+      mpvProcess = null;
+    }
+  }
 
   function save() {
     if (!running) return;
@@ -32,65 +48,133 @@ function startMpv(mpvPath, filePath, position, callbacks) {
     });
   }
 
-  function cleanup() {
-    if (!running) return;
-    running = false;
-    clearInterval(saveTimer);
-    try { mpv.quit(); } catch (e) {}
+  function processMessage(msg) {
+    if (msg.event === 'playback-restart') {
+      if (currentDuration <= 0) {
+        clearInterval(saveTimer);
+        saveTimer = setInterval(() => {
+          if (!isPaused) save();
+        }, SAVE_INTERVAL_MS);
+      }
+      if (position > 0) {
+        setTimeout(() => sendCommand('seek', [position, 'absolute', 'exact']), 300);
+      }
+      return;
+    }
+    if (msg.event === 'idle' || msg.event === 'end-file') {
+      save();
+      cleanup();
+      return;
+    }
+    if (msg.event === 'pause') { isPaused = true; return; }
+    if (msg.event === 'unpause') { isPaused = false; return; }
+    if (msg.event === 'property-change') {
+      if (msg.name === 'time-pos' && msg.data != null) {
+        currentPos = msg.data;
+      } else if (msg.name === 'duration') {
+        if (msg.data != null) currentDuration = msg.data;
+      } else if (msg.name === 'pause') {
+        if (msg.data != null) isPaused = msg.data;
+      }
+    }
   }
 
-  mpv.on('started', () => {
+  // 获取可用 TCP 端口
+  const portServer = net.createServer();
+  portServer.on('error', (err) => {
     if (sessionId !== sessionIdCounter) return;
-    if (position > 0) {
-      setTimeout(() => { mpv.goToPosition(position); }, 300);
-    }
-    saveTimer = setInterval(() => {
-      if (!isPaused) save();
-    }, SAVE_INTERVAL_MS);
-  });
-
-  mpv.on('timeposition', (pos) => {
-    if (sessionId !== sessionIdCounter) return;
-    currentPos = pos;
-  });
-
-  mpv.on('statuschange', (status) => {
-    if (sessionId !== sessionIdCounter) return;
-    if (status.duration != null) currentDuration = status.duration;
-    if (status.pause != null) isPaused = status.pause;
-  });
-
-  mpv.on('paused', () => { isPaused = true; });
-  mpv.on('resumed', () => { isPaused = false; });
-
-  mpv.on('stopped', () => {
-    if (sessionId !== sessionIdCounter) return;
-    save();
-    cleanup();
-  });
-
-  mpv.on('error', (err) => {
-    if (sessionId !== sessionIdCounter) return;
-    console.error('mpv error:', err);
+    console.error('port allocation error:', err);
     if (callbacks.onError) callbacks.onError(String(err));
-    cleanup();
   });
+  portServer.listen(0, '127.0.0.1', () => {
+    const port = portServer.address().port;
+    portServer.close(() => {
+      if (sessionId !== sessionIdCounter) return;
 
-  const startOpts = position > 0 ? [`start=${position}`] : undefined;
-  mpv.load(filePath, 'replace', startOpts).catch(err => {
-    if (sessionId !== sessionIdCounter) return;
-    console.error('mpv load failed:', err);
-    if (callbacks.onError) callbacks.onError(String(err));
-    cleanup();
+      mpvProcess = spawn(mpvPath, [
+        `--input-ipc-server=tcp://127.0.0.1:${port}`,
+        '--idle',
+        '--really-quiet',
+      ], {
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+
+      mpvProcess.on('error', (err) => {
+        if (sessionId !== sessionIdCounter) return;
+        console.error('mpv error:', err);
+        if (callbacks.onError) callbacks.onError(String(err));
+        cleanup();
+      });
+
+      mpvProcess.on('exit', (code, signal) => {
+        if (sessionId !== sessionIdCounter) return;
+        if (running) {
+          const reason = code !== null ? `exit code ${code}` : `signal ${signal}`;
+          console.error('mpv process ended:', reason);
+          if (callbacks.onError) callbacks.onError('播放器异常退出');
+          cleanup();
+        }
+      });
+
+      let connectAttempts = 0;
+
+      function tryConnect() {
+        if (sessionId !== sessionIdCounter) return;
+        connectAttempts++;
+        if (connectAttempts > 30) {
+          if (callbacks.onError) callbacks.onError('无法连接到 mpv IPC');
+          cleanup();
+          return;
+        }
+
+        socket = new net.Socket();
+        socket.connect(port, '127.0.0.1', () => {
+          sendCommand('observe_property', [0, 'time-pos']);
+          sendCommand('observe_property', [1, 'duration']);
+          sendCommand('observe_property', [2, 'pause']);
+          sendCommand('loadfile', [filePath, 'replace']);
+        });
+
+        socket.on('data', (data) => {
+          if (sessionId !== sessionIdCounter) return;
+          buf += data.toString();
+          const lines = buf.split('\n');
+          buf = lines.pop() || '';
+          for (const line of lines) {
+            if (!line) continue;
+            try { processMessage(JSON.parse(line)); } catch (e) { /* skip malformed */ }
+          }
+        });
+
+        socket.on('error', () => {
+          if (socket) {
+            socket.removeAllListeners();
+            try { socket.destroy(); } catch (e) {}
+            socket = null;
+          }
+          if (running) setTimeout(tryConnect, 200);
+        });
+
+        socket.on('close', () => {
+          if (sessionId !== sessionIdCounter) return;
+          if (running) {
+            save();
+            cleanup();
+          }
+        });
+      }
+
+      setTimeout(tryConnect, 400);
+    });
   });
 
   return {
     stop: () => {
-      save();
-      if (mpv) { try { mpv.stop(); } catch (e) {} }
+      if (running) save();
+      sendCommand('stop');
     },
     kill: () => {
-      if (mpv) { try { mpv.quit(); } catch (e) {} }
+      cleanup();
     },
   };
 }

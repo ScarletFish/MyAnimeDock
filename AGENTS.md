@@ -64,7 +64,7 @@ server.js          → HTTP server + REST API (@ :3456)
 - Bangumi API 受代理影响时 fallback 到 `curl`（`bangumi.js` 中自动检测）
 - `anime-data.json` 和 `config.json` 在 `.gitignore` 中，不会提交
 - 无认证/授权，局域网内 `/api/quit` 可关闭服务器
-- mpv IPC socket 硬编码为 `/tmp/mpv-anime-manager.sock`，同一时间只能控制一个实例
+- mpv IPC 使用 TCP 端口模式（`tcp://127.0.0.1:<动态端口>`），自动分配可用端口，比 Unix socket 更稳定；不再依赖 `node-mpv` 包
 - 动漫 ID 由 `parsedTitle + (parsedSeason ? '-Season ' + parsedSeason : '')` 生成，重命名文件夹会导致 ID 变化
 - pkg 打包用 `process.pkg ? path.dirname(process.execPath) : __dirname` 处理路径
 

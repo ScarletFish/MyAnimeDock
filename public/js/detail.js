@@ -64,8 +64,6 @@ function animateHeroCoverFlip(fromRect, fromSrc) {
     left:${fromRect.left}px;top:${fromRect.top}px;
     width:${fromRect.width}px;height:${fromRect.height}px;
     border-radius:16px;
-    box-shadow:0 8px 40px rgba(0,0,0,0.5),0 0 60px rgba(225,58,90,0.06);
-    border:1px solid var(--border);
   `;
 
   const clone = document.createElement('img');

@@ -98,12 +98,7 @@ function startMpv(mpvPath, filePath, position, callbacks) {
   });
 
   const startOpts = position > 0 ? [`start=${position}`] : undefined;
-  mpv.load(filePath, 'replace', startOpts).catch(err => {
-    if (sessionId !== sessionIdCounter) return;
-    console.error('mpv load failed:', err);
-    if (callbacks.onError) callbacks.onError(String(err));
-    cleanup();
-  });
+  mpv.load(filePath, 'replace', startOpts);
 
   return {
     stop: () => {

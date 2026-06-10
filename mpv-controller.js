@@ -1,6 +1,7 @@
-const net = require('net');
+const path = require('path');
 const crypto = require('crypto');
-const { spawn } = require('child_process');
+const fs = require('fs');
+const MPV = require('node-mpv');
 
 const SAVE_INTERVAL_MS = 10000;
 const WATCHED_RATIO = 0.9;
@@ -13,29 +14,31 @@ function startMpv(mpvPath, filePath, position, callbacks) {
   let isPaused = false;
   let saveTimer = null;
   let running = true;
-  let mpvProcess = null;
-  let socket = null;
-  let buf = '';
+  let mpv = null;
 
-  function sendCommand(command, args) {
-    if (!socket || !socket.writable) return;
-    const msg = JSON.stringify({ command: [command, ...(args || [])] }) + '\n';
-    socket.write(msg);
+  const ipcId = crypto.randomUUID().slice(0, 8);
+  const socketPath = process.platform === 'win32'
+    ? `\\\\.\\pipe\\mpv-anime-${ipcId}`
+    : `/tmp/mpv-anime-${ipcId}.sock`;
+
+  // node-mpv 内部 spawn 时给 binary 加引号导致反斜杠路径出错。
+  // 解决：将目录加入 PATH，只传可执行文件名给 node-mpv。
+  const mpvDir = path.dirname(mpvPath);
+  const mpvExe = path.basename(mpvPath);
+  const hasDir = mpvDir && mpvDir !== '.' && mpvDir !== mpvPath;
+  if (hasDir) {
+    process.env.PATH = mpvDir + path.delimiter + (process.env.PATH || '');
   }
+  const binaryName = hasDir ? mpvExe : mpvPath;
 
   function cleanup() {
     if (!running) return;
     running = false;
     clearInterval(saveTimer);
-    if (socket) {
-      socket.removeAllListeners();
-      try { socket.end(); socket.destroy(); } catch (e) {}
-      socket = null;
-    }
-    if (mpvProcess) {
-      mpvProcess.removeAllListeners();
-      try { mpvProcess.kill('SIGTERM'); } catch (e) {}
-      mpvProcess = null;
+    try { mpv.quit(); } catch (e) {}
+    mpv = null;
+    if (process.platform !== 'win32') {
+      try { fs.unlinkSync(socketPath); } catch (e) {}
     }
   }
 
@@ -49,208 +52,63 @@ function startMpv(mpvPath, filePath, position, callbacks) {
     });
   }
 
-  function processMessage(msg) {
-    if (msg.event === 'playback-restart') {
-      if (currentDuration <= 0) {
-        clearInterval(saveTimer);
-        saveTimer = setInterval(() => {
-          if (!isPaused) save();
-        }, SAVE_INTERVAL_MS);
-      }
-      if (position > 0) {
-        setTimeout(() => sendCommand('seek', [position, 'absolute', 'exact']), 300);
-      }
-      return;
+  mpv = new MPV({
+    binary: binaryName,
+    socket: socketPath,
+    time_update: 1,
+    debug: false,
+    verbose: false,
+  });
+
+  mpv.on('started', () => {
+    if (sessionId !== sessionIdCounter) return;
+    if (position > 0) {
+      setTimeout(() => { mpv.goToPosition(position); }, 300);
     }
-    if (msg.event === 'idle' || msg.event === 'end-file') {
-      save();
-      cleanup();
-      return;
-    }
-    if (msg.event === 'pause') { isPaused = true; return; }
-    if (msg.event === 'unpause') { isPaused = false; return; }
-    if (msg.event === 'property-change') {
-      if (msg.name === 'time-pos' && msg.data != null) {
-        currentPos = msg.data;
-      } else if (msg.name === 'duration') {
-        if (msg.data != null) currentDuration = msg.data;
-      } else if (msg.name === 'pause') {
-        if (msg.data != null) isPaused = msg.data;
-      }
-    }
-  }
+    saveTimer = setInterval(() => {
+      if (!isPaused) save();
+    }, SAVE_INTERVAL_MS);
+  });
 
-  const isWin = process.platform === 'win32';
-  const ipcId = crypto.randomUUID().slice(0, 8);
+  mpv.on('timeposition', (pos) => {
+    if (sessionId !== sessionIdCounter) return;
+    currentPos = pos;
+  });
 
-  if (isWin) {
-    // Windows: 命名管道 (所有 mpv 版本均支持)
-    const pipeName = `\\\\.\\pipe\\mpv-anime-${ipcId}`;
-    mpvProcess = spawn(mpvPath, [
-      `--input-ipc-server=${pipeName}`,
-      '--idle',
-      '--really-quiet',
-    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+  mpv.on('statuschange', (status) => {
+    if (sessionId !== sessionIdCounter) return;
+    if (status.duration != null) currentDuration = status.duration;
+    if (status.pause != null) isPaused = status.pause;
+  });
 
-    mpvProcess.on('error', (err) => {
-      if (sessionId !== sessionIdCounter) return;
-      console.error('mpv error:', err);
-      if (callbacks.onError) callbacks.onError(String(err));
-      cleanup();
-    });
+  mpv.on('paused', () => { isPaused = true; });
+  mpv.on('resumed', () => { isPaused = false; });
 
-    mpvProcess.on('exit', (code, signal) => {
-      if (sessionId !== sessionIdCounter) return;
-      if (running) {
-        const reason = code !== null ? `exit code ${code}` : `signal ${signal}`;
-        console.error('mpv process ended:', reason);
-        if (callbacks.onError) callbacks.onError('播放器异常退出');
-        cleanup();
-      }
-    });
+  mpv.on('stopped', () => {
+    if (sessionId !== sessionIdCounter) return;
+    save();
+    cleanup();
+  });
 
-    let connectAttempts = 0;
+  mpv.on('error', (err) => {
+    if (sessionId !== sessionIdCounter) return;
+    console.error('mpv error:', err);
+    if (callbacks.onError) callbacks.onError(String(err));
+    cleanup();
+  });
 
-    function tryConnect() {
-      if (sessionId !== sessionIdCounter) return;
-      connectAttempts++;
-      if (connectAttempts > 50) {
-        if (callbacks.onError) callbacks.onError('无法连接到 mpv IPC');
-        cleanup();
-        return;
-      }
-
-      socket = new net.Socket();
-      socket.connect({ path: pipeName }, () => {
-        sendCommand('observe_property', [0, 'time-pos']);
-        sendCommand('observe_property', [1, 'duration']);
-        sendCommand('observe_property', [2, 'pause']);
-        sendCommand('loadfile', [filePath, 'replace']);
-      });
-
-      socket.on('data', (data) => {
-        if (sessionId !== sessionIdCounter) return;
-        buf += data.toString();
-        const lines = buf.split('\n');
-        buf = lines.pop() || '';
-        for (const line of lines) {
-          if (!line) continue;
-          try { processMessage(JSON.parse(line)); } catch (e) { /* skip malformed */ }
-        }
-      });
-
-      socket.on('error', () => {
-        if (socket) {
-          socket.removeAllListeners();
-          try { socket.destroy(); } catch (e) {}
-          socket = null;
-        }
-        if (running) setTimeout(tryConnect, 300);
-      });
-
-      socket.on('close', () => {
-        if (sessionId !== sessionIdCounter) return;
-        if (running) {
-          save();
-          cleanup();
-        }
-      });
-    }
-
-    setTimeout(tryConnect, 500);
-  } else {
-    // Linux/macOS: TCP 端口 (更稳定)
-    const portServer = net.createServer();
-    portServer.on('error', (err) => {
-      if (sessionId !== sessionIdCounter) return;
-      console.error('port allocation error:', err);
-      if (callbacks.onError) callbacks.onError(String(err));
-    });
-    portServer.listen(0, '127.0.0.1', () => {
-      const port = portServer.address().port;
-      portServer.close(() => {
-        if (sessionId !== sessionIdCounter) return;
-
-        mpvProcess = spawn(mpvPath, [
-          `--input-ipc-server=tcp://127.0.0.1:${port}`,
-          '--idle',
-          '--really-quiet',
-        ], { stdio: ['ignore', 'pipe', 'pipe'] });
-
-        mpvProcess.on('error', (err) => {
-          if (sessionId !== sessionIdCounter) return;
-          console.error('mpv error:', err);
-          if (callbacks.onError) callbacks.onError(String(err));
-          cleanup();
-        });
-
-        mpvProcess.on('exit', (code, signal) => {
-          if (sessionId !== sessionIdCounter) return;
-          if (running) {
-            const reason = code !== null ? `exit code ${code}` : `signal ${signal}`;
-            console.error('mpv process ended:', reason);
-            if (callbacks.onError) callbacks.onError('播放器异常退出');
-            cleanup();
-          }
-        });
-
-        let connectAttempts = 0;
-
-        function tryConnect() {
-          if (sessionId !== sessionIdCounter) return;
-          connectAttempts++;
-          if (connectAttempts > 50) {
-            if (callbacks.onError) callbacks.onError('无法连接到 mpv IPC');
-            cleanup();
-            return;
-          }
-
-          socket = new net.Socket();
-          socket.connect(port, '127.0.0.1', () => {
-            sendCommand('observe_property', [0, 'time-pos']);
-            sendCommand('observe_property', [1, 'duration']);
-            sendCommand('observe_property', [2, 'pause']);
-            sendCommand('loadfile', [filePath, 'replace']);
-          });
-
-          socket.on('data', (data) => {
-            if (sessionId !== sessionIdCounter) return;
-            buf += data.toString();
-            const lines = buf.split('\n');
-            buf = lines.pop() || '';
-            for (const line of lines) {
-              if (!line) continue;
-              try { processMessage(JSON.parse(line)); } catch (e) { /* skip malformed */ }
-            }
-          });
-
-          socket.on('error', () => {
-            if (socket) {
-              socket.removeAllListeners();
-              try { socket.destroy(); } catch (e) {}
-              socket = null;
-            }
-            if (running) setTimeout(tryConnect, 300);
-          });
-
-          socket.on('close', () => {
-            if (sessionId !== sessionIdCounter) return;
-            if (running) {
-              save();
-              cleanup();
-            }
-          });
-        }
-
-        setTimeout(tryConnect, 500);
-      });
-    });
-  }
+  const startOpts = position > 0 ? [`start=${position}`] : undefined;
+  mpv.load(filePath, 'replace', startOpts).catch(err => {
+    if (sessionId !== sessionIdCounter) return;
+    console.error('mpv load failed:', err);
+    if (callbacks.onError) callbacks.onError(String(err));
+    cleanup();
+  });
 
   return {
     stop: () => {
-      if (running) save();
-      sendCommand('stop');
+      save();
+      try { mpv.stop(); } catch (e) {}
     },
     kill: () => {
       cleanup();

@@ -16,6 +16,8 @@ function showView(view) {
 
   currentView = view;
 
+  if (view !== 'detail') resetDetailEnter();
+
   // Load data for view
   if (view === 'discovery') loadDiscovery();
   if (view === 'library') loadLibrary();
@@ -101,6 +103,10 @@ async function quitApp() {
     window.close();
     document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-size:20px;color:#999">服务器已停止</div>';
   }
+}
+
+function goBack() {
+  showView('library');
 }
 
 // Toast

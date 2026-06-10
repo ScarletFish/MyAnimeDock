@@ -33,8 +33,9 @@ function renderLibrary(filter = '') {
   grid.innerHTML = filtered.map((anime, i) => {
     const coverSrc = anime.localCover ? `/covers/${path.basename(anime.localCover)}?w=400&q=75` : '';
     const downloaded = anime.downloaded;
+    const id = escAttr(anime.id);
     return `
-      <div class="anime-card" style="animation-delay:${i * 0.05}s" onclick="showDetail('${escAttr(anime.id)}')">
+      <div class="anime-card" style="animation-delay:${i * 0.05}s" onclick="navigateToDetail('${id}', this)">
         ${coverSrc
           ? `<img src="${coverSrc}" loading="lazy" decoding="async" alt="${escAttr(anime.title)}"${!downloaded ? ' style="filter:grayscale(100%) opacity(0.5)"' : ''}>`
           : `<div class="gray-cover"><svg viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8 12.5v-9l6 4.5-6 4.5z"/></svg></div>`
@@ -55,4 +56,16 @@ function renderLibrary(filter = '') {
 function filterLibrary() {
   const q = document.getElementById('librarySearch').value;
   renderLibrary(q);
+}
+
+function navigateToDetail(id, cardEl) {
+  const img = cardEl.querySelector('img');
+  let rect = null;
+  let imgSrc = null;
+  if (img) {
+    rect = img.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) rect = null;
+    else imgSrc = img.currentSrc || img.src;
+  }
+  showDetail(id, rect, imgSrc);
 }

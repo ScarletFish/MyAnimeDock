@@ -380,9 +380,9 @@ const server = http.createServer((req, res) => {
         const { startMpv } = require('./mpv-controller');
         try {
           startMpv(mpvPath, filePath, position || 0, {
-            onProgress: ({ progress, watched, duration }) => {
+            onProgress: ({ filePath: fp, progress, watched, duration }) => {
               for (const anime of data.library) {
-                const ep = anime.episodes.find(e => e.filePath === filePath);
+                const ep = anime.episodes.find(e => e.filePath === fp);
                 if (ep) {
                   ep.progress = progress;
                   if (duration > 0) ep.duration = duration;

@@ -1,137 +1,117 @@
-const net = require('net');
-const { spawn } = require('child_process');
-const path = require('path');
-const fs = require('fs');
-const os = require('os');
+const MPV = require('node-mpv');
 
 const SAVE_INTERVAL_MS = 10000;
 const WATCHED_RATIO = 0.9;
-const SOCKET_WAIT_TIMEOUT = 5000;
-
-let currentSession = null;
+let sessionIdCounter = 0;
 
 function startMpv(mpvPath, filePath, position, callbacks) {
-  if (currentSession) currentSession.stop();
+  const sessionId = ++sessionIdCounter;
+  let currentPos = position || 0;
+  let currentDuration = 0;
+  let isPaused = false;
+  let saveTimer = null;
+  let running = true;
 
-  const socketPath = path.join(os.tmpdir(), `mpv-${Date.now()}-${Math.random().toString(36).slice(2,8)}.sock`);
-
-  const session = {
-    process: null, client: null, timer: null,
-    socketPath, filePath,
-    currentPos: position || 0, duration: 0, paused: false,
-    running: true,
-    stop() {
-      if (!this.running) return;
-      callbacks.onProgress({
-        progress: this.currentPos,
-        watched: this.duration > 0 && this.currentPos / this.duration >= WATCHED_RATIO,
-        duration: this.duration,
-      });
-      this.running = false;
-      if (this.timer) clearInterval(this.timer);
-      if (this.client) { try { this.client.destroy(); } catch (e) {} }
-      if (this.process && !this.process.killed) { try { this.process.kill('SIGTERM'); } catch (e) {} }
-      try { fs.unlinkSync(this.socketPath); } catch (e) {}
-    }
-  };
-
-  currentSession = session;
-
-  const args = [];
-  if (position > 0) {
-    const h = Math.floor(position / 3600);
-    const m = Math.floor((position % 3600) / 60);
-    const s = Math.floor(position % 60);
-    args.push(`--start=${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`);
-  }
-  args.push(`--input-ipc-server=${socketPath}`, '--no-terminal', '--msg-level=all=no', filePath);
-
-  session.process = spawn(mpvPath, args, { stdio: 'ignore' });
-
-  session.process.on('exit', () => session.stop());
-
-  session.process.on('error', (err) => {
-    console.error('mpv process error:', err.message);
-    callbacks.onError ? callbacks.onError(err.message) : null;
-    session.stop();
+  const mpv = new MPV({
+    binary: mpvPath,
+    socket: process.platform === 'win32'
+      ? '\\\\.\\pipe\\mpv-anime-manager'
+      : '/tmp/mpv-anime-manager.sock',
+    time_update: 1,
+    debug: false,
+    verbose: false,
   });
 
-  waitForSocket(socketPath).then(connected => {
-    if (!session.running || !connected) return;
-    session.client = net.createConnection(socketPath);
-
-    let buf = '';
-    session.client.on('data', data => {
-      buf += data.toString();
-      const lines = buf.split('\n');
-      buf = lines.pop();
-      for (const line of lines) {
-        if (!line.trim()) continue;
-        try { handleMessage(session, JSON.parse(line), callbacks); } catch (e) { /* skip non-json */ }
-      }
+  function save() {
+    if (!running) return;
+    callbacks.onProgress({
+      filePath,
+      progress: currentPos,
+      watched: currentDuration > 0 && currentPos / currentDuration >= WATCHED_RATIO,
+      duration: currentDuration,
     });
+  }
 
-    session.client.on('error', () => {});
-    session.client.on('close', () => {});
+  function cleanup() {
+    if (!running) return;
+    running = false;
+    clearInterval(saveTimer);
+    try { mpv.quit(); } catch (e) {}
+  }
 
-    sendCmd(session.client, ['observe_property', 1, 'time-pos']);
-    sendCmd(session.client, ['observe_property', 2, 'duration']);
-    sendCmd(session.client, ['observe_property', 3, 'pause']);
-    sendCmd(session.client, ['get_property', 'time-pos']);
-    sendCmd(session.client, ['get_property', 'duration']);
-
-    session.timer = setInterval(() => {
-      if (!session.paused && session.running) {
-        callbacks.onProgress({
-          progress: session.currentPos,
-          watched: session.duration > 0 && session.currentPos / session.duration >= WATCHED_RATIO,
-          duration: session.duration,
-        });
-      }
+  mpv.on('started', () => {
+    if (sessionId !== sessionIdCounter) return;
+    if (position > 0) {
+      setTimeout(() => { mpv.goToPosition(position); }, 300);
+    }
+    saveTimer = setInterval(() => {
+      if (!isPaused) save();
     }, SAVE_INTERVAL_MS);
   });
 
-  return session;
+  mpv.on('timeposition', (pos) => {
+    if (sessionId !== sessionIdCounter) return;
+    currentPos = pos;
+  });
+
+  mpv.on('statuschange', (status) => {
+    if (sessionId !== sessionIdCounter) return;
+    if (status.duration != null) currentDuration = status.duration;
+    if (status.pause != null) isPaused = status.pause;
+  });
+
+  mpv.on('paused', () => { isPaused = true; });
+  mpv.on('resumed', () => { isPaused = false; });
+
+  mpv.on('stopped', () => {
+    if (sessionId !== sessionIdCounter) return;
+    save();
+    cleanup();
+  });
+
+  mpv.on('error', (err) => {
+    if (sessionId !== sessionIdCounter) return;
+    console.error('mpv error:', err);
+    if (callbacks.onError) callbacks.onError(String(err));
+    cleanup();
+  });
+
+  const startOpts = position > 0 ? [`start=${position}`] : undefined;
+  mpv.load(filePath, 'replace', startOpts).catch(err => {
+    if (sessionId !== sessionIdCounter) return;
+    console.error('mpv load failed:', err);
+    if (callbacks.onError) callbacks.onError(String(err));
+    cleanup();
+  });
+
+  return {
+    stop: () => {
+      save();
+      if (mpv) { try { mpv.stop(); } catch (e) {} }
+    },
+    kill: () => {
+      if (mpv) { try { mpv.quit(); } catch (e) {} }
+    },
+  };
+}
+
+let activeSession = null;
+
+function start(mpvPath, filePath, position, callbacks) {
+  if (activeSession) {
+    const old = activeSession;
+    activeSession = null;
+    old.kill();
+  }
+  activeSession = startMpv(mpvPath, filePath, position, callbacks);
+  return activeSession;
 }
 
 function stopCurrent() {
-  if (currentSession) currentSession.stop();
-}
-
-function waitForSocket(socketPath) {
-  return new Promise(resolve => {
-    let waited = 0;
-    const check = () => {
-      if (fs.existsSync(socketPath)) return resolve(true);
-      waited += 200;
-      if (waited >= SOCKET_WAIT_TIMEOUT) return resolve(false);
-      setTimeout(check, 200);
-    };
-    check();
-  });
-}
-
-function sendCmd(client, cmd) {
-  if (client && client.writable) {
-    client.write(JSON.stringify({ command: cmd }) + '\n');
+  if (activeSession) {
+    activeSession.kill();
+    activeSession = null;
   }
 }
 
-function handleMessage(session, msg, callbacks) {
-  switch (msg.event) {
-    case 'property-change':
-      if (msg.name === 'time-pos') session.currentPos = msg.data || 0;
-      else if (msg.name === 'duration') session.duration = msg.data || 0;
-      else if (msg.name === 'pause') session.paused = msg.data;
-      break;
-    case 'end-file':
-      if (msg.reason === 'eof' && session.running) {
-        const watched = session.duration > 0 && session.currentPos / session.duration >= WATCHED_RATIO;
-        callbacks.onProgress({ progress: watched ? session.duration : session.currentPos, watched, duration: session.duration });
-      }
-      session.stop();
-      break;
-  }
-}
-
-module.exports = { startMpv, stopCurrent };
+module.exports = { startMpv: start, stopCurrent };

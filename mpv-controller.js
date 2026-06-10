@@ -16,20 +16,11 @@ function startMpv(mpvPath, filePath, position, callbacks) {
   let running = true;
   let mpv = null;
 
+  // 每次会话使用唯一 IPC 路径，避免冲突
   const ipcId = crypto.randomUUID().slice(0, 8);
   const socketPath = process.platform === 'win32'
     ? `\\\\.\\pipe\\mpv-anime-${ipcId}`
     : `/tmp/mpv-anime-${ipcId}.sock`;
-
-  // node-mpv 内部 spawn 时给 binary 加引号导致反斜杠路径出错。
-  // 解决：将目录加入 PATH，只传可执行文件名给 node-mpv。
-  const mpvDir = path.dirname(mpvPath);
-  const mpvExe = path.basename(mpvPath);
-  const hasDir = mpvDir && mpvDir !== '.' && mpvDir !== mpvPath;
-  if (hasDir) {
-    process.env.PATH = mpvDir + path.delimiter + (process.env.PATH || '');
-  }
-  const binaryName = hasDir ? mpvExe : mpvPath;
 
   function cleanup() {
     if (!running) return;
@@ -53,7 +44,7 @@ function startMpv(mpvPath, filePath, position, callbacks) {
   }
 
   mpv = new MPV({
-    binary: binaryName,
+    binary: mpvPath,
     socket: socketPath,
     time_update: 1,
     debug: false,

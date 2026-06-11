@@ -174,104 +174,135 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // --- API: refresh (scan media dir + auto-import) ---
-  if (urlPath === '/api/refresh' && req.method === 'GET') {
+  // --- API: browse (list all folders in mediaDir) ---
+  if (urlPath === '/api/browse' && req.method === 'GET') {
     if (!config.mediaDir) {
-      jsonResp(res, 400, { error: 'Media directory not configured' });
+      jsonResp(res, 200, { folders: [], mediaDir: '' });
       return;
     }
     try {
-      const scanResult = scanMediaDir(config.mediaDir);
-      // Auto-import: add new anime to library
-      for (const item of scanResult) {
-        const existing = data.library.find(a => a.folderPath === item.folderPath);
-        if (!existing) {
-          const anime = {
-            id: item.parsedTitle + (item.parsedSeason ? `-Season ${item.parsedSeason}` : ''),
-            folderPath: item.folderPath,
-            folderName: item.folderName,
-            title: item.parsedTitle,
-            season: item.parsedSeason || null,
-            importedAt: new Date().toISOString(),
-            downloaded: true,
-            bangumiId: null,
-            bangumiTitle: null,
-            bangumiTitleJp: null,
-            summary: null,
-            coverUrl: null,
-            localCover: null,
-            rating: null,
-            episodes: [],
-          };
-          data.library.push(anime);
-        }
-      }
-      // Update downloaded status and refresh episodes from disk
-      for (const item of data.library) {
-        item.downloaded = fs.existsSync(item.folderPath);
-        if (item.downloaded) {
-          const { findVideos } = require('./scanner');
-          const videos = findVideos(item.folderPath);
-          const oldEpisodes = item.episodes || [];
-          item.episodes = videos.map((v, i) => {
-            const existing = oldEpisodes.find(e => e.filePath === v.path);
-            return existing || {
-              number: i + 1,
-              filePath: v.path,
-              fileName: v.name,
-              fileSize: v.size,
-              duration: null,
-              watched: false,
-              progress: 0,
-            };
-          });
-        }
-      }
-      saveData(data);
-      jsonResp(res, 200, { library: data.library });
+      const entries = fs.readdirSync(config.mediaDir, { withFileTypes: true });
+      const dirs = entries.filter(e => e.isDirectory() && e.name !== 'covers');
+      const { findVideos, parseFolderName } = require('./scanner');
+      const folders = dirs.map(entry => {
+        const fullPath = path.join(config.mediaDir, entry.name);
+        const videos = findVideos(fullPath);
+        const parsed = parseFolderName(entry.name);
+        const alreadyImported = data.library.some(a => a.folderPath === fullPath);
+        return {
+          folderPath: fullPath,
+          folderName: entry.name,
+          parsedTitle: parsed.title,
+          parsedSeason: parsed.season,
+          videoCount: videos.length,
+          totalSize: videos.reduce((sum, v) => sum + v.size, 0),
+          isAnime: videos.length > 0,
+          alreadyImported,
+        };
+      });
+      jsonResp(res, 200, { folders, mediaDir: config.mediaDir });
     } catch (e) {
       jsonResp(res, 500, { error: e.message });
     }
     return;
   }
 
-  // --- API: import anime to library ---
+  // --- API: scan (SSE) ---
+  if (urlPath === '/api/scan' && req.method === 'GET') {
+    if (!config.mediaDir) {
+      jsonResp(res, 400, { error: 'Media directory not configured' });
+      return;
+    }
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+    });
+
+    const send = (obj) => res.write(`data: ${JSON.stringify(obj)}\n\n`);
+
+    try {
+      const { findVideos, parseFolderName } = require('./scanner');
+      const entries = fs.readdirSync(config.mediaDir, { withFileTypes: true });
+      const dirs = entries.filter(e => e.isDirectory() && e.name !== 'covers');
+      const total = dirs.length;
+      const candidates = [];
+
+      for (let i = 0; i < dirs.length; i++) {
+        const entry = dirs[i];
+        const fullPath = path.join(config.mediaDir, entry.name);
+        send({ type: 'progress', current: i + 1, total, folder: entry.name });
+
+        const videos = findVideos(fullPath);
+        if (videos.length === 0) continue;
+
+        const parsed = parseFolderName(entry.name);
+        const alreadyImported = data.library.some(a => a.folderPath === fullPath);
+
+        candidates.push({
+          folderPath: fullPath,
+          folderName: entry.name,
+          parsedTitle: parsed.title,
+          parsedSeason: parsed.season,
+          videoCount: videos.length,
+          totalSize: videos.reduce((sum, v) => sum + v.size, 0),
+          alreadyImported,
+        });
+      }
+      send({ type: 'done', candidates });
+    } catch (e) {
+      send({ type: 'error', message: e.message });
+    }
+    res.end();
+    return;
+  }
+
+  // --- API: import selected anime ---
   if (urlPath === '/api/import' && req.method === 'POST') {
     readBody(req).then(body => {
-      const { folderPath, folderName, parsedTitle, parsedSeason, videoCount } = JSON.parse(body);
-      if (!folderPath || !folderName) {
-        jsonResp(res, 400, { error: 'folderPath and folderName are required' });
+      const { items } = JSON.parse(body);
+      if (!Array.isArray(items) || items.length === 0) {
+        jsonResp(res, 400, { error: 'items array is required' });
         return;
       }
-      // Check if already in library
-      const existing = data.library.find(a => a.folderPath === folderPath);
-      if (existing) {
-        jsonResp(res, 200, { ok: true, anime: existing, message: 'Already imported' });
-        return;
+      const { findVideos } = require('./scanner');
+      const imported = [];
+      for (const item of items) {
+        const { folderPath, folderName, parsedTitle, parsedSeason } = item;
+        if (!folderPath || !folderName) continue;
+        if (data.library.some(a => a.folderPath === folderPath)) continue;
+
+        const videos = findVideos(folderPath);
+        const anime = {
+          id: parsedTitle + (parsedSeason ? `-Season ${parsedSeason}` : ''),
+          folderPath,
+          folderName,
+          title: parsedTitle,
+          season: parsedSeason || null,
+          importedAt: new Date().toISOString(),
+          downloaded: true,
+          bangumiId: null,
+          bangumiTitle: null,
+          bangumiTitleJp: null,
+          summary: null,
+          coverUrl: null,
+          localCover: null,
+          rating: null,
+          episodes: videos.map((v, i) => ({
+            number: i + 1,
+            filePath: v.path,
+            fileName: v.name,
+            fileSize: v.size,
+            duration: null,
+            watched: false,
+            progress: 0,
+          })),
+        };
+        data.library.push(anime);
+        imported.push(anime.id);
       }
-      // Create library entry
-      const anime = {
-        id: parsedTitle + (parsedSeason ? `-Season ${parsedSeason}` : ''),
-        folderPath,
-        folderName,
-        title: parsedTitle,
-        season: parsedSeason || null,
-        importedAt: new Date().toISOString(),
-        downloaded: true,
-        bangumiId: null,
-        bangumiTitle: null,
-        bangumiTitleJp: null,
-        summary: null,
-        coverUrl: null,
-        localCover: null,
-        rating: null,
-        episodes: [],
-      };
-      data.library.push(anime);
-      // Remove from discovered
-      data.discovered = data.discovered.filter(d => d.folderPath !== folderPath);
       saveData(data);
-      jsonResp(res, 200, { ok: true, anime });
+      jsonResp(res, 200, { ok: true, imported });
     }).catch(e => {
       jsonResp(res, 400, { error: 'Invalid request body' });
     });

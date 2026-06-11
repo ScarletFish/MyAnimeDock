@@ -63,25 +63,69 @@
 
   <!-- Discovery View -->
   <section class="view" id="discoveryView">
-    <div class="view-header">
-      <h2>发现动漫</h2>
-      <div class="view-header-right">
-        <button class="btn" onclick="refreshDiscovery()">
+    <div class="discovery-hero" id="discoveryHero">
+      <div class="discovery-hero-bg"></div>
+      <div class="discovery-hero-content">
+        <div class="discovery-hero-title-wrap">
+          <h2 class="discovery-hero-title">媒体目录</h2>
+          <p class="discovery-hero-path" id="discoveryPath">未配置媒体目录</p>
+        </div>
+        <button class="btn btn-primary discovery-scan-btn" id="discoveryScanBtn" onclick="startScan()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"></path>
           </svg>
-          刷新扫描
+          <span id="scanBtnText">扫描目录</span>
         </button>
       </div>
+      <div class="discovery-hero-radar" id="discoveryRadar" style="display:none">
+        <div class="radar-ring radar-ring--1"></div>
+        <div class="radar-ring radar-ring--2"></div>
+        <div class="radar-ring radar-ring--3"></div>
+        <div class="radar-sweep"></div>
+      </div>
     </div>
-    <div class="grid-container" id="discoveryGrid"></div>
+
+    <div id="scanProgress" style="display:none">
+      <div class="scan-progress-wrap">
+        <div class="scan-progress-bar"><div class="scan-progress-fill" id="scanProgressFill"></div></div>
+        <span class="scan-progress-text" id="scanProgressText">扫描中...</span>
+      </div>
+    </div>
+
+    <div class="discovery-stats" id="discoveryStats" style="display:none">
+      <div class="discovery-stat">
+        <span class="discovery-stat-num" id="statTotal">0</span>
+        <span class="discovery-stat-label">文件夹</span>
+      </div>
+      <div class="discovery-stat discovery-stat--accent">
+        <span class="discovery-stat-num" id="statAnime">0</span>
+        <span class="discovery-stat-label">识别为动漫</span>
+      </div>
+      <div class="discovery-stat">
+        <span class="discovery-stat-num" id="statImported">0</span>
+        <span class="discovery-stat-label">已导入</span>
+      </div>
+    </div>
+
+    <div class="discovery-actions" id="discoveryActions" style="display:none">
+      <button class="btn btn-ghost" onclick="selectAllCandidates()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8Z"/><path d="M15 3v4a2 2 0 0 0 2 2h4"/></svg>
+        全选
+      </button>
+      <button class="btn btn-primary" onclick="importSelected()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+        导入选中 (<span id="importCount">0</span>)
+      </button>
+    </div>
+
+    <div class="discovery-grid" id="discoveryGrid"></div>
+
     <div class="empty-state" id="discoveryEmpty" style="display:none">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="11" cy="11" r="8"></circle>
-        <path d="m21 21-4.35-4.35"></path>
+        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
       </svg>
-      <p>未配置媒体目录</p>
-      <p style="font-size: 14px; color: var(--fg-muted)">请先在设置中配置媒体目录路径</p>
+      <p>未找到媒体目录</p>
+      <p class="empty-hint">请先在设置中配置媒体目录路径</p>
     </div>
   </section>
 
@@ -284,6 +328,18 @@
       <button class="btn" onclick="closeSettings()">取消</button>
       <button class="btn btn-primary" onclick="saveSettings()">保存</button>
     </div>
+  </div>
+</div>
+
+<!-- Context Menu -->
+<div class="context-menu" id="contextMenu">
+  <div class="context-menu-item context-menu-danger" id="ctxDelete">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 6h18"></path>
+      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+    </svg>
+    移除
   </div>
 </div>
 

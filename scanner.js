@@ -35,14 +35,24 @@ function findVideos(dir) {
 }
 
 /**
+ * Check if a directory has video files directly (not in sub-directories)
+ */
+function hasDirectVideos(dir) {
+  try {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    return entries.some(e => !e.isDirectory() && VIDEO_EXTS.has(path.extname(e.name).toLowerCase()));
+  } catch (e) { return false; }
+}
+
+/**
  * Parse folder name to extract clean title and season number
- * Rules (from requirements doc):
- * 1. Remove "Anime-" prefix (case-insensitive)
+ * Rules:
+ * 1. Remove "Anime-" prefix
  * 2. Remove all [bracket] content
  * 3. Remove resolution/encoding words
- * 4. Remove fansub group names from blacklist
- * 5. Match and remove season number (Season \d+, S\d+, 第\d+季)
- * 6. Clean hyphens/underscores, collapse whitespace
+ * 4. Extract season number (Season \d+, S\d+, 第\d+季, or trailing number)
+ * 5. Clean separators and whitespace
+ * 6. Remove trailing year and trailing hyphen
  */
 function parseFolderName(name) {
   let title = name;
@@ -80,12 +90,41 @@ function parseFolderName(name) {
   // 7. Remove trailing hyphen and anything after
   title = title.replace(/\s*-\s*[^-]*$/, '');
 
+  // 8. Trailing number → season (e.g., "Yuru Yuri 2" → season 2)
+  if (!season) {
+    const trailingNum = title.match(/\s+(\d+)\s*$/);
+    if (trailingNum && parseInt(trailingNum[1]) >= 2 && parseInt(trailingNum[1]) <= 20) {
+      season = parseInt(trailingNum[1]);
+      title = title.replace(trailingNum[0], '');
+    }
+  }
+
   return { title: title.trim(), season };
 }
 
 /**
+ * Build an anime entry from a directory path
+ */
+function buildAnimeEntry(fullPath, folderName) {
+  const videos = findVideos(fullPath);
+  if (videos.length === 0) return null;
+  const parsed = parseFolderName(folderName);
+  return {
+    folderPath: fullPath,
+    folderName,
+    parsedTitle: parsed.title,
+    parsedSeason: parsed.season,
+    videoCount: videos.length,
+    totalSize: videos.reduce((sum, v) => sum + v.size, 0),
+  };
+}
+
+/**
  * Scan a media directory for anime folders
- * Returns array of discovered anime with parsed info
+ *
+ * Smart depth detection:
+ * - If a folder has video files directly → single anime
+ * - If a folder only has sub-folders with videos → each sub-folder is a separate season
  */
 function scanMediaDir(mediaDir) {
   const results = [];
@@ -97,19 +136,21 @@ function scanMediaDir(mediaDir) {
       if (entry.name === 'covers') continue;
 
       const fullPath = path.join(mediaDir, entry.name);
-      const videos = findVideos(fullPath);
-      if (videos.length === 0) continue;
 
-      const parsed = parseFolderName(entry.name);
-
-      results.push({
-        folderPath: fullPath,
-        folderName: entry.name,
-        parsedTitle: parsed.title,
-        parsedSeason: parsed.season,
-        videoCount: videos.length,
-        totalSize: videos.reduce((sum, v) => sum + v.size, 0),
-      });
+      if (hasDirectVideos(fullPath)) {
+        // Single anime directory (videos directly inside)
+        const anime = buildAnimeEntry(fullPath, entry.name);
+        if (anime) results.push(anime);
+      } else {
+        // Series directory — scan sub-folders as separate seasons
+        const subEntries = fs.readdirSync(fullPath, { withFileTypes: true });
+        for (const sub of subEntries) {
+          if (!sub.isDirectory()) continue;
+          const subPath = path.join(fullPath, sub.name);
+          const anime = buildAnimeEntry(subPath, sub.name);
+          if (anime) results.push(anime);
+        }
+      }
     }
   } catch (e) {
     throw new Error('Failed to scan media directory: ' + e.message);

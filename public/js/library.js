@@ -1,5 +1,6 @@
 // Library view logic
 let libraryData = [];
+let contextMenuAnimeId = null;
 
 async function loadLibrary() {
   try {
@@ -35,7 +36,7 @@ function renderLibrary(filter = '') {
     const downloaded = anime.downloaded;
     const id = escAttr(anime.id);
     return `
-      <div class="anime-card" style="animation-delay:${i * 0.05}s" onclick="navigateToDetail('${id}', this)">
+      <div class="anime-card" style="animation-delay:${i * 0.05}s" onclick="navigateToDetail('${id}', this)" oncontextmenu="showContextMenu(event, '${id}')">
         ${coverSrc
           ? `<img src="${coverSrc}" loading="lazy" decoding="async" alt="${escAttr(anime.title)}"${!downloaded ? ' style="filter:grayscale(100%) opacity(0.5)"' : ''}>`
           : `<div class="gray-cover"><svg viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8 12.5v-9l6 4.5-6 4.5z"/></svg></div>`
@@ -57,6 +58,51 @@ function filterLibrary() {
   const q = document.getElementById('librarySearch').value;
   renderLibrary(q);
 }
+
+// --- Context Menu ---
+function showContextMenu(e, animeId) {
+  e.preventDefault();
+  e.stopPropagation();
+  contextMenuAnimeId = animeId;
+  const menu = document.getElementById('contextMenu');
+  let x = e.clientX;
+  let y = e.clientY;
+  menu.classList.add('show');
+  const rect = menu.getBoundingClientRect();
+  if (x + rect.width > window.innerWidth) x = window.innerWidth - rect.width - 8;
+  if (y + rect.height > window.innerHeight) y = window.innerHeight - rect.height - 8;
+  menu.style.left = x + 'px';
+  menu.style.top = y + 'px';
+}
+
+function hideContextMenu() {
+  document.getElementById('contextMenu').classList.remove('show');
+  contextMenuAnimeId = null;
+}
+
+async function contextDeleteAnime() {
+  const animeId = contextMenuAnimeId;
+  hideContextMenu();
+  if (!animeId) return;
+  const anime = libraryData.find(a => a.id === animeId);
+  const title = anime ? anime.title : animeId;
+  if (!confirm(`确定要从资料库移除「${title}」吗？\n观看记录将被保留。`)) return;
+  try {
+    await API.del(`/api/anime/${encodeURIComponent(animeId)}`);
+    showToast('已移除');
+    loadLibrary();
+    loadMemories();
+  } catch (e) {
+    showToast('移除失败: ' + e.message);
+  }
+}
+
+document.addEventListener('click', hideContextMenu);
+document.addEventListener('contextmenu', (e) => {
+  if (!e.target.closest('.context-menu')) hideContextMenu();
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideContextMenu(); });
+document.getElementById('ctxDelete').addEventListener('click', contextDeleteAnime);
 
 function navigateToDetail(id, cardEl) {
   const img = cardEl.querySelector('img');

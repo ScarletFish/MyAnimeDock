@@ -152,5 +152,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     configCache = await API.get('/api/config');
   } catch (_) {}
   loadTheme();
+  initContextMenu();
   showView('discovery');
 });

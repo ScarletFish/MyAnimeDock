@@ -16,7 +16,10 @@ function showView(view) {
 
   currentView = view;
 
-  if (view !== 'detail') resetDetailEnter();
+  if (view !== 'detail') {
+    resetDetailEnter();
+    if (typeof stopDetailRefresh === 'function') stopDetailRefresh();
+  }
 
   // Load data for view
   if (view === 'discovery') loadDiscovery();
@@ -106,6 +109,7 @@ async function quitApp() {
 }
 
 function goBack() {
+  if (typeof stopDetailRefresh === 'function') stopDetailRefresh();
   showView('library');
 }
 
@@ -123,7 +127,7 @@ function escHtml(s) {
 }
 
 function escAttr(s) {
-  return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+  return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 function formatSize(bytes) {

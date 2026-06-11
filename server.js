@@ -294,10 +294,10 @@ const server = http.createServer((req, res) => {
       const dateKey = s.startTime.slice(0, 10);
       byDate[dateKey] = (byDate[dateKey] || 0) + Math.max(0, s.duration || 0);
     }
-    // Fill last 30 days
+    // Fill last 90 days
     const result = {};
     const now = new Date();
-    for (let i = 29; i >= 0; i--) {
+    for (let i = 89; i >= 0; i--) {
       const d = new Date(now);
       d.setDate(d.getDate() - i);
       const key = d.toISOString().slice(0, 10);
@@ -555,6 +555,12 @@ const server = http.createServer((req, res) => {
         jsonResp(res, 500, { error: e.message });
       }
     }).catch(e => jsonResp(res, 400, { error: 'Invalid request body' }));
+    return;
+  }
+
+  // --- API: mpv status ---
+  if (urlPath === '/api/mpv-status' && req.method === 'GET') {
+    jsonResp(res, 200, { active: activePlays.size > 0 });
     return;
   }
 

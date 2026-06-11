@@ -3,6 +3,8 @@ gsap.registerPlugin(Flip);
 let currentAnime = null;
 let watchCardVersion = 0;
 let watchStatsVersion = 0;
+let detailRefreshTimer = null;
+let wasMpvActive = false;
 
 function resetDetailEnter() {
   const viewEl = document.getElementById('detailView');
@@ -19,8 +21,30 @@ function resetDetailEnter() {
   }
 }
 
+function startDetailRefresh() {
+  stopDetailRefresh();
+  wasMpvActive = false;
+  detailRefreshTimer = setInterval(async () => {
+    if (!currentAnime) { stopDetailRefresh(); return; }
+    try {
+      const st = await API.get('/api/mpv-status');
+      if (wasMpvActive && !st.active) {
+        currentAnime = await API.get(`/api/anime/${encodeURIComponent(currentAnime.id)}`);
+        renderDetail();
+        showToast('播放已结束，进度已更新');
+      }
+      wasMpvActive = st.active;
+    } catch (e) {}
+  }, 2000);
+}
+
+function stopDetailRefresh() {
+  if (detailRefreshTimer) { clearInterval(detailRefreshTimer); detailRefreshTimer = null; }
+}
+
 async function showDetail(id, fromRect, fromSrc) {
   resetDetailEnter();
+  stopDetailRefresh();
   try {
     currentAnime = await API.get(`/api/anime/${encodeURIComponent(id)}`);
     renderDetail();
@@ -38,6 +62,7 @@ async function showDetail(id, fromRect, fromSrc) {
     }
 
     document.getElementById('headerTitle').textContent = currentAnime.bangumiTitle || currentAnime.title;
+    startDetailRefresh();
   } catch (e) {
     showToast('加载详情失败: ' + e.message);
   }
@@ -260,20 +285,43 @@ function renderWatchStats(anime) {
   const canvas = document.getElementById('watchStatsChart');
   const ctx = canvas.getContext('2d');
   const empty = document.getElementById('watchStatsEmpty');
+  const emptyText = empty.querySelector('p');
 
   API.get(`/api/anime/${encodeURIComponent(anime.id)}/sessions`).then(data => {
     if (version !== watchStatsVersion) return;
-    const entries = Object.entries(data);
-    const totalMinutes = entries.reduce((s, [, v]) => s + v, 0);
+
+    const dailyEntries = Object.entries(data);
+    const totalMinutes = dailyEntries.reduce((s, [, v]) => s + v, 0);
 
     if (totalMinutes === 0) {
       canvas.style.display = 'none';
       empty.style.display = 'flex';
+      if (emptyText) {
+        emptyText.textContent = configCache?.playerMode === 'mpv'
+          ? '播放后将显示观看统计'
+          : '使用 mpv 播放器以启用观看统计';
+      }
       return;
     }
 
     canvas.style.display = 'block';
     empty.style.display = 'none';
+
+    // Aggregate into weeks (Mon-Sun)
+    const weeks = [];
+    const weekMap = new Map();
+    for (const [dateStr, mins] of dailyEntries) {
+      const d = new Date(dateStr + 'T00:00:00');
+      const day = d.getDay();
+      const mon = new Date(d);
+      mon.setDate(d.getDate() - ((day + 6) % 7));
+      const key = mon.toISOString().slice(0, 10);
+      if (!weekMap.has(key)) {
+        weekMap.set(key, { start: mon, minutes: 0 });
+      }
+      weekMap.get(key).minutes += mins;
+    }
+    const sortedWeeks = [...weekMap.values()].sort((a, b) => a.start - b.start);
 
     const dpr = window.devicePixelRatio || 1;
     const rect = canvas.parentElement.getBoundingClientRect();
@@ -285,21 +333,20 @@ function renderWatchStats(anime) {
     canvas.style.height = H + 'px';
     ctx.scale(dpr, dpr);
 
-    const PAD = { top: 20, right: 12, bottom: 40, left: 44 };
+    const PAD = { top: 20, right: 16, bottom: 40, left: 48 };
     const cw = W - PAD.left - PAD.right;
     const ch = H - PAD.top - PAD.bottom;
 
-    const maxVal = Math.max(1, ...entries.map(([, v]) => v));
-    const colW = cw / 30;
-    const barW = Math.max(4, Math.min(colW * 0.7, 16));
+    const maxVal = Math.max(1, ...sortedWeeks.map(w => w.minutes));
+    const n = sortedWeeks.length;
+    const stepX = n > 1 ? cw / (n - 1) : cw;
 
-    // Clear
     ctx.clearRect(0, 0, W, H);
 
     // Grid lines
+    const gridLines = 4;
     ctx.strokeStyle = 'rgba(237,232,226,0.06)';
     ctx.lineWidth = 1;
-    const gridLines = 4;
     for (let i = 0; i <= gridLines; i++) {
       const y = PAD.top + (ch / gridLines) * i;
       ctx.beginPath();
@@ -309,7 +356,7 @@ function renderWatchStats(anime) {
     }
 
     // Y-axis labels
-    ctx.fillStyle = 'var(--fg-muted)';
+    ctx.fillStyle = 'rgba(237,232,226,0.4)';
     ctx.font = '11px DM Sans, Noto Sans SC, sans-serif';
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
@@ -319,59 +366,21 @@ function renderWatchStats(anime) {
       ctx.fillText(val + '分钟', PAD.left - 8, y);
     }
 
-    // Determine label interval
-    const labelInterval = entries.length > 20 ? 4 : entries.length > 10 ? 2 : 1;
+    // Compute points
+    function getXY(w, i) {
+      const x = n > 1 ? PAD.left + i * stepX : PAD.left + cw / 2;
+      const y = PAD.top + ch - (w.minutes / maxVal) * ch;
+      return [x, y];
+    }
 
-    // Animate bars
+    // Animate
     const animDuration = 600;
     const startTime = performance.now();
 
-    function drawBars(progress) {
-      entries.forEach(([dateKey, minutes], i) => {
-        const x = PAD.left + i * colW + (colW - barW) / 2;
-        const barH = (minutes / maxVal) * ch;
-        const animH = barH * progress;
-        const y = PAD.top + ch - animH;
-
-        // Bar gradient
-        const grad = ctx.createLinearGradient(x, y, x, PAD.top + ch);
-        grad.addColorStop(0, 'rgba(225,58,90,0.85)');
-        grad.addColorStop(1, 'rgba(225,58,90,0.25)');
-        ctx.fillStyle = grad;
-
-        // Rounded top bar
-        const r = Math.min(barW / 2, 3);
-        ctx.beginPath();
-        ctx.moveTo(x, PAD.top + ch);
-        ctx.lineTo(x, y + r);
-        ctx.quadraticCurveTo(x, y, x + r, y);
-        ctx.lineTo(x + barW - r, y);
-        ctx.quadraticCurveTo(x + barW, y, x + barW, y + r);
-        ctx.lineTo(x + barW, PAD.top + ch);
-        ctx.closePath();
-        ctx.fill();
-
-        // X-axis label
-        if (i % labelInterval === 0 || i === entries.length - 1) {
-          const shortLabel = dateKey.slice(5); // "MM-DD"
-          ctx.fillStyle = 'rgba(237,232,226,0.35)';
-          ctx.font = '10px DM Sans, Noto Sans SC, sans-serif';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'top';
-          ctx.fillText(shortLabel, x + barW / 2, H - PAD.bottom + 8);
-        }
-      });
-    }
-
-    function animate(now) {
-      if (version !== watchStatsVersion) return;
-      const elapsed = now - startTime;
-      const t = Math.min(1, elapsed / animDuration);
-      // ease-out cubic
-      const ease = 1 - Math.pow(1 - t, 3);
+    function drawChart(progress) {
       ctx.clearRect(0, 0, W, H);
 
-      // Redraw grid
+      // Grid
       ctx.strokeStyle = 'rgba(237,232,226,0.06)';
       ctx.lineWidth = 1;
       for (let i = 0; i <= gridLines; i++) {
@@ -381,24 +390,88 @@ function renderWatchStats(anime) {
         ctx.lineTo(W - PAD.right, y);
         ctx.stroke();
       }
+
+      // Y labels
       ctx.fillStyle = 'rgba(237,232,226,0.4)';
       ctx.font = '11px DM Sans, Noto Sans SC, sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'middle';
       for (let i = 0; i <= gridLines; i++) {
         const y = PAD.top + (ch / gridLines) * i;
-        ctx.fillText(Math.round(maxVal - (maxVal / gridLines) * i) + '分钟', PAD.left - 8, y);
+        const val = Math.round(maxVal - (maxVal / gridLines) * i);
+        ctx.fillText(val + '分钟', PAD.left - 8, y);
       }
 
-      drawBars(ease);
-      if (t < 1) requestAnimationFrame(animate);
+      const pts = sortedWeeks.map((w, i) => getXY(w, i));
+      const visibleCount = Math.max(1, Math.ceil(pts.length * progress));
+      const visPts = pts.slice(0, visibleCount);
+
+      // Area fill
+      if (visPts.length > 1) {
+        ctx.beginPath();
+        ctx.moveTo(visPts[0][0], PAD.top + ch);
+        ctx.lineTo(visPts[0][0], visPts[0][1]);
+        for (let i = 1; i < visPts.length; i++) {
+          const [px, py] = visPts[i - 1];
+          const [cx, cy] = visPts[i];
+          const mx = (px + cx) / 2;
+          ctx.bezierCurveTo(mx, py, mx, cy, cx, cy);
+        }
+        ctx.lineTo(visPts[visPts.length - 1][0], PAD.top + ch);
+        ctx.closePath();
+        const grad = ctx.createLinearGradient(0, PAD.top, 0, PAD.top + ch);
+        grad.addColorStop(0, 'rgba(225,58,90,0.30)');
+        grad.addColorStop(1, 'rgba(225,58,90,0.02)');
+        ctx.fillStyle = grad;
+        ctx.fill();
+      }
+
+      // Line
+      if (visPts.length > 1) {
+        ctx.beginPath();
+        ctx.moveTo(visPts[0][0], visPts[0][1]);
+        for (let i = 1; i < visPts.length; i++) {
+          const [px, py] = visPts[i - 1];
+          const [cx, cy] = visPts[i];
+          const mx = (px + cx) / 2;
+          ctx.bezierCurveTo(mx, py, mx, cy, cx, cy);
+        }
+        ctx.strokeStyle = 'rgba(225,58,90,0.9)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+
+      // Dots + x-axis labels
+      const labelInterval = n > 8 ? Math.ceil(n / 6) : 1;
+      visPts.forEach(([x, y], i) => {
+        ctx.beginPath();
+        ctx.arc(x, y, 3, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(225,58,90,0.9)';
+        ctx.fill();
+
+        if (i % labelInterval === 0 || i === visPts.length - 1) {
+          const d = sortedWeeks[i].start;
+          const label = (d.getMonth() + 1) + '/' + d.getDate();
+          ctx.fillStyle = 'rgba(237,232,226,0.35)';
+          ctx.font = '10px DM Sans, Noto Sans SC, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'top';
+          ctx.fillText(label, x, H - PAD.bottom + 8);
+        }
+      });
     }
 
-    // Check reduced motion
     const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (prefersReduced) {
-      drawBars(1);
+      drawChart(1);
     } else {
+      function animate(now) {
+        if (version !== watchStatsVersion) return;
+        const t = Math.min(1, (now - startTime) / animDuration);
+        const ease = 1 - Math.pow(1 - t, 3);
+        drawChart(ease);
+        if (t < 1) requestAnimationFrame(animate);
+      }
       requestAnimationFrame(animate);
     }
 
@@ -406,6 +479,11 @@ function renderWatchStats(anime) {
     if (version !== watchStatsVersion) return;
     canvas.style.display = 'none';
     empty.style.display = 'flex';
+    if (emptyText) {
+      emptyText.textContent = configCache?.playerMode === 'mpv'
+        ? '播放后将显示观看统计'
+        : '使用 mpv 播放器以启用观看统计';
+    }
   });
 }
 

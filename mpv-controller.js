@@ -1,17 +1,12 @@
 const { spawn } = require('child_process');
+const net = require('net');
+const os = require('os');
+const path = require('path');
+const fs = require('fs');
 
 const SAVE_INTERVAL_MS = 10000;
 const WATCHED_RATIO = 0.9;
 let sessionIdCounter = 0;
-
-// 将 "01:23:45" 或 "23:45" 转为秒数
-function parseTimeToSeconds(timeStr) {
-    if (!timeStr) return 0;
-    const parts = timeStr.split(':').map(Number);
-    if (parts.length === 3) return parts[0]*3600 + parts[1]*60 + parts[2];
-    if (parts.length === 2) return parts[0]*60 + parts[1];
-    return 0;
-}
 
 function startMpv(mpvPath, filePath, position, callbacks) {
     const sessionId = ++sessionIdCounter;
@@ -21,47 +16,73 @@ function startMpv(mpvPath, filePath, position, callbacks) {
     let saveTimer = null;
     let running = true;
     let mpvProcess = null;
+    let ipcClient = null;
+    let ipcBuffer = '';
 
-    // 参数：使用 --term-status-msg 输出 JSON 到 stderr
-    // 注意：不能加 --no-terminal（会抑制 --term-status-msg）
+    const isWin = process.platform === 'win32';
+    const pipeName = `mpv-ipc-${process.pid}-${sessionId}`;
+    const pipePath = isWin
+        ? `\\\\.\\pipe\\${pipeName}`
+        : path.join(os.tmpdir(), pipeName);
+
     const args = [
         filePath,
         `--start=${currentPos}`,
-        '--idle',
         '--keep-open=yes',
-        '--quiet',
         '--ontop',
-        '--term-status-msg={"time-pos":${=time-pos},"duration":${=duration},"pause":${=pause}}'
+        `--input-ipc-server=${pipePath}`,
     ];
 
-    const isWin = process.platform === 'win32';
     mpvProcess = spawn(mpvPath, args, { windowsHide: isWin });
 
-    let stderrBuffer = '';
-
-    mpvProcess.stderr.on('data', (data) => {
-        if (!running) return;
-        // 用 buffer 直接匹配 JSON 行，避免 Windows GBK 编码干扰
-        const chunk = Buffer.isBuffer(data) ? data : Buffer.from(data);
-        stderrBuffer += chunk.toString('latin1');
-        const lines = stderrBuffer.split(/\r?\n/);
-        stderrBuffer = lines.pop();
-        for (const line of lines) {
-            try {
-                const match = line.match(/\{.*"time-pos".*?\}/);
-                if (match) {
-                    // mpv ${=pause} 输出 "yes"/"no" 而非 JSON true/false，需要预处理
-                    const json = match[0]
-                        .replace(/\bno\b/g, 'false')
-                        .replace(/\byes\b/g, 'true');
-                    const status = JSON.parse(json);
-                    if (typeof status['time-pos'] === 'number') currentPos = status['time-pos'];
-                    if (typeof status.duration === 'number') currentDuration = status.duration;
-                    if (typeof status.pause === 'boolean') isPaused = status.pause;
-                }
-            } catch (e) {}
+    function ipcWrite(obj) {
+        if (ipcClient && running) {
+            ipcClient.write(JSON.stringify(obj) + '\n');
         }
-    });
+    }
+
+    function connectIPC() {
+        if (!running) return;
+
+        ipcClient = net.connect(pipePath, () => {
+            console.log(`[mpv IPC] Connected to ${pipeName}`);
+            ipcWrite({ command: ['observe_property', 1, 'time-pos'] });
+            ipcWrite({ command: ['observe_property', 2, 'duration'] });
+            ipcWrite({ command: ['observe_property', 3, 'pause'] });
+        });
+
+        ipcClient.on('data', (data) => {
+            if (!running) return;
+            ipcBuffer += data.toString('utf-8');
+            const lines = ipcBuffer.split('\n');
+            ipcBuffer = lines.pop();
+            for (const line of lines) {
+                if (!line.trim()) continue;
+                try {
+                    const msg = JSON.parse(line);
+                    if (msg.event === 'property-change') {
+                        if (msg.name === 'time-pos' && typeof msg.data === 'number') {
+                            currentPos = msg.data;
+                        } else if (msg.name === 'duration' && typeof msg.data === 'number') {
+                            currentDuration = msg.data;
+                        } else if (msg.name === 'pause' && typeof msg.data === 'boolean') {
+                            isPaused = msg.data;
+                        }
+                    }
+                } catch (e) {}
+            }
+        });
+
+        ipcClient.on('error', (err) => {
+            console.error('[mpv IPC] Error:', err.message);
+            ipcClient = null;
+            if (running) setTimeout(connectIPC, 1000);
+        });
+
+        ipcClient.on('close', () => { ipcClient = null; });
+    }
+
+    setTimeout(connectIPC, 500);
 
     mpvProcess.on('close', (code) => {
         if (!running) return;
@@ -73,6 +94,10 @@ function startMpv(mpvPath, filePath, position, callbacks) {
             duration: currentDuration,
             final: true,
         });
+        if (ipcClient) { ipcClient.destroy(); ipcClient = null; }
+        if (!isWin) {
+            try { fs.unlinkSync(pipePath); } catch (e) {}
+        }
         running = false;
         mpvProcess = null;
     });
@@ -82,6 +107,7 @@ function startMpv(mpvPath, filePath, position, callbacks) {
         console.error('mpv error:', err);
         if (callbacks.onError) callbacks.onError(String(err));
         if (saveTimer) clearInterval(saveTimer);
+        if (ipcClient) { ipcClient.destroy(); ipcClient = null; }
         running = false;
         mpvProcess = null;
     });

@@ -568,21 +568,41 @@ const server = http.createServer((req, res) => {
       serveImage(thumbPath, req.url, res);
       return;
     }
+    let responded = false;
     try {
       if (!fs.existsSync(thumbDir)) fs.mkdirSync(thumbDir, { recursive: true });
-      const ff = spawn('ffmpeg', ['-ss', String(time), '-i', videoPath, '-vframes', '1', '-q:v', '5', '-y', thumbPath]);
-      const timeout = setTimeout(() => { ff.kill(); jsonResp(res, 500, { error: 'timeout' }); }, 30000);
+      const ff = spawn('ffmpeg', [
+        '-ss', String(time),
+        '-i', videoPath,
+        '-vframes', '1',
+        '-q:v', '5',
+        '-y', thumbPath,
+        '-loglevel', 'error'
+      ]);
+      const timeout = setTimeout(() => {
+        if (responded) return;
+        responded = true;
+        ff.kill();
+        jsonResp(res, 500, { error: 'timeout' });
+      }, 30000);
       ff.on('close', (code) => {
         clearTimeout(timeout);
+        if (responded) return;
+        responded = true;
         if (code === 0 && fs.existsSync(thumbPath)) {
           serveImage(thumbPath, req.url, res);
         } else {
           jsonResp(res, 500, { error: 'ffmpeg failed' });
         }
       });
-      ff.on('error', () => { clearTimeout(timeout); jsonResp(res, 500, { error: 'ffmpeg not available' }); });
+      ff.on('error', () => {
+        clearTimeout(timeout);
+        if (responded) return;
+        responded = true;
+        jsonResp(res, 500, { error: 'ffmpeg not available' });
+      });
     } catch (e) {
-      jsonResp(res, 500, { error: e.message });
+      if (!responded) { responded = true; jsonResp(res, 500, { error: e.message }); }
     }
     return;
   }

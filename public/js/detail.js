@@ -1,6 +1,8 @@
 gsap.registerPlugin(Flip);
 
 let currentAnime = null;
+let watchCardVersion = 0;
+let watchStatsVersion = 0;
 
 function resetDetailEnter() {
   const viewEl = document.getElementById('detailView');
@@ -156,6 +158,7 @@ function findWatchEpisode(anime) {
 }
 
 function renderWatchCard(anime) {
+  const version = ++watchCardVersion;
   const ep = findWatchEpisode(anime);
   const bgEl = document.getElementById('watchCardBg');
   const labelEl = document.getElementById('watchCardLabel');
@@ -178,11 +181,18 @@ function renderWatchCard(anime) {
   const thumbTime = ep.progress > 0 ? ep.progress : 60;
   const thumbUrl = `/api/thumbnail?path=${encodeURIComponent(ep.filePath)}&time=${thumbTime}`;
 
-  // Set video thumbnail as full card background
+  // Show a neutral background first (reset)
+  bgEl.style.backgroundImage = '';
+
+  // Set video thumbnail as full card background with version guard
   const img = new Image();
-  img.onload = () => { bgEl.style.backgroundImage = `url(${thumbUrl})`; };
+  img.onload = () => {
+    if (version === watchCardVersion) {
+      bgEl.style.backgroundImage = `url(${thumbUrl})`;
+    }
+  };
   img.onerror = () => {
-    if (anime.localCover) {
+    if (version === watchCardVersion && anime.localCover) {
       bgEl.style.backgroundImage = `url(/covers/${path.basename(anime.localCover)}?w=540&q=80)`;
     }
   };
@@ -246,11 +256,13 @@ window.addEventListener('resize', () => {
 });
 
 function renderWatchStats(anime) {
+  const version = ++watchStatsVersion;
   const canvas = document.getElementById('watchStatsChart');
   const ctx = canvas.getContext('2d');
   const empty = document.getElementById('watchStatsEmpty');
 
   API.get(`/api/anime/${encodeURIComponent(anime.id)}/sessions`).then(data => {
+    if (version !== watchStatsVersion) return;
     const entries = Object.entries(data);
     const totalMinutes = entries.reduce((s, [, v]) => s + v, 0);
 
@@ -352,6 +364,7 @@ function renderWatchStats(anime) {
     }
 
     function animate(now) {
+      if (version !== watchStatsVersion) return;
       const elapsed = now - startTime;
       const t = Math.min(1, elapsed / animDuration);
       // ease-out cubic
@@ -390,6 +403,7 @@ function renderWatchStats(anime) {
     }
 
   }).catch(() => {
+    if (version !== watchStatsVersion) return;
     canvas.style.display = 'none';
     empty.style.display = 'flex';
   });

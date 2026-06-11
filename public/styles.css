@@ -1484,6 +1484,7 @@ input[type="range"]::-webkit-slider-thumb {
   overflow: hidden;
   min-height: 200px;
   margin-bottom: 1.25rem;
+  margin-top: 54px;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
 }
@@ -1764,6 +1765,7 @@ input[type="range"]::-webkit-slider-thumb {
   .watch-card-content { flex-wrap: wrap; }
   .watch-card-btn { width: 100%; justify-content: center; }
   .watch-card-progress { max-width: 100%; }
+  .watch-card { margin-top: 0; }
 }
 
 @media (max-width: 480px) {

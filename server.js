@@ -11,6 +11,9 @@ const CONFIG_PATH = path.join(APP_DIR, 'config.json');
 const DATA_PATH = path.join(APP_DIR, 'anime-data.json');
 const PORT = 3456;
 
+// In-memory active mpv sessions: filePath -> { sessionId, episode, anime }
+const activePlays = new Map();
+
 // --- Config ---
 const DEFAULT_CONFIG = { mediaDir: '', playerMode: 'system', mpvPath: 'mpv', theme: 'dark' };
 
@@ -420,32 +423,32 @@ const server = http.createServer((req, res) => {
             clockTime: 0,
             progressStart: position || 0,
           });
+          activePlays.set(filePath, { sessionId, episode: targetEp, anime: targetAnime });
           saveData(data);
         }
         const { startMpv } = require('./mpv-controller');
         try {
           startMpv(mpvPath, filePath, position || 0, {
             onProgress: ({ filePath: fp, progress, watched, duration, final }) => {
-              for (const anime of data.library) {
-                const ep = anime.episodes.find(e => e.filePath === fp);
-                if (ep) {
-                  ep.progress = progress;
-                  if (duration > 0) ep.duration = duration;
-                  if (watched) ep.watched = true;
-                  if (sessionId) {
-                    const session = data.playSessions.find(s => s.sessionId === sessionId);
-                    if (session) {
-                      session.duration = Math.max(0, progress - (session.progressStart || 0));
-                      session.endTime = new Date().toISOString();
-                      if (final) {
-                        const startMs = new Date(session.startTime).getTime();
-                        session.clockTime = Math.round((Date.now() - startMs) / 1000);
-                      }
+              const active = activePlays.get(fp);
+              if (active) {
+                const ep = active.episode;
+                ep.progress = progress;
+                if (duration > 0) ep.duration = duration;
+                if (watched) ep.watched = true;
+                if (active.sessionId) {
+                  const session = data.playSessions.find(s => s.sessionId === active.sessionId);
+                  if (session) {
+                    session.duration = Math.max(0, progress - (session.progressStart || 0));
+                    session.endTime = new Date().toISOString();
+                    if (final) {
+                      const startMs = new Date(session.startTime).getTime();
+                      session.clockTime = Math.round((Date.now() - startMs) / 1000);
                     }
                   }
-                  saveData(data);
-                  break;
                 }
+                saveData(data);
+                if (final) activePlays.delete(fp);
               }
             },
             onError: (msg) => console.error('mpv error:', msg),

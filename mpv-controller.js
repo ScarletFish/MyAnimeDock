@@ -64,6 +64,7 @@ function startMpv(mpvPath, filePath, position, callbacks) {
             progress: currentPos,
             watched: currentDuration > 0 && currentPos / currentDuration >= WATCHED_RATIO,
             duration: currentDuration,
+            final: true,
         });
         running = false;
         mpvProcess = null;

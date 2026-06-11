@@ -417,13 +417,15 @@ const server = http.createServer((req, res) => {
             startTime: new Date().toISOString(),
             endTime: null,
             duration: 0,
+            clockTime: 0,
             progressStart: position || 0,
           });
+          saveData(data);
         }
         const { startMpv } = require('./mpv-controller');
         try {
           startMpv(mpvPath, filePath, position || 0, {
-            onProgress: ({ filePath: fp, progress, watched, duration }) => {
+            onProgress: ({ filePath: fp, progress, watched, duration, final }) => {
               for (const anime of data.library) {
                 const ep = anime.episodes.find(e => e.filePath === fp);
                 if (ep) {
@@ -434,7 +436,11 @@ const server = http.createServer((req, res) => {
                     const session = data.playSessions.find(s => s.sessionId === sessionId);
                     if (session) {
                       session.duration = Math.max(0, progress - (session.progressStart || 0));
-                      if (watched || ep.watched) session.endTime = new Date().toISOString();
+                      session.endTime = new Date().toISOString();
+                      if (final) {
+                        const startMs = new Date(session.startTime).getTime();
+                        session.clockTime = Math.round((Date.now() - startMs) / 1000);
+                      }
                     }
                   }
                   saveData(data);

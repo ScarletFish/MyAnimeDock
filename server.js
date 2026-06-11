@@ -451,7 +451,16 @@ const server = http.createServer((req, res) => {
                 if (final) activePlays.delete(fp);
               }
             },
-            onError: (msg) => console.error('mpv error:', msg),
+            onError: (msg) => {
+              const active = activePlays.get(filePath);
+              if (active && active.sessionId) {
+                const idx = data.playSessions.findIndex(s => s.sessionId === active.sessionId);
+                if (idx !== -1) data.playSessions.splice(idx, 1);
+                activePlays.delete(filePath);
+                saveData(data);
+              }
+              console.error('mpv error:', msg);
+            },
           });
           jsonResp(res, 200, { ok: true });
         } catch (e) {

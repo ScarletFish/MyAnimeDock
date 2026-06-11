@@ -23,31 +23,38 @@ function startMpv(mpvPath, filePath, position, callbacks) {
     let mpvProcess = null;
 
     // 参数：使用 --term-status-msg 输出 JSON 到 stderr
+    // 注意：不能加 --no-terminal（会抑制 --term-status-msg）
     const args = [
         filePath,
         `--start=${currentPos}`,
         '--idle',
         '--keep-open=yes',
         '--quiet',
-        '--no-terminal',
         '--ontop',
         '--term-status-msg={"time-pos":${=time-pos},"duration":${=duration},"pause":${=pause}}'
     ];
 
-    mpvProcess = spawn(mpvPath, args, { windowsHide: false });
+    const isWin = process.platform === 'win32';
+    mpvProcess = spawn(mpvPath, args, { windowsHide: isWin });
 
     let stderrBuffer = '';
 
     mpvProcess.stderr.on('data', (data) => {
         if (!running) return;
-        stderrBuffer += data.toString();
+        // 用 buffer 直接匹配 JSON 行，避免 Windows GBK 编码干扰
+        const chunk = Buffer.isBuffer(data) ? data : Buffer.from(data);
+        stderrBuffer += chunk.toString('latin1');
         const lines = stderrBuffer.split(/\r?\n/);
         stderrBuffer = lines.pop();
         for (const line of lines) {
             try {
                 const match = line.match(/\{.*"time-pos".*?\}/);
                 if (match) {
-                    const status = JSON.parse(match[0]);
+                    // mpv ${=pause} 输出 "yes"/"no" 而非 JSON true/false，需要预处理
+                    const json = match[0]
+                        .replace(/\bno\b/g, 'false')
+                        .replace(/\byes\b/g, 'true');
+                    const status = JSON.parse(json);
                     if (typeof status['time-pos'] === 'number') currentPos = status['time-pos'];
                     if (typeof status.duration === 'number') currentDuration = status.duration;
                     if (typeof status.pause === 'boolean') isPaused = status.pause;

@@ -10,7 +10,7 @@
 - **GSAP Flip 动画** — card 到详情页的封面流畅过渡
 - **观看追踪** — 标记已看剧集、记录进度（逐集 / mpv 联动）
 - **观看历史** — 评分 + 笔记
-- **mpv 集成** — 启动 mpv 播放，可选通过 IPC socket 追踪进度
+- **mpv 集成** — 启动 mpv 播放，通过 `--term-status-msg` 解析 stderr 追踪进度
 - **封面缩放** — sharp 实时处理，缩略图与详情页不同画质
 
 ## 环境要求
@@ -102,7 +102,7 @@ npm run build
 - **动画**: GSAP + Flip 插件，已拷贝到 `public/vendor/gsap/`
 - **图片处理**: sharp（查询参数控制实时缩放）
 - **元数据**: Bangumi API（bangumi.tv）
-- **播放器**: mpv IPC（TCP 端口模式，进度追踪）
+- **播放器**: mpv（`spawn` + `--term-status-msg` 解析 stderr 进度追踪）
 - **存储**: JSON 文件（`anime-data.json`），无数据库
 
 ## 项目结构
@@ -111,7 +111,7 @@ npm run build
 ├── server.js              HTTP 服务器 + REST API
 ├── scanner.js             媒体目录扫描 + 文件夹名解析
 ├── bangumi.js             Bangumi API 客户端
-├── mpv-controller.js      mpv IPC 进度追踪
+├── mpv-controller.js      mpv 进度追踪（spawn + --term-status-msg）
 ├── public/
 │   ├── index.html         SPA 入口
 │   ├── styles.css         深色/浅色主题（CSS 自定义属性）

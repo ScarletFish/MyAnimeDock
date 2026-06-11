@@ -1,7 +1,8 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { exec } = require('child_process');
+const crypto = require('crypto');
+const { exec, spawn } = require('child_process');
 const { scanMediaDir, parseFolderName } = require('./scanner');
 
 // pkg 打包后 __dirname 指向临时解压目录，需要使用 exe 所在目录
@@ -29,7 +30,7 @@ function saveConfig(cfg) {
 let config = loadConfig();
 
 // --- Data ---
-const DEFAULT_DATA = { discovered: [], library: [], memories: [] };
+const DEFAULT_DATA = { discovered: [], library: [], memories: [], playSessions: [] };
 
 function loadData() {
   try {
@@ -280,6 +281,29 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // --- API: play sessions for anime ---
+  if (urlPath.startsWith('/api/anime/') && urlPath.endsWith('/sessions') && req.method === 'GET') {
+    const id = decodeURIComponent(urlPath.slice('/api/anime/'.length, -'/sessions'.length));
+    const sessions = data.playSessions.filter(s => s.animeId === id && s.endTime);
+    // Aggregate by date
+    const byDate = {};
+    for (const s of sessions) {
+      const dateKey = s.startTime.slice(0, 10);
+      byDate[dateKey] = (byDate[dateKey] || 0) + Math.max(0, s.duration || 0);
+    }
+    // Fill last 30 days
+    const result = {};
+    const now = new Date();
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      result[key] = Math.round((byDate[key] || 0) / 60);
+    }
+    jsonResp(res, 200, result);
+    return;
+  }
+
   // --- API: anime detail ---
   if (urlPath.startsWith('/api/anime/') && req.method === 'GET') {
     const id = decodeURIComponent(urlPath.slice('/api/anime/'.length));
@@ -377,6 +401,25 @@ const server = http.createServer((req, res) => {
       }
       if (config.playerMode === 'mpv') {
         const mpvPath = config.mpvPath || 'mpv';
+        // Find anime/episode for session tracking
+        let targetAnime, targetEp;
+        for (const a of data.library) {
+          const ep = a.episodes.find(e => e.filePath === filePath);
+          if (ep) { targetAnime = a; targetEp = ep; break; }
+        }
+        let sessionId = null;
+        if (targetAnime && targetEp) {
+          sessionId = Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+          data.playSessions.push({
+            animeId: targetAnime.id,
+            episodeNumber: targetEp.number,
+            sessionId,
+            startTime: new Date().toISOString(),
+            endTime: null,
+            duration: 0,
+            progressStart: position || 0,
+          });
+        }
         const { startMpv } = require('./mpv-controller');
         try {
           startMpv(mpvPath, filePath, position || 0, {
@@ -387,6 +430,13 @@ const server = http.createServer((req, res) => {
                   ep.progress = progress;
                   if (duration > 0) ep.duration = duration;
                   if (watched) ep.watched = true;
+                  if (sessionId) {
+                    const session = data.playSessions.find(s => s.sessionId === sessionId);
+                    if (session) {
+                      session.duration = Math.max(0, progress - (session.progressStart || 0));
+                      if (watched || ep.watched) session.endTime = new Date().toISOString();
+                    }
+                  }
                   saveData(data);
                   break;
                 }
@@ -499,6 +549,41 @@ const server = http.createServer((req, res) => {
       process.exit(0);
     });
     setTimeout(() => process.exit(0), 2000);
+    return;
+  }
+
+  // --- API: video thumbnail ---
+  if (urlPath === '/api/thumbnail' && req.method === 'GET') {
+    const params = new URL(req.url, 'http://localhost').searchParams;
+    const videoPath = params.get('path');
+    const time = parseFloat(params.get('time')) || 60;
+    if (!videoPath || !fs.existsSync(videoPath)) {
+      jsonResp(res, 404, { error: 'File not found' });
+      return;
+    }
+    const hash = crypto.createHash('md5').update(videoPath + time).digest('hex');
+    const thumbDir = path.join(APP_DIR, 'thumbs');
+    const thumbPath = path.join(thumbDir, hash + '.jpg');
+    if (fs.existsSync(thumbPath)) {
+      serveImage(thumbPath, req.url, res);
+      return;
+    }
+    try {
+      if (!fs.existsSync(thumbDir)) fs.mkdirSync(thumbDir, { recursive: true });
+      const ff = spawn('ffmpeg', ['-ss', String(time), '-i', videoPath, '-vframes', '1', '-q:v', '5', '-y', thumbPath]);
+      const timeout = setTimeout(() => { ff.kill(); jsonResp(res, 500, { error: 'timeout' }); }, 30000);
+      ff.on('close', (code) => {
+        clearTimeout(timeout);
+        if (code === 0 && fs.existsSync(thumbPath)) {
+          serveImage(thumbPath, req.url, res);
+        } else {
+          jsonResp(res, 500, { error: 'ffmpeg failed' });
+        }
+      });
+      ff.on('error', () => { clearTimeout(timeout); jsonResp(res, 500, { error: 'ffmpeg not available' }); });
+    } catch (e) {
+      jsonResp(res, 500, { error: e.message });
+    }
     return;
   }
 

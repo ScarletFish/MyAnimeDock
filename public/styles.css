@@ -53,6 +53,8 @@
   --font-accent: 'Playfair Display', serif;
   --font-mono: 'JetBrains Mono', monospace;
 
+  --heatmap-unwatched: #3a322a;
+
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-in: cubic-bezier(0.55, 0, 1, 0.45);
@@ -85,6 +87,8 @@
   --shadow-md: 0 4px 24px rgba(44, 36, 24, 0.09);
   --shadow-lg: 0 8px 48px rgba(44, 36, 24, 0.12);
   --shadow-glow: 0 0 60px rgba(225, 58, 90, 0.05);
+
+  --heatmap-unwatched: #ddd6cb;
 }
 
 /* ─── Background Atmosphere ─── */
@@ -1473,6 +1477,272 @@ input[type="range"]::-webkit-slider-thumb {
   border: 2px solid var(--bg-elevated);
 }
 
+/* ─── Watch Card ─── */
+.watch-card {
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  min-height: 200px;
+  margin-bottom: 1.25rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+}
+
+.watch-card-bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  transition: opacity 0.4s var(--ease-out);
+  opacity: 0;
+}
+
+.watch-card-bg[style*="url"] {
+  opacity: 1;
+}
+
+.watch-card-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(15,12,9,0.82) 20%, rgba(15,12,9,0.3) 60%, rgba(15,12,9,0.65) 100%);
+}
+
+.watch-card-content {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  padding: 1.75rem 1.75rem;
+  z-index: 1;
+  min-height: 200px;
+}
+
+.watch-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.watch-card-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+}
+
+.watch-card-title {
+  font-size: 14px;
+  color: var(--fg-primary);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 10px;
+}
+
+.watch-card-progress {
+  width: 100%;
+  max-width: 200px;
+  height: 3px;
+  background: rgba(255,255,255,0.12);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.watch-card-progress-bar {
+  height: 100%;
+  background: var(--accent-gradient);
+  border-radius: 2px;
+  transition: width 0.3s var(--ease-out);
+}
+
+.watch-card-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 22px;
+  border: none;
+  border-radius: 100px;
+  background: var(--accent-gradient);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s var(--ease-out);
+  box-shadow: 0 4px 20px rgba(225,58,90,0.35);
+  flex-shrink: 0;
+}
+
+.watch-card-btn:hover {
+  transform: scale(1.04);
+  box-shadow: 0 6px 28px rgba(225,58,90,0.45);
+}
+
+.watch-card-btn:active {
+  transform: scale(0.97);
+}
+
+.watch-card-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* ─── Episode Heatmap ─── */
+.episode-heatmap {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.episode-heatmap-header {
+  margin-bottom: 0.75rem;
+}
+
+.episode-heatmap-header h3 {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.episode-heatmap-legend {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 1rem;
+  font-size: 11.5px;
+  color: var(--fg-muted);
+}
+
+.heatmap-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.heatmap-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.heatmap-swatch.unwatched { background: var(--heatmap-unwatched); }
+.heatmap-swatch.watching { background: var(--warning); }
+.heatmap-swatch.watched { background: var(--success); }
+
+.episode-heatmap-grid {
+  display: grid;
+  gap: 6px;
+}
+
+.heatmap-cell {
+  aspect-ratio: 1;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.15s var(--ease-out);
+}
+
+.heatmap-cell.unwatched { background: var(--heatmap-unwatched); }
+.heatmap-cell.watching { background: var(--warning); }
+.heatmap-cell.watched { background: var(--success); }
+
+.heatmap-cell:hover {
+  transform: scale(1.3);
+  z-index: 2;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.5);
+  border-radius: 4px;
+}
+
+.heatmap-cell:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.heatmap-cell::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) scale(0.9);
+  background: var(--bg-deep);
+  color: var(--fg-primary);
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: all 0.15s var(--ease-out);
+  border: 1px solid var(--border);
+}
+
+.heatmap-cell:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+
+.heatmap-empty {
+  color: var(--fg-muted);
+  text-align: center;
+  padding: 24px 0;
+  font-size: 13px;
+}
+
+/* ─── Watch Stats ─── */
+.watch-stats {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  padding: 1.25rem 1.5rem;
+}
+
+.watch-stats-header {
+  margin-bottom: 0.75rem;
+}
+
+.watch-stats-header h3 {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.watch-stats-chart-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.watch-stats-chart {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.watch-stats-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 32px 20px;
+  color: var(--fg-muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+.watch-stats-empty svg {
+  width: 32px;
+  height: 32px;
+  opacity: 0.4;
+}
+
 /* ─── Responsive ─── */
 @media (max-width: 1100px) {
   .view { padding: 1.5rem; }
@@ -1491,6 +1761,9 @@ input[type="range"]::-webkit-slider-thumb {
   .detail-cover-wrap { max-width: 240px; }
   .detail-episodes-header h3 { font-size: 1.1rem; }
   .detail-info-panel h2 { font-size: 1.3rem; }
+  .watch-card-content { flex-wrap: wrap; }
+  .watch-card-btn { width: 100%; justify-content: center; }
+  .watch-card-progress { max-width: 100%; }
 }
 
 @media (max-width: 480px) {

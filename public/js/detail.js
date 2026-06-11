@@ -137,58 +137,262 @@ function renderDetail() {
     }
   }
 
-  const countEl = document.getElementById('episodeCount');
-  countEl.textContent = anime.episodes ? `${anime.episodes.length} 集` : '';
-
-  renderEpisodes(anime);
+  renderWatchCard(anime);
+  renderEpisodeHeatmap(anime);
+  renderWatchStats(anime);
 }
 
-function renderEpisodes(anime) {
-  const list = document.getElementById('episodeList');
+function findWatchEpisode(anime) {
+  if (!anime.episodes || anime.episodes.length === 0) return null;
+  let first = null;
+  for (const ep of anime.episodes) {
+    if (!first) first = ep;
+    if (!ep.watched && ep.progress > 0) return ep;
+  }
+  for (const ep of anime.episodes) {
+    if (!ep.watched) return ep;
+  }
+  return null;
+}
 
-  if (!anime.episodes || anime.episodes.length === 0) {
-    list.innerHTML = '<p style="color:var(--text2);padding:24px 0;text-align:center">暂无剧集信息</p>';
+function renderWatchCard(anime) {
+  const ep = findWatchEpisode(anime);
+  const bgEl = document.getElementById('watchCardBg');
+  const labelEl = document.getElementById('watchCardLabel');
+  const titleEl = document.getElementById('watchCardTitle');
+  const progressWrap = document.getElementById('watchCardProgressWrap');
+  const progressBar = document.getElementById('watchCardProgressBar');
+  const btn = document.getElementById('watchCardBtn');
+  const btnText = document.getElementById('watchCardBtnText');
+
+  if (!ep) {
+    labelEl.textContent = '已全部观看完毕';
+    titleEl.textContent = '';
+    progressWrap.style.display = 'none';
+    btn.style.display = 'none';
+    bgEl.style.backgroundImage = '';
     return;
   }
 
-  list.innerHTML = anime.episodes.map(ep => {
-    const sizeStr = formatSize(ep.fileSize);
-    const pct = ep.duration > 0 ? Math.min(100, Math.round(ep.progress / ep.duration * 100)) : 0;
-    let statusClass, statusText, playLabel, playBtnClass;
-    if (ep.watched) {
-      statusClass = 'watched';
-      statusText = '已观看';
-      playLabel = '重看';
-      playBtnClass = 'btn-ghost';
-    } else if (ep.progress > 0) {
-      statusClass = 'watching';
-      statusText = '观看中';
-      playLabel = '继续播放';
-      playBtnClass = 'btn-accent';
-    } else {
-      statusClass = 'unwatched';
-      statusText = '未观看';
-      playLabel = '播放';
-      playBtnClass = 'btn-primary';
+  const pct = ep.duration > 0 ? Math.min(100, Math.round(ep.progress / ep.duration * 100)) : 0;
+  const thumbTime = ep.progress > 0 ? ep.progress : 60;
+  const thumbUrl = `/api/thumbnail?path=${encodeURIComponent(ep.filePath)}&time=${thumbTime}`;
+
+  // Set video thumbnail as full card background
+  const img = new Image();
+  img.onload = () => { bgEl.style.backgroundImage = `url(${thumbUrl})`; };
+  img.onerror = () => {
+    if (anime.localCover) {
+      bgEl.style.backgroundImage = `url(/covers/${path.basename(anime.localCover)}?w=540&q=80)`;
     }
-    return `
-      <div class="episode-item ${statusClass}">
-        <span class="episode-num">${ep.number}</span>
-        <span class="episode-name">${escHtml(ep.fileName)}</span>
-        <span class="episode-size">${sizeStr}</span>
-        <div class="episode-progress-wrap">
-          <div class="episode-progress-bar ${ep.watched ? 'done' : (ep.progress > 0 ? 'wip' : '')}" style="width:${ep.watched ? 100 : pct}%"></div>
-        </div>
-        <span class="episode-status ${statusClass}">${statusText}</span>
-        <div class="episode-actions">
-          ${anime.downloaded ? `
-            <button class="btn btn-xs" onclick="toggleWatched('${escAttr(anime.id)}', ${ep.number}, ${!ep.watched})">${ep.watched ? '取消标记' : '标记已看'}</button>
-            <button class="btn ${playBtnClass} btn-xs" onclick="playEpisode('${escAttr(ep.filePath)}', ${ep.progress})">${playLabel}</button>
-          ` : ''}
-        </div>
-      </div>
-    `;
+  };
+  img.src = thumbUrl;
+
+  if (ep.watched) {
+    labelEl.textContent = '重温';
+    btnText.textContent = '重新播放';
+  } else if (ep.progress > 0) {
+    labelEl.textContent = `继续播放 第 ${ep.number} 集`;
+    btnText.textContent = '继续播放';
+  } else {
+    labelEl.textContent = `开始播放 第 ${ep.number} 集`;
+    btnText.textContent = '开始播放';
+  }
+  titleEl.textContent = ep.fileName;
+  progressWrap.style.display = 'block';
+  progressBar.style.width = pct + '%';
+  btn.style.display = 'inline-flex';
+  btn.onclick = () => playEpisode(ep.filePath, ep.progress);
+}
+
+function renderEpisodeHeatmap(anime) {
+  const grid = document.getElementById('episodeHeatmapGrid');
+  const header = document.querySelector('.episode-heatmap-header h3');
+  if (!anime.episodes || anime.episodes.length === 0) {
+    grid.innerHTML = '<p class="heatmap-empty">暂无剧集信息</p>';
+    header.textContent = '剧集列表';
+    return;
+  }
+  header.textContent = `剧集列表 · ${anime.episodes.length} 集`;
+
+  const cols = window.innerWidth < 768 ? 5 : 10;
+  grid.innerHTML = anime.episodes.map((ep, i) => {
+    let cls = 'unwatched', tip = `第${ep.number}集 · 未观看`;
+    if (ep.watched) { cls = 'watched'; tip = `第${ep.number}集 · 已观看`; }
+    else if (ep.progress > 0) { cls = 'watching'; tip = `第${ep.number}集 · 观看中 ${ep.duration > 0 ? Math.round(ep.progress / ep.duration * 100) + '%' : ''}`; }
+    return `<button class="heatmap-cell ${cls}" data-tip="${tip}" data-ep="${ep.number}" data-path="${escAttr(ep.filePath)}" data-pos="${ep.progress}" tabindex="0"></button>`;
   }).join('');
+
+  grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+
+  grid.querySelectorAll('.heatmap-cell').forEach(el => {
+    el.addEventListener('click', () => {
+      const path = el.dataset.path;
+      const pos = parseFloat(el.dataset.pos) || 0;
+      playEpisode(path, pos);
+    });
+  });
+}
+
+// ─── Window resize → reflow heatmap ───
+let heatmapResizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(heatmapResizeTimer);
+  heatmapResizeTimer = setTimeout(() => {
+    if (currentAnime && document.getElementById('detailView').classList.contains('hidden') === false) {
+      renderEpisodeHeatmap(currentAnime);
+    }
+  }, 200);
+});
+
+function renderWatchStats(anime) {
+  const canvas = document.getElementById('watchStatsChart');
+  const ctx = canvas.getContext('2d');
+  const empty = document.getElementById('watchStatsEmpty');
+
+  API.get(`/api/anime/${encodeURIComponent(anime.id)}/sessions`).then(data => {
+    const entries = Object.entries(data);
+    const totalMinutes = entries.reduce((s, [, v]) => s + v, 0);
+
+    if (totalMinutes === 0) {
+      canvas.style.display = 'none';
+      empty.style.display = 'flex';
+      return;
+    }
+
+    canvas.style.display = 'block';
+    empty.style.display = 'none';
+
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.parentElement.getBoundingClientRect();
+    const W = Math.min(820, rect.width - 2);
+    const H = 240;
+    canvas.width = W * dpr;
+    canvas.height = H * dpr;
+    canvas.style.width = W + 'px';
+    canvas.style.height = H + 'px';
+    ctx.scale(dpr, dpr);
+
+    const PAD = { top: 20, right: 12, bottom: 40, left: 44 };
+    const cw = W - PAD.left - PAD.right;
+    const ch = H - PAD.top - PAD.bottom;
+
+    const maxVal = Math.max(1, ...entries.map(([, v]) => v));
+    const colW = cw / 30;
+    const barW = Math.max(4, Math.min(colW * 0.7, 16));
+
+    // Clear
+    ctx.clearRect(0, 0, W, H);
+
+    // Grid lines
+    ctx.strokeStyle = 'rgba(237,232,226,0.06)';
+    ctx.lineWidth = 1;
+    const gridLines = 4;
+    for (let i = 0; i <= gridLines; i++) {
+      const y = PAD.top + (ch / gridLines) * i;
+      ctx.beginPath();
+      ctx.moveTo(PAD.left, y);
+      ctx.lineTo(W - PAD.right, y);
+      ctx.stroke();
+    }
+
+    // Y-axis labels
+    ctx.fillStyle = 'var(--fg-muted)';
+    ctx.font = '11px DM Sans, Noto Sans SC, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    for (let i = 0; i <= gridLines; i++) {
+      const y = PAD.top + (ch / gridLines) * i;
+      const val = Math.round(maxVal - (maxVal / gridLines) * i);
+      ctx.fillText(val + '分钟', PAD.left - 8, y);
+    }
+
+    // Determine label interval
+    const labelInterval = entries.length > 20 ? 4 : entries.length > 10 ? 2 : 1;
+
+    // Animate bars
+    const animDuration = 600;
+    const startTime = performance.now();
+
+    function drawBars(progress) {
+      entries.forEach(([dateKey, minutes], i) => {
+        const x = PAD.left + i * colW + (colW - barW) / 2;
+        const barH = (minutes / maxVal) * ch;
+        const animH = barH * progress;
+        const y = PAD.top + ch - animH;
+
+        // Bar gradient
+        const grad = ctx.createLinearGradient(x, y, x, PAD.top + ch);
+        grad.addColorStop(0, 'rgba(225,58,90,0.85)');
+        grad.addColorStop(1, 'rgba(225,58,90,0.25)');
+        ctx.fillStyle = grad;
+
+        // Rounded top bar
+        const r = Math.min(barW / 2, 3);
+        ctx.beginPath();
+        ctx.moveTo(x, PAD.top + ch);
+        ctx.lineTo(x, y + r);
+        ctx.quadraticCurveTo(x, y, x + r, y);
+        ctx.lineTo(x + barW - r, y);
+        ctx.quadraticCurveTo(x + barW, y, x + barW, y + r);
+        ctx.lineTo(x + barW, PAD.top + ch);
+        ctx.closePath();
+        ctx.fill();
+
+        // X-axis label
+        if (i % labelInterval === 0 || i === entries.length - 1) {
+          const shortLabel = dateKey.slice(5); // "MM-DD"
+          ctx.fillStyle = 'rgba(237,232,226,0.35)';
+          ctx.font = '10px DM Sans, Noto Sans SC, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'top';
+          ctx.fillText(shortLabel, x + barW / 2, H - PAD.bottom + 8);
+        }
+      });
+    }
+
+    function animate(now) {
+      const elapsed = now - startTime;
+      const t = Math.min(1, elapsed / animDuration);
+      // ease-out cubic
+      const ease = 1 - Math.pow(1 - t, 3);
+      ctx.clearRect(0, 0, W, H);
+
+      // Redraw grid
+      ctx.strokeStyle = 'rgba(237,232,226,0.06)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= gridLines; i++) {
+        const y = PAD.top + (ch / gridLines) * i;
+        ctx.beginPath();
+        ctx.moveTo(PAD.left, y);
+        ctx.lineTo(W - PAD.right, y);
+        ctx.stroke();
+      }
+      ctx.fillStyle = 'rgba(237,232,226,0.4)';
+      ctx.font = '11px DM Sans, Noto Sans SC, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      for (let i = 0; i <= gridLines; i++) {
+        const y = PAD.top + (ch / gridLines) * i;
+        ctx.fillText(Math.round(maxVal - (maxVal / gridLines) * i) + '分钟', PAD.left - 8, y);
+      }
+
+      drawBars(ease);
+      if (t < 1) requestAnimationFrame(animate);
+    }
+
+    // Check reduced motion
+    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReduced) {
+      drawBars(1);
+    } else {
+      requestAnimationFrame(animate);
+    }
+
+  }).catch(() => {
+    canvas.style.display = 'none';
+    empty.style.display = 'flex';
+  });
 }
 
 async function playEpisode(filePath, position = 0) {
@@ -206,7 +410,9 @@ async function toggleWatched(animeId, epNumber, watched) {
     if (currentAnime) {
       const ep = currentAnime.episodes.find(e => e.number === epNumber);
       if (ep) { ep.watched = result.episode.watched; ep.progress = result.episode.progress; }
-      renderEpisodes(currentAnime);
+      renderWatchCard(currentAnime);
+      renderEpisodeHeatmap(currentAnime);
+      renderWatchStats(currentAnime);
     }
   } catch (e) {
     showToast('操作失败: ' + e.message);

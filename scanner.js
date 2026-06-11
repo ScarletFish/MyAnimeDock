@@ -159,4 +159,90 @@ function scanMediaDir(mediaDir) {
   return results;
 }
 
-module.exports = { scanMediaDir, parseFolderName, findVideos, VIDEO_EXTS };
+/**
+ * Build a leaf node for a folder that directly contains video files.
+ * If the folder name is just a season indicator (e.g. "Season 1", "S1"),
+ * falls back to parentName for the anime title while keeping the season number.
+ */
+function buildLeaf(dirPath, name, parentName) {
+  const videos = findVideos(dirPath);
+  if (videos.length === 0) return null;
+  let parsed = parseFolderName(name);
+  if (!parsed.title && parentName) {
+    const parentParsed = parseFolderName(parentName);
+    parsed = { title: parentParsed.title, season: parsed.season || parentParsed.season };
+  }
+  return {
+    name,
+    path: dirPath,
+    type: 'leaf',
+    parsedTitle: parsed.title,
+    parsedSeason: parsed.season,
+    videoCount: videos.length,
+    totalSize: videos.reduce((sum, v) => sum + v.size, 0),
+    videos: videos.map(v => ({ name: v.name, size: v.size })),
+  };
+}
+
+/**
+ * Recursively scan a directory's sub-directories for anime entries.
+ * Returns an array of tree nodes (branch or leaf).
+ */
+function scanDir(dirPath) {
+  const children = [];
+  const parentName = path.basename(dirPath);
+  try {
+    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+    const dirs = entries.filter(e => e.isDirectory() && e.name !== 'covers');
+    for (const entry of dirs) {
+      const fullPath = path.join(dirPath, entry.name);
+      if (hasDirectVideos(fullPath)) {
+        const leaf = buildLeaf(fullPath, entry.name, parentName);
+        if (leaf) children.push(leaf);
+      } else {
+        const sub = scanDir(fullPath);
+        if (sub.length > 0) {
+          children.push({ name: entry.name, path: fullPath, type: 'branch', children: sub });
+        }
+      }
+    }
+  } catch (e) {}
+  return children;
+}
+
+/**
+ * Scan a single top-level directory and return its tree node.
+ * Used by both scanMediaDirTree and the scan endpoint for per-dir progress.
+ */
+function scanTopDir(mediaDir, dirName) {
+  const fullPath = path.join(mediaDir, dirName);
+  if (hasDirectVideos(fullPath)) {
+    return buildLeaf(fullPath, dirName);
+  }
+  const children = scanDir(fullPath);
+  if (children.length > 0) {
+    return { name: dirName, path: fullPath, type: 'branch', children };
+  }
+  return null;
+}
+
+/**
+ * Scan media dir and return a tree of anime folders.
+ * Top-level entries can be either leaves (direct anime) or branches (series containers).
+ */
+function scanMediaDirTree(mediaDir) {
+  const results = [];
+  try {
+    const entries = fs.readdirSync(mediaDir, { withFileTypes: true });
+    const dirs = entries.filter(e => e.isDirectory() && e.name !== 'covers');
+    for (const entry of dirs) {
+      const node = scanTopDir(mediaDir, entry.name);
+      if (node) results.push(node);
+    }
+  } catch (e) {
+    throw new Error('Failed to scan media directory: ' + e.message);
+  }
+  return results;
+}
+
+module.exports = { scanMediaDir, scanMediaDirTree, scanTopDir, parseFolderName, findVideos, hasDirectVideos, VIDEO_EXTS };

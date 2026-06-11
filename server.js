@@ -33,7 +33,7 @@ function saveConfig(cfg) {
 let config = loadConfig();
 
 // --- Data ---
-const DEFAULT_DATA = { discovered: [], library: [], memories: [], playSessions: [] };
+const DEFAULT_DATA = { discovered: [], library: [], memories: [], playSessions: [], scannedTree: [] };
 
 function loadData() {
   try {
@@ -174,40 +174,29 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // --- API: browse (list all folders in mediaDir) ---
+  // --- API: browse (return cached tree) ---
   if (urlPath === '/api/browse' && req.method === 'GET') {
     if (!config.mediaDir) {
-      jsonResp(res, 200, { folders: [], mediaDir: '' });
+      jsonResp(res, 200, { tree: [], mediaDir: '' });
       return;
     }
     try {
-      const entries = fs.readdirSync(config.mediaDir, { withFileTypes: true });
-      const dirs = entries.filter(e => e.isDirectory() && e.name !== 'covers');
-      const { findVideos, parseFolderName } = require('./scanner');
-      const folders = dirs.map(entry => {
-        const fullPath = path.join(config.mediaDir, entry.name);
-        const videos = findVideos(fullPath);
-        const parsed = parseFolderName(entry.name);
-        const alreadyImported = data.library.some(a => a.folderPath === fullPath);
-        return {
-          folderPath: fullPath,
-          folderName: entry.name,
-          parsedTitle: parsed.title,
-          parsedSeason: parsed.season,
-          videoCount: videos.length,
-          totalSize: videos.reduce((sum, v) => sum + v.size, 0),
-          isAnime: videos.length > 0,
-          alreadyImported,
-        };
-      });
-      jsonResp(res, 200, { folders, mediaDir: config.mediaDir });
+      const tree = (data.scannedTree || []).length > 0 ? JSON.parse(JSON.stringify(data.scannedTree)) : [];
+      const libraryPaths = new Set(data.library.map(a => a.folderPath));
+      (function enrich(nodes) {
+        for (const n of nodes) {
+          if (n.type === 'leaf') n.alreadyImported = libraryPaths.has(n.path);
+          else if (n.type === 'branch') enrich(n.children);
+        }
+      })(tree);
+      jsonResp(res, 200, { tree, mediaDir: config.mediaDir });
     } catch (e) {
       jsonResp(res, 500, { error: e.message });
     }
     return;
   }
 
-  // --- API: scan (SSE) ---
+  // --- API: scan (SSE) — persists tree to data ---
   if (urlPath === '/api/scan' && req.method === 'GET') {
     if (!config.mediaDir) {
       jsonResp(res, 400, { error: 'Media directory not configured' });
@@ -222,34 +211,33 @@ const server = http.createServer((req, res) => {
     const send = (obj) => res.write(`data: ${JSON.stringify(obj)}\n\n`);
 
     try {
-      const { findVideos, parseFolderName } = require('./scanner');
+      const { scanTopDir } = require('./scanner');
       const entries = fs.readdirSync(config.mediaDir, { withFileTypes: true });
       const dirs = entries.filter(e => e.isDirectory() && e.name !== 'covers');
       const total = dirs.length;
-      const candidates = [];
+      const tree = [];
+      const libraryPaths = new Set(data.library.map(a => a.folderPath));
 
       for (let i = 0; i < dirs.length; i++) {
         const entry = dirs[i];
-        const fullPath = path.join(config.mediaDir, entry.name);
         send({ type: 'progress', current: i + 1, total, folder: entry.name });
-
-        const videos = findVideos(fullPath);
-        if (videos.length === 0) continue;
-
-        const parsed = parseFolderName(entry.name);
-        const alreadyImported = data.library.some(a => a.folderPath === fullPath);
-
-        candidates.push({
-          folderPath: fullPath,
-          folderName: entry.name,
-          parsedTitle: parsed.title,
-          parsedSeason: parsed.season,
-          videoCount: videos.length,
-          totalSize: videos.reduce((sum, v) => sum + v.size, 0),
-          alreadyImported,
-        });
+        const node = scanTopDir(config.mediaDir, entry.name);
+        if (node) {
+          if (node.type === 'leaf') node.alreadyImported = libraryPaths.has(node.path);
+          else if (node.type === 'branch') {
+            (function enrich(nodes) {
+              for (const n of nodes) {
+                if (n.type === 'leaf') n.alreadyImported = libraryPaths.has(n.path);
+                else if (n.type === 'branch') enrich(n.children);
+              }
+            })(node.children);
+          }
+          tree.push(node);
+        }
       }
-      send({ type: 'done', candidates });
+      data.scannedTree = tree;
+      saveData(data);
+      send({ type: 'done', tree });
     } catch (e) {
       send({ type: 'error', message: e.message });
     }

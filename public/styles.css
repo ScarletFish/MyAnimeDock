@@ -374,33 +374,26 @@ body::after {
   border-color: rgba(44, 36, 24, 0.06);
 }
 
-/* Folder Cards — light mode */
-[data-theme="light"] .folder-card {
-  background: #fff;
-  border-color: rgba(44, 36, 24, 0.06);
+/* Discovery Toolbar — light mode */
+[data-theme="light"] .filter-group {
+  border-color: rgba(44, 36, 24, 0.10);
 }
-[data-theme="light"] .folder-card:hover {
-  box-shadow: 0 8px 32px rgba(44, 36, 24, 0.08);
-}
-[data-theme="light"] .folder-card--anime {
-  border-color: rgba(225, 58, 90, 0.10);
-  background: linear-gradient(180deg, rgba(225, 58, 90, 0.02) 0%, #fff 100%);
-}
-[data-theme="light"] .folder-card--imported {
-  opacity: 0.5;
-}
-[data-theme="light"] .folder-card--empty {
-  opacity: 0.35;
-}
-[data-theme="light"] .folder-card-icon {
+[data-theme="light"] .filter-btn:hover {
   background: rgba(44, 36, 24, 0.04);
 }
-[data-theme="light"] .folder-card-icon--anime {
+[data-theme="light"] .filter-btn--active {
   background: rgba(225, 58, 90, 0.06);
 }
-[data-theme="light"] .folder-card-badge--imported {
-  background: rgba(44, 36, 24, 0.06);
-  color: var(--fg-muted);
+
+/* Tree light mode */
+[data-theme="light"] .tree-row--leaf:hover {
+  background: rgba(225, 58, 90, 0.02);
+}
+[data-theme="light"] .tree-branch > .tree-row:hover {
+  background: rgba(44, 36, 24, 0.03);
+}
+[data-theme="light"] .tree-file:hover {
+  background: rgba(44, 36, 24, 0.02);
 }
 [data-theme="light"] .radar-ring {
   border-color: rgba(225, 58, 90, 0.10);
@@ -1513,8 +1506,15 @@ body {
 /* Discovery Stats */
 .discovery-stats {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: var(--space-3);
   margin-bottom: var(--space-6);
+}
+
+.discovery-stats-left {
+  display: flex;
+  gap: var(--space-3);
 }
 
 .discovery-stat {
@@ -1546,6 +1546,44 @@ body {
   margin-top: var(--space-1);
 }
 
+/* Discovery Toolbar (filter + expand/collapse) */
+.discovery-stats-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.filter-group {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.filter-btn {
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  background: transparent;
+  border: none;
+  color: var(--fg-muted);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  font-family: inherit;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.filter-btn:hover {
+  color: var(--fg-primary);
+  background: var(--bg-surface);
+}
+
+.filter-btn--active {
+  color: var(--accent);
+  background: rgba(225, 58, 90, 0.08);
+}
+
 /* Discovery Actions Bar */
 .discovery-actions {
   display: flex;
@@ -1557,222 +1595,345 @@ body {
   border-radius: var(--radius-md);
 }
 
-/* Discovery Grid — folder cards */
+/* ─── Folder Tree View ─── */
+
 .discovery-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: var(--space-4);
+  min-height: 100px;
 }
 
-.folder-card {
+.folder-tree {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.folder-tree li {
+  list-style: none;
   position: relative;
+}
+
+/* Tree row — shared by branch and leaf */
+.tree-row {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  text-align: center;
-  padding: var(--space-6) var(--space-4) var(--space-5);
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  cursor: pointer;
-  transition: all var(--duration-normal) var(--ease-spring);
-  animation: cardReveal 0.5s var(--ease-spring) backwards;
-  overflow: hidden;
-}
-
-.folder-card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: var(--radius-lg);
-  padding: 1px;
-  background: linear-gradient(135deg, transparent 40%, rgba(225, 58, 90, 0.3) 100%);
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  opacity: 0;
-  transition: opacity var(--duration-normal) var(--ease-out);
-  pointer-events: none;
-}
-
-.folder-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-md);
-}
-
-.folder-card:hover::before {
-  opacity: 1;
-}
-
-.folder-card--anime {
-  border-color: rgba(225, 58, 90, 0.12);
-  background: linear-gradient(180deg, rgba(225, 58, 90, 0.04) 0%, var(--bg-elevated) 100%);
-}
-
-[data-theme="light"] .folder-card--anime {
-  background: linear-gradient(180deg, rgba(225, 58, 90, 0.02) 0%, var(--bg-elevated) 100%);
-  border-color: rgba(225, 58, 90, 0.10);
-}
-
-.folder-card--imported {
-  opacity: 0.5;
+  gap: 8px;
+  padding-left: calc(16px + var(--depth, 0) * 20px);
+  min-height: 36px;
+  border-radius: 6px;
   cursor: default;
+  user-select: none;
+  transition: background var(--duration-fast) var(--ease-out);
 }
 
-.folder-card--imported:hover {
-  transform: none;
-  box-shadow: none;
-}
-
-.folder-card--empty {
-  opacity: 0.4;
-  cursor: default;
-  padding: var(--space-5) var(--space-4);
-}
-
-.folder-card--empty:hover {
-  transform: none;
-  box-shadow: none;
-}
-
-.folder-card-cb {
-  position: absolute;
-  top: var(--space-3);
-  left: var(--space-3);
-  width: 18px;
-  height: 18px;
-  accent-color: var(--accent);
+/* ─── Branch ─── */
+.tree-branch > .tree-row {
   cursor: pointer;
-  z-index: 5;
 }
 
-.folder-card-check {
-  position: absolute;
-  top: var(--space-3);
-  right: var(--space-3);
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: var(--accent-gradient);
+.tree-branch > .tree-row:hover {
+  background: var(--bg-surface);
+}
+
+.tree-branch.collapsed > .tree-children {
+  display: none;
+}
+
+/* Toggle arrow */
+.tree-toggle {
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: var(--fg-muted);
+  transition: color var(--duration-fast);
+}
+
+.tree-toggle svg {
+  transition: transform 0.2s var(--ease-out);
+}
+
+.tree-branch:not(.collapsed) .tree-toggle svg,
+.tree-leaf:not(.collapsed) .tree-toggle svg {
+  transform: rotate(90deg);
+}
+
+.tree-branch > .tree-row:hover .tree-toggle,
+.tree-leaf > .tree-row:hover .tree-toggle {
+  color: var(--fg-primary);
+}
+
+/* Leaf collapsed state — hide video files */
+.tree-leaf.collapsed > .tree-files {
+  display: none;
+}
+
+/* Hide toggle when leaf has no videos */
+.tree-toggle--hidden {
+  visibility: hidden;
+}
+
+/* ─── Children container ─── */
+.tree-children {
+  position: relative;
+}
+
+/* Vertical connector line */
+.tree-children::before {
+  content: '';
+  position: absolute;
+  left: calc(25px + var(--depth, 0) * 20px);
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--border);
+}
+
+/* No connector lines for top-level items */
+.folder-tree > .tree-leaf::before,
+.folder-tree > .tree-branch::before,
+.folder-tree > .tree-leaf::after,
+.folder-tree > .tree-branch::after {
+  display: none;
+}
+
+/* Horizontal connector for each child */
+.tree-leaf::before,
+.tree-branch::before {
+  content: '';
+  position: absolute;
+  left: calc(5px + var(--depth, 0) * 20px);
+  top: 18px;
+  width: 20px;
+  height: 1px;
+  background: var(--border);
+  z-index: 1;
+}
+
+/* Last child blocks the vertical line continuation */
+.tree-leaf:last-child::after,
+.tree-branch:last-child::after {
+  content: '';
+  position: absolute;
+  left: calc(5px + var(--depth, 0) * 20px);
+  top: 19px;
+  bottom: 0;
+  width: 1px;
+  background: var(--bg-app);
+  z-index: 1;
+}
+
+/* ─── Leaf ─── */
+.tree-row--leaf {
+  cursor: pointer;
+  padding-top: 2px;
+  padding-bottom: 2px;
+  border-left: 3px solid transparent;
+  border-radius: 0 6px 6px 0;
+  margin-left: 0;
+}
+
+.tree-row--leaf:hover {
+  background: rgba(225, 58, 90, 0.04);
+}
+
+.tree-leaf--imported .tree-row--leaf {
+  opacity: 0.5;
+}
+
+.tree-leaf--imported .tree-row--leaf:hover {
+  background: none;
+}
+
+/* Checkbox — hidden native input */
+.tree-cb {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+/* Custom checkbox visual */
+.tree-cb-visual {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  border: 2px solid var(--border);
+  flex-shrink: 0;
+  transition: all var(--duration-fast) var(--ease-spring);
+  background: transparent;
+}
+
+.tree-cb-visual svg {
   opacity: 0;
   transform: scale(0.5);
   transition: all var(--duration-fast) var(--ease-spring);
+}
+
+.tree-row--leaf:hover .tree-cb-visual {
+  border-color: var(--accent);
+}
+
+.tree-cb:checked ~ .tree-cb-visual {
+  background: var(--accent-gradient);
+  border-color: var(--accent);
   box-shadow: 0 2px 8px var(--accent-glow);
 }
 
-.folder-card-check svg {
-  width: 14px;
-  height: 14px;
-  stroke: white;
-  fill: none;
-}
-
-.folder-card-cb:checked ~ .folder-card-check {
+.tree-cb:checked ~ .tree-cb-visual svg {
   opacity: 1;
   transform: scale(1);
 }
 
-.folder-card-badge {
-  position: absolute;
-  top: var(--space-3);
-  right: var(--space-3);
+.tree-cb:disabled ~ .tree-cb-visual {
+  opacity: 0.3;
+  border-color: var(--border);
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Icons */
+.tree-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.tree-icon--folder {
+  color: var(--fg-muted);
+  width: 18px;
+  height: 18px;
+}
+
+.tree-icon--leaf {
+  color: var(--accent);
+  width: 18px;
+  height: 18px;
+}
+
+/* Branch label */
+.tree-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--fg-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.3;
+}
+
+/* Leaf info container */
+.tree-leaf-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.tree-leaf-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fg-primary);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tree-leaf-meta {
+  font-size: 11px;
+  color: var(--accent-soft);
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.tree-leaf--imported .tree-leaf-title,
+.tree-leaf--imported .tree-leaf-meta {
+  color: var(--fg-muted);
+}
+
+/* Badge */
+.tree-badge {
   font-size: 10.5px;
   font-weight: 600;
   padding: 2px 8px;
   border-radius: 99px;
   letter-spacing: 0.02em;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
-.folder-card-badge--new {
+.tree-badge--new {
   background: rgba(225, 58, 90, 0.12);
   color: var(--accent);
 }
 
-.folder-card-badge--imported {
+.tree-badge--imported {
   background: rgba(255, 255, 255, 0.06);
   color: var(--fg-muted);
 }
 
-[data-theme="light"] .folder-card-badge--imported {
+[data-theme="light"] .tree-badge--imported {
   background: rgba(44, 36, 24, 0.06);
 }
 
-.folder-card-icon {
-  width: 52px;
-  height: 52px;
-  border-radius: var(--radius-md);
+/* ─── Video files under leaf ─── */
+.tree-files {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  padding-left: calc(57px + var(--depth, 0) * 20px);
+  padding-bottom: 4px;
+}
+
+.tree-file {
   display: flex;
   align-items: center;
-  justify-content: center;
-  margin-bottom: var(--space-3);
+  gap: 8px;
+  min-height: 26px;
+  font-size: 12px;
+  color: var(--fg-muted);
+  padding: 1px 6px;
+  border-radius: 4px;
+  transition: background var(--duration-fast);
+}
+
+.tree-file:hover {
   background: rgba(255, 255, 255, 0.03);
 }
 
-.folder-card-icon svg {
-  width: 26px;
-  height: 26px;
-  stroke: var(--fg-muted);
-  fill: none;
-  stroke-width: 1.5;
+.tree-file-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  color: var(--fg-muted);
+  opacity: 0.4;
 }
 
-.folder-card-icon--anime {
-  background: rgba(225, 58, 90, 0.08);
-}
-
-.folder-card-icon--anime svg {
-  stroke: var(--accent);
-  width: 22px;
-  height: 22px;
-}
-
-[data-theme="light"] .folder-card-icon--anime {
-  background: rgba(225, 58, 90, 0.06);
-}
-
-.folder-card-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--fg-primary);
-  margin-bottom: var(--space-1);
-  line-height: 1.3;
-  max-width: 100%;
+.tree-file-name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.folder-card-meta {
-  font-size: 12px;
-  color: var(--accent-soft);
-  font-weight: 500;
-  margin-bottom: var(--space-2);
-}
-
-.folder-card--empty .folder-card-meta,
-.folder-card--imported .folder-card-meta {
-  color: var(--fg-muted);
-}
-
-.folder-card-folder {
   font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--fg-muted);
-  opacity: 0.6;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 11.5px;
+  flex: 1;
+  min-width: 0;
 }
 
-.folder-card-status {
-  font-size: 12px;
-  color: var(--fg-muted);
+.tree-file-size {
+  flex-shrink: 0;
+  font-size: 11px;
   opacity: 0.5;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ─── Scan Progress ─── */
@@ -2254,21 +2415,23 @@ input[type="range"]::-webkit-slider-thumb {
   .discovery-hero { padding: var(--space-6) var(--space-4); min-height: 140px; }
   .discovery-hero-title { font-size: 1.35rem; }
   .discovery-hero-content { flex-direction: column; gap: var(--space-4); align-items: flex-start; }
-  .discovery-stats { gap: var(--space-2); }
+  .discovery-stats { flex-wrap: wrap; gap: var(--space-2); }
   .discovery-stat { padding: var(--space-3) var(--space-4); min-width: 80px; }
   .discovery-stat-num { font-size: 1.2rem; }
-  .discovery-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--space-3); }
+  .discovery-stats-right { margin-left: auto; }
   .discovery-actions { flex-wrap: wrap; }
 }
 
 @media (max-width: 480px) {
   .grid-container { grid-template-columns: repeat(2, 1fr); gap: 0.6rem; }
   .view { padding: 1rem; }
-  .discovery-grid { grid-template-columns: repeat(2, 1fr); gap: var(--space-2); }
-  .folder-card { padding: var(--space-4) var(--space-3) var(--space-4); }
-  .folder-card-icon { width: 40px; height: 40px; margin-bottom: var(--space-2); }
-  .folder-card-icon svg { width: 20px; height: 20px; }
-  .folder-card-title { font-size: 12.5px; }
+  .tree-row { padding-left: calc(10px + var(--depth, 0) * 14px) !important; min-height: 32px; gap: 6px; }
+  .tree-files { padding-left: calc(41px + var(--depth, 0) * 14px) !important; }
+  .tree-leaf-title { font-size: 12px; }
+  .tree-label { font-size: 12px; }
+  .tree-children::before { left: calc(19px + var(--depth, 0) * 14px) !important; }
+  .tree-leaf::before, .tree-branch::before { left: calc(5px + var(--depth, 0) * 14px) !important; width: 14px !important; }
+  .tree-leaf:last-child::after, .tree-branch:last-child::after { left: calc(5px + var(--depth, 0) * 14px) !important; }
 }
 
 /* ─── Context Menu ─── */

@@ -93,17 +93,29 @@
     </div>
 
     <div class="discovery-stats" id="discoveryStats" style="display:none">
-      <div class="discovery-stat">
-        <span class="discovery-stat-num" id="statTotal">0</span>
-        <span class="discovery-stat-label">文件夹</span>
+      <div class="discovery-stats-left">
+        <div class="discovery-stat">
+          <span class="discovery-stat-num" id="statTotal">0</span>
+          <span class="discovery-stat-label">文件夹</span>
+        </div>
+        <div class="discovery-stat discovery-stat--accent">
+          <span class="discovery-stat-num" id="statAnime">0</span>
+          <span class="discovery-stat-label">识别为动漫</span>
+        </div>
+        <div class="discovery-stat">
+          <span class="discovery-stat-num" id="statImported">0</span>
+          <span class="discovery-stat-label">已导入</span>
+        </div>
       </div>
-      <div class="discovery-stat discovery-stat--accent">
-        <span class="discovery-stat-num" id="statAnime">0</span>
-        <span class="discovery-stat-label">识别为动漫</span>
-      </div>
-      <div class="discovery-stat">
-        <span class="discovery-stat-num" id="statImported">0</span>
-        <span class="discovery-stat-label">已导入</span>
+      <div class="discovery-stats-right" id="discoveryToolbar">
+        <div class="filter-group">
+          <button class="filter-btn filter-btn--active" data-filter="all" onclick="setFilter('all')">全部</button>
+          <button class="filter-btn" data-filter="unimported" onclick="setFilter('unimported')">未导入</button>
+        </div>
+        <div class="filter-group">
+          <button class="filter-btn" onclick="expandAll()">展开全部</button>
+          <button class="filter-btn" onclick="collapseAll()">折叠全部</button>
+        </div>
       </div>
     </div>
 

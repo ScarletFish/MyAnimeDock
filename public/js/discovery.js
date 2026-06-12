@@ -160,6 +160,8 @@ function renderCard(node) {
   const playSvg = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
   const chevronSvg = '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3l5 5-5 5"/></svg>';
 
+  const hasChain = chain.length > 0;
+
   return `
     <div class="discovery-card ${node.alreadyImported ? 'discovery-card--imported' : ''}">
       <div class="discovery-card-main">
@@ -183,11 +185,11 @@ function renderCard(node) {
             : '<span class="discovery-badge discovery-badge--new">新</span>'}
         </label>
       </div>
-      ${(chain.length > 0 || hasVideos) ? `
-      <div class="discovery-annotation">
-        ${chain.length > 0 ? `<div class="discovery-parent">${chain.map(p => escHtml(p)).join('<br>')}</div>` : ''}
+      ${(hasChain || hasVideos) ? `
+      <div class="discovery-annotation${hasChain ? ' discovery-annotation--nested' : ''}">
+        ${hasChain ? `<div class="discovery-parent">${chain.map(p => escHtml(p)).join('<br>')}</div>` : ''}
         ${hasVideos ? `
-        <ul class="discovery-card-files collapsed">
+        <ul class="discovery-card-files collapsed${hasChain ? '' : ' discovery-card-files--simple'}">
           ${node.videos.map(v => `
             <li class="discovery-card-file" title="${escAttr(v.name)}">
               <span class="discovery-card-file-icon">${playSvg}</span>

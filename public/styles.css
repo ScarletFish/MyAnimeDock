@@ -1819,22 +1819,6 @@ html {
   padding-left: 32px;
 }
 
-/* Vertical line — only for nested items (with parent folder) */
-.discovery-annotation::before {
-  content: none;
-}
-
-.discovery-annotation--nested::before {
-  content: '';
-  position: absolute;
-  left: 16px;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  background: var(--border);
-  opacity: 0.3;
-}
-
 /* Parent path (blockquote style) */
 .discovery-parent {
   position: relative;
@@ -2437,7 +2421,7 @@ input[type="range"]::-webkit-slider-thumb {
   .discovery-card-row { padding: 6px 8px; gap: 6px; }
   .discovery-card-title { font-size: 12px; }
   .discovery-annotation { padding-left: 28px; }
-  .discovery-annotation--nested::before { left: 13px; }
+
   .discovery-parent { padding: 2px 10px 2px 34px; font-size: 10.5px; }
   .discovery-parent::before { left: 12px; width: 22px; }
   .discovery-card-files { padding: 0 10px 4px 34px; }

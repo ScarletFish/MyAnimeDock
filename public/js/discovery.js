@@ -162,41 +162,47 @@ function renderCard(node) {
 
   return `
     <div class="discovery-card ${node.alreadyImported ? 'discovery-card--imported' : ''}">
-      <label class="discovery-card-row" for="${fileId}">
-        <input type="checkbox" class="discovery-cb" id="${fileId}"
-          ${isChecked ? 'checked' : ''}
-          ${node.alreadyImported ? 'disabled' : ''}
-          onchange="toggleCard('${escAttr(node.path)}', this.checked)">
-        <span class="discovery-cb-visual">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-        </span>
-        <span class="discovery-card-icon">${folderSvg}</span>
-        <div class="discovery-card-info">
-          <span class="discovery-card-title">${escHtml(node.parsedTitle)}${seasonText}</span>
-          <span class="discovery-card-meta">${node.videoCount} 集 · ${sizeMB} MB</span>
-        </div>
-        ${node.alreadyImported
-          ? '<span class="discovery-badge discovery-badge--imported">已导入</span>'
-          : '<span class="discovery-badge discovery-badge--new">新</span>'}
-        ${hasVideos ? `<span class="discovery-card-toggle" onclick="event.stopPropagation();toggleCardFiles(this)">${chevronSvg}</span>` : ''}
-      </label>
-      ${chain.length > 0 ? `
-      <div class="discovery-parent">${chain.map(p => '| ' + escHtml(p)).join('<br>')}</div>` : ''}
-      ${hasVideos ? `
-      <ul class="discovery-card-files collapsed">
-        ${node.videos.map(v => `
-          <li class="discovery-card-file" title="${escAttr(v.name)}">
-            <span class="discovery-card-file-icon">${playSvg}</span>
-            <span class="discovery-card-file-name">${escHtml(v.name)}</span>
-            <span class="discovery-card-file-size">${(v.size / 1024 / 1024).toFixed(0)} MB</span>
-          </li>
-        `).join('')}
-      </ul>` : ''}
+      <div class="discovery-card-main">
+        ${hasVideos ? `<span class="discovery-card-toggle" onclick="event.stopPropagation();toggleCardFiles(this)">${chevronSvg}</span>`
+          : '<span class="discovery-card-toggle discovery-card-toggle--hidden"></span>'}
+        <label class="discovery-card-row" for="${fileId}">
+          <input type="checkbox" class="discovery-cb" id="${fileId}"
+            ${isChecked ? 'checked' : ''}
+            ${node.alreadyImported ? 'disabled' : ''}
+            onchange="toggleCard('${escAttr(node.path)}', this.checked)">
+          <span class="discovery-cb-visual">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </span>
+          <span class="discovery-card-icon">${folderSvg}</span>
+          <div class="discovery-card-info">
+            <span class="discovery-card-title">${escHtml(node.parsedTitle)}${seasonText}</span>
+            <span class="discovery-card-meta">${node.videoCount} 集 · ${sizeMB} MB</span>
+          </div>
+          ${node.alreadyImported
+            ? '<span class="discovery-badge discovery-badge--imported">已导入</span>'
+            : '<span class="discovery-badge discovery-badge--new">新</span>'}
+        </label>
+      </div>
+      ${(chain.length > 0 || hasVideos) ? `
+      <div class="discovery-annotation">
+        ${chain.length > 0 ? `<div class="discovery-parent">${chain.map(p => escHtml(p)).join('<br>')}</div>` : ''}
+        ${hasVideos ? `
+        <ul class="discovery-card-files collapsed">
+          ${node.videos.map(v => `
+            <li class="discovery-card-file" title="${escAttr(v.name)}">
+              <span class="discovery-card-file-icon">${playSvg}</span>
+              <span class="discovery-card-file-name">${escHtml(v.name)}</span>
+              <span class="discovery-card-file-size">${(v.size / 1024 / 1024).toFixed(0)} MB</span>
+            </li>
+          `).join('')}
+        </ul>` : ''}
+      </div>` : ''}
     </div>`;
 }
 
 function toggleCardFiles(el) {
-  const files = el.closest('.discovery-card').querySelector('.discovery-card-files');
+  const card = el.closest('.discovery-card');
+  const files = card.querySelector('.discovery-card-files');
   if (files) {
     files.classList.toggle('collapsed');
     el.classList.toggle('open');
@@ -218,11 +224,20 @@ function expandAll() {
   document.querySelectorAll('.discovery-card-files.collapsed').forEach(el => {
     el.classList.remove('collapsed');
   });
+  document.querySelectorAll('.discovery-card-toggle.open').forEach(el => {
+    el.classList.remove('open');
+  });
+  document.querySelectorAll('.discovery-card-toggle:not(.discovery-card-toggle--hidden)').forEach(el => {
+    el.classList.add('open');
+  });
 }
 
 function collapseAll() {
   document.querySelectorAll('.discovery-card-files:not(.collapsed)').forEach(el => {
     el.classList.add('collapsed');
+  });
+  document.querySelectorAll('.discovery-card-toggle.open').forEach(el => {
+    el.classList.remove('open');
   });
 }
 

@@ -174,7 +174,7 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // --- API: browse (return cached flat tree, auto-scan if empty) ---
+  // --- API: browse (return cached flat tree, auto-scan if empty or old format) ---
   if (urlPath === '/api/browse' && req.method === 'GET') {
     if (!config.mediaDir) {
       jsonResp(res, 200, { tree: [], mediaDir: '' });
@@ -182,7 +182,8 @@ const server = http.createServer((req, res) => {
     }
     try {
       let tree = data.scannedTree || [];
-      if (tree.length === 0) {
+      // Re-scan if empty or old tree format (has branch nodes)
+      if (tree.length === 0 || tree.some(n => n.type === 'branch')) {
         tree = scanMediaDirFlat(config.mediaDir);
         data.scannedTree = tree;
         saveData(data);

@@ -385,14 +385,14 @@ body::after {
   background: rgba(225, 58, 90, 0.06);
 }
 
-/* Tree light mode */
-[data-theme="light"] .tree-row--leaf:hover {
+/* Discovery card light mode */
+[data-theme="light"] .discovery-card:hover {
+  border-color: rgba(225, 58, 90, 0.15);
+}
+[data-theme="light"] .discovery-card-row:hover {
   background: rgba(225, 58, 90, 0.02);
 }
-[data-theme="light"] .tree-branch > .tree-row:hover {
-  background: rgba(44, 36, 24, 0.03);
-}
-[data-theme="light"] .tree-file:hover {
+[data-theme="light"] .discovery-card-file:hover {
   background: rgba(44, 36, 24, 0.02);
 }
 [data-theme="light"] .radar-ring {
@@ -1595,159 +1595,57 @@ body {
   border-radius: var(--radius-md);
 }
 
-/* ─── Folder Tree View ─── */
+/* ─── Discovery Cards (Flat List) ─── */
 
 .discovery-grid {
   min-height: 100px;
 }
 
-.folder-tree {
-  list-style: none;
-  margin: 0;
+.discovery-card {
+  display: flex;
+  flex-direction: column;
   padding: 0;
+  margin-bottom: 6px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  transition: border-color var(--duration-fast) var(--ease-out);
 }
 
-.folder-tree li {
-  list-style: none;
-  position: relative;
+.discovery-card:hover {
+  border-color: rgba(225, 58, 90, 0.25);
 }
 
-/* Tree row — shared by branch and leaf */
-.tree-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding-left: calc(16px + var(--depth, 0) * 20px);
-  min-height: 36px;
-  border-radius: 6px;
-  cursor: default;
-  user-select: none;
-  transition: background var(--duration-fast) var(--ease-out);
-}
-
-/* ─── Branch ─── */
-.tree-branch > .tree-row {
-  cursor: pointer;
-}
-
-.tree-branch > .tree-row:hover {
-  background: var(--bg-surface);
-}
-
-.tree-branch.collapsed > .tree-children {
-  display: none;
-}
-
-/* Toggle arrow */
-.tree-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-  color: var(--fg-muted);
-  transition: color var(--duration-fast);
-}
-
-.tree-toggle svg {
-  transition: transform 0.2s var(--ease-out);
-}
-
-.tree-branch:not(.collapsed) .tree-toggle svg,
-.tree-leaf:not(.collapsed) .tree-toggle svg {
-  transform: rotate(90deg);
-}
-
-.tree-branch > .tree-row:hover .tree-toggle,
-.tree-leaf > .tree-row:hover .tree-toggle {
-  color: var(--fg-primary);
-}
-
-/* Leaf collapsed state — hide video files */
-.tree-leaf.collapsed > .tree-files {
-  display: none;
-}
-
-/* Hide toggle when leaf has no videos */
-.tree-toggle--hidden {
-  visibility: hidden;
-}
-
-/* ─── Children container ─── */
-.tree-children {
-  position: relative;
-}
-
-/* Vertical connector line */
-.tree-children::before {
-  content: '';
-  position: absolute;
-  left: calc(25px + var(--depth, 0) * 20px);
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background: var(--border);
-}
-
-/* No connector lines for top-level items */
-.folder-tree > .tree-leaf::before,
-.folder-tree > .tree-branch::before,
-.folder-tree > .tree-leaf::after,
-.folder-tree > .tree-branch::after {
-  display: none;
-}
-
-/* Horizontal connector for each child */
-.tree-leaf::before,
-.tree-branch::before {
-  content: '';
-  position: absolute;
-  left: calc(5px + var(--depth, 0) * 20px);
-  top: 18px;
-  width: 20px;
-  height: 1px;
-  background: var(--border);
-  z-index: 1;
-}
-
-/* Last child blocks the vertical line continuation */
-.tree-leaf:last-child::after,
-.tree-branch:last-child::after {
-  content: '';
-  position: absolute;
-  left: calc(5px + var(--depth, 0) * 20px);
-  top: 19px;
-  bottom: 0;
-  width: 1px;
-  background: var(--bg-app);
-  z-index: 1;
-}
-
-/* ─── Leaf ─── */
-.tree-row--leaf {
-  cursor: pointer;
-  padding-top: 2px;
-  padding-bottom: 2px;
-  border-left: 3px solid transparent;
-  border-radius: 0 6px 6px 0;
-  margin-left: 0;
-}
-
-.tree-row--leaf:hover {
-  background: rgba(225, 58, 90, 0.04);
-}
-
-.tree-leaf--imported .tree-row--leaf {
+.discovery-card--imported {
   opacity: 0.5;
 }
 
-.tree-leaf--imported .tree-row--leaf:hover {
+.discovery-card--imported:hover {
+  border-color: var(--border);
+}
+
+/* Card row — checkbox, icon, info, badge, toggle */
+.discovery-card-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  user-select: none;
+  border-radius: var(--radius-md);
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+.discovery-card-row:hover {
+  background: rgba(225, 58, 90, 0.04);
+}
+
+.discovery-card--imported .discovery-card-row:hover {
   background: none;
 }
 
 /* Checkbox — hidden native input */
-.tree-cb {
+.discovery-cb {
   position: absolute;
   opacity: 0;
   width: 0;
@@ -1756,7 +1654,7 @@ body {
 }
 
 /* Custom checkbox visual */
-.tree-cb-visual {
+.discovery-cb-visual {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1769,74 +1667,54 @@ body {
   background: transparent;
 }
 
-.tree-cb-visual svg {
+.discovery-cb-visual svg {
   opacity: 0;
   transform: scale(0.5);
   transition: all var(--duration-fast) var(--ease-spring);
 }
 
-.tree-row--leaf:hover .tree-cb-visual {
+.discovery-card-row:hover .discovery-cb-visual {
   border-color: var(--accent);
 }
 
-.tree-cb:checked ~ .tree-cb-visual {
+.discovery-cb:checked ~ .discovery-cb-visual {
   background: var(--accent-gradient);
   border-color: var(--accent);
   box-shadow: 0 2px 8px var(--accent-glow);
 }
 
-.tree-cb:checked ~ .tree-cb-visual svg {
+.discovery-cb:checked ~ .discovery-cb-visual svg {
   opacity: 1;
   transform: scale(1);
 }
 
-.tree-cb:disabled ~ .tree-cb-visual {
+.discovery-cb:disabled ~ .discovery-cb-visual {
   opacity: 0.3;
   border-color: var(--border);
   background: transparent;
   box-shadow: none;
 }
 
-/* Icons */
-.tree-icon {
+/* Card icon */
+.discovery-card-icon {
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-}
-
-.tree-icon--folder {
-  color: var(--fg-muted);
   width: 18px;
   height: 18px;
-}
-
-.tree-icon--leaf {
   color: var(--accent);
-  width: 18px;
-  height: 18px;
 }
 
-/* Branch label */
-.tree-label {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--fg-secondary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  line-height: 1.3;
-}
-
-/* Leaf info container */
-.tree-leaf-info {
+/* Card info */
+.discovery-card-info {
   display: flex;
   flex-direction: column;
   min-width: 0;
   flex: 1;
 }
 
-.tree-leaf-title {
+.discovery-card-title {
   font-size: 13px;
   font-weight: 600;
   color: var(--fg-primary);
@@ -1846,20 +1724,20 @@ body {
   white-space: nowrap;
 }
 
-.tree-leaf-meta {
+.discovery-card-meta {
   font-size: 11px;
   color: var(--accent-soft);
   font-weight: 500;
   line-height: 1.3;
 }
 
-.tree-leaf--imported .tree-leaf-title,
-.tree-leaf--imported .tree-leaf-meta {
+.discovery-card--imported .discovery-card-title,
+.discovery-card--imported .discovery-card-meta {
   color: var(--fg-muted);
 }
 
 /* Badge */
-.tree-badge {
+.discovery-badge {
   font-size: 10.5px;
   font-weight: 600;
   padding: 2px 8px;
@@ -1869,30 +1747,72 @@ body {
   margin-left: auto;
 }
 
-.tree-badge--new {
+.discovery-badge--new {
   background: rgba(225, 58, 90, 0.12);
   color: var(--accent);
 }
 
-.tree-badge--imported {
+.discovery-badge--imported {
   background: rgba(255, 255, 255, 0.06);
   color: var(--fg-muted);
 }
 
-[data-theme="light"] .tree-badge--imported {
+[data-theme="light"] .discovery-badge--imported {
   background: rgba(44, 36, 24, 0.06);
 }
 
-/* ─── Video files under leaf ─── */
-.tree-files {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  padding-left: calc(57px + var(--depth, 0) * 20px);
-  padding-bottom: 4px;
+/* Toggle (chevron) for card */
+.discovery-card-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: var(--fg-muted);
+  transition: color var(--duration-fast), transform 0.2s var(--ease-out);
+  cursor: pointer;
+  border-radius: 4px;
 }
 
-.tree-file {
+.discovery-card-toggle:hover {
+  color: var(--fg-primary);
+  background: var(--bg-surface);
+}
+
+.discovery-card-toggle svg {
+  transition: transform 0.2s var(--ease-out);
+}
+
+.discovery-card-toggle.open svg {
+  transform: rotate(90deg);
+}
+
+/* Parent path annotation (blockquote style) */
+.discovery-parent {
+  font-size: 11px;
+  color: var(--fg-muted);
+  padding: 0 14px 6px 42px;
+  font-family: 'JetBrains Mono', var(--font-mono, monospace);
+  opacity: 0.55;
+  line-height: 1.6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Video files under card */
+.discovery-card-files {
+  list-style: none;
+  margin: 0;
+  padding: 0 14px 8px 42px;
+}
+
+.discovery-card-files.collapsed {
+  display: none;
+}
+
+.discovery-card-file {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1904,11 +1824,11 @@ body {
   transition: background var(--duration-fast);
 }
 
-.tree-file:hover {
+.discovery-card-file:hover {
   background: rgba(255, 255, 255, 0.03);
 }
 
-.tree-file-icon {
+.discovery-card-file-icon {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1919,7 +1839,7 @@ body {
   opacity: 0.4;
 }
 
-.tree-file-name {
+.discovery-card-file-name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1929,7 +1849,7 @@ body {
   min-width: 0;
 }
 
-.tree-file-size {
+.discovery-card-file-size {
   flex-shrink: 0;
   font-size: 11px;
   opacity: 0.5;
@@ -2425,13 +2345,10 @@ input[type="range"]::-webkit-slider-thumb {
 @media (max-width: 480px) {
   .grid-container { grid-template-columns: repeat(2, 1fr); gap: 0.6rem; }
   .view { padding: 1rem; }
-  .tree-row { padding-left: calc(10px + var(--depth, 0) * 14px) !important; min-height: 32px; gap: 6px; }
-  .tree-files { padding-left: calc(41px + var(--depth, 0) * 14px) !important; }
-  .tree-leaf-title { font-size: 12px; }
-  .tree-label { font-size: 12px; }
-  .tree-children::before { left: calc(19px + var(--depth, 0) * 14px) !important; }
-  .tree-leaf::before, .tree-branch::before { left: calc(5px + var(--depth, 0) * 14px) !important; width: 14px !important; }
-  .tree-leaf:last-child::after, .tree-branch:last-child::after { left: calc(5px + var(--depth, 0) * 14px) !important; }
+  .discovery-card-row { padding: 8px 10px; gap: 8px; }
+  .discovery-card-title { font-size: 12px; }
+  .discovery-parent { padding-left: 34px; font-size: 10.5px; }
+  .discovery-card-files { padding-left: 34px; }
 }
 
 /* ─── Context Menu ─── */

@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { exec, spawn } = require('child_process');
-const { scanMediaDir, parseFolderName } = require('./scanner');
+const { scanMediaDir, scanMediaDirFlat, parseFolderName } = require('./scanner');
 
 // pkg 打包后 __dirname 指向临时解压目录，需要使用 exe 所在目录
 const APP_DIR = process.pkg ? path.dirname(process.execPath) : __dirname;
@@ -174,21 +174,25 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // --- API: browse (return cached tree) ---
+  // --- API: browse (return cached flat tree, auto-scan if empty) ---
   if (urlPath === '/api/browse' && req.method === 'GET') {
     if (!config.mediaDir) {
       jsonResp(res, 200, { tree: [], mediaDir: '' });
       return;
     }
     try {
-      const tree = (data.scannedTree || []).length > 0 ? JSON.parse(JSON.stringify(data.scannedTree)) : [];
+      let tree = data.scannedTree || [];
+      if (tree.length === 0) {
+        tree = scanMediaDirFlat(config.mediaDir);
+        data.scannedTree = tree;
+        saveData(data);
+      } else {
+        tree = JSON.parse(JSON.stringify(data.scannedTree));
+      }
       const libraryPaths = new Set(data.library.map(a => a.folderPath));
-      (function enrich(nodes) {
-        for (const n of nodes) {
-          if (n.type === 'leaf') n.alreadyImported = libraryPaths.has(n.path);
-          else if (n.type === 'branch') enrich(n.children);
-        }
-      })(tree);
+      for (const n of tree) {
+        if (n.type === 'leaf') n.alreadyImported = libraryPaths.has(n.path);
+      }
       jsonResp(res, 200, { tree, mediaDir: config.mediaDir });
     } catch (e) {
       jsonResp(res, 500, { error: e.message });
@@ -196,7 +200,7 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // --- API: scan (SSE) — persists tree to data ---
+  // --- API: scan (SSE) — persists flat leaf array to data ---
   if (urlPath === '/api/scan' && req.method === 'GET') {
     if (!config.mediaDir) {
       jsonResp(res, 400, { error: 'Media directory not configured' });
@@ -223,16 +227,14 @@ const server = http.createServer((req, res) => {
         send({ type: 'progress', current: i + 1, total, folder: entry.name });
         const node = scanTopDir(config.mediaDir, entry.name);
         if (node) {
-          if (node.type === 'leaf') node.alreadyImported = libraryPaths.has(node.path);
-          else if (node.type === 'branch') {
-            (function enrich(nodes) {
-              for (const n of nodes) {
-                if (n.type === 'leaf') n.alreadyImported = libraryPaths.has(n.path);
-                else if (n.type === 'branch') enrich(n.children);
-              }
-            })(node.children);
-          }
-          tree.push(node);
+          (function flatten(n) {
+            if (n.type === 'leaf') {
+              n.alreadyImported = libraryPaths.has(n.path);
+              tree.push(n);
+            } else if (n.type === 'branch' && n.children) {
+              n.children.forEach(flatten);
+            }
+          })(node);
         }
       }
       data.scannedTree = tree;

@@ -32,27 +32,14 @@ async function loadDiscovery() {
     discoveryData = resp.tree || [];
     selectedPaths.clear();
 
-    walkTree(discoveryData, n => {
-      if (n.type === 'leaf' && !n.alreadyImported) selectedPaths.add(n.path);
-    });
+    for (const n of discoveryData) {
+      if (!n.alreadyImported) selectedPaths.add(n.path);
+    }
 
     renderDiscovery();
   } catch (e) {
     showToast('加载失败: ' + e.message);
   }
-}
-
-function walkTree(nodes, fn) {
-  for (const node of nodes) {
-    fn(node);
-    if (node.children) walkTree(node.children, fn);
-  }
-}
-
-function collectLeaves(nodes) {
-  const leaves = [];
-  walkTree(nodes, n => { if (n.type === 'leaf') leaves.push(n); });
-  return leaves;
 }
 
 async function startScan() {
@@ -103,9 +90,9 @@ async function startScan() {
         } else if (msg.type === 'done') {
           discoveryData = msg.tree;
           selectedPaths.clear();
-          walkTree(discoveryData, n => {
-            if (n.type === 'leaf' && !n.alreadyImported) selectedPaths.add(n.path);
-          });
+          for (const n of discoveryData) {
+            if (!n.alreadyImported) selectedPaths.add(n.path);
+          }
           renderDiscovery();
         } else if (msg.type === 'error') {
           showToast('扫描失败: ' + msg.message);
@@ -123,27 +110,16 @@ async function startScan() {
   isScanning = false;
 }
 
-function countTreeStats(nodes) {
-  let leaves = 0, imported = 0, branches = 0;
-  walkTree(nodes, n => {
-    if (n.type === 'leaf') { leaves++; if (n.alreadyImported) imported++; }
-    else if (n.type === 'branch') branches++;
-  });
-  return { leaves, imported, branches, total: leaves + branches };
-}
-
 function renderDiscovery() {
   const grid = document.getElementById('discoveryGrid');
   const empty = document.getElementById('discoveryEmpty');
   const stats = document.getElementById('discoveryStats');
   const actions = document.getElementById('discoveryActions');
 
-  const allLeaves = collectLeaves(discoveryData);
-
   if (discoveryData.length === 0) {
     grid.innerHTML = '';
     empty.style.display = 'flex';
-    empty.querySelector('p').textContent = '媒体目录中未发现动漫';
+    document.getElementById('discoveryEmptyText').textContent = '媒体目录中未发现动漫';
     stats.style.display = 'none';
     actions.style.display = 'none';
     return;
@@ -151,36 +127,86 @@ function renderDiscovery() {
 
   empty.style.display = 'none';
 
-  const { leaves, imported, total } = countTreeStats(discoveryData);
-  document.getElementById('statTotal').textContent = total;
-  document.getElementById('statAnime').textContent = leaves;
+  const total = discoveryData.length;
+  const imported = discoveryData.filter(n => n.alreadyImported).length;
+  document.getElementById('statAnime').textContent = total;
   document.getElementById('statImported').textContent = imported;
   stats.style.display = '';
 
-  // Update filter button active state
   document.querySelectorAll('#discoveryToolbar .filter-btn[data-filter]').forEach(b => {
     b.classList.toggle('filter-btn--active', b.dataset.filter === filterMode);
   });
 
-  const hasNew = allLeaves.some(n => !n.alreadyImported);
+  const hasNew = discoveryData.some(n => !n.alreadyImported);
   actions.style.display = hasNew ? '' : 'none';
   updateImportCount();
 
-  const displayData = filterMode === 'all' ? discoveryData : filterImported(discoveryData);
-  const treeHtml = renderTree(displayData, 0);
-  grid.innerHTML = `<ul class="folder-tree">${treeHtml}</ul>`;
+  const displayData = filterMode === 'all'
+    ? discoveryData
+    : discoveryData.filter(n => !n.alreadyImported);
+
+  grid.innerHTML = displayData.map(node => renderCard(node)).join('');
 }
 
-function filterImported(nodes) {
-  return nodes.reduce((acc, n) => {
-    if (n.type === 'leaf') {
-      if (!n.alreadyImported) acc.push(n);
-    } else {
-      const kept = filterImported(n.children);
-      if (kept.length > 0) acc.push({ ...n, children: kept });
-    }
-    return acc;
-  }, []);
+function renderCard(node) {
+  const isChecked = selectedPaths.has(node.path);
+  const sizeMB = (node.totalSize / (1024 * 1024)).toFixed(0);
+  const seasonText = node.parsedSeason ? ` S${node.parsedSeason}` : '';
+  const fileId = 'dc-' + node.path.replace(/[^a-zA-Z0-9]/g, '-');
+  const hasVideos = node.videos && node.videos.length > 0;
+  const chain = node.parentChain || [];
+
+  const folderSvg = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><path d="M2 9h20"/></svg>';
+  const playSvg = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
+  const chevronSvg = '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3l5 5-5 5"/></svg>';
+
+  return `
+    <div class="discovery-card ${node.alreadyImported ? 'discovery-card--imported' : ''}">
+      <label class="discovery-card-row" for="${fileId}">
+        <input type="checkbox" class="discovery-cb" id="${fileId}"
+          ${isChecked ? 'checked' : ''}
+          ${node.alreadyImported ? 'disabled' : ''}
+          onchange="toggleCard('${escAttr(node.path)}', this.checked)">
+        <span class="discovery-cb-visual">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </span>
+        <span class="discovery-card-icon">${folderSvg}</span>
+        <div class="discovery-card-info">
+          <span class="discovery-card-title">${escHtml(node.parsedTitle)}${seasonText}</span>
+          <span class="discovery-card-meta">${node.videoCount} 集 · ${sizeMB} MB</span>
+        </div>
+        ${node.alreadyImported
+          ? '<span class="discovery-badge discovery-badge--imported">已导入</span>'
+          : '<span class="discovery-badge discovery-badge--new">新</span>'}
+        ${hasVideos ? `<span class="discovery-card-toggle" onclick="event.stopPropagation();toggleCardFiles(this)">${chevronSvg}</span>` : ''}
+      </label>
+      ${chain.length > 0 ? `
+      <div class="discovery-parent">${chain.map(p => '| ' + escHtml(p)).join('<br>')}</div>` : ''}
+      ${hasVideos ? `
+      <ul class="discovery-card-files collapsed">
+        ${node.videos.map(v => `
+          <li class="discovery-card-file" title="${escAttr(v.name)}">
+            <span class="discovery-card-file-icon">${playSvg}</span>
+            <span class="discovery-card-file-name">${escHtml(v.name)}</span>
+            <span class="discovery-card-file-size">${(v.size / 1024 / 1024).toFixed(0)} MB</span>
+          </li>
+        `).join('')}
+      </ul>` : ''}
+    </div>`;
+}
+
+function toggleCardFiles(el) {
+  const files = el.closest('.discovery-card').querySelector('.discovery-card-files');
+  if (files) {
+    files.classList.toggle('collapsed');
+    el.classList.toggle('open');
+  }
+}
+
+function toggleCard(path, checked) {
+  if (checked) selectedPaths.add(path);
+  else selectedPaths.delete(path);
+  updateImportCount();
 }
 
 function setFilter(mode) {
@@ -189,98 +215,19 @@ function setFilter(mode) {
 }
 
 function expandAll() {
-  document.querySelectorAll('.tree-branch.collapsed, .tree-leaf.collapsed').forEach(el => {
+  document.querySelectorAll('.discovery-card-files.collapsed').forEach(el => {
     el.classList.remove('collapsed');
   });
 }
 
 function collapseAll() {
-  document.querySelectorAll('.tree-branch:not(.collapsed), .tree-leaf:not(.collapsed)').forEach(el => {
+  document.querySelectorAll('.discovery-card-files:not(.collapsed)').forEach(el => {
     el.classList.add('collapsed');
   });
 }
 
-function renderTree(nodes, depth) {
-  return nodes.map(node => {
-    if (node.type === 'branch') {
-      const toggleSvg = '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3l5 5-5 5"/></svg>';
-      const folderSvg = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>';
-      return `
-        <li class="tree-branch" style="--depth:${depth}">
-          <div class="tree-row" onclick="toggleTreeBranch(this)">
-            <span class="tree-toggle">${toggleSvg}</span>
-            <span class="tree-icon tree-icon--folder">${folderSvg}</span>
-            <span class="tree-label">${escHtml(node.name)}</span>
-          </div>
-          <ul class="tree-children">
-            ${renderTree(node.children, depth + 1)}
-          </ul>
-        </li>`;
-    }
-
-    const isChecked = selectedPaths.has(node.path);
-    const sizeMB = (node.totalSize / (1024 * 1024)).toFixed(0);
-    const seasonText = node.parsedSeason ? ` S${node.parsedSeason}` : '';
-    const fileId = 'tl-' + node.path.replace(/[^a-zA-Z0-9]/g, '-');
-
-    const toggleSvg = '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3l5 5-5 5"/></svg>';
-    const folderSvg = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><path d="M2 9h20"/></svg>';
-    const playSvg = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
-    const hasVideos = node.videos && node.videos.length > 0;
-
-    return `
-      <li class="tree-leaf ${node.alreadyImported ? 'tree-leaf--imported' : ''}">
-        <label class="tree-row tree-row--leaf" for="${fileId}">
-          <span class="tree-toggle${hasVideos ? '' : ' tree-toggle--hidden'}" onclick="event.stopPropagation();toggleTreeLeaf(this)">${toggleSvg}</span>
-          <input type="checkbox" class="tree-cb" id="${fileId}"
-            ${isChecked ? 'checked' : ''}
-            ${node.alreadyImported ? 'disabled' : ''}
-            onchange="toggleCandidate('${escAttr(node.path)}', this.checked)">
-          <span class="tree-cb-visual">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-          </span>
-          <span class="tree-icon tree-icon--leaf">${folderSvg}</span>
-          <div class="tree-leaf-info">
-            <span class="tree-leaf-title">${escHtml(node.parsedTitle)}${seasonText}</span>
-            <span class="tree-leaf-meta">${node.videoCount} 集 · ${sizeMB} MB</span>
-          </div>
-          ${node.alreadyImported
-            ? '<span class="tree-badge tree-badge--imported">已导入</span>'
-            : '<span class="tree-badge tree-badge--new">新</span>'}
-        </label>
-        ${hasVideos ? `
-        <ul class="tree-files">
-          ${node.videos.map(v => `
-            <li class="tree-file" title="${escAttr(v.name)}">
-              <span class="tree-file-icon">${playSvg}</span>
-              <span class="tree-file-name">${escHtml(v.name)}</span>
-              <span class="tree-file-size">${(v.size / 1024 / 1024).toFixed(0)} MB</span>
-            </li>
-          `).join('')}
-        </ul>` : ''}
-      </li>`;
-  }).join('');
-}
-
-function toggleTreeBranch(el) {
-  const li = el.closest('.tree-branch');
-  if (li) li.classList.toggle('collapsed');
-}
-
-function toggleTreeLeaf(el) {
-  const li = el.closest('.tree-leaf');
-  if (li) li.classList.toggle('collapsed');
-}
-
-function toggleCandidate(path, checked) {
-  if (checked) selectedPaths.add(path);
-  else selectedPaths.delete(path);
-  updateImportCount();
-}
-
 function selectAllCandidates() {
-  const leaves = collectLeaves(discoveryData);
-  const newLeaves = leaves.filter(n => !n.alreadyImported);
+  const newLeaves = discoveryData.filter(n => !n.alreadyImported);
   const allSelected = newLeaves.every(n => selectedPaths.has(n.path));
   selectedPaths.clear();
   if (!allSelected) {
@@ -299,8 +246,7 @@ async function importSelected() {
     showToast('请先选择要导入的动漫');
     return;
   }
-  const leaves = collectLeaves(discoveryData);
-  const items = leaves.filter(n => selectedPaths.has(n.path)).map(n => ({
+  const items = discoveryData.filter(n => selectedPaths.has(n.path)).map(n => ({
     folderPath: n.path,
     folderName: n.name,
     parsedTitle: n.parsedTitle,

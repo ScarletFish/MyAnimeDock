@@ -162,15 +162,26 @@ function scanMediaDir(mediaDir) {
 /**
  * Build a leaf node for a folder that directly contains video files.
  * If the folder name is just a season indicator (e.g. "Season 1", "S1"),
- * falls back to parentName for the anime title while keeping the season number.
+ * walks up parentChain to find the anime title.
+ * parentChain is an array of ancestor folder names from mediaDir to parent.
  */
-function buildLeaf(dirPath, name, parentName) {
+function buildLeaf(dirPath, name, parentName, parentChain) {
   const videos = findVideos(dirPath);
   if (videos.length === 0) return null;
   let parsed = parseFolderName(name);
-  if (!parsed.title && parentName) {
-    const parentParsed = parseFolderName(parentName);
-    parsed = { title: parentParsed.title, season: parsed.season || parentParsed.season };
+  if (!parsed.title) {
+    const chain = parentChain || [];
+    for (let i = chain.length - 1; i >= 0; i--) {
+      const pParsed = parseFolderName(chain[i]);
+      if (pParsed.title) {
+        parsed = { title: pParsed.title, season: parsed.season || pParsed.season };
+        break;
+      }
+    }
+    if (!parsed.title && parentName) {
+      const parentParsed = parseFolderName(parentName);
+      parsed = { title: parentParsed.title, season: parsed.season || parentParsed.season };
+    }
   }
   return {
     name,
@@ -181,14 +192,16 @@ function buildLeaf(dirPath, name, parentName) {
     videoCount: videos.length,
     totalSize: videos.reduce((sum, v) => sum + v.size, 0),
     videos: videos.map(v => ({ name: v.name, size: v.size })),
+    parentChain: parentChain || [],
   };
 }
 
 /**
  * Recursively scan a directory's sub-directories for anime entries.
  * Returns an array of tree nodes (branch or leaf).
+ * chain — ancestor folder names from mediaDir to dirPath (excluding dirPath).
  */
-function scanDir(dirPath) {
+function scanDir(dirPath, chain) {
   const children = [];
   const parentName = path.basename(dirPath);
   try {
@@ -197,10 +210,10 @@ function scanDir(dirPath) {
     for (const entry of dirs) {
       const fullPath = path.join(dirPath, entry.name);
       if (hasDirectVideos(fullPath)) {
-        const leaf = buildLeaf(fullPath, entry.name, parentName);
+        const leaf = buildLeaf(fullPath, entry.name, parentName, chain);
         if (leaf) children.push(leaf);
       } else {
-        const sub = scanDir(fullPath);
+        const sub = scanDir(fullPath, [...(chain || []), entry.name]);
         if (sub.length > 0) {
           children.push({ name: entry.name, path: fullPath, type: 'branch', children: sub });
         }
@@ -217,9 +230,9 @@ function scanDir(dirPath) {
 function scanTopDir(mediaDir, dirName) {
   const fullPath = path.join(mediaDir, dirName);
   if (hasDirectVideos(fullPath)) {
-    return buildLeaf(fullPath, dirName);
+    return buildLeaf(fullPath, dirName, null, []);
   }
-  const children = scanDir(fullPath);
+  const children = scanDir(fullPath, [dirName]);
   if (children.length > 0) {
     return { name: dirName, path: fullPath, type: 'branch', children };
   }
@@ -245,4 +258,34 @@ function scanMediaDirTree(mediaDir) {
   return results;
 }
 
-module.exports = { scanMediaDir, scanMediaDirTree, scanTopDir, parseFolderName, findVideos, hasDirectVideos, VIDEO_EXTS };
+/**
+ * Scan media dir and return a flat array of leaf nodes.
+ * Each leaf has a parentChain array of ancestor folder names.
+ * Skips directories without direct video files (no branch nodes).
+ */
+function scanMediaDirFlat(mediaDir) {
+  const results = [];
+  function walk(dir, chain) {
+    try {
+      const entries = fs.readdirSync(dir, { withFileTypes: true });
+      const dirs = entries.filter(e => e.isDirectory() && e.name !== 'covers');
+      for (const entry of dirs) {
+        const fullPath = path.join(dir, entry.name);
+        if (hasDirectVideos(fullPath)) {
+          const leaf = buildLeaf(fullPath, entry.name, null, chain);
+          if (leaf) results.push(leaf);
+        } else {
+          walk(fullPath, [...chain, entry.name]);
+        }
+      }
+    } catch (e) {}
+  }
+  try {
+    walk(mediaDir, []);
+  } catch (e) {
+    throw new Error('Failed to scan media directory: ' + e.message);
+  }
+  return results;
+}
+
+module.exports = { scanMediaDir, scanMediaDirTree, scanMediaDirFlat, scanTopDir, parseFolderName, findVideos, hasDirectVideos, VIDEO_EXTS };

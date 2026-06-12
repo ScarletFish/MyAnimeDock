@@ -145,10 +145,32 @@ function renderDiscovery() {
     ? discoveryData
     : discoveryData.filter(n => !n.alreadyImported);
 
-  grid.innerHTML = displayData.map(node => renderCard(node)).join('');
+  const parentCounts = {};
+  for (const n of displayData) {
+    const key = (n.parentChain || []).join('\0');
+    if (key) parentCounts[key] = (parentCounts[key] || 0) + 1;
+  }
+
+  let html = '';
+  for (let i = 0; i < displayData.length; i++) {
+    const key = (displayData[i].parentChain || []).join('\0');
+    const isSibling = key && parentCounts[key] > 1;
+    if (isSibling) {
+      html += '<div class="discovery-sibling-group">';
+      while (i < displayData.length && (displayData[i].parentChain || []).join('\0') === key) {
+        html += renderCard(displayData[i], true);
+        i++;
+      }
+      html += '</div>';
+      i--;
+    } else {
+      html += renderCard(displayData[i], false);
+    }
+  }
+  grid.innerHTML = html;
 }
 
-function renderCard(node) {
+function renderCard(node, showLine) {
   const isChecked = selectedPaths.has(node.path);
   const sizeMB = (node.totalSize / (1024 * 1024)).toFixed(0);
   const seasonText = node.parsedSeason ? ` S${node.parsedSeason}` : '';
@@ -163,7 +185,7 @@ function renderCard(node) {
   const hasChain = chain.length > 0;
 
   return `
-    <div class="discovery-card ${node.alreadyImported ? 'discovery-card--imported' : ''}">
+    <div class="discovery-card${node.alreadyImported ? ' discovery-card--imported' : ''}${showLine ? ' discovery-card--sibling' : ''}">
       <div class="discovery-card-main">
         ${hasVideos ? `<span class="discovery-card-toggle" onclick="event.stopPropagation();toggleCardFiles(this)">${chevronSvg}</span>`
           : '<span class="discovery-card-toggle discovery-card-toggle--hidden"></span>'}
@@ -189,7 +211,7 @@ function renderCard(node) {
       <div class="discovery-annotation${hasChain ? ' discovery-annotation--nested' : ''}">
         ${hasChain ? `<div class="discovery-parent">${chain.map(p => escHtml(p)).join('<br>')}</div>` : ''}
         ${hasVideos ? `
-        <ul class="discovery-card-files collapsed${hasChain ? '' : ' discovery-card-files--simple'}">
+        <ul class="discovery-card-files collapsed">
           ${node.videos.map(v => `
             <li class="discovery-card-file" title="${escAttr(v.name)}">
               <span class="discovery-card-file-icon">${playSvg}</span>

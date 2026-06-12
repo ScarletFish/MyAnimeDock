@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { exec, spawn } = require('child_process');
-const { scanMediaDir, scanMediaDirFlat, parseFolderName } = require('./scanner');
+const { scanMediaDirFlat } = require('./scanner');
 
 // pkg 打包后 __dirname 指向临时解压目录，需要使用 exe 所在目录
 const APP_DIR = process.pkg ? path.dirname(process.execPath) : __dirname;

@@ -395,9 +395,7 @@ body::after {
 [data-theme="light"] .discovery-card-row:hover {
   background: rgba(225, 58, 90, 0.02);
 }
-[data-theme="light"] .discovery-annotation--nested .discovery-card-file:hover {
-  background: rgba(44, 36, 24, 0.02);
-}
+
 [data-theme="light"] .radar-ring {
   border-color: rgba(225, 58, 90, 0.10);
 }
@@ -589,9 +587,20 @@ body {
 }
 
 /* ─── Main Content ─── */
+html {
+  overflow: hidden;
+}
+
 .main-content {
   margin-left: 60px;
-  min-height: 100vh;
+  height: 100vh;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.main-content::-webkit-scrollbar {
+  display: none;
 }
 
 /* ─── Animations ─── */
@@ -1670,10 +1679,10 @@ body {
 .discovery-card-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex: 1;
   min-width: 0;
-  padding: 8px 14px;
+  padding: 8px 10px;
   cursor: pointer;
   user-select: none;
   transition: background var(--duration-fast) var(--ease-out);
@@ -1807,7 +1816,7 @@ body {
 /* ─── Annotation area (parent path + files with vertical line) ─── */
 .discovery-annotation {
   position: relative;
-  padding-left: 32px; /* indent under toggle */
+  padding-left: 32px;
 }
 
 /* Vertical line — only for nested items (with parent folder) */
@@ -1818,7 +1827,7 @@ body {
 .discovery-annotation--nested::before {
   content: '';
   position: absolute;
-  left: 15px; /* center of 32px toggle */
+  left: 16px;
   top: 0;
   bottom: 0;
   width: 2px;
@@ -1831,7 +1840,7 @@ body {
   position: relative;
   font-size: 11px;
   color: var(--fg-muted);
-  padding: 2px 14px 2px 44px;
+  padding: 2px 10px 2px 44px;
   font-family: 'JetBrains Mono', var(--font-mono, monospace);
   opacity: 0.78;
   line-height: 1.6;
@@ -1852,20 +1861,15 @@ body {
   opacity: 0.3;
 }
 
-/* Video files under card — nested style (tree connectors) */
+/* Video files under card — indent under parent annotation */
 .discovery-card-files {
   list-style: none;
   margin: 0;
-  padding: 0 14px 6px 44px;
+  padding: 0 10px 6px 44px;
 }
 
 .discovery-card-files.collapsed {
   display: none;
-}
-
-/* Video files under card — top-level style (simple indent) */
-.discovery-card-files--simple {
-  padding: 0 14px 6px 0;
 }
 
 .discovery-card-file {
@@ -1885,30 +1889,26 @@ body {
   content: none;
 }
 
-.discovery-annotation--nested .discovery-card-file {
-  padding-left: 18px;
+/* ─── Sibling-group continuous accent line ─── */
+.discovery-sibling-group {
+  position: relative;
 }
 
-.discovery-annotation--nested .discovery-card-file::before {
+.discovery-sibling-group::before {
   content: '';
   position: absolute;
-  left: 0;
-  top: 50%;
-  width: 18px;
-  height: 0;
-  border-top: 1px solid var(--border);
-  opacity: 0.3;
+  left: -10px;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--accent-soft);
+  border-radius: 2px;
+  opacity: 0.6;
+  pointer-events: none;
 }
 
-.discovery-annotation--nested .discovery-card-file:last-child::after {
-  content: '';
-  position: absolute;
-  left: -26px;
-  top: 50%;
-  bottom: -6px;
-  width: 2px;
-  background: var(--bg-app);
-  opacity: 0.3;
+[data-theme="light"] .discovery-sibling-group::before {
+  opacity: 0.5;
 }
 
 .discovery-card-file:hover {
@@ -2434,16 +2434,13 @@ input[type="range"]::-webkit-slider-thumb {
   .view { padding: 1rem; }
   .discovery-card-main { min-height: 38px; }
   .discovery-card-toggle { width: 28px; }
-  .discovery-card-row { padding: 6px 10px; gap: 8px; }
+  .discovery-card-row { padding: 6px 8px; gap: 6px; }
   .discovery-card-title { font-size: 12px; }
   .discovery-annotation { padding-left: 28px; }
   .discovery-annotation--nested::before { left: 13px; }
   .discovery-parent { padding: 2px 10px 2px 34px; font-size: 10.5px; }
   .discovery-parent::before { left: 12px; width: 22px; }
   .discovery-card-files { padding: 0 10px 4px 34px; }
-  .discovery-card-files--simple { padding: 0 10px 4px 0; }
-  .discovery-annotation--nested .discovery-card-file { padding-left: 14px; }
-  .discovery-annotation--nested .discovery-card-file::before { width: 14px; }
 }
 
 /* ─── Context Menu ─── */

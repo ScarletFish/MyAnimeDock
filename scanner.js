@@ -1,18 +1,9 @@
 const fs = require('fs');
 const path = require('path');
+const { Parser } = require('anitomy');
 
 const VIDEO_EXTS = new Set(['.mkv', '.mp4', '.avi', '.mov', '.webm']);
-
-// Fansub group blacklist for title parsing
-const BLACKLIST = [
-  'VCB-Studio', 'Airota', 'Rabbit House', 'Coalgirls', 'Commie',
-  'FFF', 'HorribleSubs', 'SubGroup', 'EncodeBy', 'ADN', 'Ohys-Raws',
-  'Lilith-Raws', 'ANK-Raws', 'Kaleido-subs', 'Snow-Raws', 'Ma10p',
-  'Ma10p_1080p', 'BDrip', 'BDRip', 'WEB-DL', 'WEBRip', 'HDRip',
-  'DVDrip', 'DVDRip', 'BluRay', 'x264', 'x265', 'x265-10bit',
-  'HEVC', 'AAC', 'FLAC', 'DTS', 'AC3', 'Opus', 'Vorbis',
-  '1080p', '720p', '480p', '4K', '2160p', 'Ma10p',
-];
+const anitomy = new Parser();
 
 /**
  * Find all video files recursively in a directory
@@ -45,59 +36,91 @@ function hasDirectVideos(dir) {
 }
 
 /**
- * Parse folder name to extract clean title and season number
- * Rules:
- * 1. Remove "Anime-" prefix
- * 2. Remove all [bracket] content
- * 3. Remove resolution/encoding words
- * 4. Extract season number (Season \d+, S\d+, 第\d+季, or trailing number)
- * 5. Clean separators and whitespace
- * 6. Remove trailing year and trailing hyphen
+ * Parse folder name to extract clean title and season number.
+ * Uses anitomy for structured parsing, falls back to name cleaning.
  */
 function parseFolderName(name) {
-  let title = name;
+  // 1. Remove Anime- prefix and bracket content
+  let base = name.replace(/^Anime-[\s\-]*/i, '');
+  base = base.replace(/\[[^\]]*\]/g, '');
+  base = base.trim();
 
-  // 1. Remove Anime- prefix
-  title = title.replace(/^Anime-[\s\-]*/i, '');
+  // 2. Run anitomy for structure extraction
+  let parsed = {};
+  try {
+    parsed = anitomy.parse(base);
+  } catch (e) {}
 
-  // 2. Remove all [bracket] content
-  title = title.replace(/\[[^\]]*\]/g, '');
-
-  // 3. Remove resolution/encoding words
-  for (const word of BLACKLIST) {
-    const regex = new RegExp('\\b' + word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'gi');
-    title = title.replace(regex, '');
-  }
-
-  // 4. Extract season number
+  // 3. Season from anitomy or episode 2-20
   let season = null;
-  const seasonMatch = title.match(/Season\s*(\d+)/i)
-    || title.match(/S(\d+)/i)
-    || title.match(/第(\d+)季/);
-  if (seasonMatch) {
-    season = parseInt(seasonMatch[1]);
-    title = title.replace(seasonMatch[0], '');
+  if (parsed.season) {
+    season = parseInt(parsed.season);
+  }
+  if (!season && parsed.episode && parsed.episode.number) {
+    const ep = parseInt(parsed.episode.number);
+    if (ep >= 2 && ep <= 20) season = ep;
   }
 
-  // 5. Clean separators and whitespace
-  title = title.replace(/[\-_|]+/g, ' ');
+  // 4. Pick title: prefer anitomy when it extracted something valid
+  //    and the remaining part of base looks like metadata (not a real title word)
+  let title = base;
+  if (parsed.title) {
+    const aTitle = parsed.title.trim();
+    const leftover = base.slice(aTitle.length).trim();
+    if (base.startsWith(aTitle) && !leftover) {
+      title = aTitle;
+    } else if (base.startsWith(aTitle) && leftover) {
+      // Heuristic: if leftover contains only metadata tokens → use anitomy title
+      const metaTokens = leftover.split(/[\s()]+/).filter(Boolean);
+      const allMeta = metaTokens.length > 0 && metaTokens.every(t =>
+        /^\d{4}$/.test(t) ||
+        /^S\d+$/i.test(t) || /^Season$/i.test(t) ||
+        /^\d+(st|nd|rd)$/i.test(t) || /^[2-9]\d*$/.test(t) ||
+        /^(BD|DVD|WEB|WEBRip|HDRip|BluRay|x264|x265|HEVC|AAC|FLAC|DTS|AC[34]|Opus|Vorbis|Ma10p)$/i.test(t) ||
+        /^\d{3,4}p$/i.test(t) || /^[xH]\d{3,4}p$/i.test(t)
+      );
+      if (allMeta) title = aTitle;
+    }
+  }
+
+  // 5. Strip season markers from title
+  title = title.replace(/\s*S\d+\s*$/i, ' ').trim();
+  title = title.replace(/\s*Season\s*\d+\s*/i, ' ').trim();
+  title = title.replace(/第(\d+)季/g, ' ').trim();
+
+  // 6. Season regex fallback (raw name, anitomy missed it)
+  if (!season) {
+    const sm = title.match(/(?:^|\s)Season\s*(\d+)/i)
+      || title.match(/(?:^|\s)S(\d+)\s*$/i);
+    if (sm) {
+      season = parseInt(sm[1]);
+      title = title.replace(sm[0], '');
+    }
+  }
+
+  // 7. Strip parenthetical metadata
+  title = title.replace(/\([^)]*\)/g, '');
+  title = title.replace(/\s{2,}/g, ' ').trim();
+
+  // 8. Clean separators and trailing year
+  title = title.replace(/[_|]+/g, ' ');
   title = title.replace(/\s{2,}/g, ' ');
   title = title.trim();
-
-  // 6. Remove trailing year (4 digits)
   title = title.replace(/\s+\d{4}\s*$/, '');
 
-  // 7. Remove trailing hyphen and anything after
-  title = title.replace(/\s*-\s*[^-]*$/, '');
-
-  // 8. Trailing number → season (e.g., "Yuru Yuri 2" → season 2)
-  if (!season) {
-    const trailingNum = title.match(/\s+(\d+)\s*$/);
-    if (trailingNum && parseInt(trailingNum[1]) >= 2 && parseInt(trailingNum[1]) <= 20) {
-      season = parseInt(trailingNum[1]);
+  // 9. Trailing number 2-20 → season
+  const trailingNum = title.match(/\s+(\d+)\s*$/);
+  if (trailingNum && parseInt(trailingNum[1]) >= 2 && parseInt(trailingNum[1]) <= 20) {
+    const prefix = title.slice(0, trailingNum.index).replace(/\s*$/, '');
+    const isVolume = /(?:Vol|Volume|Part)\b/i.test(prefix);
+    if (!isVolume) {
+      if (!season) season = parseInt(trailingNum[1]);
       title = title.replace(trailingNum[0], '');
     }
   }
+
+  // Season 1 is the implicit default; only S2+ is worth annotating
+  if (season === 1) season = null;
 
   return { title: title.trim(), season };
 }

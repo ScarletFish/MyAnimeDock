@@ -15,7 +15,10 @@ npm run build     # Build standalone .exe (pkg, node18-win-x64)
 
 ```
 server.js          → HTTP server + REST API (@ :3456)
-├── scanner.js     → 扫描媒体目录，解析文件夹名
+├── scanner.js     → 扫描媒体目录，解析文件夹名（anitomy 增强）
+│   ├── scanMediaDirFlat() → 返回扁平 leaf 数组（含 parentChain）
+│   ├── buildLeaf()        → 单条目构造（parentChain 回溯处理 Season 文件夹）
+│   └── parseFolderName()  → 使用 anitomy 提取标题和季号，回退到正则清洗
 ├── bangumi.js     → Bangumi API 搜索/获取元数据
 ├── mpv-controller.js → mpv 进度追踪（spawn + --term-status-msg，final 标记）
 └── public/        → 前端静态文件（无构建步骤）
@@ -24,7 +27,7 @@ server.js          → HTTP server + REST API (@ :3456)
     └── js/
         ├── api.js         → fetch() 封装
         ├── app.js         → 路由、主题、toast
-        ├── discovery.js   → 发现/扫描视图
+        ├── discovery.js   → 发现/扫描视图（扁平卡片列表 + 兄弟组连续竖线）
         ├── library.js     → 资料库网格
         ├── detail.js      → 详情 + GSAP Flip Hero 动画 + 右侧 3 模块
         │                   （继续播放卡片 / 剧集热力图 / 观看统计图表）
@@ -47,6 +50,9 @@ server.js          → HTTP server + REST API (@ :3456)
 - **剧集热力图**: `detail.js` 中 `renderEpisodeHeatmap()` — 10 列色块网格（未观看/观看中/已观看），`addEventListener('click')` 绑定播放（此组件有意违反 onclick 约定）
 - **观看统计**: `detail.js` 中 `renderWatchStats()` — Canvas 柱状图，数据来自 `GET /api/anime/:id/sessions`
 - **GSAP 引用**: `public/vendor/gsap/`（从 `node_modules/gsap/dist/` 拷贝），不经过 npm 构建；`index.html` 中 `<script>` 直接加载
+- **Discovery 扁平扫描**: `data.scannedTree` 存扁平 leaf 数组（含 `parentChain`），旧树格式（`branch` 节点）在 `/api/browse` 时自动迁移重扫
+- **兄弟组连续竖线**: `discovery.js` 中 `renderDiscovery()` 按 `parentChain` 分组，连续同 parent 的卡片包裹于 `.discovery-sibling-group`，其 `::before` 绘制 3px 垂直 accent 线（`position: absolute; left: -10px`，不参与布局）
+- **滚动条隐藏**: `html { overflow: hidden }` 禁用页面滚动条；`.main-content` 设为独立滚动容器，`scrollbar-width: none` + `::-webkit-scrollbar { display: none }` 彻底隐藏
 
 ## Config
 
@@ -91,6 +97,7 @@ mpv 模式下自动记录播放进度到 `anime-data.json`。
 - `build.bat` 需手动复制 `sharp` 原生模块到 `dist/node_modules/`（pkg 无法打包 native modules）
 - Bangumi API 受代理影响时 fallback 到 `curl`（`bangumi.js` 中自动检测）
 - `anime-data.json` 和 `config.json` 在 `.gitignore` 中，不会提交
+- 标题解析依赖 `anitomy`（TypeScript 移植版，纯 JS 无原生模块），pkg 打包无额外步骤
 - 视频缩略图依赖 `ffmpeg`（PATH 中可用），生成时缓存到 `thumbs/` 目录，首次请求可能延迟
 - 无认证/授权，局域网内 `/api/quit` 可关闭服务器
 - mpv 通过 `spawn` + `--term-status-msg` 启动，解析 stderr 获取状态（JSON 格式 `{"time-pos":...,"duration":...,"pause":...}`），不依赖任何第三方模块

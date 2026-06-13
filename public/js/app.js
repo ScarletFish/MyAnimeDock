@@ -51,41 +51,15 @@ async function openSettings() {
     document.getElementById('mpvPathGroup').style.display =
       config.playerMode === 'mpv' ? '' : 'none';
     document.getElementById('settingsTmdbApiKey').value = config.tmdbApiKey || '';
-    
-    // Populate scraper priority list
-    populateScraperPriorityList(config);
-    
+    document.getElementById('settingsScraperBangumi').value = config.scrapers?.bangumi?.enabled ? 'enabled' : 'disabled';
+    document.getElementById('settingsScraperTmdb').value = config.scrapers?.tmdb?.enabled ? 'enabled' : 'disabled';
+    document.getElementById('settingsAutoImportThreshold').value = config.autoImportThreshold || 0.85;
+    document.getElementById('settingsAutoImportThresholdValue').textContent = Math.round((config.autoImportThreshold || 0.85) * 100) + '%';
     document.getElementById('settingsError').textContent = '';
     document.getElementById('settingsModal').classList.add('show');
-    
-    // Initialize drag-and-drop after modal shows
-    setTimeout(initScraperPriorityDragDrop, 50);
   } catch (e) {
     showToast('加载设置失败: ' + e.message);
   }
-}
-
-function populateScraperPriorityList(config) {
-  const list = document.getElementById('scraperPriorityList');
-  if (!list) return;
-  
-  const scrapers = config.scrapers || { bangumi: { enabled: true, priority: 1 }, tmdb: { enabled: false, priority: 2 } };
-  
-  // Sort by priority for initial render
-  const sorted = Object.entries(scrapers)
-    .filter(([_, v]) => v.priority !== undefined)
-    .sort((a, b) => a[1].priority - b[1].priority);
-  
-  list.innerHTML = sorted.map(([name, cfg]) => `
-    <li class="priority-item" data-scraper="${name}" draggable="true">
-      <span class="drag-handle" title="拖拽排序">☰</span>
-      <span class="scraper-name">${name === 'bangumi' ? 'Bangumi' : 'TMDB'}</span>
-      <select class="scraper-enabled" data-scraper="${name}">
-        <option value="enabled" ${cfg.enabled ? 'selected' : ''}>启用</option>
-        <option value="disabled" ${!cfg.enabled ? 'selected' : ''}>禁用</option>
-      </select>
-    </li>
-  `).join('');
 }
 
 function closeSettings() {
@@ -98,18 +72,9 @@ async function saveSettings() {
   const playerMode = document.getElementById('settingsPlayerMode').value;
   const mpvPath = document.getElementById('settingsMpvPath').value.trim();
   const tmdbApiKey = document.getElementById('settingsTmdbApiKey').value.trim();
-
-  // Read scraper priority from drag-and-drop list
-  const scraperItems = document.querySelectorAll('#scraperPriorityList .priority-item');
-  const scrapers = {};
-  scraperItems.forEach((item, index) => {
-    const name = item.dataset.scraper;
-    const enabled = item.querySelector('.scraper-enabled').value;
-    scrapers[name] = {
-      enabled: enabled === 'enabled',
-      priority: index + 1
-    };
-  });
+  const scraperBangumi = document.getElementById('settingsScraperBangumi').value;
+  const scraperTmdb = document.getElementById('settingsScraperTmdb').value;
+  const autoImportThreshold = parseFloat(document.getElementById('settingsAutoImportThreshold').value);
 
   applyTheme(theme);
 
@@ -125,7 +90,11 @@ async function saveSettings() {
       mpvPath, 
       theme,
       tmdbApiKey,
-      scrapers,
+      scrapers: {
+        bangumi: { enabled: scraperBangumi === 'enabled' },
+        tmdb: { enabled: scraperTmdb === 'enabled' },
+      },
+      autoImportThreshold,
     });
     showToast('设置已保存');
     closeSettings();
@@ -175,78 +144,6 @@ function showToast(msg) {
   t.textContent = msg;
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2500);
-}
-
-// Utility
-function escHtml(s) {
-  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
-function escAttr(s) {
-  return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
-function formatSize(bytes) {
-  if (!bytes) return '';
-  if (bytes < 1024) return bytes + ' B';
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-  if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-  return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
-}
-
-// path helper for cover URLs
-const path = {
-  basename(p) {
-    if (!p) return '';
-    return p.split(/[\\/]/).pop();
-  }
-};
-
-// Scraper priority drag-and-drop
-function initScraperPriorityDragDrop() {
-  const list = document.getElementById('scraperPriorityList');
-  if (!list) return;
-
-  let draggedItem = null;
-
-  list.querySelectorAll('.priority-item').forEach(item => {
-    item.draggable = true;
-    
-    item.addEventListener('dragstart', (e) => {
-      draggedItem = item;
-      item.classList.add('dragging');
-      e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setData('text/plain', '');
-    });
-
-    item.addEventListener('dragend', () => {
-      item.classList.remove('dragging');
-      document.querySelectorAll('.priority-item').forEach(i => i.classList.remove('drag-over'));
-      draggedItem = null;
-    });
-
-    item.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
-      if (draggedItem && draggedItem !== item) {
-        const rect = item.getBoundingClientRect();
-        const midY = rect.top + rect.height / 2;
-        document.querySelectorAll('.priority-item').forEach(i => i.classList.remove('drag-over'));
-        item.classList.add('drag-over');
-        if (e.clientY < midY) {
-          item.parentNode.insertBefore(draggedItem, item);
-        } else {
-          item.parentNode.insertBefore(draggedItem, item.nextSibling);
-        }
-      }
-    });
-
-    item.addEventListener('dragleave', (e) => {
-      if (!item.contains(e.relatedTarget)) {
-        item.classList.remove('drag-over');
-      }
-    });
-  });
 }
 
 // Utility

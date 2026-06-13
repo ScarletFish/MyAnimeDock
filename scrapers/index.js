@@ -28,16 +28,10 @@ class ScraperRegistry {
   }
 
   getEnabled(config) {
-    const enabled = this.scrapers.filter(s => {
+    return this.scrapers.filter(s => {
       if (!config.scrapers) return true;
       const cfg = config.scrapers[s.name];
       return cfg?.enabled !== false;
-    });
-    // Sort by priority (lower number = higher priority)
-    return enabled.sort((a, b) => {
-      const pa = config.scrapers?.[a.name]?.priority ?? 99;
-      const pb = config.scrapers?.[b.name]?.priority ?? 99;
-      return pa - pb;
     });
   }
 

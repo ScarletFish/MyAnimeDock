@@ -125,6 +125,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
         批量获取元数据
       </button>
+      <button class="btn btn-ghost" onclick="autoImportHighConfidence()" id="autoImportBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        自动导入 (高置信度)
+      </button>
       <button class="btn btn-primary" onclick="importSelected()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
         导入选中 (<span id="importCount">0</span>)
@@ -160,11 +164,6 @@
       <h2>资料库</h2>
       <div class="view-header-right">
         <input type="text" class="search-input" id="librarySearch" placeholder="搜索动漫..." oninput="filterLibrary()">
-        <button class="btn btn-primary" id="libraryFetchMetaBtn" onclick="fetchAllLibraryMetadata()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-          <span id="libraryFetchMetaText">获取元数据</span>
-        </button>
-        <span id="libraryFetchMetaStatus" class="fetch-meta-status"></span>
         <button class="btn" onclick="refreshDiscovery()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"></path>
@@ -303,7 +302,7 @@
 </main>
 
 <!-- Memory Editor Modal -->
-<div class="modal-overlay hidden" id="memoryModal">
+<div class="modal-overlay" id="memoryModal">
   <div class="modal">
     <h2>写感想</h2>
     <div class="form-group">
@@ -327,7 +326,7 @@
 </div>
 
 <!-- Settings Modal -->
-<div class="modal-overlay hidden" id="settingsModal">
+<div class="modal-overlay" id="settingsModal">
   <div class="modal">
     <h2>设置</h2>
     <div class="form-group">
@@ -362,26 +361,24 @@
         <p class="form-hint">启用 TMDB 刮削需要填入 API Key（可选）</p>
       </div>
       <div class="form-group">
-        <label>刮削源优先级 <span class="form-hint">拖拽排序，越靠前优先级越高</span></label>
-        <ul class="priority-list" id="scraperPriorityList">
-          <li class="priority-item" data-scraper="bangumi" draggable="true">
-            <span class="drag-handle" title="拖拽排序">☰</span>
-            <span class="scraper-name">Bangumi</span>
-            <select class="scraper-enabled" data-scraper="bangumi">
-              <option value="enabled">启用</option>
-              <option value="disabled">禁用</option>
-            </select>
-          </li>
-          <li class="priority-item" data-scraper="tmdb" draggable="true">
-            <span class="drag-handle" title="拖拽排序">☰</span>
-            <span class="scraper-name">TMDB</span>
-            <select class="scraper-enabled" data-scraper="tmdb">
-              <option value="enabled">启用</option>
-              <option value="disabled">禁用</option>
-            </select>
-          </li>
-        </ul>
-        <p class="form-hint">拖拽列表项调整优先级，越靠前优先级越高</p>
+        <label>Bangumi 刮削</label>
+        <select id="settingsScraperBangumi">
+          <option value="enabled">启用</option>
+          <option value="disabled">禁用</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>TMDB 刮削</label>
+        <select id="settingsScraperTmdb">
+          <option value="enabled">启用</option>
+          <option value="disabled">禁用</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="settingsAutoImportThreshold">自动导入置信度阈值</label>
+        <input type="range" id="settingsAutoImportThreshold" min="0.5" max="1" step="0.05" value="0.85">
+        <span id="settingsAutoImportThresholdValue" style="color: var(--accent); font-weight: 600; margin-left: 8px;">85%</span>
+        <p class="form-hint">置信度高于此值的项目将被自动导入</p>
       </div>
     </fieldset>
 
@@ -405,7 +402,25 @@
   </div>
 </div>
 
-
+<!-- Bangumi Search Modal -->
+<div class="modal-overlay" id="bangumiSearchModal">
+  <div class="modal modal--large">
+    <div class="modal-header">
+      <h2>选择 Bangumi 条目</h2>
+      <button class="icon-btn" onclick="closeBangumiSearchModal()" aria-label="关闭">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="bangumi-search-input-wrap">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        <input type="text" id="bangumiSearchInput" placeholder="搜索关键词..." autocomplete="off">
+        <button class="btn btn-primary btn-sm" onclick="performBangumiSearch()">搜索</button>
+      </div>
+      <div class="bangumi-search-results" id="bangumiSearchResults"></div>
+    </div>
+  </div>
+</div>
 
 <!-- Toast -->
 <div class="toast" id="toast"></div>

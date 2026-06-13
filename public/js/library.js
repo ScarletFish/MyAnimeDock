@@ -1,98 +1,13 @@
 // Library view logic
 let libraryData = [];
 let contextMenuAnimeId = null;
-let isFetchingMetadata = false;
 
 async function loadLibrary() {
   try {
     libraryData = await API.get('/api/library');
     renderLibrary();
-    updateFetchMetaButtonState();
   } catch (e) {
     showToast('加载资料库失败: ' + e.message);
-  }
-}
-
-function updateFetchMetaButtonState() {
-  const btn = document.getElementById('libraryFetchMetaBtn');
-  const status = document.getElementById('libraryFetchMetaStatus');
-  if (!btn || !status) return;
-
-  const needsFetch = libraryData.some(a => !a.bangumiId && !a.bangumiMatched);
-  
-  if (isFetchingMetadata) {
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span><span id="libraryFetchMetaText">获取中...</span>';
-    status.textContent = '正在批量获取元数据...';
-    status.style.color = 'var(--accent)';
-  } else if (needsFetch) {
-    btn.disabled = false;
-    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg><span id="libraryFetchMetaText">获取元数据</span>';
-    status.textContent = `${libraryData.filter(a => !a.bangumiId && !a.bangumiMatched).length} 部待获取`;
-    status.style.color = 'var(--fg-muted)';
-  } else {
-    btn.disabled = true;
-    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg><span id="libraryFetchMetaText">获取元数据</span>';
-    status.textContent = '全部已获取元数据';
-    status.style.color = 'var(--success)';
-  }
-}
-
-async function fetchAllLibraryMetadata() {
-  if (isFetchingMetadata) return;
-  
-  const pending = libraryData.filter(a => !a.bangumiId && !a.bangumiMatched);
-  if (pending.length === 0) {
-    showToast('全部已获取元数据');
-    return;
-  }
-
-  isFetchingMetadata = true;
-  updateFetchMetaButtonState();
-
-  const btn = document.getElementById('libraryFetchMetaBtn');
-  const status = document.getElementById('libraryFetchMetaStatus');
-  const originalText = btn.innerHTML;
-
-  let successCount = 0;
-  let failCount = 0;
-
-  try {
-    // High efficiency concurrency: process in batches of 3
-    const batchSize = 3;
-    for (let i = 0; i < pending.length; i += batchSize) {
-      const batch = pending.slice(i, i + batchSize);
-      
-      const results = await Promise.allSettled(
-        batch.map(anime => 
-          API.post('/api/bangumi/fetch', { animeId: anime.id })
-            .then(() => ({ anime, success: true }))
-            .catch(e => ({ anime, success: false, error: e.message }))
-        )
-      );
-
-      for (const result of results) {
-        if (result.status === 'fulfilled' && result.value.success) {
-          successCount++;
-        } else {
-          failCount++;
-          const anime = result.status === 'fulfilled' ? result.value.anime : result.reason?.anime;
-          console.error('Fetch meta failed for', anime?.id, result.status === 'fulfilled' ? result.value.error : result.reason);
-        }
-      }
-
-      // Update status in real-time
-      status.textContent = `已完成 ${successCount}/${pending.length}，失败 ${failCount}`;
-    }
-
-    // Reload library to reflect new metadata
-    await loadLibrary();
-    showToast(`批量获取完成：成功 ${successCount}，失败 ${failCount}`);
-  } catch (e) {
-    showToast('批量获取失败: ' + e.message);
-  } finally {
-    isFetchingMetadata = false;
-    updateFetchMetaButtonState();
   }
 }
 

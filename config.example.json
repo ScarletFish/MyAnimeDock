@@ -4,8 +4,9 @@
   "mpvPath": "mpv",
   "theme": "dark",
   "scrapers": {
-    "bangumi": { "enabled": true, "priority": 1 },
-    "tmdb": { "enabled": false, "priority": 2 }
+    "bangumi": { "enabled": true },
+    "tmdb": { "enabled": false }
   },
-  "tmdbApiKey": ""
+  "tmdbApiKey": "",
+  "autoImportThreshold": 0.85
 }

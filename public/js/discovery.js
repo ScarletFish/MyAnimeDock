@@ -302,18 +302,8 @@ function updateImportCount() {
   if (batchBtn) {
     const hasFetchable = discoveryData.some(n => 
       selectedPaths.has(n.path) && !n.bangumiMatched && !n.alreadyImported
-    );
-    batchBtn.style.display = hasFetchable ? '' : 'none';
-  }
-
-  // Show/hide auto-import button (high confidence items not imported)
-  const autoBtn = document.getElementById('autoImportBtn');
-  if (autoBtn) {
-    const hasAutoImportable = discoveryData.some(n => 
-      !n.alreadyImported && !n.excluded && (n.confidence || 0) >= 0.85
-    );
-    autoBtn.style.display = hasAutoImportable ? '' : 'none';
-  }
+  );
+  batchBtn.style.display = hasFetchable ? '' : 'none';
 }
 
 async function importSelected() {
@@ -696,34 +686,4 @@ async function batchFetchMetadata() {
   btn.disabled = false;
   btn.innerHTML = originalText;
   loadDiscovery();
-}
-
-// Auto-import high confidence items (>= 0.85)
-async function autoImportHighConfidence() {
-  const threshold = 0.85;
-  const candidates = discoveryData.filter(n => 
-    !n.alreadyImported && !n.excluded && (n.confidence || 0) >= threshold
-  );
-  if (candidates.length === 0) {
-    showToast(`无置信度 ≥ ${Math.round(threshold * 100)}% 的可导入项目`);
-    return;
-  }
-  if (!confirm(`将自动导入 ${candidates.length} 个高置信度 (${Math.round(threshold * 100)}%+) 项目，确定继续？`)) return;
-
-  const btn = document.getElementById('autoImportBtn');
-  const originalText = btn.innerHTML;
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> 导入中...';
-
-  try {
-    const result = await API.post('/api/discovery/auto-import', { threshold });
-    showToast(result.message || `自动导入完成: ${result.imported.length} 部`);
-    loadDiscovery();
-    loadLibrary();
-  } catch (e) {
-    showToast('自动导入失败: ' + e.message);
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = originalText;
-  }
 }

@@ -1952,11 +1952,6 @@ html {
   color: var(--accent-secondary);
 }
 
-.tag--confidence {
-  background: rgba(0, 0, 0, 0.2);
-  color: var(--conf-color, var(--fg-muted));
-}
-
 .discovery-badge--excluded {
   background: rgba(245, 158, 11, 0.15);
   color: var(--warning);
@@ -2147,11 +2142,6 @@ html {
   color: var(--warning);
 }
 
-.badge--confidence {
-  background: rgba(0, 0, 0, 0.2);
-  color: var(--badge-color, var(--fg-muted));
-}
-
 .detail-panel-meta {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -2237,6 +2227,16 @@ html {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+/* ─── Library Fetch Meta Status ─── */
+.fetch-meta-status {
+  font-size: 12px;
+  color: var(--fg-muted);
+  margin-left: var(--space-3);
+  white-space: nowrap;
+  min-width: 180px;
+  text-align: right;
 }
 
 /* ─── Scan Progress ─── */
@@ -2390,6 +2390,85 @@ html {
   color: var(--fg-primary);
   padding: 0 var(--space-3);
   margin-left: -var(--space-2);
+}
+
+/* ─── Scraper Priority List (Drag & Drop) ─── */
+.priority-list {
+  list-style: none;
+  padding: 0;
+  margin: var(--space-3) 0 0;
+}
+
+.priority-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-2);
+  cursor: grab;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.priority-item:hover {
+  border-color: var(--border-hover);
+  background: var(--bg-elevated);
+}
+
+.priority-item[draggable="true"] {
+  cursor: grab;
+}
+
+.priority-item.dragging {
+  opacity: 0.4;
+  background: var(--accent-glow);
+  border-color: var(--accent);
+  transform: scale(1.02);
+  box-shadow: var(--shadow-md);
+}
+
+.priority-item.drag-over {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+}
+
+.drag-handle {
+  color: var(--fg-muted);
+  cursor: grab;
+  font-size: 1.2rem;
+  line-height: 1;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.scraper-name {
+  flex: 1;
+  font-weight: 500;
+  color: var(--fg-primary);
+  font-size: 0.95rem;
+}
+
+.scraper-enabled {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  font-size: 12px;
+  background: var(--bg-deep);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--fg-secondary);
+  cursor: pointer;
+}
+
+.scraper-enabled:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
 }
 
 /* ─── Bangumi Search Modal ─── */

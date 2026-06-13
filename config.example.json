@@ -2,5 +2,11 @@
   "mediaDir": "",
   "playerMode": "system",
   "mpvPath": "mpv",
-  "theme": "dark"
+  "theme": "dark",
+  "scrapers": {
+    "bangumi": { "enabled": true },
+    "tmdb": { "enabled": false }
+  },
+  "tmdbApiKey": "",
+  "autoImportThreshold": 0.85
 }

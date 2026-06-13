@@ -653,7 +653,7 @@ async function selectBangumiResult(subjectId, source = 'bangumi') {
   }
 }
 
-// Batch fetch metadata for selected items
+// Batch fetch metadata for selected items - search each item individually
 async function batchFetchMetadata() {
   const selected = discoveryData.filter(n => selectedPaths.has(n.path) && !n.bangumiMatched && !n.alreadyImported);
   if (selected.length === 0) {
@@ -661,11 +661,41 @@ async function batchFetchMetadata() {
     return;
   }
 
-  openBangumiSearchModal({
-    mode: 'batch',
-    paths: selected.map(n => n.path),
-    node: selected[0] // Use first for default keyword
-  });
+  if (!confirm(`将为 ${selected.length} 个项目分别搜索并获取元数据（每项自动取第一个结果），确定继续？`)) return;
+
+  const btn = document.getElementById('batchFetchMetaBtn');
+  const originalText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> 批量获取中...';
+
+  let successCount = 0;
+  for (const node of selected) {
+    try {
+      // Search for this specific item's title
+      const resp = await API.post('/api/bangumi/search', { keyword: node.parsedTitle });
+      const subjects = resp.results || [];
+      
+      if (subjects.length > 0) {
+        // Use first result from the preferred source (bangumi first, then tmdb)
+        const preferred = subjects.find(s => s.source === 'bangumi') || subjects[0];
+        await API.post('/api/discovery/fetch-meta', { 
+          path: node.path, 
+          subjectId: preferred.id, 
+          source: preferred.source || 'bangumi' 
+        });
+        successCount++;
+      } else {
+        console.warn('No results for:', node.parsedTitle);
+      }
+    } catch (e) {
+      console.error('Batch fetch failed for', node.path, e);
+    }
+  }
+
+  showToast(`批量获取完成: 成功 ${successCount}/${selected.length}`);
+  btn.disabled = false;
+  btn.innerHTML = originalText;
+  loadDiscovery();
 }
 
 // Auto-import high confidence items (>= 0.85)

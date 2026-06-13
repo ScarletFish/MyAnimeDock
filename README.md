@@ -50,7 +50,7 @@ npm start
   "mpvPath": "mpv",
   "theme": "dark",
   "scrapers": {
-    "bangumi": { "enabled": true },
+    "bangumi": { "enabled": true, "apiBase": "https://api.bgm.tv" },
     "tmdb": { "enabled": false }
   },
   "tmdbApiKey": "",
@@ -65,6 +65,7 @@ npm start
 | `mpvPath` | string | `"mpv"` | mpv 可执行文件路径 |
 | `theme` | string | `"dark"` | `"dark"` 或 `"light"` |
 | `scrapers.bangumi.enabled` | boolean | `true` | 启用 Bangumi 刮削 |
+| `scrapers.bangumi.apiBase` | string | `"https://api.bgm.tv"` | Bangumi API 基址，可设为镜像 `https://api.bangumi.one` |
 | `scrapers.tmdb.enabled` | boolean | `false` | 启用 TMDB 刮削（需配置 API Key） |
 | `tmdbApiKey` | string | `""` | TMDB API Key（从 themoviedb.org/settings/api 获取） |
 | `autoImportThreshold` | number | `0.85` | 自动导入置信度阈值（0.5-1.0） |
@@ -140,7 +141,6 @@ npm run build
 ```
 ├── server.js              HTTP 服务器 + REST API
 ├── scanner.js             媒体目录扫描 + 文件夹名解析 + 置信度计算
-├── bangumi.js             Bangumi API 兼容层（委托给 scrapers/）
 ├── mpv-controller.js      mpv 进度追踪（spawn + --term-status-msg）
 ├── scrapers/
 │   ├── index.js           ScraperRegistry（统一注册、优先级、批量搜索）

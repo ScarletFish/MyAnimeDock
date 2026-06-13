@@ -21,7 +21,7 @@ const DEFAULT_CONFIG = {
   mpvPath: 'mpv', 
   theme: 'dark',
   scrapers: {
-    bangumi: { enabled: true },
+      bangumi: { enabled: true, apiBase: 'https://api.bgm.tv' },
     tmdb: { enabled: false }
   },
   tmdbApiKey: '',

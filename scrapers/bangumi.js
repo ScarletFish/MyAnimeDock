@@ -2,7 +2,6 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-const BANGUMI_API = 'https://api.bgm.tv';
 const USER_AGENT = 'anime-manager (https://github.com/ScarletFish/Gallery)';
 const TIMEOUT = 15000;
 
@@ -63,14 +62,18 @@ async function tryFetch(url, options = {}) {
 class BangumiScraper {
   constructor() {
     this.name = 'bangumi';
+    this.apiBase = 'https://api.bgm.tv';
   }
 
   enabled(config) {
+    if (config?.scrapers?.bangumi?.apiBase) {
+      this.apiBase = config.scrapers.bangumi.apiBase.replace(/\/+$/, '');
+    }
     return true;
   }
 
   async search(keyword) {
-    const url = `${BANGUMI_API}/v0/search/subjects`;
+    const url = `${this.apiBase}/v0/search/subjects`;
     const res = await tryFetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'User-Agent': USER_AGENT },
@@ -81,7 +84,7 @@ class BangumiScraper {
   }
 
   async getSubjectDetail(id) {
-    const url = `${BANGUMI_API}/v0/subjects/${id}`;
+    const url = `${this.apiBase}/v0/subjects/${id}`;
     const res = await tryFetch(url, { headers: { 'User-Agent': USER_AGENT } });
     return res.json();
   }

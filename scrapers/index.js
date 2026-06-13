@@ -31,7 +31,9 @@ class ScraperRegistry {
     return this.scrapers.filter(s => {
       if (!config.scrapers) return true;
       const cfg = config.scrapers[s.name];
-      return cfg?.enabled !== false;
+      if (cfg?.enabled === false) return false;
+      // enabled() 同时也让 scraper 从 config 中读取自身配置（如 apiBase）
+      return s.enabled(config);
     });
   }
 

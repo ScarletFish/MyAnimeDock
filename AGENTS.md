@@ -51,7 +51,6 @@ server.js          → HTTP server + REST API (@ :3456)
 │   ├── index.js   → ScraperRegistry（统一注册、优先级、批量搜索）
 │   ├── bangumi.js → Bangumi API（curl fallback）
 │   └── tmdb.js    → TMDB API（需配置 API Key）
-├── bangumi.js     → Bangumi API 搜索/获取元数据（兼容层，委托给 scrapers）
 ├── mpv-controller.js → mpv 进度追踪（spawn + --term-status-msg，final 标记）
 └── public/        → 前端静态文件（无构建步骤）
     ├── index.html
@@ -123,7 +122,7 @@ server.js          → HTTP server + REST API (@ :3456)
   "mpvPath": "mpv",     // mpv 可执行文件路径
   "theme": "dark",       // "dark" 或 "light"
   "scrapers": {          // 刮削源配置
-    "bangumi": { "enabled": true },
+    "bangumi": { "enabled": true, "apiBase": "https://api.bgm.tv" },  // apiBase 可换为镜像 https://api.bangumi.one
     "tmdb": { "enabled": false }
   },
   "tmdbApiKey": ""       // TMDB API Key（从 themoviedb.org 获取）
@@ -160,7 +159,7 @@ mpv 模式下自动记录播放进度到 `anime-data.json`。
 ## Gotchas
 
 - `build.bat` 需手动复制 `sharp` 原生模块到 `dist/node_modules/`（pkg 无法打包 native modules）
-- Bangumi API 受代理影响时 fallback 到 `curl`（`bangumi.js` 中自动检测）
+- Bangumi API 受代理影响时 fallback 到 `curl`（`scrapers/bangumi.js` 中自动检测）
 - `anime-data.json` 和 `config.json` 在 `.gitignore` 中，不会提交
 - 标题解析依赖 `anitomy`（TypeScript 移植版，纯 JS 无原生模块），pkg 打包无额外步骤
 - 视频缩略图依赖 `ffmpeg`（PATH 中可用），生成时缓存到 `thumbs/` 目录，首次请求可能延迟

@@ -216,6 +216,9 @@ const server = http.createServer((req, res) => {
       if (parsed.playerMode !== undefined) config.playerMode = parsed.playerMode;
       if (parsed.mpvPath !== undefined) config.mpvPath = parsed.mpvPath;
       if (parsed.theme !== undefined) config.theme = parsed.theme;
+      if (parsed.tmdbApiKey !== undefined) config.tmdbApiKey = parsed.tmdbApiKey;
+      if (parsed.scrapers !== undefined) config.scrapers = parsed.scrapers;
+      if (parsed.autoImportThreshold !== undefined) config.autoImportThreshold = parsed.autoImportThreshold;
       saveConfig(config);
       jsonResp(res, 200, { ok: true, ...config });
     }).catch(e => {

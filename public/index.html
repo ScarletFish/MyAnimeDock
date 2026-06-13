@@ -303,7 +303,7 @@
 </main>
 
 <!-- Memory Editor Modal -->
-<div class="modal-overlay" id="memoryModal">
+<div class="modal-overlay hidden" id="memoryModal">
   <div class="modal">
     <h2>写感想</h2>
     <div class="form-group">
@@ -327,7 +327,7 @@
 </div>
 
 <!-- Settings Modal -->
-<div class="modal-overlay" id="settingsModal">
+<div class="modal-overlay hidden" id="settingsModal">
   <div class="modal">
     <h2>设置</h2>
     <div class="form-group">
@@ -405,25 +405,7 @@
   </div>
 </div>
 
-<!-- Bangumi Search Modal -->
-<div class="modal-overlay" id="bangumiSearchModal">
-  <div class="modal modal--large">
-    <div class="modal-header">
-      <h2>选择 Bangumi 条目</h2>
-      <button class="icon-btn" onclick="closeBangumiSearchModal()" aria-label="关闭">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-    </div>
-    <div class="modal-body">
-      <div class="bangumi-search-input-wrap">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-        <input type="text" id="bangumiSearchInput" placeholder="搜索关键词..." autocomplete="off">
-        <button class="btn btn-primary btn-sm" onclick="performBangumiSearch()">搜索</button>
-      </div>
-      <div class="bangumi-search-results" id="bangumiSearchResults"></div>
-    </div>
-  </div>
-</div>
+
 
 <!-- Toast -->
 <div class="toast" id="toast"></div>

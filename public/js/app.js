@@ -50,6 +50,11 @@ async function openSettings() {
     document.getElementById('settingsMpvPath').value = config.mpvPath || 'mpv';
     document.getElementById('mpvPathGroup').style.display =
       config.playerMode === 'mpv' ? '' : 'none';
+    document.getElementById('settingsTmdbApiKey').value = config.tmdbApiKey || '';
+    document.getElementById('settingsScraperBangumi').value = config.scrapers?.bangumi?.enabled ? 'enabled' : 'disabled';
+    document.getElementById('settingsScraperTmdb').value = config.scrapers?.tmdb?.enabled ? 'enabled' : 'disabled';
+    document.getElementById('settingsAutoImportThreshold').value = config.autoImportThreshold || 0.85;
+    document.getElementById('settingsAutoImportThresholdValue').textContent = Math.round((config.autoImportThreshold || 0.85) * 100) + '%';
     document.getElementById('settingsError').textContent = '';
     document.getElementById('settingsModal').classList.add('show');
   } catch (e) {
@@ -66,6 +71,10 @@ async function saveSettings() {
   const theme = document.getElementById('settingsTheme').value;
   const playerMode = document.getElementById('settingsPlayerMode').value;
   const mpvPath = document.getElementById('settingsMpvPath').value.trim();
+  const tmdbApiKey = document.getElementById('settingsTmdbApiKey').value.trim();
+  const scraperBangumi = document.getElementById('settingsScraperBangumi').value;
+  const scraperTmdb = document.getElementById('settingsScraperTmdb').value;
+  const autoImportThreshold = parseFloat(document.getElementById('settingsAutoImportThreshold').value);
 
   applyTheme(theme);
 
@@ -75,7 +84,18 @@ async function saveSettings() {
   }
 
   try {
-    await API.post('/api/config', { mediaDir, playerMode, mpvPath, theme });
+    await API.post('/api/config', { 
+      mediaDir, 
+      playerMode, 
+      mpvPath, 
+      theme,
+      tmdbApiKey,
+      scrapers: {
+        bangumi: { enabled: scraperBangumi === 'enabled' },
+        tmdb: { enabled: scraperTmdb === 'enabled' },
+      },
+      autoImportThreshold,
+    });
     showToast('设置已保存');
     closeSettings();
     refreshDiscovery();
@@ -88,6 +108,11 @@ async function saveSettings() {
 document.getElementById('settingsPlayerMode').addEventListener('change', function() {
   document.getElementById('mpvPathGroup').style.display =
     this.value === 'mpv' ? '' : 'none';
+});
+
+// Auto-import threshold slider
+document.getElementById('settingsAutoImportThreshold').addEventListener('input', function() {
+  document.getElementById('settingsAutoImportThresholdValue').textContent = Math.round(this.value * 100) + '%';
 });
 
 // Quit - auto close browser page

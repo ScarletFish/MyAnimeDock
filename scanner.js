@@ -197,13 +197,21 @@ function buildLeaf(dirPath, name, parentName, parentChain) {
     for (let i = chain.length - 1; i >= 0; i--) {
       const pParsed = parseFolderName(chain[i]);
       if (pParsed.title) {
+        const isDuplicate = pParsed.title === name || pParsed.title === parsed.title;
         parsed = { title: pParsed.title, season: parsed.season || pParsed.season };
+        if (isDuplicate) {
+          parsed.season = parsed.season || pParsed.season;
+        }
         break;
       }
     }
     if (!parsed.title && parentName) {
       const parentParsed = parseFolderName(parentName);
+      const isDuplicate = parentParsed.title === name || parentParsed.title === parsed.title;
       parsed = { title: parentParsed.title, season: parsed.season || parentParsed.season };
+      if (isDuplicate) {
+        parsed.season = parsed.season || parentParsed.season;
+      }
     }
   }
   return {

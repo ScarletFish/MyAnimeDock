@@ -107,6 +107,7 @@
         <div class="filter-group">
           <button class="filter-btn filter-btn--active" data-filter="all" onclick="setFilter('all')">全部</button>
           <button class="filter-btn" data-filter="unimported" onclick="setFilter('unimported')">未导入</button>
+          <button class="filter-btn" data-filter="excluded" onclick="setFilter('excluded')">已排除</button>
         </div>
         <div class="filter-group">
           <button class="filter-btn" onclick="expandAll()">展开全部</button>
@@ -120,6 +121,14 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8Z"/><path d="M15 3v4a2 2 0 0 0 2 2h4"/></svg>
         全选
       </button>
+      <button class="btn btn-ghost" onclick="batchFetchMetadata()" id="batchFetchMetaBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        批量获取元数据
+      </button>
+      <button class="btn btn-ghost" onclick="autoImportHighConfidence()" id="autoImportBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        自动导入 (高置信度)
+      </button>
       <button class="btn btn-primary" onclick="importSelected()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
         导入选中 (<span id="importCount">0</span>)
@@ -127,6 +136,18 @@
     </div>
 
     <div class="discovery-grid" id="discoveryGrid"></div>
+
+    <!-- Discovery Detail Panel (Slide-in from right) -->
+    <aside class="discovery-detail-panel hidden" id="discoveryDetailPanel" role="complementary" aria-label="选中项详情">
+      <div class="detail-panel-header">
+        <h3>详情预览</h3>
+        <button class="icon-btn" onclick="closeDiscoveryDetailPanel()" aria-label="关闭详情面板">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="detail-panel-content" id="discoveryDetailContent"></div>
+    </aside>
+    <div class="detail-panel-overlay hidden" id="detailPanelOverlay" onclick="closeDiscoveryDetailPanel()" aria-hidden="true"></div>
 
     <div class="empty-state" id="discoveryEmpty" style="display:none">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -331,6 +352,36 @@
       <label for="settingsMpvPath">mpv 可执行文件路径</label>
       <input type="text" id="settingsMpvPath" placeholder="mpv">
     </div>
+    
+    <fieldset class="settings-section">
+      <legend>刮削源设置</legend>
+      <div class="form-group">
+        <label>TMDB API Key</label>
+        <input type="password" id="settingsTmdbApiKey" placeholder="从 https://www.themoviedb.org/settings/api 获取">
+        <p class="form-hint">启用 TMDB 刮削需要填入 API Key（可选）</p>
+      </div>
+      <div class="form-group">
+        <label>Bangumi 刮削</label>
+        <select id="settingsScraperBangumi">
+          <option value="enabled">启用</option>
+          <option value="disabled">禁用</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>TMDB 刮削</label>
+        <select id="settingsScraperTmdb">
+          <option value="enabled">启用</option>
+          <option value="disabled">禁用</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="settingsAutoImportThreshold">自动导入置信度阈值</label>
+        <input type="range" id="settingsAutoImportThreshold" min="0.5" max="1" step="0.05" value="0.85">
+        <span id="settingsAutoImportThresholdValue" style="color: var(--accent); font-weight: 600; margin-left: 8px;">85%</span>
+        <p class="form-hint">置信度高于此值的项目将被自动导入</p>
+      </div>
+    </fieldset>
+
     <div id="settingsError" class="error-msg"></div>
     <div class="modal-actions">
       <button class="btn" onclick="closeSettings()">取消</button>
@@ -348,6 +399,26 @@
       <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
     </svg>
     移除
+  </div>
+</div>
+
+<!-- Bangumi Search Modal -->
+<div class="modal-overlay" id="bangumiSearchModal">
+  <div class="modal modal--large">
+    <div class="modal-header">
+      <h2>选择 Bangumi 条目</h2>
+      <button class="icon-btn" onclick="closeBangumiSearchModal()" aria-label="关闭">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="bangumi-search-input-wrap">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        <input type="text" id="bangumiSearchInput" placeholder="搜索关键词..." autocomplete="off">
+        <button class="btn btn-primary btn-sm" onclick="performBangumiSearch()">搜索</button>
+      </div>
+      <div class="bangumi-search-results" id="bangumiSearchResults"></div>
+    </div>
   </div>
 </div>
 

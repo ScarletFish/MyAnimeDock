@@ -7,6 +7,5 @@
     "bangumi": { "enabled": true },
     "tmdb": { "enabled": false }
   },
-  "tmdbApiKey": "",
-  "autoImportThreshold": 0.85
+  "tmdbApiKey": ""
 }

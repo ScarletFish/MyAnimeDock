@@ -8,3 +8,6 @@ skills-lock.json
 .agents/
 *.log
 PLAN.md
+.opencode/
+thumbs/
+.mimocode/

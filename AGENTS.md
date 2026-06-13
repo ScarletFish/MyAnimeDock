@@ -13,7 +13,7 @@ npm run build     # Build standalone .exe (pkg, node18-win-x64)
 
 ```bash
 GET  /api/config              # Get config (+ dirValid)
-POST /api/config              # Update config (mediaDir, playerMode, mpvPath, theme, tmdbApiKey, scrapers, autoImportThreshold)
+POST /api/config              # Update config (mediaDir, playerMode, mpvPath, theme, tmdbApiKey, scrapers)
 GET  /api/browse?showExcluded # List scanned tree (flat leaves)
 GET  /api/scan                # SSE scan progress
 POST /api/import              # Import selected items
@@ -21,7 +21,6 @@ POST /api/discovery/unlink    # Remove from library, keep in scannedTree
 POST /api/discovery/exclude   # Mark node excluded from scan
 POST /api/discovery/include   # Remove excluded mark
 POST /api/discovery/fetch-meta# Fetch metadata (Bangumi/TMDB)
-POST /api/discovery/auto-import # Auto-import high-confidence items
 GET  /api/library             # List library
 GET  /api/anime/:id           # Anime detail
 DELETE /api/anime/:id         # Remove from library (archive to memories)
@@ -48,7 +47,6 @@ server.js          → HTTP server + REST API (@ :3456)
 │   ├── scanMediaDirFlat() → 返回扁平 leaf 数组（含 parentChain）
 │   ├── buildLeaf()        → 单条目构造（parentChain 回溯处理 Season 文件夹）
 │   └── parseFolderName()  → 使用 anitomy 提取标题和季号，回退到正则清洗
-│   └── calculateConfidence() → 置信度评分（标题提取、季号、命名规范、父链、集数）
 ├── scrapers/      → 多源刮削架构
 │   ├── index.js   → ScraperRegistry（统一注册、优先级、批量搜索）
 │   ├── bangumi.js → Bangumi API（curl fallback）
@@ -84,7 +82,6 @@ server.js          → HTTP server + REST API (@ :3456)
   "parentChain": ["父文件夹"],
   "alreadyImported": true,
   "excluded": false,
-  "confidence": 0.85,
   "bangumiMatched": true,
   "bangumiId": 12345,
   "bangumiTitle": "中文标题",
@@ -111,14 +108,11 @@ server.js          → HTTP server + REST API (@ :3456)
 - **剧集热力图**: `detail.js` 中 `renderEpisodeHeatmap()` — 10 列色块网格（未观看/观看中/已观看），`addEventListener('click')` 绑定播放（此组件有意违反 onclick 约定）
 - **观看统计**: `detail.js` 中 `renderWatchStats()` — Canvas 柱状图，数据来自 `GET /api/anime/:id/sessions`
 - **GSAP 引用**: `public/vendor/gsap/`（从 `node_modules/gsap/dist/` 拷贝），不经过 npm 构建；`index.html` 中 `<script>` 直接加载
-- **Discovery 扁平扫描**: `data.scannedTree` 存扁平 leaf 数组（含 `parentChain`），旧树格式（`branch` 节点）在 `/api/browse` 时自动迁移重扫
+- **Discovery 扁平扫描**: `data.scannedTree` 存扁平 leaf 数组（含 `parentChain`），旧树格式（`branch` 节点）在 `/api/browse` 时自动递归展平为 leaf，无需重扫
 - **兄弟组连续竖线**: `discovery.js` 中 `renderDiscovery()` 按 `parentChain` 分组，连续同 parent 的卡片包裹于 `.discovery-sibling-group`，其 `::before` 绘制 3px 垂直 accent 线（`position: absolute; left: -10px`，不参与布局）
 - **滚动条隐藏**: `html { overflow: hidden }` 禁用页面滚动条；`.main-content` 设为独立滚动容器，`scrollbar-width: none` + `::-webkit-scrollbar { display: none }` 彻底隐藏
 - **多源刮削**: `scrapers/index.js` → `ScraperRegistry` 统一注册、优先级、批量搜索；`bangumi.js`/`tmdb.js` 实现统一接口
-- **置信度评分**: `scanner.js:calculateConfidence()` — 基于标题提取、季号、命名规范、父链、集数评分 0-1
-- **自动导入**: `/api/discovery/auto-import` 阈值配置 `autoImportThreshold`（默认 0.85），一键导入高置信度项目
-- **详情抽屉**: `discovery.js` 右侧 `discovery-detail-panel` 滑入，显示封面、信息、Bangumi 数据、操作按钮
-- **Bangumi 搜索模态框**: `bangumiSearchModal` 模态框搜索多源、选择 subjectId、支持批量绑定
+- **内联操作**: 卡片内直接显示「取消导入」「排除」「取消排除」按钮，无需详情抽屉
 
 ## Config
 
@@ -132,8 +126,7 @@ server.js          → HTTP server + REST API (@ :3456)
     "bangumi": { "enabled": true },
     "tmdb": { "enabled": false }
   },
-  "tmdbApiKey": "",      // TMDB API Key（从 themoviedb.org 获取）
-  "autoImportThreshold": 0.85  // 自动导入置信度阈值
+  "tmdbApiKey": ""       // TMDB API Key（从 themoviedb.org 获取）
 }
 ```
 
@@ -178,12 +171,13 @@ mpv 模式下自动记录播放进度到 `anime-data.json`。
 - 系统播放器模式不追踪播放时长（无可编程回调），只有 mpv 模式会写入 `playSessions`
 - pkg 打包用 `process.pkg ? path.dirname(process.execPath) : __dirname` 处理路径
 - TMDB API 需要配置 API Key 才能启用（设置页填入）
-- 扫描数据 `scannedTree` 结构变更需迁移：`/api/browse` 时自动处理旧格式（`branch` 节点）重扫
+- 旧格式 `branch` 节点在 `/api/browse` 时自动递归展平为 leaf，无需手动重扫描
 - `activePlays` Map 仅存内存，服务器重启后丢失；持久化的 `playSessions` 保存在 `anime-data.json`
 
 ## Frontend Conventions
 
 - `camelCase` 命名，2 空格缩进
+- 默认启动视图为 library（`app.js` 中 `showView('library')`），侧边栏 `btnDiscovery` 不再默认 `active`
 - HTML 事件用 `onclick` 属性（非 `addEventListener`），除 `settingsPlayerMode.change` 以及 `detail.js` 中 `renderEpisodeHeatmap()` 的热力方格点击（动态渲染必须用 `addEventListener`）
 - GSAP 已注册全局 `gsap.registerPlugin(Flip)`
 - 动画 `onComplete` 中不删除 `detail-enter-active` class（防止 `.view fadeSlideUp` 激活），由 `resetDetailEnter()` 在下次导航时清理

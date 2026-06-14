@@ -36,13 +36,14 @@ function hasDirectVideos(dir) {
 }
 
 /**
- * Parse folder name to extract clean title and season number.
- * Uses anitomy for structured parsing, falls back to name cleaning.
+ * Parse folder name to extract structured anime info using anitomy.
+ * Returns rich metadata for precise Bangumi matching.
  */
 function parseFolderName(name) {
-  // 1. Remove Anime- prefix and bracket content
-  let base = name.replace(/^Anime-[\s\-]*/i, '');
-  base = base.replace(/\[[^\]]*\]/g, '');
+  // 1. Pre-process: remove release group [Group] and quality tags [Ma10p_1080p]
+  //    but KEEP title punctuation (?, !, ~, etc.) for anitomy
+  let base = name.replace(/^\[[^\]]+\]\s*/, '');  // leading [Group]
+  base = base.replace(/\s*\[[^\]]+\]$/, '');       // trailing [Quality]
   base = base.trim();
 
   // 2. Run anitomy for structure extraction
@@ -51,78 +52,73 @@ function parseFolderName(name) {
     parsed = anitomy.parse(base);
   } catch (e) {}
 
-  // 3. Season from anitomy or episode 2-20
-  let season = null;
-  if (parsed.season) {
-    season = parseInt(parsed.season);
-  }
-  if (!season && parsed.episode && parsed.episode.number) {
-    const ep = parseInt(parsed.episode.number);
-    if (ep >= 2 && ep <= 20) season = ep;
-  }
+  // 3. Extract all useful fields from anitomy result
+  const result = {
+    // Core identification (for matching)
+    title: parsed.title?.trim() || base,           // anitomy title (preserves ?, ??, ~)
+    cleanTitle: null,                              // title with season markers stripped
+    season: null,                                  // detected season number (null = S1)
+    year: null,                                    // extracted year if present
+    
+    // Structured metadata (for search filtering & scoring)
+    animeTitle: parsed.anime_title?.trim(),        // anitomy pure title (may differ)
+    episode: parsed.episode?.number ? parseInt(parsed.episode.number) : null,
+    seasonRaw: parsed.season ? parseInt(parsed.season) : null,
+    resolution: parsed.video_resolution,
+    source: parsed.source,
+    videoCodec: parsed.video_codec,
+    audioCodec: parsed.audio_codec,
+    releaseGroup: parsed.release_group,
+    
+    // Raw anitomy object (debugging)
+    _raw: parsed
+  };
 
-  // 4. Pick title: prefer anitomy when it extracted something valid
-  //    and the remaining part of base looks like metadata (not a real title word)
-  let title = base;
-  if (parsed.title) {
-    const aTitle = parsed.title.trim();
-    const leftover = base.slice(aTitle.length).trim();
-    if (base.startsWith(aTitle) && !leftover) {
-      title = aTitle;
-    } else if (base.startsWith(aTitle) && leftover) {
-      // Heuristic: if leftover contains only metadata tokens → use anitomy title
-      const metaTokens = leftover.split(/[\s()]+/).filter(Boolean);
-      const allMeta = metaTokens.length > 0 && metaTokens.every(t =>
-        /^\d{4}$/.test(t) ||
-        /^S\d+$/i.test(t) || /^Season$/i.test(t) ||
-        /^\d+(st|nd|rd)$/i.test(t) || /^[2-9]\d*$/.test(t) ||
-        /^(BD|DVD|WEB|WEBRip|HDRip|BluRay|x264|x265|HEVC|AAC|FLAC|DTS|AC[34]|Opus|Vorbis|Ma10p)$/i.test(t) ||
-        /^\d{3,4}p$/i.test(t) || /^[xH]\d{3,4}p$/i.test(t)
-      );
-      if (allMeta) title = aTitle;
-    }
+  // 4. Season determination (priority: anitomy.season > anitomy.episode 2-20 > regex fallback)
+  if (result.seasonRaw) {
+    result.season = result.seasonRaw;
+  } else if (result.episode && result.episode >= 2 && result.episode <= 20) {
+    result.season = result.episode;
   }
 
-  // 5. Strip season markers from title
-  title = title.replace(/\s*S\d+\s*$/i, ' ').trim();
-  title = title.replace(/\s*Season\s*\d+\s*/i, ' ').trim();
-  title = title.replace(/第(\d+)季/g, ' ').trim();
+  // 5. Year extraction (from original name, doesn't affect title)
+  const yearMatch = name.match(/\b(19\d{2}|20\d{2})\b/);
+  if (yearMatch) result.year = parseInt(yearMatch[1]);
 
-  // 6. Season regex fallback (raw name, anitomy missed it)
-  if (!season) {
-    const sm = title.match(/(?:^|\s)Season\s*(\d+)/i)
-      || title.match(/(?:^|\s)S(\d+)\s*$/i);
+  // 6. Clean title: strip only explicit season markers, preserve punctuation
+  let cleanTitle = result.title;
+  cleanTitle = cleanTitle.replace(/\s*S\d+\s*$/i, '').trim();
+  cleanTitle = cleanTitle.replace(/\s*Season\s*\d+\s*/i, '').trim();
+  cleanTitle = cleanTitle.replace(/第(\d+)季/g, '').trim();
+  result.cleanTitle = cleanTitle;
+
+  // 7. Regex fallback for season (raw base, when anitomy missed)
+  if (!result.season) {
+    const sm = base.match(/(?:^|\s)Season\s*(\d+)/i)
+      || base.match(/(?:^|\s)S(\d+)\s*$/i);
     if (sm) {
-      season = parseInt(sm[1]);
-      title = title.replace(sm[0], '');
+      result.season = parseInt(sm[1]);
+      // Don't modify cleanTitle here - anitomy title is authoritative
     }
   }
 
-  // 7. Strip parenthetical metadata
-  title = title.replace(/\([^)]*\)/g, '');
-  title = title.replace(/\s{2,}/g, ' ').trim();
+  // 8. Strip parenthetical metadata from cleanTitle only
+  result.cleanTitle = result.cleanTitle.replace(/\([^)]*\)/g, '').trim();
 
-  // 8. Clean separators and trailing year
-  title = title.replace(/[_|]+/g, ' ');
-  title = title.replace(/\s{2,}/g, ' ');
-  title = title.trim();
-  title = title.replace(/\s+\d{4}\s*$/, '');
-
-  // 9. Trailing number 2-20 → season
-  const trailingNum = title.match(/\s+(\d+)\s*$/);
+  // 9. Trailing number 2-20 → season (only if not volume)
+  const trailingNum = result.cleanTitle.match(/\s+(\d+)\s*$/);
   if (trailingNum && parseInt(trailingNum[1]) >= 2 && parseInt(trailingNum[1]) <= 20) {
-    const prefix = title.slice(0, trailingNum.index).replace(/\s*$/, '');
+    const prefix = result.cleanTitle.slice(0, trailingNum.index).replace(/\s*$/, '');
     const isVolume = /(?:Vol|Volume|Part)\b/i.test(prefix);
-    if (!isVolume) {
-      if (!season) season = parseInt(trailingNum[1]);
-      title = title.replace(trailingNum[0], '');
+    if (!isVolume && !result.season) {
+      result.season = parseInt(trailingNum[1]);
     }
   }
 
-  // Season 1 is the implicit default; only S2+ is worth annotating
-  if (season === 1) season = null;
+  // Season 1 is implicit default; only S2+ worth annotating
+  if (result.season === 1) result.season = null;
 
-  return { title: title.trim(), season };
+  return result;
 }
 
 /**

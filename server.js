@@ -4,6 +4,8 @@ const path = require('path');
 const crypto = require('crypto');
 const { exec, spawn } = require('child_process');
 const { scanMediaDirFlat } = require('./scanner');
+const pinyinModule = require('pinyin');
+const pinyinFn = pinyinModule.pinyin || pinyinModule.default || pinyinModule;
 
 // pkg 打包后 __dirname 指向临时解压目录，需要使用 exe 所在目录
 const APP_DIR = process.pkg ? path.dirname(process.execPath) : __dirname;
@@ -490,6 +492,12 @@ const server = http.createServer((req, res) => {
 
   // --- API: library list ---
   if (urlPath === '/api/library' && req.method === 'GET') {
+    data.library.forEach(a => {
+      if (!a.pinyinTitle) {
+        const name = a.bangumiTitle || a.title || '';
+        a.pinyinTitle = pinyinFn(name).map(p => p[0]).join('');
+      }
+    });
     jsonResp(res, 200, data.library);
     return;
   }

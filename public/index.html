@@ -130,6 +130,12 @@
     <div class="view-header">
       <h2>资料库</h2>
       <div class="view-header-right">
+        <select class="sort-select" id="librarySort" onchange="filterLibrary()">
+          <option value="default">默认排序</option>
+          <option value="pinyin">A-Z（拼音）</option>
+          <option value="importDate">导入日期</option>
+          <option value="rating">评分</option>
+        </select>
         <input type="text" class="search-input" id="librarySearch" placeholder="搜索动漫..." oninput="filterLibrary()">
         <button class="btn" id="btnSyncLibrary" onclick="syncLibrary()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

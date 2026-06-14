@@ -24,6 +24,7 @@
   "dependencies": {
     "anitomy": "^0.0.35",
     "gsap": "^3.15.0",
+    "pinyin": "^4.0.0",
     "sharp": "^0.34.5"
   },
   "devDependencies": {

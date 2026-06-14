@@ -6,6 +6,15 @@ let cardTween = null;
 
 gsap.registerPlugin(ScrollTrigger);
 
+function initSortSelect() {
+  const sel = document.getElementById('librarySort');
+  sel.value = localStorage.getItem('librarySort') || 'default';
+  sel.addEventListener('change', () => {
+    localStorage.setItem('librarySort', sel.value);
+    filterLibrary();
+  });
+}
+
 function killCardAnimations() {
   if (cardTween) { cardTween.kill(); cardTween = null; }
   if (cardScrollTrigger) { cardScrollTrigger.kill(); cardScrollTrigger = null; }
@@ -32,6 +41,9 @@ function renderLibrary(filter = '') {
       (a.bangumiTitle && a.bangumiTitle.toLowerCase().includes(q))
     );
   }
+
+  const sortMode = document.getElementById('librarySort').value;
+  filtered = sortLibrary(filtered, sortMode);
 
   if (filtered.length === 0) {
     killCardAnimations();
@@ -108,6 +120,51 @@ function renderLibrary(filter = '') {
 function filterLibrary() {
   const q = document.getElementById('librarySearch').value;
   renderLibrary(q);
+}
+
+function sortLibrary(items, mode) {
+  if (mode === 'default') return items;
+  const sorted = [...items];
+  switch (mode) {
+    case 'pinyin':
+      sorted.sort((a, b) => (a.pinyinTitle || '').localeCompare(b.pinyinTitle || ''));
+      break;
+    case 'importDate':
+      sorted.sort((a, b) => new Date(b.importedAt) - new Date(a.importedAt));
+      break;
+    case 'rating':
+      sorted.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+      break;
+  }
+  return applySeriesGrouping(sorted);
+}
+
+function applySeriesGrouping(sorted) {
+  const seriesMap = new Map();
+  for (const item of sorted) {
+    if (!seriesMap.has(item.title)) seriesMap.set(item.title, []);
+    seriesMap.get(item.title).push(item);
+  }
+  const multiSeasonTitles = new Set();
+  for (const [title, items] of seriesMap) {
+    if (items.length > 1) {
+      multiSeasonTitles.add(title);
+      items.sort((a, b) => (a.season || Infinity) - (b.season || Infinity));
+    }
+  }
+  if (multiSeasonTitles.size === 0) return sorted;
+  const result = [];
+  const placed = new Set();
+  for (const item of sorted) {
+    if (placed.has(item.title)) continue;
+    if (multiSeasonTitles.has(item.title)) {
+      result.push(...seriesMap.get(item.title));
+      placed.add(item.title);
+    } else {
+      result.push(item);
+    }
+  }
+  return result;
 }
 
 // --- Context Menu ---

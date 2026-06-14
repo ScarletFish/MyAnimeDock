@@ -21,7 +21,7 @@ const DEFAULT_CONFIG = {
   mpvPath: 'mpv', 
   theme: 'dark',
   scrapers: {
-      bangumi: { enabled: true, apiBase: 'https://api.bgm.tv' },
+      bangumi: { enabled: true, apiBase: 'https://api.bangumi.one' },
     tmdb: { enabled: false }
   },
   tmdbApiKey: '',
@@ -441,22 +441,26 @@ const server = http.createServer((req, res) => {
           jsonResp(res, 404, { error: 'Node not found in scanned tree' });
           return;
         }
-        const { registry } = require('./scrapers');
+        const { registry, matchSeason } = require('./scrapers');
+        const { parseFolderName } = require('./scanner');
         const coverDir = path.join(APP_DIR, 'covers');
 
         let subjectIdToUse = subjectId;
         let sourceToUse = source;
 
         if (!subjectIdToUse) {
-          const results = await registry.searchAll(node.parsedTitle, config);
-          if (results.length === 0) {
+          // Parse folder name for structured matching
+          const folderParsed = parseFolderName(node.name);
+          const videoCount = node.videoCount || 0;
+
+          // Use new season-aware matching
+          const match = await matchSeason(registry, folderParsed.cleanTitle, folderParsed, videoCount, config);
+          if (!match) {
             jsonResp(res, 404, { error: '未找到匹配结果' });
             return;
           }
-          // Prefer results from the requested source
-          const preferred = results.find(r => r.source === sourceToUse) || results[0];
-          subjectIdToUse = preferred.id;
-          sourceToUse = preferred.source;
+          subjectIdToUse = match.id;
+          sourceToUse = match.source;
         }
 
         const meta = await registry.fetchMetadata(sourceToUse, node.parsedTitle, coverDir, subjectIdToUse, config);
@@ -738,18 +742,30 @@ const server = http.createServer((req, res) => {
         const anime = data.library.find(a => a.id === animeId);
         if (!anime) { jsonResp(res, 404, { error: 'Anime not found' }); return; }
 
-        const { registry } = require('./scrapers');
+        const { registry, matchSeason } = require('./scrapers');
+        const { parseFolderName } = require('./scanner');
         const coverDir = path.join(APP_DIR, 'covers');
-        // If no subjectId provided, search first and return results for user to pick
+
+        // If no subjectId provided, use season-aware matching
         if (!subjectId) {
-          const results = await registry.searchAll(anime.title, config);
-          if (results.length === 0) {
-            jsonResp(res, 404, { error: '未找到匹配结果' });
+          const folderParsed = parseFolderName(anime.folderName);
+          const videoCount = anime.episodes?.length || 0;
+
+          const match = await matchSeason(registry, folderParsed.cleanTitle, folderParsed, videoCount, config);
+          if (!match) {
+            // Fallback to old behavior: return search results for user to pick
+            const results = await registry.searchAll(anime.title, config);
+            if (results.length === 0) {
+              jsonResp(res, 404, { error: '未找到匹配结果' });
+              return;
+            }
+            jsonResp(res, 200, { results, animeId: anime.id });
             return;
           }
-          jsonResp(res, 200, { results, animeId: anime.id });
-          return;
+          subjectId = match.id;
+          source = match.source;
         }
+
         const meta = await registry.fetchMetadata(source, anime.title, coverDir, subjectId, config);
 
         if (!meta) { jsonResp(res, 404, { error: '获取元数据失败' }); return; }
@@ -757,6 +773,67 @@ const server = http.createServer((req, res) => {
         Object.assign(anime, meta);
         saveData(data);
         jsonResp(res, 200, { ok: true, anime });
+      } catch (e) {
+        jsonResp(res, 500, { error: e.message });
+      }
+    }).catch(e => jsonResp(res, 400, { error: 'Invalid request body' }));
+    return;
+  }
+
+  // --- API: Library batch sync metadata ---
+  if (urlPath === '/api/library/sync' && req.method === 'POST') {
+    readBody(req).then(async body => {
+      try {
+        const { animeIds } = JSON.parse(body);
+        if (!Array.isArray(animeIds) || animeIds.length === 0) {
+          jsonResp(res, 400, { error: 'animeIds array is required' });
+          return;
+        }
+
+        const { registry, matchSeason } = require('./scrapers');
+        const { parseFolderName } = require('./scanner');
+        const coverDir = path.join(APP_DIR, 'covers');
+        const results = [];
+
+        for (const animeId of animeIds) {
+          const anime = data.library.find(a => a.id === animeId);
+          if (!anime) {
+            results.push({ animeId, success: false, error: 'Anime not found' });
+            continue;
+          }
+          // Skip if already has metadata
+          if (anime.bangumiId) {
+            results.push({ animeId, success: true, skipped: true, message: '已有元数据' });
+            continue;
+          }
+
+          try {
+            // Parse folder name for structured matching
+            const folderParsed = parseFolderName(anime.folderName);
+            const videoCount = anime.episodes?.length || 0;
+
+            // Use new season-aware matching
+            const match = await matchSeason(registry, folderParsed.cleanTitle, folderParsed, videoCount, config);
+            if (!match) {
+              results.push({ animeId, success: false, error: '未找到匹配结果' });
+              continue;
+            }
+
+            const meta = await registry.fetchMetadata(match.source, folderParsed.cleanTitle, coverDir, match.id, config);
+            if (!meta) {
+              results.push({ animeId, success: false, error: '获取元数据失败' });
+              continue;
+            }
+
+            Object.assign(anime, meta);
+            results.push({ animeId, success: true, meta, matchedSeason: folderParsed.season });
+          } catch (e) {
+            results.push({ animeId, success: false, error: e.message });
+          }
+        }
+
+        saveData(data);
+        jsonResp(res, 200, { ok: true, results });
       } catch (e) {
         jsonResp(res, 500, { error: e.message });
       }

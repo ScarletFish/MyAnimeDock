@@ -1,6 +1,15 @@
 // Library view logic
 let libraryData = [];
 let contextMenuAnimeId = null;
+let cardScrollTrigger = null;
+let cardTween = null;
+
+gsap.registerPlugin(ScrollTrigger);
+
+function killCardAnimations() {
+  if (cardTween) { cardTween.kill(); cardTween = null; }
+  if (cardScrollTrigger) { cardScrollTrigger.kill(); cardScrollTrigger = null; }
+}
 
 async function loadLibrary() {
   try {
@@ -25,18 +34,19 @@ function renderLibrary(filter = '') {
   }
 
   if (filtered.length === 0) {
+    killCardAnimations();
     grid.innerHTML = '';
     empty.style.display = 'flex';
     return;
   }
 
   empty.style.display = 'none';
-  grid.innerHTML = filtered.map((anime, i) => {
+  grid.innerHTML = filtered.map((anime) => {
     const coverSrc = anime.localCover ? `/covers/${path.basename(anime.localCover)}?w=400&q=75` : '';
     const downloaded = anime.downloaded;
     const id = escAttr(anime.id);
     return `
-      <div class="anime-card" style="animation-delay:${i * 0.05}s" onclick="navigateToDetail('${id}', this)" oncontextmenu="showContextMenu(event, '${id}')">
+      <div class="anime-card" onclick="navigateToDetail('${id}', this)" oncontextmenu="showContextMenu(event, '${id}')">
         ${coverSrc
           ? `<img src="${coverSrc}" loading="lazy" decoding="async" alt="${escAttr(anime.title)}"${!downloaded ? ' style="filter:grayscale(100%) opacity(0.5)"' : ''}>`
           : `<div class="gray-cover"><svg viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8 12.5v-9l6 4.5-6 4.5z"/></svg></div>`
@@ -52,6 +62,47 @@ function renderLibrary(filter = '') {
       </div>
     `;
   }).join('');
+
+  const cards = grid.querySelectorAll('.anime-card');
+  if (cards.length === 0) return;
+
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+  killCardAnimations();
+
+  const scroller = document.querySelector('.main-content');
+  const scrollerRect = scroller.getBoundingClientRect();
+
+  const visible = [];
+  const hidden = [];
+  cards.forEach(card => {
+    const r = card.getBoundingClientRect();
+    if (r.bottom > scrollerRect.top && r.top < scrollerRect.bottom) visible.push(card);
+    else hidden.push(card);
+  });
+
+  visible.forEach(card => {
+    card.style.animation = 'cardReveal 300ms var(--ease-out) forwards';
+  });
+
+  if (hidden.length > 0) {
+    gsap.set(hidden, { opacity: 0, y: 24, scale: 0.97 });
+    cardScrollTrigger = ScrollTrigger.create({
+      scroller: '.main-content',
+      trigger: grid,
+      start: 'top bottom',
+      once: true,
+      onEnter: () => {
+        cardTween = gsap.to(hidden, {
+          opacity: 1, y: 0, scale: 1,
+          stagger: 0.03,
+          duration: 0.35,
+          ease: 'back.out(1.4)',
+          onComplete: () => { cardTween = null; }
+        });
+      }
+    });
+  }
 }
 
 function filterLibrary() {
@@ -114,4 +165,69 @@ function navigateToDetail(id, cardEl) {
     else imgSrc = img.currentSrc || img.src;
   }
   showDetail(id, rect, imgSrc);
+}
+
+// --- Library Sync ---
+let syncInProgress = false;
+
+async function syncLibrary() {
+  if (syncInProgress) return;
+
+  const needsSync = libraryData.filter(a => !a.bangumiId);
+  if (needsSync.length === 0) {
+    showToast('所有条目已有元数据，无需同步');
+    return;
+  }
+
+  const btn = document.getElementById('btnSyncLibrary');
+  const originalHtml = btn.innerHTML;
+  syncInProgress = true;
+  btn.disabled = true;
+  btn.innerHTML = `
+    <svg class="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M23 4v6h-6"></path>
+      <path d="M1 20v-6h6"></path>
+      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+    </svg>
+    同步中...
+  `;
+
+  try {
+    const animeIds = needsSync.map(a => a.id);
+    const result = await API.post('/api/library/sync', { animeIds });
+
+    let successCount = 0;
+    let failCount = 0;
+    let skippedCount = 0;
+
+    for (const r of result.results) {
+      if (r.success) {
+        if (r.skipped) {
+          skippedCount++;
+        } else {
+          successCount++;
+          const idx = libraryData.findIndex(a => a.id === r.animeId);
+          if (idx !== -1 && r.meta) {
+            Object.assign(libraryData[idx], r.meta);
+          }
+        }
+      } else {
+        failCount++;
+        console.error(`Sync failed for ${r.animeId}:`, r.error);
+      }
+    }
+
+    renderLibrary(document.getElementById('librarySearch').value);
+
+    let msg = `同步完成：成功 ${successCount}`;
+    if (skippedCount) msg += `，跳过 ${skippedCount}`;
+    if (failCount) msg += `，失败 ${failCount}`;
+    showToast(msg);
+  } catch (e) {
+    showToast('同步失败: ' + e.message);
+  } finally {
+    syncInProgress = false;
+    btn.disabled = false;
+    btn.innerHTML = originalHtml;
+  }
 }

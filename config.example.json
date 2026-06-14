@@ -4,7 +4,7 @@
   "mpvPath": "mpv",
   "theme": "dark",
   "scrapers": {
-    "bangumi": { "enabled": true, "apiBase": "https://api.bgm.tv" },
+    "bangumi": { "enabled": true, "apiBase": "https://api.bangumi.one" },
     "tmdb": { "enabled": false }
   },
   "tmdbApiKey": ""

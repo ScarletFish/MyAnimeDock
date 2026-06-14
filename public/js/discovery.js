@@ -164,6 +164,10 @@ function renderDiscovery() {
   }
   grid.innerHTML = html;
 
+  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    gsap.from('.discovery-card', { opacity: 0, y: 12, stagger: 0.03, duration: 0.3, ease: 'power2.out' });
+  }
+
   // Restore checked state from set, clean up stale paths
   const validPaths = new Set(displayData.filter(n => !n.alreadyImported && !n.excluded).map(n => n.path));
   for (const p of checkedPaths) {

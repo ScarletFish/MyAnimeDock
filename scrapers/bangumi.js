@@ -62,7 +62,7 @@ async function tryFetch(url, options = {}) {
 class BangumiScraper {
   constructor() {
     this.name = 'bangumi';
-    this.apiBase = 'https://api.bgm.tv';
+    this.apiBase = 'https://api.bangumi.one';
   }
 
   enabled(config) {
@@ -136,6 +136,16 @@ class BangumiScraper {
       localCover,
       rating: detail.rating?.score ? parseFloat(detail.rating.score.toFixed(1)) : null,
     };
+  }
+
+  /**
+   * Get subject relations (sequels, prequels, spin-offs, etc.)
+   * Used for building season chains for multi-season anime.
+   */
+  async getSubjectRelations(subjectId) {
+    const url = `${this.apiBase}/v0/subjects/${subjectId}/subjects`;
+    const res = await tryFetch(url, { headers: { 'User-Agent': USER_AGENT } });
+    return res.json(); // [{id, type, name, name_cn, relation, ...}]
   }
 }
 

@@ -152,16 +152,13 @@ function renderDetail() {
   summaryEl.textContent = anime.summary || '暂无简介';
 
   document.getElementById('bangumiSearchResults').innerHTML = '';
+  document.getElementById('bangumiEditForm').style.display = 'none';
+  document.getElementById('bangumiEditKeyword').value = '';
 
   const fetchBtn = document.getElementById('btnFetchBangumi');
   if (fetchBtn) {
-    if (anime.bangumiId) {
-      fetchBtn.style.display = 'none';
-    } else {
-      fetchBtn.style.display = 'inline-flex';
-      fetchBtn.disabled = false;
-      fetchBtn.textContent = '获取元数据';
-    }
+    fetchBtn.style.display = 'inline-flex';
+    fetchBtn.disabled = false;
   }
 
   renderWatchCard(anime);
@@ -511,30 +508,41 @@ async function toggleWatched(animeId, epNumber, watched) {
   }
 }
 
-async function fetchBangumiMetadata() {
+function editBangumiMetadata() {
   if (!currentAnime) return;
-  const btn = document.getElementById('btnFetchBangumi');
+  const editForm = document.getElementById('bangumiEditForm');
+  const keywordInput = document.getElementById('bangumiEditKeyword');
   const resultsEl = document.getElementById('bangumiSearchResults');
-  btn.disabled = true;
-  btn.textContent = '搜索中...';
+  
+  // Use bangumiTitle or title as default keyword
+  keywordInput.value = currentAnime.bangumiTitle || currentAnime.title;
+  editForm.style.display = 'block';
   resultsEl.innerHTML = '';
+  keywordInput.focus();
+}
+
+async function searchBangumiWithKeyword() {
+  if (!currentAnime) return;
+  const keyword = document.getElementById('bangumiEditKeyword').value.trim();
+  const resultsEl = document.getElementById('bangumiSearchResults');
+  
+  if (!keyword) {
+    showToast('请输入搜索关键词');
+    return;
+  }
+  
+  resultsEl.innerHTML = '<p style="text-align:center;color:var(--text2);padding:16px">搜索中...</p>';
+  
   try {
-    const result = await API.post('/api/bangumi/fetch', { animeId: currentAnime.id });
-    if (result.anime) {
-      currentAnime = result.anime;
-      renderDetail();
-      showToast('Bangumi 元数据获取成功');
-      return;
-    }
-    if (result.results) {
-      showSearchResults(result.results, result.animeId);
-      btn.textContent = '重新搜索';
-      btn.disabled = false;
+    const result = await API.post('/api/bangumi/search', { keyword });
+    if (result.results && result.results.length > 0) {
+      showSearchResults(result.results, currentAnime.id);
+    } else {
+      resultsEl.innerHTML = '<p class="search-result-empty">未找到匹配结果</p>';
     }
   } catch (e) {
     showToast('搜索失败: ' + e.message);
-    btn.disabled = false;
-    btn.textContent = '获取元数据';
+    resultsEl.innerHTML = '<p class="search-result-empty">搜索失败</p>';
   }
 }
 
@@ -570,9 +578,6 @@ async function attachBangumiSubject(animeId, subjectId) {
   } catch (e) {
     showToast('获取失败: ' + e.message);
     resultsEl.innerHTML = '';
-    const btn = document.getElementById('btnFetchBangumi');
-    btn.textContent = '获取元数据';
-    btn.disabled = false;
   }
 }
 

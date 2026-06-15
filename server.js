@@ -22,6 +22,7 @@ const DEFAULT_CONFIG = {
   playerMode: 'system', 
   mpvPath: 'mpv', 
   theme: 'dark',
+  autoMarkWatched: true,
   scrapers: {
       bangumi: { enabled: true, apiBase: 'https://api.bangumi.one' },
     tmdb: { enabled: false }
@@ -179,6 +180,7 @@ const server = http.createServer((req, res) => {
       if (parsed.mpvPath !== undefined) config.mpvPath = parsed.mpvPath;
       if (parsed.theme !== undefined) config.theme = parsed.theme;
       if (parsed.tmdbApiKey !== undefined) config.tmdbApiKey = parsed.tmdbApiKey;
+      if (parsed.autoMarkWatched !== undefined) config.autoMarkWatched = !!parsed.autoMarkWatched;
       if (parsed.scrapers !== undefined) config.scrapers = parsed.scrapers;
       saveConfig(config);
       jsonResp(res, 200, { ok: true, ...config });
@@ -628,6 +630,14 @@ const server = http.createServer((req, res) => {
         }
         let sessionId = null;
         if (targetAnime && targetEp) {
+          // Auto-mark all previous episodes as watched when starting a new episode
+          if (config.autoMarkWatched && targetEp.number >= 2) {
+            for (const ep of targetAnime.episodes) {
+              if (ep.number < targetEp.number && !ep.watched) {
+                ep.watched = true;
+              }
+            }
+          }
           sessionId = Date.now() + '-' + Math.random().toString(36).slice(2, 8);
           data.playSessions.push({
             animeId: targetAnime.id,

@@ -285,10 +285,7 @@
             </div>
             <div class="watch-stats-chart-wrap">
               <canvas class="watch-stats-chart" id="watchStatsChart" width="820" height="240"></canvas>
-              <div class="watch-stats-empty" id="watchStatsEmpty">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>
-                <p>使用 mpv 播放器以启用观看统计</p>
-              </div>
+              <div class="watch-stats-empty" id="watchStatsEmpty"></div>
             </div>
           </div>
         </div>
@@ -324,54 +321,78 @@
 
 <!-- Settings Modal -->
 <div class="modal-overlay" id="settingsModal">
-  <div class="modal">
-    <h2>设置</h2>
-    <div class="form-group">
-      <label for="settingsMediaDir">媒体目录路径</label>
-      <input type="text" id="settingsMediaDir" placeholder="E:/Anime">
-      <p class="form-hint">动漫文件夹所在的根目录</p>
+  <div class="modal modal--settings">
+    <div class="settings-header">
+      <h2>设置</h2>
+      <nav class="settings-tabs" role="tablist">
+        <button class="settings-tab active" data-tab="basic" role="tab" aria-selected="true" onclick="switchSettingsTab(this, 'basic')">基本</button>
+        <button class="settings-tab" data-tab="playback" role="tab" aria-selected="false" onclick="switchSettingsTab(this, 'playback')">播放</button>
+        <button class="settings-tab" data-tab="scraper" role="tab" aria-selected="false" onclick="switchSettingsTab(this, 'scraper')">刮削</button>
+      </nav>
     </div>
-    <div class="form-group">
-      <label for="settingsTheme">主题</label>
-      <select id="settingsTheme">
-        <option value="dark">深色主题</option>
-        <option value="light">浅色主题</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label for="settingsPlayerMode">播放器模式</label>
-      <select id="settingsPlayerMode">
-        <option value="system">系统默认播放器</option>
-        <option value="mpv">mpv 播放器</option>
-      </select>
-    </div>
-    <div class="form-group" id="mpvPathGroup" style="display:none">
-      <label for="settingsMpvPath">mpv 可执行文件路径</label>
-      <input type="text" id="settingsMpvPath" placeholder="mpv">
-    </div>
-    
-    <fieldset class="settings-section">
-      <legend>刮削源设置</legend>
-      <div class="form-group">
-        <label>TMDB API Key</label>
-        <input type="password" id="settingsTmdbApiKey" placeholder="从 https://www.themoviedb.org/settings/api 获取">
-        <p class="form-hint">启用 TMDB 刮削需要填入 API Key（可选）</p>
+
+    <div class="settings-panels">
+      <!-- Tab: 基本 -->
+      <div class="settings-panel active" id="tab-basic">
+        <div class="form-group">
+          <label for="settingsMediaDir">媒体目录路径</label>
+          <input type="text" id="settingsMediaDir" placeholder="E:/Anime">
+          <p class="form-hint">动漫文件夹所在的根目录</p>
+        </div>
+        <div class="form-group">
+          <label for="settingsTheme">主题</label>
+          <select id="settingsTheme">
+            <option value="dark">深色主题</option>
+            <option value="light">浅色主题</option>
+          </select>
+        </div>
       </div>
-      <div class="form-group">
-        <label>Bangumi 刮削</label>
-        <select id="settingsScraperBangumi">
-          <option value="enabled">启用</option>
-          <option value="disabled">禁用</option>
-        </select>
+
+      <!-- Tab: 播放 -->
+      <div class="settings-panel" id="tab-playback">
+        <div class="form-group">
+          <label for="settingsPlayerMode">播放器模式</label>
+          <select id="settingsPlayerMode">
+            <option value="system">系统默认播放器</option>
+            <option value="mpv">mpv 播放器</option>
+          </select>
+        </div>
+        <div class="form-group" id="mpvPathGroup" style="display:none">
+          <label for="settingsMpvPath">mpv 可执行文件路径</label>
+          <input type="text" id="settingsMpvPath" placeholder="mpv">
+        </div>
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="settingsAutoMark">
+            <span class="checkbox-visual"></span>
+            <span>播放下一集时自动标记前序集数为已观看</span>
+          </label>
+        </div>
       </div>
-      <div class="form-group">
-        <label>TMDB 刮削</label>
-        <select id="settingsScraperTmdb">
-          <option value="enabled">启用</option>
-          <option value="disabled">禁用</option>
-        </select>
+
+      <!-- Tab: 刮削 -->
+      <div class="settings-panel" id="tab-scraper">
+        <div class="form-group">
+          <label for="settingsTmdbApiKey">TMDB API Key</label>
+          <input type="password" id="settingsTmdbApiKey" placeholder="从 themoviedb.org 获取">
+          <p class="form-hint">启用 TMDB 刮削需要填入 API Key（可选）</p>
+        </div>
+        <div class="form-group">
+          <label>Bangumi 刮削</label>
+          <select id="settingsScraperBangumi">
+            <option value="enabled">启用</option>
+            <option value="disabled">禁用</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>TMDB 刮削</label>
+          <select id="settingsScraperTmdb">
+            <option value="enabled">启用</option>
+            <option value="disabled">禁用</option>
+          </select>
+        </div>
       </div>
-    </fieldset>
+    </div>
 
     <div id="settingsError" class="error-msg"></div>
     <div class="modal-actions">
@@ -380,6 +401,19 @@
     </div>
   </div>
 </div>
+
+<script>
+function switchSettingsTab(btn, tab) {
+  document.querySelectorAll('.settings-tab').forEach(t => {
+    t.classList.remove('active');
+    t.setAttribute('aria-selected', 'false');
+  });
+  btn.classList.add('active');
+  btn.setAttribute('aria-selected', 'true');
+  document.querySelectorAll('.settings-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+}
+</script>
 
 <!-- Context Menu -->
 <div class="context-menu" id="contextMenu">

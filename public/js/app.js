@@ -53,6 +53,7 @@ async function openSettings() {
     document.getElementById('settingsTmdbApiKey').value = config.tmdbApiKey || '';
     document.getElementById('settingsScraperBangumi').value = config.scrapers?.bangumi?.enabled ? 'enabled' : 'disabled';
     document.getElementById('settingsScraperTmdb').value = config.scrapers?.tmdb?.enabled ? 'enabled' : 'disabled';
+    document.getElementById('settingsAutoMark').checked = config.autoMarkWatched !== false;
     document.getElementById('settingsError').textContent = '';
     document.getElementById('settingsModal').classList.add('show');
   } catch (e) {
@@ -86,6 +87,7 @@ async function saveSettings() {
       playerMode, 
       mpvPath, 
       theme,
+      autoMarkWatched: document.getElementById('settingsAutoMark').checked,
       tmdbApiKey,
       scrapers: {
         bangumi: { enabled: scraperBangumi === 'enabled' },

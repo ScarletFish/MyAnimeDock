@@ -259,7 +259,7 @@ body::after {
   background: linear-gradient(transparent 20%, rgba(44, 36, 24, 0.88) 80%);
 }
 [data-theme="light"] .anime-card .overlay h3 {
-  color: #f0ece4;
+  color: #fff;
 }
 
 /* Badges: season badge on light bg */
@@ -337,6 +337,14 @@ body::after {
   border-color: var(--accent);
 }
 
+/* Detail nav arrow — light mode */
+[data-theme="light"] .detail-nav-arrow {
+  filter: drop-shadow(0 2px 8px rgba(44, 36, 24, 0.15));
+}
+[data-theme="light"] .detail-nav-close {
+  filter: drop-shadow(0 2px 8px rgba(44, 36, 24, 0.15));
+}
+
 /* Detail cover wrap shadow */
 [data-theme="light"] .detail-cover-wrap {
   box-shadow:
@@ -394,6 +402,26 @@ body::after {
 }
 [data-theme="light"] .discovery-card-row:hover {
   background: rgba(225, 58, 90, 0.02);
+}
+
+/* Additional light mode fixes */
+[data-theme="light"] .discovery-card-file:hover {
+  background: rgba(44, 36, 24, 0.04);
+}
+[data-theme="light"] .context-menu-item:hover {
+  background: rgba(44, 36, 24, 0.06);
+}
+[data-theme="light"] .watch-card-progress {
+  background: rgba(44, 36, 24, 0.10);
+}
+[data-theme="light"] .heatmap-cell {
+  border: 1px solid rgba(44, 36, 24, 0.08);
+}
+[data-theme="light"] .detail-nav-arrow {
+  stroke: var(--fg-secondary);
+}
+[data-theme="light"] .detail-nav-close {
+  stroke: var(--fg-secondary);
 }
 
 /* Scrollbar for light mode */
@@ -937,6 +965,139 @@ html {
   gap: 1.5rem;
 }
 
+/* ─── Detail Nav Zones (invisible edge hot areas) ─── */
+.detail-nav-overlay {
+  position: fixed;
+  top: 0;
+  left: 60px;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  pointer-events: none;
+}
+
+.detail-nav-zone {
+  position: absolute;
+  pointer-events: auto;
+  overflow: hidden;
+}
+
+/* Back zone — top-left corner */
+.detail-nav-back {
+  top: 0;
+  left: 0;
+  width: 80px;
+  height: 80px;
+  cursor: pointer;
+  z-index: 2;
+}
+
+/* Top zone — full width exit */
+.detail-nav-top {
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 48px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.detail-nav-close {
+  width: 22px;
+  height: 22px;
+  stroke: var(--fg-muted);
+  opacity: 0;
+  transition: opacity 0.2s var(--ease-out), transform 0.2s var(--ease-out);
+  pointer-events: none;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
+}
+
+.detail-nav-top:hover .detail-nav-close {
+  opacity: 0.8;
+  transform: scale(1.1);
+}
+
+.detail-nav-top:hover .detail-nav-close {
+  opacity: 1;
+  stroke: var(--accent);
+}
+
+/* Left zone — full height, prev item */
+.detail-nav-left {
+  top: 0;
+  left: 0;
+  width: 50px;
+  bottom: 0;
+  cursor: pointer;
+}
+
+/* Right zone — full height, next item */
+.detail-nav-right {
+  top: 0;
+  right: 0;
+  width: 50px;
+  bottom: 0;
+  cursor: pointer;
+}
+
+/* ─── Detail Nav Arrow Indicators ─── */
+.detail-nav-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  stroke: var(--fg-muted);
+  opacity: 0;
+  transition: opacity 0.2s var(--ease-out), transform 0.2s var(--ease-out);
+  pointer-events: none;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
+}
+
+.detail-nav-left .detail-nav-arrow {
+  left: 10px;
+}
+
+.detail-nav-right .detail-nav-arrow {
+  right: 10px;
+}
+
+.detail-nav-left:hover .detail-nav-arrow {
+  opacity: 0.7;
+  transform: translateY(-50%) translateX(-2px);
+}
+
+.detail-nav-right:hover .detail-nav-arrow {
+  opacity: 0.7;
+  transform: translateY(-50%) translateX(2px);
+}
+
+.detail-nav-left:hover .detail-nav-arrow {
+  opacity: 0.9;
+  stroke: var(--accent-soft);
+}
+
+.detail-nav-right:hover .detail-nav-arrow {
+  opacity: 0.9;
+  stroke: var(--accent-soft);
+}
+
+/* Click ripple */
+.detail-ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: var(--accent);
+  pointer-events: none;
+  animation: navRipple 0.45s ease-out forwards;
+}
+
+@keyframes navRipple {
+  0%   { opacity: 0.28; transform: scale(0); }
+  100% { opacity: 0;    transform: scale(1); }
+}
+
 .btn-back {
   display: inline-flex;
   align-items: center;
@@ -1143,7 +1304,7 @@ html {
 .search-result-title {
   font-weight: 600;
   font-size: 0.9rem;
-  color: var(--text1);
+  color: var(--fg-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1151,7 +1312,7 @@ html {
 
 .search-result-subtitle {
   font-size: 0.8rem;
-  color: var(--text2);
+  color: var(--fg-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1159,7 +1320,7 @@ html {
 
 .search-result-meta {
   font-size: 0.75rem;
-  color: var(--text3);
+  color: var(--fg-muted);
   margin-top: 2px;
 }
 
@@ -1171,7 +1332,7 @@ html {
 
 .search-result-empty {
   text-align: center;
-  color: var(--text2);
+  color: var(--fg-secondary);
   padding: 24px;
 }
 
@@ -2249,7 +2410,6 @@ input[type="range"]::-webkit-slider-thumb {
   overflow: hidden;
   min-height: 200px;
   margin-bottom: 1.25rem;
-  margin-top: 54px;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
 }
@@ -2299,7 +2459,7 @@ input[type="range"]::-webkit-slider-thumb {
 
 .watch-card-title {
   font-size: 14px;
-  color: var(--fg-primary);
+  color: #fff;
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
@@ -2532,7 +2692,6 @@ input[type="range"]::-webkit-slider-thumb {
   .watch-card-content { flex-wrap: wrap; }
   .watch-card-btn { width: 100%; justify-content: center; }
   .watch-card-progress { max-width: 100%; }
-  .watch-card { margin-top: 0; }
   .discovery-hero { padding: var(--space-6) var(--space-4); min-height: 140px; }
   .discovery-hero-title { font-size: 1.35rem; }
   .discovery-hero-content { flex-direction: column; gap: var(--space-4); align-items: flex-start; }
@@ -2541,6 +2700,9 @@ input[type="range"]::-webkit-slider-thumb {
   .discovery-stat-num { font-size: 1.2rem; }
   .discovery-stats-right { margin-left: auto; }
   .discovery-actions { flex-wrap: wrap; }
+  .detail-nav-left { width: 30px; }
+  .detail-nav-right { width: 30px; }
+  .detail-nav-arrow { width: 22px; height: 22px; }
 }
 
 @media (max-width: 480px) {
@@ -2634,4 +2796,10 @@ input[type="range"]::-webkit-slider-thumb {
     transition-duration: 0.01ms !important;
   }
   .view { animation: none !important; }
+  .detail-nav-arrow {
+    transition-duration: 0.01ms !important;
+  }
+  .detail-nav-close {
+    transition-duration: 0.01ms !important;
+  }
 }

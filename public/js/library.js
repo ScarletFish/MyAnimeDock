@@ -32,13 +32,15 @@ async function loadLibrary() {
 function renderLibrary(filter = '') {
   const grid = document.getElementById('libraryGrid');
   const empty = document.getElementById('libraryEmpty');
+  const paragraphs = empty.querySelectorAll('p');
 
   let filtered = libraryData;
   if (filter) {
     const q = filter.toLowerCase();
     filtered = libraryData.filter(a =>
       a.title.toLowerCase().includes(q) ||
-      (a.bangumiTitle && a.bangumiTitle.toLowerCase().includes(q))
+      (a.bangumiTitle && a.bangumiTitle.toLowerCase().includes(q)) ||
+      (a.pinyinTitle && a.pinyinTitle.toLowerCase().includes(q))
     );
   }
 
@@ -48,6 +50,13 @@ function renderLibrary(filter = '') {
   if (filtered.length === 0) {
     killCardAnimations();
     grid.innerHTML = '';
+    if (filter) {
+      paragraphs[0].textContent = '未检索到结果';
+      paragraphs[1].textContent = `没有匹配"${filter}"的动漫`;
+    } else {
+      paragraphs[0].textContent = '资料库为空';
+      paragraphs[1].textContent = '设置媒体目录后自动导入动漫';
+    }
     empty.style.display = 'flex';
     return;
   }

@@ -493,10 +493,8 @@ const server = http.createServer((req, res) => {
   // --- API: library list ---
   if (urlPath === '/api/library' && req.method === 'GET') {
     data.library.forEach(a => {
-      if (!a.pinyinTitle) {
-        const name = a.bangumiTitle || a.title || '';
-        a.pinyinTitle = pinyinFn(name).map(p => p[0]).join('');
-      }
+      const name = a.bangumiTitle || a.title || '';
+      a.pinyinTitle = pinyinFn(name).map(p => p[0].normalize('NFD').replace(/[\u0300-\u036f]/g, '')).join('');
     });
     jsonResp(res, 200, data.library);
     return;

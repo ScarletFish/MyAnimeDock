@@ -105,7 +105,11 @@ server.js          → HTTP server + REST API (@ :3456)
 - **视频缩略图**: ffmpeg `-ss {time} -i "{path}" -vframes 1 -q:v 5` 截帧，缓存到 `thumbs/`，API `/api/thumbnail?path=&time=`
 - **播放会话追踪**: mpv 模式在服务器内存维护 `activePlays` Map（`filePath → {sessionId, episode, anime}`），每 10s `saveData` 更新进度，mpv 关闭时 `final: true` 标记落盘
 - **剧集热力图**: `detail.js` 中 `renderEpisodeHeatmap()` — 10 列色块网格（未观看/观看中/已观看），`addEventListener('click')` 绑定播放（此组件有意违反 onclick 约定）
-- **观看统计**: `detail.js` 中 `renderWatchStats()` — Canvas 柱状图，数据来自 `GET /api/anime/:id/sessions`
+- **观看统计**: `detail.js` 中 `renderWatchStats()` — Canvas 柱状图，数据来自 `GET /api/anime/:id/sessions`；无数据时整个 `#watchStats` 模块隐藏
+- **详情页导航箭头**: `detail.js` 中 `initDetailNav()` — 左右边缘热区（50px）显示 SVG 箭头，点击/键盘 ArrowLeft/Right 切换动漫；顶部全宽热区（48px）显示 X 图标，点击返回资料库
+- **导航动画锁定**: `slideToAnime()` 中 `isSliding` 标志 + `document.body.style.pointerEvents = 'none'` 防止动画期间重复点击；`goPrev()`/`goNext()` 开头有 early guard
+- **拼音搜索**: `server.js` 中 `/api/library` 返回的 `pinyinTitle` 去掉声调（`normalize('NFD')` + 去除组合变音符号）；`library.js` 中 `renderLibrary()` 同时匹配 `title`/`bangumiTitle`/`pinyinTitle`
+- **浅色模式修正**: Canvas 图表色值根据 `data-theme` 切换（`rgba(44,36,24,...)` vs `rgba(237,232,226,...)`）；`.watch-card-title` 固定 `color: #fff`；`.season-badge` 在卡片覆盖层内使用白色文字；修复未定义的 `--text1`/`--text2`/`--text3` 变量
 - **GSAP 引用**: `public/vendor/gsap/`（从 `node_modules/gsap/dist/` 拷贝），不经过 npm 构建；`index.html` 中 `<script>` 直接加载
 - **Discovery 扁平扫描**: `data.scannedTree` 存扁平 leaf 数组（含 `parentChain`），旧树格式（`branch` 节点）在 `/api/browse` 时自动递归展平为 leaf，无需重扫
 - **兄弟组连续竖线**: `discovery.js` 中 `renderDiscovery()` 按 `parentChain` 分组，连续同 parent 的卡片包裹于 `.discovery-sibling-group`，其 `::before` 绘制 3px 垂直 accent 线（`position: absolute; left: -10px`，不参与布局）
@@ -180,3 +184,4 @@ mpv 模式下自动记录播放进度到 `anime-data.json`。
 - HTML 事件用 `onclick` 属性（非 `addEventListener`），除 `settingsPlayerMode.change` 以及 `detail.js` 中 `renderEpisodeHeatmap()` 的热力方格点击（动态渲染必须用 `addEventListener`）
 - GSAP 已注册全局 `gsap.registerPlugin(Flip)`
 - 动画 `onComplete` 中不删除 `detail-enter-active` class（防止 `.view fadeSlideUp` 激活），由 `resetDetailEnter()` 在下次导航时清理
+- 搜索无结果时显示「未检索到结果 · 没有匹配"xxx"的动漫」（`library.js` 中动态切换 empty state 文案）

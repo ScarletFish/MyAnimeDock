@@ -2,6 +2,8 @@
 
 自托管动漫媒体库管理器。扫描本地媒体文件夹，从 [Bangumi](https://bangumi.tv) / [TMDB](https://www.themoviedb.org/) 获取元数据，提供干净的 Web UI 来浏览、管理和追踪你的动漫收藏。
 
+典型工作流：**发现好番 → 下载到本地 → 导入管理 → 观看追踪 → 看完归档**
+
 ## 功能
 
 - **媒体扫描** — 递归扫描目录，自动解析文件夹名（字幕组、季度、分辨率等），输出扁平候选列表
@@ -12,7 +14,8 @@
 - **Web UI** — 原生 JS SPA，深色/浅色主题，响应式布局，GSAP Flip 卡片转场动画
 - **观看追踪** — 标记已看剧集、记录进度（逐集 / mpv 联动自动落盘）
 - **观看统计** — 90 天热力图柱状图、继续播放卡片、剧集热力图网格
-- **观看历史** — 评分 + 笔记 + 归档
+- **观看历史（Memories）** — 看完的番归档为瀑布流卡片网格（与资料库同款封面卡片），支持个人评分、感想笔记、编辑弹窗，点击进入只读详情页
+- **ani-rss 集成** — 可通过 Webhook 接收下载完成通知，自动导入到资料库（计划中）
 - **mpv 集成** — 启动 mpv 播放，通过 `--term-status-msg` 解析 stderr 追踪进度
 - **封面缩放** — sharp 实时处理，缩略图与详情页不同画质
 - **视频缩略图** — ffmpeg 截帧缓存，悬停预览
@@ -49,12 +52,12 @@ npm start
   "playerMode": "system",
   "mpvPath": "mpv",
   "theme": "dark",
+  "autoMarkWatched": true,
   "scrapers": {
     "bangumi": { "enabled": true, "apiBase": "https://api.bgm.tv" },
     "tmdb": { "enabled": false }
   },
-  "tmdbApiKey": "",
-  "autoImportThreshold": 0.85
+  "tmdbApiKey": ""
 }
 ```
 
@@ -68,7 +71,7 @@ npm start
 | `scrapers.bangumi.apiBase` | string | `"https://api.bgm.tv"` | Bangumi API 基址，可设为镜像 `https://api.bangumi.one` |
 | `scrapers.tmdb.enabled` | boolean | `false` | 启用 TMDB 刮削（需配置 API Key） |
 | `tmdbApiKey` | string | `""` | TMDB API Key（从 themoviedb.org/settings/api 获取） |
-| `autoImportThreshold` | number | `0.85` | 自动导入置信度阈值（0.5-1.0） |
+| `autoMarkWatched` | boolean | `true` | 播放下一集时自动标记上一集为已看 |
 
 `config.json` 已被 `.gitignore` 忽略。从 `config.example.json` 复制使用。
 
@@ -99,7 +102,6 @@ media/
 | POST | `/api/discovery/exclude` | 标记排除扫描 |
 | POST | `/api/discovery/include` | 取消排除 |
 | POST | `/api/discovery/fetch-meta` | 获取元数据 (Bangumi/TMDB) |
-| POST | `/api/discovery/auto-import` | 自动导入高置信度项目 |
 | GET | `/api/library` | 获取资料库列表 |
 | GET | `/api/anime/:id` | 获取动漫详情 |
 | DELETE | `/api/anime/:id` | 删除动漫（归档到记忆） |
@@ -139,23 +141,29 @@ npm run build
 ## 项目结构
 
 ```
-├── server.js              HTTP 服务器 + REST API
-├── scanner.js             媒体目录扫描 + 文件夹名解析 + 置信度计算
+├── server.js              HTTP 服务器 + REST API（无框架）
+├── scanner.js             媒体目录扫描 + 文件夹名解析
 ├── mpv-controller.js      mpv 进度追踪（spawn + --term-status-msg）
-├── scrapers/
+├── scrapers/              多源刮削架构
 │   ├── index.js           ScraperRegistry（统一注册、优先级、批量搜索）
 │   ├── bangumi.js         Bangumi 刮削器（curl fallback）
 │   └── tmdb.js            TMDB 刮削器
 ├── public/
 │   ├── index.html         SPA 入口
 │   ├── styles.css         深色/浅色主题（CSS 自定义属性）
+│   ├── vendor/gsap/       GSAP + Flip 插件（本地拷贝）
 │   └── js/
 │       ├── api.js         fetch() 封装
-│       ├── app.js         路由、主题、toast、设置页
-│       ├── discovery.js   发现/扫描视图（扁平卡片 + 右侧详情抽屉）
-│       ├── library.js     资料库网格 + 搜索
-│       ├── detail.js      详情页 + GSAP Flip 动画
-│       └── memory.js      观看历史
+│       ├── app.js         路由、主题、toast、设置页（标签式）
+│       ├── discovery.js   发现/扫描视图（扁平卡片 + 兄弟组连续竖线）
+│       ├── library.js     资料库网格 + 拼音搜索
+│       ├── detail.js      详情页 + GSAP Flip Hero 动画 + 热力图 + 统计
+│       └── memory.js      观看历史（归档网格 + 编辑弹窗）
+├── plan/                  未来集成方案（ani-rss 等）
+├── config.example.json    配置模板
+├── start.bat              Windows 启动脚本
+├── build.bat              Windows 构建脚本（含 sharp 复制）
+└── opencode.json          Agent 工作流配置
 ```
 
 ## 许可证

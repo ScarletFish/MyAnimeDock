@@ -3,6 +3,7 @@
   "playerMode": "system",
   "mpvPath": "mpv",
   "theme": "dark",
+  "autoMarkWatched": true,
   "scrapers": {
     "bangumi": { "enabled": true, "apiBase": "https://api.bangumi.one" },
     "tmdb": { "enabled": false }

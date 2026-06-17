@@ -43,6 +43,13 @@ if exist node_modules\@img (
     xcopy /e /i /y node_modules\@img dist\node_modules\@img\
 )
 
+:: Copy frontend files
+echo.
+echo Copying frontend files...
+if exist public (
+    xcopy /e /i /y public dist\public\
+)
+
 :: Create covers directory
 if not exist dist\covers mkdir dist\covers
 

@@ -1,6 +1,8 @@
 node_modules/
 dist/
 anime-data.json
+anime-data.json.pre-sqlite-backup
+.migrated-to-sqlite
 covers/
 test-media/
 config.json
@@ -13,3 +15,26 @@ thumbs/
 .mimocode/
 opencode.json
 SHOKO_ANIDB_UPGRADE_PLAN.md
+
+# Tauri / Rust
+src-tauri/target/
+src-tauri/resources/server.exe*
+src-tauri/Cargo.lock
+src-tauri/.cargo/
+
+# Prisma
+prisma/anime.db
+
+# Build artifacts
+build-tauri.bat
+rustup-init.exe
+src-tauri/server.exe*
+
+# Scripts
+scripts/
+
+# Server (copied for Tauri sidecar)
+server/
+
+# Environment
+.env

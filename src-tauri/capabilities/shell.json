@@ -1,0 +1,17 @@
+{
+  "$schema": "https://schema.tauri.app/config/2/capability.json",
+  "identifier": "shell-capability",
+  "description": "Shell access for mpv and ffmpeg",
+  "windows": ["main"],
+  "permissions": [
+    "shell:default",
+    "shell:allow-spawn",
+    {
+      "identifier": "shell:allow-spawn",
+      "allow": [
+        { "name": "mpv", "args": true },
+        { "name": "ffmpeg", "args": true }
+      ]
+    }
+  ]
+}

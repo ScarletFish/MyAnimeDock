@@ -5,8 +5,15 @@ Vanilla JS SPA + Node.js HTTP server. 自托管动漫媒体库管理器。
 ## Commands
 
 ```bash
-npm start         # Launch dev server on port 3456
-npm run build     # Build standalone .exe (pkg, node18-win-x64)
+npm run dev:server   # Start Node.js server on port 3456
+npm run dev:tauri    # Start Tauri dev window (requires server running first)
+npm run dev          # Start both server + Tauri concurrently
+npm run build        # Build pkg sidecar + Tauri MSI/NSIS installer
+npm run build:server # Build standalone pkg sidecar executable
+npm run build:tauri  # Build Tauri MSI/NSIS installer only
+npm run prisma:generate  # Regenerate Prisma client
+npm run prisma:migrate   # Create/apply Prisma migrations
+npm run prisma:studio    # Open Prisma Studio (SQLite browser)
 ```
 
 ## API Endpoints
@@ -40,9 +47,11 @@ POST /api/memories            # Create/update memory
 ## Architecture
 
 **Monolithic Node.js** (no framework), **vanilla HTML/CSS/JS frontend** (no bundler).
+**Desktop shell:** Tauri v2 (Rust) with Node.js sidecar.
 
 ```
-server.js          → HTTP server + REST API (@ :3456)
+server/            → Tauri sidecar (Node.js backend)
+├── server.js      → HTTP server + REST API (@ :3456)
 ├── scanner.js     → 扫描媒体目录，解析文件夹名（anitomy 增强）
 │   ├── scanMediaDirFlat() → 返回扁平 leaf 数组（含 parentChain）
 │   ├── buildLeaf()        → 单条目构造（parentChain 回溯处理 Season 文件夹）
@@ -52,20 +61,31 @@ server.js          → HTTP server + REST API (@ :3456)
 │   ├── bangumi.js → Bangumi API（curl fallback）
 │   └── tmdb.js    → TMDB API（需配置 API Key）
 ├── mpv-controller.js → mpv 进度追踪（spawn + --term-status-msg，final 标记）
-└── public/        → 前端静态文件（无构建步骤）
-    ├── index.html
-    ├── styles.css
-    └── js/
-        ├── api.js         → fetch() 封装
-        ├── app.js         → 路由、主题、toast、设置页
-        ├── discovery.js   → 发现/扫描视图（扁平卡片列表 + 兄弟组连续竖线 + 右侧详情抽屉）
-        ├── library.js     → 资料库网格
-        ├── detail.js      → 详情 + GSAP Flip Hero 动画 + 右侧 3 模块
-        │                   （继续播放卡片 / 剧集热力图 / 观看统计图表）
-        └── memory.js      → 观看记录
+└── package.json   → Sidecar dependencies (pkg target)
+src-tauri/         → Tauri v2 desktop shell (Rust)
+├── src/main.rs    → Sidecar spawning + window management
+├── tauri.conf.json → Window config, externalBin, capabilities (v2)
+├── capabilities/  → v2 permissions (fs.json, shell.json)
+└── icons/         → App icons (ico, png)
+prisma/            → SQLite schema + migrations
+├── schema.prisma  → Anime, Episode, PlaySession, Memory, ScannedTree, Config
+├── anime.db       → SQLite database file
+└── migrations/    → Versioned migration history
+public/            → 前端静态文件（无构建步骤）
+├── index.html
+├── styles.css
+└── js/
+    ├── api.js         → fetch() 封装
+    ├── app.js         → 路由、主题、toast、设置页
+    ├── discovery.js   → 发现/扫描视图（扁平卡片列表 + 兄弟组连续竖线 + 右侧详情抽屉）
+    ├── library.js     → 资料库网格
+    ├── detail.js      → 详情 + GSAP Flip Hero 动画 + 右侧 3 模块
+    │                   （继续播放卡片 / 剧集热力图 / 观看统计图表）
+    └── memory.js      → 观看记录
 ```
 
-**数据持久化**: `anime-data.json`（JSON 文件，同步读写）。**无数据库**。
+**数据持久化**: SQLite (Prisma ORM)，规范化表 (Anime, Episode, PlaySession, Memory) + JSON 列 (ScannedTree, Config)。
+运行时仍通过 `anime-data.json` 同步读写以保证旧格式兼容，长期目标是完全切换到 Prisma/SQLite。
 
 **scannedTree 叶子节点字段**：
 ```json
@@ -175,7 +195,11 @@ mpv 模式下自动记录播放进度到 `anime-data.json`。
 - pkg 打包用 `process.pkg ? path.dirname(process.execPath) : __dirname` 处理路径
 - TMDB API 需要配置 API Key 才能启用（设置页填入）
 - 旧格式 `branch` 节点在 `/api/browse` 时自动递归展平为 leaf，无需手动重扫描
-- `activePlays` Map 仅存内存，服务器重启后丢失；持久化的 `playSessions` 保存在 `anime-data.json`
+- Tauri 开发模式：sidecar 不自动启动，需先运行 `npm run dev:server`，再运行 `npm run dev:tauri`
+- Tauri 生产构建：`npm run build`（先 pkg 打包 sidecar，然后 Tauri 构建 MSI/NSIS），依赖 Rust MSVC 工具链
+- Cargo mirror：清华源配置在 `src-tauri/.cargo/config.toml`
+- 构建缓存：`src-tauri/target/` 可达 5GB+，可安全删除后重新构建
+- pkg 打包 sidecar 后输出到 `src-tauri/server.exe-x86_64-pc-windows-msvc.exe`，Tauri externalBin 自动追加 target triple 后缀
 
 ## 设计理念与用户工作流
 
@@ -221,40 +245,27 @@ mpv 模式下自动记录播放进度到 `anime-data.json`。
 - **渐进增强**：先做本地管理，再打通外部同步
 - **尊重用户数据**：删除本地文件 ≠ 删除记录，归档自动保留
 
-## Tauri 迁移规划
+## Tauri 桌面壳（Phases 0-3 已完成）
 
 ### 架构路线
 
-Tauri 作为**桌面壳**，Node.js 后端以 **sidecar 进程** 方式运行。不重写 Rust 后端。
+Tauri v2 作为**桌面壳**，Node.js 后端以 **sidecar 进程** 方式运行。不重写 Rust 后端。
 
 ```
-Tauri (窗口壳 + 系统托盘 + 自动更新)
+Tauri (窗口壳)
   └── Sidecar: Node.js server (现有 server.js，不变)
         └── HTTP API (:3456)
               └── WebView: 现有前端 (HTML/CSS/JS，不变)
 ```
 
-### 理由
+### 关键注意事项
 
-- **anitomy** 无原生 Rust 替代的风险已排除（`anitomy-pure` crate 存在），但全 Rust 重写 ~1700 行后端代码需要 40-60 小时熟练工时，无近期的用户收益
-- **Sidecar 路线**让现有功能完全不变，Tauri 只解决桌面壳问题
-- 未来可按模块渐进迁移到 Rust `tauri::command`（如图片处理 `sharp` → Rust `image` crate），不必一次性全端
-
-### 迁移步骤
-
-1. **Tauri 初始化** — `npm create tauri-app`，配置窗口（标题、图标、尺寸）
-2. **Sidecar 集成** — 将 `npm start` 启动的 Node 服务注册为 Tauri sidecar，配置 `tauri.conf.json > bundle > externalBin`
-3. **前端适配** — 前端 API 地址改为 Tauri IPC 或保持 localhost:3456
-4. **系统集成** — 托盘图标（退出/重启）、任务栏进度、协议关联
-5. **自动更新** — Tauri updater 配置（GitHub Releases）
-6. **打包** — 替代 pkg，原生安装包（MSI/NSIS for Windows）
-7. **可选模块迁移** — sharp → Rust `image` crate（如 sidecar 中仍有 sharp 问题）
-
-### 注意事项
-
-- `sharp` 在 sidecar 中仍有原生模块问题，可移入 Rust 端通过 Tauri IPC 调用
+- Dev 模式：sidecar 不自动启动，需先 `npm run dev:server`，再 `npm run dev:tauri`
+- 生产构建：`npm run build:server`（pkg打包 sidecar）→ `npm run build:tauri`（Tauri 构建 MSI/NSIS）
+- `sharp` 在 sidecar 中仍有原生模块问题（pkg 无法打包 native modules），`build.bat` 需手动复制 sharp 模块
 - `config.json` 和 `anime-data.json` 路径策略需要对齐 Tauri 的 `app_data_dir`
-- 前端 `public/` 目录直接放入 Tauri 的 `src-tauri/` 或配置为前端资源路径
+- Cargo mirror：清华源配置在 `src-tauri/.cargo/config.toml`
+- 构建缓存：`src-tauri/target/` 可达 5GB+，可安全删除后重新构建
 
 ## Frontend Conventions
 

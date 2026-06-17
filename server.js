@@ -7,10 +7,12 @@ const { scanMediaDirFlat } = require('./scanner');
 const pinyinModule = require('pinyin');
 const pinyinFn = pinyinModule.pinyin || pinyinModule.default || pinyinModule;
 
-// pkg 打包后 __dirname 指向临时解压目录，需要使用 exe 所在目录
-const APP_DIR = process.pkg ? path.dirname(process.execPath) : __dirname;
-const CONFIG_PATH = path.join(APP_DIR, 'config.json');
-const DATA_PATH = path.join(APP_DIR, 'anime-data.json');
+// 用户数据目录：pkg 打包后在 exe 同级目录，开发模式在脚本同级目录
+const DATA_DIR = process.pkg ? path.dirname(process.execPath) : __dirname;
+// 前端静态资源目录：pkg 打包后在临时解压目录（__dirname），开发模式在脚本同级目录
+const ASSET_DIR = __dirname;
+const CONFIG_PATH = path.join(DATA_DIR, 'config.json');
+const DATA_PATH = path.join(DATA_DIR, 'anime-data.json');
 const PORT = 3456;
 
 // In-memory active mpv sessions: filePath -> { sessionId, episode, anime }
@@ -482,7 +484,7 @@ const server = http.createServer((req, res) => {
         }
         const { registry, matchSeason } = require('./scrapers');
         const { parseFolderName } = require('./scanner');
-        const coverDir = path.join(APP_DIR, 'covers');
+        const coverDir = path.join(DATA_DIR, 'covers');
 
         let subjectIdToUse = subjectId;
         let sourceToUse = source;
@@ -795,7 +797,7 @@ const server = http.createServer((req, res) => {
 
         const { registry, matchSeason } = require('./scrapers');
         const { parseFolderName } = require('./scanner');
-        const coverDir = path.join(APP_DIR, 'covers');
+        const coverDir = path.join(DATA_DIR, 'covers');
 
         // If no subjectId provided, use season-aware matching
         if (!subjectId) {
@@ -843,7 +845,7 @@ const server = http.createServer((req, res) => {
 
         const { registry, matchSeason } = require('./scrapers');
         const { parseFolderName } = require('./scanner');
-        const coverDir = path.join(APP_DIR, 'covers');
+        const coverDir = path.join(DATA_DIR, 'covers');
         const results = [];
 
         for (const animeId of animeIds) {
@@ -920,7 +922,7 @@ const server = http.createServer((req, res) => {
       return;
     }
     const hash = crypto.createHash('md5').update(videoPath + time).digest('hex');
-    const thumbDir = path.join(APP_DIR, 'thumbs');
+    const thumbDir = path.join(DATA_DIR, 'thumbs');
     const thumbPath = path.join(thumbDir, hash + '.jpg');
     if (fs.existsSync(thumbPath)) {
       serveImage(thumbPath, req.url, res);
@@ -967,13 +969,13 @@ const server = http.createServer((req, res) => {
 
   // --- Cover images ---
   if (urlPath.startsWith('/covers/')) {
-    const coverPath = path.join(APP_DIR, decodeURIComponent(urlPath));
+    const coverPath = path.join(DATA_DIR, decodeURIComponent(urlPath));
     serveImage(coverPath, req.url, res);
     return;
   }
 
   // --- Static files ---
-  let filePath = path.join(APP_DIR, 'public', decodeURIComponent(urlPath));
+  let filePath = path.join(ASSET_DIR, 'public', decodeURIComponent(urlPath));
   if (fs.existsSync(filePath) && fs.statSync(filePath).isDirectory()) {
     filePath = path.join(filePath, 'index.html');
   }
@@ -991,12 +993,14 @@ server.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
   console.log(`Media directory: ${config.mediaDir || '(not configured)'}`);
 
-  // Auto-open browser
-  const url = `http://localhost:${PORT}`;
-  const cmd = process.platform === 'win32' ? `start "" "${url}"`
-    : process.platform === 'darwin' ? `open "${url}"`
-    : `xdg-open "${url}"`;
-  exec(cmd, (err) => {
-    if (err) console.log(`[INFO] Could not auto-open browser. Visit: ${url}`);
-  });
+  // Auto-open browser (skip when running as Tauri sidecar)
+  if (!process.env.TAURI_SIDECAR) {
+    const url = `http://localhost:${PORT}`;
+    const cmd = process.platform === 'win32' ? `start "" "${url}"`
+      : process.platform === 'darwin' ? `open "${url}"`
+      : `xdg-open "${url}"`;
+    exec(cmd, (err) => {
+      if (err) console.log(`[INFO] Could not auto-open browser. Visit: ${url}`);
+    });
+  }
 });

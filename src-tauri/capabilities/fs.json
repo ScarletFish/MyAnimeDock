@@ -1,0 +1,17 @@
+{
+  "$schema": "https://schema.tauri.app/config/2/capability.json",
+  "identifier": "fs-capability",
+  "description": "Filesystem access for MyAnimeDocker",
+  "windows": ["main"],
+  "permissions": [
+    "fs:default",
+    "fs:allow-app-read",
+    "fs:allow-app-write",
+    "fs:allow-appdata-read",
+    "fs:allow-appdata-write",
+    "fs:allow-exe-read",
+    "fs:allow-exe-write",
+    "fs:scope-appdata",
+    "fs:scope-exe"
+  ]
+}

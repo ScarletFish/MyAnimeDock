@@ -2,32 +2,31 @@
   "name": "anime-manager",
   "version": "1.0.0",
   "description": "Local anime management library with Bangumi metadata and mpv integration",
-  "main": "server.js",
-  "bin": "server.js",
+  "main": "server/server.js",
   "scripts": {
-    "start": "node server.js",
-    "build": "pkg . --target node18-win-x64 --output dist/anime-manager.exe"
-  },
-  "pkg": {
-    "assets": [
-      "public/**/*"
-    ],
-    "scripts": [
-      "scanner.js",
-      "mpv-controller.js"
-    ]
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:tauri\"",
+    "dev:server": "node server/server.js",
+    "dev:tauri": "tauri dev",
+    "build": "npm run build:server && npm run build:tauri",
+    "build:server": "cd server && pkg . --target node18-win-x64 --output ../src-tauri/server.exe-x86_64-pc-windows-msvc.exe",
+    "build:tauri": "tauri build",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
+    "postinstall": "cd server && npm ci --production && cd .. && prisma generate"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "anitomy": "^0.0.35",
-    "gsap": "^3.15.0",
-    "pinyin": "^4.0.0",
-    "sharp": "^0.34.5"
+    "@prisma/client": "^5.22.0",
+    "@tauri-apps/api": "^2.11.0"
   },
   "devDependencies": {
+    "@tauri-apps/cli": "^2.11.2",
+    "concurrently": "^8.2.2",
+    "prisma": "^5.22.0",
     "typescript": "^6.0.3"
   }
 }

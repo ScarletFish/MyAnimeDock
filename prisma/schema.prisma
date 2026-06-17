@@ -1,0 +1,116 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ===== 规范化表 =====
+
+model Anime {
+  id            String    @id @default(cuid())
+  folderPath    String    @unique
+  folderName    String
+  title         String
+  season        Int?
+  importedAt    DateTime  @default(now())
+  downloaded    Boolean   @default(true)
+  bangumiId     Int?
+  bangumiTitle  String?
+  bangumiTitleJp String?
+  summary       String?
+  coverUrl      String?
+  localCover    String?
+  rating        Float?
+  source        String?   // "bangumi" | "tmdb"
+  pinyinTitle   String?
+  metadata      String?   // JSON 字符串（扩展字段，兼容旧数据）
+  
+  episodes      Episode[]
+  playSessions  PlaySession[]
+  memories      Memory[]
+  
+  @@index([bangumiId])
+  @@index([title])
+  @@index([pinyinTitle])
+}
+
+model Episode {
+  id          String   @id @default(cuid())
+  animeId     String
+  number      Int
+  filePath    String   @unique
+  fileName    String
+  fileSize    BigInt
+  duration    Int?     // 秒
+  watched     Boolean  @default(false)
+  progress    Float    @default(0)  // 0-1
+  watchedAt   DateTime?
+  
+  anime       Anime    @relation(fields: [animeId], references: [id], onDelete: Cascade)
+  
+  @@unique([animeId, number])
+  @@index([animeId])
+  @@index([filePath])
+}
+
+model PlaySession {
+  id            String   @id @default(cuid())
+  animeId       String
+  episodeNumber Int
+  sessionId     String   @unique
+  startTime     DateTime
+  endTime       DateTime?
+  duration      Int      @default(0)   // 内容进度秒数
+  clockTime     Int      @default(0)   // 挂钟秒数
+  progressStart Int      @default(0)
+  
+  anime         Anime    @relation(fields: [animeId], references: [id], onDelete: Cascade)
+  
+  @@index([animeId])
+  @@index([sessionId])
+  @@index([startTime])
+}
+
+model Memory {
+  id           String   @id @default(cuid())
+  animeId      String   @unique
+  title        String
+  bangumiId    Int?
+  bangumiTitle String?
+  rating       Float?
+  thoughts     String?
+  notes        String?
+  watchedAt    DateTime @default(now())
+  coverLocal   String?
+  
+  anime        Anime    @relation(fields: [animeId], references: [id], onDelete: Cascade)
+  
+  @@index([animeId])
+  @@index([watchedAt])
+}
+
+// ===== JSON 存储表（用 String 存储 JSON 字符串）=====
+
+model ScannedTree {
+  id        String   @id @default("current")
+  data      String   // JSON 字符串：扁平 leaf 数组，含 parentChain
+  updatedAt DateTime @updatedAt
+}
+
+model Config {
+  id        String   @id @default("singleton")
+  data      String   // JSON 字符串：完整配置对象
+  updatedAt DateTime @updatedAt
+}
+
+// ===== 迁移追踪 =====
+
+model MigrationLog {
+  id          String   @id @default(cuid())
+  version     String   @unique
+  appliedAt   DateTime @default(now())
+  description String?
+}

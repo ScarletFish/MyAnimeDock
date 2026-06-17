@@ -23,17 +23,38 @@ const DEFAULT_CONFIG = {
   mpvPath: 'mpv', 
   theme: 'dark',
   autoMarkWatched: true,
-  scrapers: {
-      bangumi: { enabled: true, apiBase: 'https://api.bangumi.one' },
-    tmdb: { enabled: false }
-  },
-  tmdbApiKey: '',
+  apiSources: [
+    { type: 'bangumi', url: 'https://api.bangumi.one', key: '' },
+  ],
 };
 
 function loadConfig() {
   try {
     const raw = fs.readFileSync(CONFIG_PATH, 'utf-8');
-    return { ...DEFAULT_CONFIG, ...JSON.parse(raw) };
+    const cfg = JSON.parse(raw);
+    // Migrate legacy format → apiSources
+    if (!cfg.apiSources && cfg.scrapers) {
+      const sources = [];
+      if (cfg.scrapers.bangumi?.enabled !== false) {
+        sources.push({
+          type: 'bangumi',
+          url: cfg.scrapers.bangumi?.apiBase || 'https://api.bangumi.one',
+          key: '',
+        });
+      }
+      if (cfg.scrapers.tmdb?.enabled !== false && cfg.tmdbApiKey) {
+        sources.push({
+          type: 'tmdb',
+          url: 'https://api.themoviedb.org/3',
+          key: cfg.tmdbApiKey,
+        });
+      }
+      cfg.apiSources = sources.length > 0 ? sources : DEFAULT_CONFIG.apiSources;
+      delete cfg.scrapers;
+      delete cfg.tmdbApiKey;
+      saveConfig(cfg);
+    }
+    return { ...DEFAULT_CONFIG, ...cfg };
   } catch (e) {
     return { ...DEFAULT_CONFIG };
   }
@@ -179,9 +200,23 @@ const server = http.createServer((req, res) => {
       if (parsed.playerMode !== undefined) config.playerMode = parsed.playerMode;
       if (parsed.mpvPath !== undefined) config.mpvPath = parsed.mpvPath;
       if (parsed.theme !== undefined) config.theme = parsed.theme;
-      if (parsed.tmdbApiKey !== undefined) config.tmdbApiKey = parsed.tmdbApiKey;
       if (parsed.autoMarkWatched !== undefined) config.autoMarkWatched = !!parsed.autoMarkWatched;
-      if (parsed.scrapers !== undefined) config.scrapers = parsed.scrapers;
+      if (parsed.apiSources !== undefined) config.apiSources = parsed.apiSources;
+      // Legacy fields — silently accept and convert
+      if (parsed.apiSources === undefined && parsed.scrapers !== undefined) {
+        const sources = [];
+        if (parsed.scrapers.bangumi?.enabled !== false) {
+          sources.push({
+            type: 'bangumi',
+            url: parsed.scrapers.bangumi?.apiBase || 'https://api.bangumi.one',
+            key: '',
+          });
+        }
+        if (parsed.scrapers.tmdb?.enabled !== false && parsed.tmdbApiKey) {
+          sources.push({ type: 'tmdb', url: 'https://api.themoviedb.org/3', key: parsed.tmdbApiKey });
+        }
+        config.apiSources = sources.length > 0 ? sources : DEFAULT_CONFIG.apiSources;
+      }
       saveConfig(config);
       jsonResp(res, 200, { ok: true, ...config });
     }).catch(e => {
@@ -655,7 +690,7 @@ const server = http.createServer((req, res) => {
         const { startMpv } = require('./mpv-controller');
         try {
           startMpv(mpvPath, filePath, position || 0, {
-            onProgress: ({ filePath: fp, progress, watched, duration, final }) => {
+            onProgress: ({ filePath: fp, progress, peakPos, watched, duration, final }) => {
               const active = activePlays.get(fp);
               if (active) {
                 const ep = active.episode;
@@ -665,7 +700,7 @@ const server = http.createServer((req, res) => {
                 if (active.sessionId) {
                   const session = data.playSessions.find(s => s.sessionId === active.sessionId);
                   if (session) {
-                    session.duration = Math.max(0, progress - (session.progressStart || 0));
+                    session.duration = Math.max(0, (peakPos || progress) - (session.progressStart || 0));
                     session.endTime = new Date().toISOString();
                     if (final) {
                       const startMs = new Date(session.startTime).getTime();

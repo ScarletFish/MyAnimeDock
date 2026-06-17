@@ -10,6 +10,7 @@ let sessionIdCounter = 0;
 function startMpv(mpvPath, filePath, position, callbacks) {
     const sessionId = ++sessionIdCounter;
     let currentPos = position || 0;
+    let peakPos = position || 0;
     let currentDuration = 0;
     let isPaused = false;
     let running = true;
@@ -61,6 +62,7 @@ function startMpv(mpvPath, filePath, position, callbacks) {
                     if (msg.event === 'property-change') {
                         if (msg.name === 'time-pos' && typeof msg.data === 'number') {
                             currentPos = msg.data;
+                            if (msg.data > peakPos) peakPos = msg.data;
                         } else if (msg.name === 'duration' && typeof msg.data === 'number') {
                             currentDuration = msg.data;
                         } else if (msg.name === 'pause' && typeof msg.data === 'boolean') {
@@ -82,12 +84,26 @@ function startMpv(mpvPath, filePath, position, callbacks) {
 
     setTimeout(connectIPC, 500);
 
-    mpvProcess.on('close', (code) => {
+    const progressInterval = setInterval(() => {
         if (!running) return;
         callbacks.onProgress({
             filePath,
             progress: currentPos,
-            watched: currentDuration > 0 && currentPos / currentDuration >= WATCHED_RATIO,
+            peakPos,
+            watched: currentDuration > 0 && peakPos / currentDuration >= WATCHED_RATIO,
+            duration: currentDuration,
+            final: false,
+        });
+    }, 10000);
+
+    mpvProcess.on('close', (code) => {
+        if (!running) return;
+        clearInterval(progressInterval);
+        callbacks.onProgress({
+            filePath,
+            progress: currentPos,
+            peakPos,
+            watched: currentDuration > 0 && peakPos / currentDuration >= WATCHED_RATIO,
             duration: currentDuration,
             final: true,
         });
@@ -101,6 +117,7 @@ function startMpv(mpvPath, filePath, position, callbacks) {
 
     mpvProcess.on('error', (err) => {
         if (!running) return;
+        clearInterval(progressInterval);
         console.error('mpv error:', err);
         if (callbacks.onError) callbacks.onError(String(err));
         if (ipcClient) { ipcClient.destroy(); ipcClient = null; }

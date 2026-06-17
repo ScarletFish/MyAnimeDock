@@ -2,7 +2,6 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-const TMDB_API = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
 const TIMEOUT = 15000;
 
@@ -58,19 +57,40 @@ async function tryFetch(url, options = {}) {
 class TMDBScraper {
   constructor() {
     this.name = 'tmdb';
+    this.apiBase = 'https://api.themoviedb.org/3';
+    this.apiKey = '';
   }
 
   getApiKey(config) {
-    return config?.tmdbApiKey || process.env.TMDB_API_KEY || null;
+    return config?.tmdbApiKey || this.apiKey || process.env.TMDB_API_KEY || null;
   }
 
+  /**
+   * Check if config has at least one tmdb source with valid key
+   */
   enabled(config) {
+    if (config?.apiSources) {
+      const src = config.apiSources.find(s => s.type === 'tmdb');
+      if (src?.key) this.apiKey = src.key;
+      if (src?.url) this.apiBase = src.url.replace(/\/+$/, '');
+      return !!(src?.key);
+    }
+    // Legacy fallback
     return !!this.getApiKey(config);
   }
 
+  /**
+   * Set active source from apiSources entry
+   */
+  setSource(source) {
+    if (source?.key) this.apiKey = source.key;
+    if (source?.url) this.apiBase = source.url.replace(/\/+$/, '');
+    return this;
+  }
+
   buildUrl(endpoint, params = {}) {
-    const apiKey = this.getApiKey({});
-    const url = new URL(`${TMDB_API}${endpoint}`);
+    const apiKey = this.apiKey;
+    const url = new URL(`${this.apiBase}${endpoint}`);
     url.searchParams.set('api_key', apiKey);
     url.searchParams.set('language', 'zh-CN');
     for (const [k, v] of Object.entries(params)) {
@@ -79,7 +99,8 @@ class TMDBScraper {
     return url.toString();
   }
 
-  async search(keyword) {
+  async search(keyword, source) {
+    if (source) this.setSource(source);
     const url = this.buildUrl('/search/tv', {
       query: keyword,
       include_adult: false,

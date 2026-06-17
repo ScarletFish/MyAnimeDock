@@ -6,6 +6,11 @@ let watchStatsVersion = 0;
 let detailRefreshTimer = null;
 let wasMpvActive = false;
 
+// Archive mode flags (set by memory.js)
+let isArchiveMode = false;
+let archiveMemoryData = null;
+let detailSourceView = 'library';
+
 function resetDetailEnter() {
   const viewEl = document.getElementById('detailView');
   if (viewEl) {
@@ -45,6 +50,14 @@ function stopDetailRefresh() {
 }
 
 async function showDetail(id, fromRect, fromSrc) {
+  // Reset archive mode when viewing library items
+  isArchiveMode = false;
+  archiveMemoryData = null;
+  detailSourceView = 'library';
+  // Remove archive magazine layout class if present
+  const layoutEl = document.querySelector('.detail-layout');
+  if (layoutEl) layoutEl.classList.remove('detail-layout--archive');
+
   resetDetailEnter();
   stopDetailRefresh();
   try {
@@ -130,6 +143,7 @@ function renderDetail() {
 
   const anime = currentAnime;
 
+  // ─── Cover ───
   const coverEl = document.getElementById('detailCover');
   if (anime.localCover) {
     coverEl.innerHTML = `<img src="/covers/${path.basename(anime.localCover)}?w=540&q=80" alt="${escAttr(anime.title)}">`;
@@ -139,33 +153,116 @@ function renderDetail() {
 
   document.getElementById('detailTitle').textContent = anime.bangumiTitle || anime.title;
 
+  // ─── Info panel ───
   const ratingEl = document.getElementById('detailRating');
   ratingEl.textContent = anime.rating ? `★ ${anime.rating}` : '暂无评分';
 
   const seasonEl = document.getElementById('detailSeason');
-  seasonEl.textContent = anime.season ? `Season ${anime.season}` : '';
-  seasonEl.style.display = anime.season ? '' : 'none';
+  if (isArchiveMode) {
+    seasonEl.style.display = 'none';
+  } else {
+    seasonEl.textContent = anime.season ? `Season ${anime.season}` : '';
+    seasonEl.style.display = anime.season ? '' : 'none';
+  }
 
   const statusEl = document.getElementById('detailStatus');
-  statusEl.textContent = anime.downloaded ? '已下载' : '未下载';
-  statusEl.className = `status-badge ${anime.downloaded ? 'downloaded' : 'deleted'}`;
+  if (isArchiveMode) {
+    statusEl.textContent = '已归档';
+    statusEl.className = 'status-badge deleted';
+  } else {
+    statusEl.textContent = anime.downloaded ? '已下载' : '未下载';
+    statusEl.className = `status-badge ${anime.downloaded ? 'downloaded' : 'deleted'}`;
+  }
 
   const summaryEl = document.getElementById('detailSummary');
   summaryEl.textContent = anime.summary || '暂无简介';
 
+  // ─── Actions & metadata ───
   document.getElementById('bangumiSearchResults').innerHTML = '';
   document.getElementById('bangumiEditForm').style.display = 'none';
   document.getElementById('bangumiEditKeyword').value = '';
 
   const fetchBtn = document.getElementById('btnFetchBangumi');
-  if (fetchBtn) {
-    fetchBtn.style.display = 'inline-flex';
-    fetchBtn.disabled = false;
+  const deleteBtn = document.getElementById('btnDeleteAnime');
+  const writeBtn = document.getElementById('btnWriteMemory');
+
+  if (isArchiveMode) {
+    if (fetchBtn) fetchBtn.style.display = 'none';
+    if (deleteBtn) deleteBtn.style.display = 'none';
+    if (writeBtn) {
+      writeBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>编辑感想`;
+      writeBtn.style.display = 'inline-flex';
+    }
+  } else {
+    if (fetchBtn) { fetchBtn.style.display = 'inline-flex'; fetchBtn.disabled = false; }
+    if (deleteBtn) deleteBtn.style.display = 'inline-flex';
+    if (writeBtn) {
+      writeBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>写感想`;
+      writeBtn.style.display = 'inline-flex';
+    }
   }
 
-  renderWatchCard(anime);
-  renderEpisodeHeatmap(anime);
+  // ─── Right column modules ───
+  if (isArchiveMode) {
+    renderArchiveDetail(anime);
+  } else {
+    document.getElementById('archiveDetail').style.display = 'none';
+    document.getElementById('watchCard').style.display = '';
+    document.getElementById('episodeHeatmap').style.display = '';
+    document.getElementById('watchStats').style.display = '';
+    // Remove archive layout class
+    const layoutEl = document.querySelector('.detail-layout');
+    if (layoutEl) layoutEl.classList.remove('detail-layout--archive');
+    renderWatchCard(anime);
+    renderEpisodeHeatmap(anime);
+  }
   renderWatchStats(anime);
+}
+
+function renderArchiveDetail(anime) {
+  // Switch layout to archive magazine mode
+  const layoutEl = document.querySelector('.detail-layout');
+  if (layoutEl) layoutEl.classList.add('detail-layout--archive');
+
+  // Hide library right-column modules
+  document.getElementById('watchCard').style.display = 'none';
+  document.getElementById('episodeHeatmap').style.display = 'none';
+  document.getElementById('watchStats').style.display = 'none';
+
+  const archiveEl = document.getElementById('archiveDetail');
+  archiveEl.style.display = 'block';
+
+  const memory = archiveMemoryData || {};
+  const thoughts = memory.thoughts || '';
+  const notes = memory.notes || '';
+  const rating = memory.rating || null;
+  const dateStr = memory.watchedAt
+    ? new Date(memory.watchedAt).toLocaleDateString('zh-CN', {
+        year: 'numeric', month: 'long', day: 'numeric'
+      })
+    : '';
+
+  // Essay / thoughts
+  document.getElementById('archiveThoughts').textContent = thoughts || '暂无感想';
+
+  // Rating
+  document.getElementById('archiveRating').textContent = rating ? '★ ' + rating : '——';
+
+  // Date
+  document.getElementById('archiveDate').textContent = dateStr || '——';
+
+  // Episode count
+  const epCount = (anime.episodes && anime.episodes.length) || archiveMemoryData?.episodeCount || '—';
+  document.getElementById('archiveEpisodes').textContent = epCount !== '—' ? '全 ' + epCount + ' 集' : '—';
+
+  // Notes
+  const notesEl = document.getElementById('archiveNotes');
+  if (notes) {
+    notesEl.style.display = 'block';
+    document.getElementById('archiveNotesContent').textContent = notes;
+  } else {
+    notesEl.style.display = 'none';
+  }
 }
 
 function findWatchEpisode(anime) {
@@ -273,7 +370,7 @@ let heatmapResizeTimer = null;
 window.addEventListener('resize', () => {
   clearTimeout(heatmapResizeTimer);
   heatmapResizeTimer = setTimeout(() => {
-    if (currentAnime && document.getElementById('detailView').classList.contains('hidden') === false) {
+    if (currentAnime && !isArchiveMode && document.getElementById('detailView').classList.contains('hidden') === false) {
       renderEpisodeHeatmap(currentAnime);
     }
   }, 200);
@@ -637,10 +734,27 @@ function findCurrentLibraryIndex() {
   return libraryData.findIndex(a => a.id === currentAnime.id);
 }
 
+function findCurrentMemoryIndex() {
+  if (!currentAnime) return -1;
+  if (typeof memoriesData === 'undefined' || !memoriesData.length) return -1;
+  return memoriesData.findIndex(m => m.animeId === currentAnime.id);
+}
+
 let isSliding = false;
 
 function goPrev() {
   if (isSliding) return;
+  if (isArchiveMode) {
+    const idx = findCurrentMemoryIndex();
+    if (idx === -1) return;
+    const prevIdx = idx === 0 ? memoriesData.length - 1 : idx - 1;
+    const prev = memoriesData[prevIdx];
+    if (prev) {
+      showToast(`← ${prev.bangumiTitle || prev.title}`);
+      slideToAnime(prev.animeId, 'prev');
+    }
+    return;
+  }
   const idx = findCurrentLibraryIndex();
   if (idx === -1) return;
   const prevIdx = idx === 0 ? libraryData.length - 1 : idx - 1;
@@ -653,6 +767,17 @@ function goPrev() {
 
 function goNext() {
   if (isSliding) return;
+  if (isArchiveMode) {
+    const idx = findCurrentMemoryIndex();
+    if (idx === -1) return;
+    const nextIdx = idx === memoriesData.length - 1 ? 0 : idx + 1;
+    const next = memoriesData[nextIdx];
+    if (next) {
+      showToast(`${next.bangumiTitle || next.title} →`);
+      slideToAnime(next.animeId, 'next');
+    }
+    return;
+  }
   const idx = findCurrentLibraryIndex();
   if (idx === -1) return;
   const nextIdx = idx === libraryData.length - 1 ? 0 : idx + 1;
@@ -687,7 +812,24 @@ async function slideToAnime(id, direction) {
   resetDetailEnter();
   stopDetailRefresh();
   try {
-    currentAnime = await API.get(`/api/anime/${encodeURIComponent(id)}`);
+    if (isArchiveMode) {
+      const memory = memoriesData.find(m => m.animeId === id);
+      if (!memory) throw new Error('归档记录不存在');
+      archiveMemoryData = memory;
+      currentAnime = {
+        id: memory.animeId,
+        title: memory.title,
+        bangumiTitle: memory.bangumiTitle || memory.title,
+        localCover: memory.coverLocal,
+        rating: memory.rating || null,
+        summary: memory.thoughts || '暂无简介',
+        season: null,
+        episodes: [],
+        downloaded: false,
+      };
+    } else {
+      currentAnime = await API.get(`/api/anime/${encodeURIComponent(id)}`);
+    }
     renderDetail();
     showView('detail');
     const wrap = document.getElementById('detailCover');
@@ -696,7 +838,7 @@ async function slideToAnime(id, direction) {
       wrap.style.transform = 'scale(1)';
     }
     document.getElementById('headerTitle').textContent = currentAnime.bangumiTitle || currentAnime.title;
-    startDetailRefresh();
+    if (!isArchiveMode) startDetailRefresh();
   } catch (e) {
     showToast('加载详情失败: ' + e.message);
     isSliding = false;

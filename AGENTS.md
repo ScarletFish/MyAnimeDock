@@ -221,6 +221,41 @@ mpv 模式下自动记录播放进度到 `anime-data.json`。
 - **渐进增强**：先做本地管理，再打通外部同步
 - **尊重用户数据**：删除本地文件 ≠ 删除记录，归档自动保留
 
+## Tauri 迁移规划
+
+### 架构路线
+
+Tauri 作为**桌面壳**，Node.js 后端以 **sidecar 进程** 方式运行。不重写 Rust 后端。
+
+```
+Tauri (窗口壳 + 系统托盘 + 自动更新)
+  └── Sidecar: Node.js server (现有 server.js，不变)
+        └── HTTP API (:3456)
+              └── WebView: 现有前端 (HTML/CSS/JS，不变)
+```
+
+### 理由
+
+- **anitomy** 无原生 Rust 替代的风险已排除（`anitomy-pure` crate 存在），但全 Rust 重写 ~1700 行后端代码需要 40-60 小时熟练工时，无近期的用户收益
+- **Sidecar 路线**让现有功能完全不变，Tauri 只解决桌面壳问题
+- 未来可按模块渐进迁移到 Rust `tauri::command`（如图片处理 `sharp` → Rust `image` crate），不必一次性全端
+
+### 迁移步骤
+
+1. **Tauri 初始化** — `npm create tauri-app`，配置窗口（标题、图标、尺寸）
+2. **Sidecar 集成** — 将 `npm start` 启动的 Node 服务注册为 Tauri sidecar，配置 `tauri.conf.json > bundle > externalBin`
+3. **前端适配** — 前端 API 地址改为 Tauri IPC 或保持 localhost:3456
+4. **系统集成** — 托盘图标（退出/重启）、任务栏进度、协议关联
+5. **自动更新** — Tauri updater 配置（GitHub Releases）
+6. **打包** — 替代 pkg，原生安装包（MSI/NSIS for Windows）
+7. **可选模块迁移** — sharp → Rust `image` crate（如 sidecar 中仍有 sharp 问题）
+
+### 注意事项
+
+- `sharp` 在 sidecar 中仍有原生模块问题，可移入 Rust 端通过 Tauri IPC 调用
+- `config.json` 和 `anime-data.json` 路径策略需要对齐 Tauri 的 `app_data_dir`
+- 前端 `public/` 目录直接放入 Tauri 的 `src-tauri/` 或配置为前端资源路径
+
 ## Frontend Conventions
 
 - `camelCase` 命名，2 空格缩进

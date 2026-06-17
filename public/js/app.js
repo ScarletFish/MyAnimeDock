@@ -47,14 +47,14 @@ async function openSettings() {
     document.getElementById('settingsMediaDir').value = config.mediaDir || '';
     document.getElementById('settingsTheme').value = localStorage.getItem('theme') || config.theme || 'dark';
     document.getElementById('settingsPlayerMode').value = config.playerMode || 'system';
-    document.getElementById('settingsMpvPath').value = config.mpvPath || 'mpv';
     document.getElementById('mpvPathGroup').style.display =
       config.playerMode === 'mpv' ? '' : 'none';
-    document.getElementById('settingsTmdbApiKey').value = config.tmdbApiKey || '';
-    document.getElementById('settingsScraperBangumi').value = config.scrapers?.bangumi?.enabled ? 'enabled' : 'disabled';
-    document.getElementById('settingsScraperTmdb').value = config.scrapers?.tmdb?.enabled ? 'enabled' : 'disabled';
     document.getElementById('settingsAutoMark').checked = config.autoMarkWatched !== false;
     document.getElementById('settingsError').textContent = '';
+
+    // Render API sources
+    renderApiSources(config.apiSources || []);
+
     document.getElementById('settingsModal').classList.add('show');
   } catch (e) {
     showToast('加载设置失败: ' + e.message);
@@ -65,19 +65,154 @@ function closeSettings() {
   document.getElementById('settingsModal').classList.remove('show');
 }
 
+function renderApiSources(sources) {
+  const container = document.getElementById('apiSourcesList');
+  if (!container) return;
+
+  if (sources.length === 0) {
+    sources = [{ type: 'bangumi', url: 'https://api.bangumi.one', key: '' }];
+  }
+
+  let html = '';
+  sources.forEach((src, i) => {
+    const isBangumi = src.type === 'bangumi';
+    const typeLabel = isBangumi ? 'Bangumi' : 'TMDB';
+    html += `
+      <div class="api-source-card" draggable="true" data-index="${i}"
+        ondragstart="onApiSourceDragStart(event, ${i})"
+        ondragover="onApiSourceDragOver(event)"
+        ondrop="onApiSourceDrop(event, ${i})"
+        ondragend="onApiSourceDragEnd(event)">
+        <div class="api-source-drag" title="拖拽排序">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="5" r="1.5"/><circle cx="15" cy="5" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="19" r="1.5"/><circle cx="15" cy="19" r="1.5"/></svg>
+        </div>
+        <div class="api-source-body">
+          <div class="api-source-type">
+            <span class="api-source-badge api-source-badge--${isBangumi ? 'bangumi' : 'tmdb'}">${typeLabel}</span>
+            <select class="api-source-type-select" onchange="onApiSourceTypeChange(${i}, this)">
+              <option value="bangumi" ${isBangumi ? 'selected' : ''}>Bangumi</option>
+              <option value="tmdb" ${!isBangumi ? 'selected' : ''}>TMDB</option>
+            </select>
+          </div>
+          <div class="api-source-fields">
+            <input type="text" class="api-source-url" value="${escAttr(src.url)}" placeholder="API 地址" onchange="onApiSourceChange(${i}, 'url', this.value)">
+            <div class="api-source-key-row">
+              <input type="${isBangumi ? 'text' : 'password'}" class="api-source-key" value="${escAttr(src.key || '')}" placeholder="${isBangumi ? '无需密钥（可选）' : 'API 密钥'}" onchange="onApiSourceChange(${i}, 'key', this.value)">
+            </div>
+          </div>
+        </div>
+        <button class="api-source-remove" onclick="removeApiSource(${i})" title="移除此源"
+          ${sources.length <= 1 ? 'style="opacity:0.3"' : ''}>
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>`;
+  });
+  container.innerHTML = html;
+  document.getElementById('settingsError').textContent = '';
+}
+
+function addApiSource(type) {
+  const defaults = {
+    bangumi: { type: 'bangumi', url: 'https://api.bangumi.one', key: '' },
+    tmdb: { type: 'tmdb', url: 'https://api.themoviedb.org/3', key: '' },
+  };
+  const sources = getApiSourcesFromDOM();
+  sources.push({ ...(defaults[type] || defaults.bangumi) });
+  renderApiSources(sources);
+}
+
+function removeApiSource(index) {
+  const container = document.getElementById('apiSourcesList');
+  const cards = container.querySelectorAll('.api-source-card');
+  if (cards.length <= 1) return;
+  const sources = getApiSourcesFromDOM();
+  sources.splice(index, 1);
+  renderApiSources(sources);
+}
+
+function onApiSourceChange(index, field, value) {
+  const sources = getApiSourcesFromDOM();
+  sources[index][field] = value;
+}
+
+function onApiSourceTypeChange(index, select) {
+  const sources = getApiSourcesFromDOM();
+  sources[index].type = select.value;
+  // Reset key when switching type
+  if (select.value === 'bangumi') {
+    sources[index].key = '';
+  }
+  renderApiSources(sources);
+}
+
+// --- Drag & Drop ---
+let _dragIndex = null;
+
+function onApiSourceDragStart(event, index) {
+  _dragIndex = index;
+  event.dataTransfer.effectAllowed = 'move';
+  event.dataTransfer.setData('text/plain', String(index));
+  event.target.classList.add('api-source-card--dragging');
+}
+
+function onApiSourceDragOver(event) {
+  event.preventDefault();
+  event.dataTransfer.dropEffect = 'move';
+  const card = event.target.closest('.api-source-card');
+  if (card) card.classList.add('api-source-card--drag-over');
+}
+
+function onApiSourceDrop(event, dropIndex) {
+  event.preventDefault();
+  const sources = getApiSourcesFromDOM();
+  if (_dragIndex !== null && _dragIndex !== dropIndex) {
+    const [moved] = sources.splice(_dragIndex, 1);
+    sources.splice(dropIndex, 0, moved);
+    renderApiSources(sources);
+  }
+  _dragIndex = null;
+  document.querySelectorAll('.api-source-card').forEach(c => {
+    c.classList.remove('api-source-card--dragging', 'api-source-card--drag-over');
+  });
+}
+
+function onApiSourceDragEnd(event) {
+  _dragIndex = null;
+  document.querySelectorAll('.api-source-card').forEach(c => {
+    c.classList.remove('api-source-card--dragging', 'api-source-card--drag-over');
+  });
+}
+
+function getApiSourcesFromDOM() {
+  const cards = document.querySelectorAll('.api-source-card');
+  return Array.from(cards).map(card => {
+    const typeSelect = card.querySelector('.api-source-type-select');
+    const urlInput = card.querySelector('.api-source-url');
+    const keyInput = card.querySelector('.api-source-key');
+    return {
+      type: typeSelect.value,
+      url: urlInput.value.trim(),
+      key: keyInput.value.trim(),
+    };
+  }).filter(s => s.url); // Only keep non-empty URL sources
+}
+
 async function saveSettings() {
   const mediaDir = document.getElementById('settingsMediaDir').value.trim();
   const theme = document.getElementById('settingsTheme').value;
   const playerMode = document.getElementById('settingsPlayerMode').value;
   const mpvPath = document.getElementById('settingsMpvPath').value.trim();
-  const tmdbApiKey = document.getElementById('settingsTmdbApiKey').value.trim();
-  const scraperBangumi = document.getElementById('settingsScraperBangumi').value;
-  const scraperTmdb = document.getElementById('settingsScraperTmdb').value;
 
   applyTheme(theme);
 
   if (!mediaDir) {
     document.getElementById('settingsError').textContent = '请输入媒体目录路径';
+    return;
+  }
+
+  const apiSources = getApiSourcesFromDOM();
+  if (apiSources.length === 0) {
+    document.getElementById('settingsError').textContent = '至少需要一个 API 源';
     return;
   }
 
@@ -88,11 +223,7 @@ async function saveSettings() {
       mpvPath, 
       theme,
       autoMarkWatched: document.getElementById('settingsAutoMark').checked,
-      tmdbApiKey,
-      scrapers: {
-        bangumi: { enabled: scraperBangumi === 'enabled' },
-        tmdb: { enabled: scraperTmdb === 'enabled' },
-      },
+      apiSources,
     });
     showToast('设置已保存');
     closeSettings();
@@ -128,7 +259,11 @@ async function quitApp() {
 
 function goBack() {
   if (typeof stopDetailRefresh === 'function') stopDetailRefresh();
-  showView('library');
+  isArchiveMode = false;
+  const layoutEl = document.querySelector('.detail-layout');
+  if (layoutEl) layoutEl.classList.remove('detail-layout--archive');
+  const target = typeof detailSourceView !== 'undefined' ? detailSourceView : 'library';
+  showView(target);
 }
 
 // Toast

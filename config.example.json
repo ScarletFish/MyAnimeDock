@@ -4,9 +4,7 @@
   "mpvPath": "mpv",
   "theme": "dark",
   "autoMarkWatched": true,
-  "scrapers": {
-    "bangumi": { "enabled": true, "apiBase": "https://api.bangumi.one" },
-    "tmdb": { "enabled": false }
-  },
-  "tmdbApiKey": ""
+  "apiSources": [
+    { "type": "bangumi", "url": "https://api.bangumi.one", "key": "" }
+  ]
 }

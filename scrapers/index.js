@@ -467,33 +467,69 @@ class ScraperRegistry {
     return [...this.scrapers];
   }
 
+  /**
+   * Get list of active sources from config.apiSources
+   */
+  getSources(config) {
+    if (!config) return [];
+    if (config.apiSources && Array.isArray(config.apiSources)) {
+      return config.apiSources;
+    }
+    // Legacy format fallback
+    const sources = [];
+    if (config.scrapers?.bangumi?.enabled !== false) {
+      sources.push({
+        type: 'bangumi',
+        url: config.scrapers.bangumi?.apiBase || 'https://api.bangumi.one',
+        key: '',
+      });
+    }
+    if (config.scrapers?.tmdb?.enabled !== false && config.tmdbApiKey) {
+      sources.push({
+        type: 'tmdb',
+        url: 'https://api.themoviedb.org/3',
+        key: config.tmdbApiKey,
+      });
+    }
+    return sources;
+  }
+
   getEnabled(config) {
-    return this.scrapers.filter(s => {
-      if (!config.scrapers) return true;
-      const cfg = config.scrapers[s.name];
-      if (cfg?.enabled === false) return false;
-      // enabled() 同时也让 scraper 从 config 中读取自身配置（如 apiBase）
-      return s.enabled(config);
-    });
+    const sources = this.getSources(config);
+    const available = new Set(sources.map(s => s.type));
+    return this.scrapers.filter(s => available.has(s.name));
   }
 
   async searchAll(keyword, config) {
     const results = [];
-    for (const scraper of this.getEnabled(config)) {
+    const sources = this.getSources(config);
+
+    for (const source of sources) {
+      const scraper = this.get(source.type);
+      if (!scraper) continue;
       try {
-        const res = await scraper.search(keyword);
-        results.push(...res.map(r => ({ ...r, source: scraper.name })));
+        const res = await scraper.search(keyword, source);
+        results.push(...res.map(r => ({ ...r, source: scraper.name, _sourceUrl: source.url })));
       } catch (e) {
-        console.error(`[${scraper.name}] search failed:`, e.message);
+        // Try next source on failure
+        console.error(`[${source.type} @ ${source.url}] search failed:`, e.message);
       }
     }
     return results;
   }
 
+  /**
+   * Find the first matching source for a scraper type and fetch metadata
+   */
   async fetchMetadata(scraperName, title, coverDir, subjectId, config) {
     const scraper = this.get(scraperName);
     if (!scraper) throw new Error(`Scraper not found: ${scraperName}`);
-    if (!scraper.enabled(config)) throw new Error(`Scraper ${scraperName} not configured`);
+
+    const sources = this.getSources(config).filter(s => s.type === scraperName);
+    const source = sources[0]; // Use first matching source
+    if (!source) throw new Error(`No configured source for ${scraperName}`);
+
+    if (typeof scraper.setSource === 'function') scraper.setSource(source);
     return scraper.fetchMetadata(title, coverDir, subjectId);
   }
 }

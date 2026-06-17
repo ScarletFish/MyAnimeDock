@@ -188,6 +188,11 @@ function buildLeaf(dirPath, name, parentName, parentChain) {
   const videos = findVideos(dirPath);
   if (videos.length === 0) return null;
   let parsed = parseFolderName(name);
+  // If parsed title is just a season indicator (e.g. "Season 1", "S1"),
+  // the parent folder holds the real anime title — fall through to parent chain lookup
+  if (parsed.title && /^(?:Season\s*\d+|S\d+|第\d+季)$/i.test(parsed.title.trim())) {
+    parsed.title = null;
+  }
   if (!parsed.title) {
     const chain = parentChain || [];
     for (let i = chain.length - 1; i >= 0; i--) {

@@ -4,6 +4,34 @@ let contextMenuAnimeId = null;
 let cardScrollTrigger = null;
 let cardTween = null;
 
+// Grid zoom
+const GRID_ZOOM_MIN = 0.5;
+const GRID_ZOOM_MAX = 2.0;
+const GRID_BASE_SIZE = 170;
+let gridZoom = parseFloat(localStorage.getItem('gridZoom') || '1');
+
+function applyGridZoom() {
+  const grid = document.getElementById('libraryGrid');
+  if (!grid) return;
+  const size = Math.round(GRID_BASE_SIZE * gridZoom);
+  grid.style.setProperty('--grid-min', size + 'px');
+  grid.style.gridTemplateColumns = `repeat(auto-fill, minmax(${size}px, 1fr))`;
+}
+
+function showZoomLevel() {
+  let el = document.getElementById('zoomLevel');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'zoomLevel';
+    el.className = 'zoom-level';
+    document.querySelector('.main-content').appendChild(el);
+  }
+  el.textContent = Math.round(gridZoom * 100) + '%';
+  el.classList.add('show');
+  clearTimeout(el._hideTimer);
+  el._hideTimer = setTimeout(() => el.classList.remove('show'), 1000);
+}
+
 gsap.registerPlugin(ScrollTrigger);
 
 function initSortSelect() {
@@ -64,12 +92,12 @@ function renderLibrary(filter = '') {
   empty.style.display = 'none';
   grid.innerHTML = filtered.map((anime) => {
     const coverSrc = anime.localCover ? `/covers/${path.basename(anime.localCover)}?w=400&q=75` : '';
-    const downloaded = anime.downloaded;
     const id = escAttr(anime.id);
+    const status = getWatchStatus(anime);
     return `
       <div class="anime-card" onclick="navigateToDetail('${id}', this)" oncontextmenu="showContextMenu(event, '${id}')">
         ${coverSrc
-          ? `<img src="${coverSrc}" loading="lazy" decoding="async" alt="${escAttr(anime.title)}"${!downloaded ? ' style="filter:grayscale(100%) opacity(0.5)"' : ''}>`
+          ? `<img src="${coverSrc}" loading="lazy" decoding="async" alt="${escAttr(anime.title)}">`
           : `<div class="gray-cover"><svg viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8 12.5v-9l6 4.5-6 4.5z"/></svg></div>`
         }
         <div class="overlay">
@@ -77,7 +105,7 @@ function renderLibrary(filter = '') {
           <div class="meta">
             ${anime.rating ? `<span class="rating-badge">★ ${anime.rating}</span>` : ''}
             ${anime.season ? `<span class="season-badge">S${anime.season}</span>` : ''}
-            <span class="status-badge ${downloaded ? 'downloaded' : 'deleted'}">${downloaded ? '已下载' : '未下载'}</span>
+            <span class="status-badge ${status.cls}">${status.label}</span>
           </div>
         </div>
       </div>
@@ -124,6 +152,7 @@ function renderLibrary(filter = '') {
       }
     });
   }
+  applyGridZoom();
 }
 
 function filterLibrary() {
@@ -220,6 +249,33 @@ document.addEventListener('contextmenu', (e) => {
 });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideContextMenu(); });
 document.getElementById('ctxDelete').addEventListener('click', contextDeleteAnime);
+document.getElementById('ctxArchive').addEventListener('click', contextArchiveAnime);
+
+function getWatchStatus(anime) {
+  const eps = anime.episodes;
+  if (!eps || eps.length === 0) return { label: '未观看', cls: 'unwatched' };
+  const n = eps.filter(ep => ep.watched).length;
+  if (n === 0) return { label: '未观看', cls: 'unwatched' };
+  if (n === eps.length) return { label: '已看完', cls: 'completed' };
+  return { label: '观看中', cls: 'watching' };
+}
+
+async function contextArchiveAnime() {
+  const animeId = contextMenuAnimeId;
+  hideContextMenu();
+  if (!animeId) return;
+  const anime = libraryData.find(a => a.id === animeId);
+  const title = anime ? anime.title : animeId;
+  if (!confirm(`将「${title}」归档到收藏？\n条目将从资料库移除，观看记录保留在归档页。`)) return;
+  try {
+    await API.del(`/api/anime/${encodeURIComponent(animeId)}`);
+    showToast('已归档');
+    loadLibrary();
+    loadMemories();
+  } catch (e) {
+    showToast('归档失败: ' + e.message);
+  }
+}
 
 function navigateToDetail(id, cardEl) {
   const img = cardEl.querySelector('img');
@@ -297,3 +353,22 @@ async function syncLibrary() {
     btn.innerHTML = originalHtml;
   }
 }
+
+// --- Grid Zoom: wheel listener (delta-proportional) ---
+document.getElementById('libraryGrid').addEventListener('wheel', function(e) {
+  if (!e.ctrlKey && !e.metaKey) return;
+  e.preventDefault();
+  // deltaY proportional: mouse notch ~100px → 0.08, trackpad light ~10px → 0.008
+  const absDelta = Math.min(Math.abs(e.deltaY), 300);
+  const zoomDelta = absDelta * 0.0008 * (e.deltaY > 0 ? -1 : 1);
+  const newZoom = Math.max(GRID_ZOOM_MIN, Math.min(GRID_ZOOM_MAX, gridZoom + zoomDelta));
+  if (newZoom !== gridZoom) {
+    gridZoom = newZoom;
+    localStorage.setItem('gridZoom', gridZoom);
+    applyGridZoom();
+    showZoomLevel();
+  }
+}, { passive: false });
+
+// Apply persisted zoom on load
+applyGridZoom();

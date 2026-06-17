@@ -127,6 +127,38 @@ npm run build
 
 **注意**：sharp 原生模块需要构建后手动复制到 `dist/node_modules/`（参考 `build.bat`）。
 
+## Tauri 桌面应用（规划中）
+
+未来将迁移到 **Tauri** 作为桌面壳，Node.js 后端以 sidecar 进程运行，前端不变。
+
+### 架构
+
+```
+Tauri (窗口壳 + 系统托盘 + 自动更新)
+  └── Sidecar: Node.js server (现有 server.js，不变)
+        └── HTTP API (:3456)
+              └── WebView: 现有前端 (HTML/CSS/JS，不变)
+```
+
+### 优势
+
+- **解决 pkg 痛点**：sharp 原生模块不再需要手动复制，Tauri 原生打包（MSI/NSIS）
+- **系统集成**：托盘图标、任务栏进度、协议关联、自动更新
+- **渐进迁移**：可逐步将模块用 Rust `tauri::command` 重写（如图片处理），无需一次性全端
+- **前端不变**：现有 HTML/CSS/JS 代码直接迁入 WebView
+
+### 迁移路线
+
+| 步骤 | 内容 |
+|------|------|
+| 1 | `npm create tauri-app` 初始化，配置窗口、标题、图标 |
+| 2 | 注册 Node.js server 为 Tauri sidecar（`tauri.conf.json > bundle > externalBin`） |
+| 3 | 前端 API 地址适配 Tauri IPC 或保留 localhost:3456 |
+| 4 | 实现系统托盘、任务栏进度、文件协议关联 |
+| 5 | 配置自动更新（GitHub Releases 通道） |
+| 6 | 替代 pkg 构建，输出原生安装包 |
+| 7 | （可选）sharp → Rust `image` crate，通过 Tauri IPC 调用 |
+
 ## 技术栈
 
 - **后端**: Node.js（无框架，原生 `http.createServer`）

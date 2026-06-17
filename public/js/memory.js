@@ -1,4 +1,4 @@
-// Memory functionality
+// Memory functionality (archive poster wall)
 let memoriesData = [];
 let currentMemoryAnimeId = null;
 
@@ -7,43 +7,107 @@ async function loadMemories() {
     memoriesData = await API.get('/api/memories');
     renderMemories();
   } catch (e) {
-    showToast('加载观看历史失败: ' + e.message);
+    showToast('加载归档失败: ' + e.message);
   }
 }
 
 function renderMemories() {
-  const list = document.getElementById('memoriesList');
+  const grid = document.getElementById('memoriesGrid');
   const empty = document.getElementById('memoriesEmpty');
+  const statsBar = document.getElementById('memoryStats');
 
   if (memoriesData.length === 0) {
-    list.innerHTML = '';
+    grid.innerHTML = '';
+    if (statsBar) statsBar.style.display = 'none';
     empty.style.display = 'flex';
     return;
   }
 
   empty.style.display = 'none';
-  list.innerHTML = memoriesData.map(m => {
+
+  // Stats
+  if (statsBar) {
+    statsBar.style.display = 'flex';
+    document.getElementById('memoryCount').textContent = memoriesData.length;
+    const rated = memoriesData.filter(m => m.rating);
+    const avgRating = rated.length > 0
+      ? rated.reduce((s, m) => s + m.rating, 0) / rated.length
+      : 0;
+    document.getElementById('memoryAvgRating').textContent = avgRating > 0
+      ? '★ ' + avgRating.toFixed(1)
+      : '--';
+  }
+
+  grid.innerHTML = memoriesData.map(m => {
     const coverSrc = m.coverLocal ? `/covers/${path.basename(m.coverLocal)}` : '';
     const dateStr = m.watchedAt ? new Date(m.watchedAt).toLocaleDateString('zh-CN') : '';
-    const ratingStars = m.rating ? '★'.repeat(Math.floor(m.rating)) + (m.rating % 1 ? '☆' : '') : '';
+    const ratingStr = m.rating ? '★ ' + m.rating + '/10' : '';
+    const thoughtsPreview = m.thoughts ? escHtml(m.thoughts) : '';
+    const title = escHtml(m.bangumiTitle || m.title);
+
+    let coverHtml;
+    if (coverSrc) {
+      coverHtml = `<div class="memory-card-cover"><img src="${coverSrc}" loading="lazy" decoding="async" alt="${title}"></div>`;
+    } else {
+      coverHtml = `<div class="memory-card-cover"><div class="memory-card-placeholder"><svg viewBox="0 0 24 24" width="40" height="40" stroke="var(--fg-muted)" fill="none" stroke-width="1.5" opacity="0.3"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8 12.5v-9l6 4.5-6 4.5z"/></svg></div></div>`;
+    }
+
     return `
-      <div class="memory-card" onclick="showDetail('${escAttr(m.animeId)}')">
-        <div class="memory-cover${!coverSrc ? ' grayed' : ''}">
-          ${coverSrc
-            ? `<img src="${coverSrc}" loading="lazy" decoding="async">`
-            : `<div class="gray-cover" style="height:100%;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" width="32" height="32" fill="#555"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg></div>`
-          }
-        </div>
-        <div class="memory-info">
-          <h3>${escHtml(m.bangumiTitle || m.title)}</h3>
-          ${m.rating ? `<div class="rating">${ratingStars} ${m.rating}/10</div>` : ''}
-          ${m.thoughts ? `<div class="thoughts">${escHtml(m.thoughts)}</div>` : ''}
-          <div class="date">${dateStr}</div>
+      <div class="memory-card" onclick="showMemoryDetail('${escAttr(m.animeId)}')">
+        ${coverHtml}
+        <div class="memory-card-overlay">
+          <h3>${title}</h3>
+          <div>
+            ${ratingStr ? `<span class="memory-card-rating">${ratingStr}</span>` : ''}
+            <span class="memory-card-date">${dateStr}</span>
+          </div>
+          ${thoughtsPreview ? `<div class="memory-card-thoughts">${thoughtsPreview}</div>` : ''}
         </div>
       </div>
     `;
   }).join('');
 }
+
+// ─── Archive Detail View ───
+
+function showMemoryDetail(animeId) {
+  const memory = memoriesData.find(m => m.animeId === animeId);
+  if (!memory) {
+    showToast('未找到归档记录');
+    return;
+  }
+
+  // Set archive mode flags (used by detail.js)
+  if (typeof isArchiveMode !== 'undefined') isArchiveMode = true;
+  archiveMemoryData = memory;
+
+  // Build a pseudo-anime from memory data for the detail view
+  const pseudoAnime = {
+    id: memory.animeId,
+    title: memory.title,
+    bangumiTitle: memory.bangumiTitle || memory.title,
+    localCover: memory.coverLocal,
+    rating: memory.rating || null,
+    summary: memory.thoughts || '暂无简介',
+    season: null,
+    episodes: [],
+    downloaded: false,
+  };
+
+  // Use the detail system
+  resetDetailEnter();
+  stopDetailRefresh();
+
+  currentAnime = pseudoAnime;
+  renderDetail();
+  showView('detail');
+  detailSourceView = 'memories';
+
+  // Override header to note it's in archive mode
+  document.getElementById('headerTitle').textContent = pseudoAnime.bangumiTitle || pseudoAnime.title;
+}
+
+// ─── Memory Editor ───
 
 function openMemoryEditor() {
   if (!currentAnime) return;
@@ -79,7 +143,20 @@ async function saveMemory() {
     });
     showToast('感想已保存');
     closeMemoryEditor();
-    loadMemories();
+
+    // Reload memory data and re-render
+    memoriesData = await API.get('/api/memories');
+
+    // If currently in archive detail view, update it
+    if (typeof isArchiveMode !== 'undefined' && isArchiveMode && currentAnime && currentAnime.id === currentMemoryAnimeId) {
+      const updated = memoriesData.find(m => m.animeId === currentMemoryAnimeId);
+      if (updated) {
+        archiveMemoryData = updated;
+        currentAnime.rating = updated.rating;
+        currentAnime.summary = updated.thoughts || '暂无简介';
+        renderDetail();
+      }
+    }
   } catch (e) {
     showToast('保存失败: ' + e.message);
   }

@@ -65,14 +65,32 @@ class BangumiScraper {
     this.apiBase = 'https://api.bangumi.one';
   }
 
+  /**
+   * Check if config has at least one bangumi source
+   */
   enabled(config) {
+    if (config?.apiSources) {
+      const src = config.apiSources.find(s => s.type === 'bangumi');
+      if (src?.url) this.apiBase = src.url.replace(/\/+$/, '');
+      return !!src;
+    }
+    // Legacy fallback
     if (config?.scrapers?.bangumi?.apiBase) {
       this.apiBase = config.scrapers.bangumi.apiBase.replace(/\/+$/, '');
     }
-    return true;
+    return config?.scrapers?.bangumi?.enabled !== false;
   }
 
-  async search(keyword) {
+  /**
+   * Set active source from apiSources entry
+   */
+  setSource(source) {
+    if (source?.url) this.apiBase = source.url.replace(/\/+$/, '');
+    return this;
+  }
+
+  async search(keyword, source) {
+    if (source) this.setSource(source);
     const url = `${this.apiBase}/v0/search/subjects`;
     const res = await tryFetch(url, {
       method: 'POST',

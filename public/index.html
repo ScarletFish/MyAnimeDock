@@ -29,12 +29,12 @@
         <path d="m21 21-4.35-4.35"></path>
       </svg>
     </button>
-    <button class="nav-btn active" id="btnLibrary" data-tip="资料库" onclick="showView('library')">
+    <button class="nav-btn active" id="btnLibrary" data-tip="动漫库" onclick="showView('library')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path>
       </svg>
     </button>
-    <button class="nav-btn" id="btnMemories" data-tip="观看历史" onclick="showView('memories')">
+    <button class="nav-btn" id="btnMemories" data-tip="归档" onclick="showView('memories')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M12 8v4l3 3"></path>
         <circle cx="12" cy="12" r="10"></circle>
@@ -128,7 +128,7 @@
   <!-- Library View -->
   <section class="view hidden" id="libraryView">
     <div class="view-header">
-      <h2>资料库</h2>
+      <h2>动漫库</h2>
       <div class="view-header-right">
         <select class="sort-select" id="librarySort" onchange="filterLibrary()">
           <option value="default">默认排序</option>
@@ -163,18 +163,28 @@
     </div>
   </section>
 
-  <!-- Memories View -->
+  <!-- Memories / Archive View -->
   <section class="view hidden" id="memoriesView">
     <div class="view-header">
-      <h2>观看历史</h2>
+      <h2>归档</h2>
     </div>
-    <div class="memories-container" id="memoriesList"></div>
+    <div class="memory-stats" id="memoryStats" style="display:none">
+      <div class="memory-stat memory-stat--accent">
+        <span class="memory-stat-num" id="memoryCount">0</span>
+        <span class="memory-stat-label">已归档</span>
+      </div>
+      <div class="memory-stat">
+        <span class="memory-stat-num" id="memoryAvgRating">--</span>
+        <span class="memory-stat-label">平均评分</span>
+      </div>
+    </div>
+    <div class="memory-masonry" id="memoriesGrid"></div>
     <div class="empty-state" id="memoriesEmpty" style="display:none">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M12 8v4l3 3"></path>
         <circle cx="12" cy="12" r="10"></circle>
       </svg>
-      <p>暂无观看记录</p>
+      <p>暂无归档记录</p>
     </div>
   </section>
 
@@ -278,6 +288,31 @@
             <div class="episode-heatmap-grid" id="episodeHeatmapGrid"></div>
           </div>
 
+          <!-- Archive Magazine (shown instead of watch card + ep heatmap in archive mode) -->
+          <div class="archive-magazine" id="archiveDetail" style="display:none">
+            <div class="archive-magazine-essay">
+              <div class="archive-magazine-thoughts" id="archiveThoughts"></div>
+            </div>
+            <div class="archive-magazine-meta">
+              <div class="archive-magazine-stat">
+                <span class="archive-magazine-stat-value" id="archiveRating"></span>
+                <span class="archive-magazine-stat-label">评分</span>
+              </div>
+              <div class="archive-magazine-stat">
+                <span class="archive-magazine-stat-value" id="archiveDate"></span>
+                <span class="archive-magazine-stat-label">观看日期</span>
+              </div>
+              <div class="archive-magazine-stat">
+                <span class="archive-magazine-stat-value" id="archiveEpisodes">—</span>
+                <span class="archive-magazine-stat-label">集数</span>
+              </div>
+            </div>
+            <div class="archive-magazine-notes" id="archiveNotes" style="display:none">
+              <div class="archive-magazine-notes-label">笔记</div>
+              <div class="archive-magazine-notes-content" id="archiveNotesContent"></div>
+            </div>
+          </div>
+
           <!-- Module 3: Watch Stats -->
           <div class="watch-stats" id="watchStats">
             <div class="watch-stats-header">
@@ -373,23 +408,19 @@
       <!-- Tab: 刮削 -->
       <div class="settings-panel" id="tab-scraper">
         <div class="form-group">
-          <label for="settingsTmdbApiKey">TMDB API Key</label>
-          <input type="password" id="settingsTmdbApiKey" placeholder="从 themoviedb.org 获取">
-          <p class="form-hint">启用 TMDB 刮削需要填入 API Key（可选）</p>
-        </div>
-        <div class="form-group">
-          <label>Bangumi 刮削</label>
-          <select id="settingsScraperBangumi">
-            <option value="enabled">启用</option>
-            <option value="disabled">禁用</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>TMDB 刮削</label>
-          <select id="settingsScraperTmdb">
-            <option value="enabled">启用</option>
-            <option value="disabled">禁用</option>
-          </select>
+          <label>API 源（按顺序匹配，可拖拽排序）</label>
+          <div id="apiSourcesList"></div>
+          <div style="display:flex;gap:6px;margin-top:8px">
+            <button class="btn" onclick="addApiSource('bangumi')" title="添加 Bangumi 源（默认镜像站）">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              添加 Bangumi
+            </button>
+            <button class="btn" onclick="addApiSource('tmdb')" title="添加 TMDB 源（需填入 API Key）">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              添加 TMDB
+            </button>
+          </div>
+          <p class="form-hint">拖拽调整顺序，匹配时从上到下依次尝试。Bangumi 无需密钥，TMDB 需填入 API Key。</p>
         </div>
       </div>
     </div>
@@ -417,6 +448,15 @@ function switchSettingsTab(btn, tab) {
 
 <!-- Context Menu -->
 <div class="context-menu" id="contextMenu">
+  <div class="context-menu-item" id="ctxArchive">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 8v13H3V8"></path>
+      <path d="M1 3h22v5H1z"></path>
+      <path d="M10 12h4"></path>
+    </svg>
+    归档
+  </div>
+  <div class="context-menu-divider"></div>
   <div class="context-menu-item context-menu-danger" id="ctxDelete">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M3 6h18"></path>

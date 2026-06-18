@@ -6,6 +6,7 @@ Vanilla JS SPA + Node.js HTTP server. 自托管动漫媒体库管理器。
 
 ```bash
 npm run dev:server   # Start Node.js server on port 3456
+npm run dev:server:watch  # Nodemon 自动重启（监听 server/ + public/ 变化）
 npm run dev:tauri    # Start Tauri dev window (requires server running first)
 npm run dev          # Start both server + Tauri concurrently
 npm run build        # Build pkg sidecar + Tauri MSI/NSIS installer
@@ -14,13 +15,14 @@ npm run build:tauri  # Build Tauri MSI/NSIS installer only
 npm run prisma:generate  # Regenerate Prisma client
 npm run prisma:migrate   # Create/apply Prisma migrations
 npm run prisma:studio    # Open Prisma Studio (SQLite browser)
+node scripts/migrate-to-sqlite.js  # 从 JSON 迁移数据到 SQLite（一次性）
 ```
 
 ## API Endpoints
 
 ```bash
 GET  /api/config              # Get config (+ dirValid)
-POST /api/config              # Update config (mediaDir, playerMode, mpvPath, theme, tmdbApiKey, scrapers)
+POST /api/config              # Update config (mediaDir, playerMode, mpvPath, theme, apiSources)
 GET  /api/browse?showExcluded # List scanned tree (flat leaves)
 GET  /api/scan                # SSE scan progress
 POST /api/import              # Import selected items
@@ -52,6 +54,7 @@ POST /api/memories            # Create/update memory
 ```
 server/            → Tauri sidecar (Node.js backend)
 ├── server.js      → HTTP server + REST API (@ :3456)
+├── db.js          → Prisma 封装层（loadData / syncToSqlite / shutdown）
 ├── scanner.js     → 扫描媒体目录，解析文件夹名（anitomy 增强）
 │   ├── scanMediaDirFlat() → 返回扁平 leaf 数组（含 parentChain）
 │   ├── buildLeaf()        → 单条目构造（parentChain 回溯处理 Season 文件夹）
@@ -82,10 +85,14 @@ public/            → 前端静态文件（无构建步骤）
     ├── detail.js      → 详情 + GSAP Flip Hero 动画 + 右侧 3 模块
     │                   （继续播放卡片 / 剧集热力图 / 观看统计图表）
     └── memory.js      → 观看记录
+scripts/            → 构建/迁移工具
+├── copy-sidecar-deps.js   → pkg 打包后复制原生模块（Prisma 引擎 + ffmpeg）
+└── migrate-to-sqlite.js   → JSON → SQLite 数据迁移（一次性）
 ```
 
 **数据持久化**: SQLite (Prisma ORM)，规范化表 (Anime, Episode, PlaySession, Memory) + JSON 列 (ScannedTree, Config)。
-运行时仍通过 `anime-data.json` 同步读写以保证旧格式兼容，长期目标是完全切换到 Prisma/SQLite。
+运行时保持 JSON + SQLite 双写：`saveData()` 同步写入 JSON（立刻落盘），异步同步到 SQLite（副本保证）。
+`init()` 时从 JSON 加载最新数据，再从 SQLite 回填确保一致性。
 
 **scannedTree 叶子节点字段**：
 ```json
@@ -121,7 +128,7 @@ public/            → 前端静态文件（无构建步骤）
 - **XSS 防护**: 所有用户数据用 `escHtml()` / `escAttr()` 包裹
 - **封面动画**: `detail.js` 中 `animateHeroCoverFlip()` — GSAP Flip，创建 `position:fixed` overlay，`Flip.getState()` → DOM 变化 → `Flip.from(state, { absolute: true })`
 - **主题**: CSS 自定义属性，`[data-theme="light"]` 覆盖深色变量
-- **图片动态缩放**: sharp 实时处理，列表缩略图 `/covers/xxx.jpg?w=400&q=75`，详情页 `/covers/xxx.jpg?w=540&q=80`
+- **图片动态缩放**: ffmpeg 实时缩放（替代已移除的 sharp），列表缩略图 `/covers/xxx.jpg?w=400&q=75`，详情页 `/covers/xxx.jpg?w=540&q=80`；首请求生成后缓存到 `covers/.resized/`
 - **视频缩略图**: ffmpeg `-ss {time} -i "{path}" -vframes 1 -q:v 5` 截帧，缓存到 `thumbs/`，API `/api/thumbnail?path=&time=`
 - **播放会话追踪**: mpv 模式在服务器内存维护 `activePlays` Map（`filePath → {sessionId, episode, anime}`），每 10s `saveData` 更新进度，mpv 关闭时 `final: true` 标记落盘
 - **剧集热力图**: `detail.js` 中 `renderEpisodeHeatmap()` — 10 列色块网格（未观看/观看中/已观看），`addEventListener('click')` 绑定播放（此组件有意违反 onclick 约定）
@@ -136,6 +143,7 @@ public/            → 前端静态文件（无构建步骤）
 - **滚动条隐藏**: `html { overflow: hidden }` 禁用页面滚动条；`.main-content` 设为独立滚动容器，`scrollbar-width: none` + `::-webkit-scrollbar { display: none }` 彻底隐藏
 - **多源刮削**: `scrapers/index.js` → `ScraperRegistry` 统一注册、优先级、批量搜索；`bangumi.js`/`tmdb.js` 实现统一接口
 - **内联操作**: 卡片内直接显示「取消导入」「排除」「取消排除」按钮，无需详情抽屉
+- **数据持久化双写**: `saveData()` 同步写 JSON（立即落盘）+ 异步同步到 SQLite；`init()` 优先加载 JSON（最新版本），再从 SQLite 回填确保一致性
 
 ## Config
 
@@ -159,7 +167,7 @@ public/            → 前端静态文件（无构建步骤）
 
 ## Play Sessions（播放会话追踪）
 
-mpv 模式下自动记录播放进度到 `anime-data.json`。
+mpv 模式下自动记录播放进度到 `anime-data.json` 和 SQLite。
 
 ```json
 {
@@ -182,14 +190,13 @@ mpv 模式下自动记录播放进度到 `anime-data.json`。
 
 ## Gotchas
 
-- `build.bat` 需手动复制 `sharp` 原生模块到 `dist/node_modules/`（pkg 无法打包 native modules）
 - Bangumi API 受代理影响时 fallback 到 `curl`（`scrapers/bangumi.js` 中自动检测）
 - `anime-data.json` 和 `config.json` 在 `.gitignore` 中，不会提交
 - 标题解析依赖 `anitomy`（TypeScript 移植版，纯 JS 无原生模块），pkg 打包无额外步骤
 - 视频缩略图依赖 `ffmpeg`（PATH 中可用），生成时缓存到 `thumbs/` 目录，首次请求可能延迟
 - 无认证/授权，局域网内 `/api/quit` 可关闭服务器
 - mpv 通过 `spawn` + `--term-status-msg` 启动，解析 stderr 获取状态（JSON 格式 `{"time-pos":...,"duration":...,"pause":...}`），不依赖任何第三方模块
-- `activePlays` Map（`filePath → {sessionId, episode, anime}`）仅存内存，服务器重启后丢失；持久化的 `playSessions` 保存在 `anime-data.json`
+- `activePlays` Map（`filePath → {sessionId, episode, anime}`）仅存内存，服务器重启后丢失；持久化的 `playSessions` 保存在 SQLite/JSON
 - 动漫 ID 由 `parsedTitle + (parsedSeason ? '-Season ' + parsedSeason : '')` 生成，重命名文件夹会导致 ID 变化
 - 系统播放器模式不追踪播放时长（无可编程回调），只有 mpv 模式会写入 `playSessions`
 - pkg 打包用 `process.pkg ? path.dirname(process.execPath) : __dirname` 处理路径
@@ -199,7 +206,13 @@ mpv 模式下自动记录播放进度到 `anime-data.json`。
 - Tauri 生产构建：`npm run build`（先 pkg 打包 sidecar，然后 Tauri 构建 MSI/NSIS），依赖 Rust MSVC 工具链
 - Cargo mirror：清华源配置在 `src-tauri/.cargo/config.toml`
 - 构建缓存：`src-tauri/target/` 可达 5GB+，可安全删除后重新构建
-- pkg 打包 sidecar 后输出到 `src-tauri/server.exe-x86_64-pc-windows-msvc.exe`，Tauri externalBin 自动追加 target triple 后缀
+- pkg 打包 sidecar 后输出到 `src-tauri/server-x86_64-pc-windows-msvc.exe`，copy-sidecar-deps.js 复制原生模块到 `src-tauri/sidecar-modules/`
+- **DATA_DIR 差异**：dev 模式 DATA_DIR = `server/`；pkg/MSI 模式 DATA_DIR = `%APPDATA%/com.myanimedocker.app`
+- **数据加载顺序**：`init()` 从 JSON（`loadData()`）加载最新数据，再从 SQLite（`db.loadData()`）回填——JSON 是同步写入源，SQLite 是异步副本
+- **退出行为**：`/api/quit` 不调 `server.close()`（避免 keep-alive 阻塞响应），延迟 1.5s 后 `process.exit(0)`；Rust 监控线程检测 sidecar 退出后自动关闭 Tauri 窗口
+- **封面路径**：`localCover` 存储为绝对路径，迁移 DATA_DIR 后文件可能不存在，`init()` 中验证文件存在性，缺失则清空字段（前端显示灰色占位）
+- **window.close() 无效**：Tauri WebView 中 `window.close()` 仅对弹出窗口生效，需要通过 Rust `window.close()` 或 `__TAURI__` IPC 关闭主窗口
+- **Prisma 引擎路径**：pkg 模式下通过 `PRISMA_QUERY_ENGINE_LIBRARY` 环境变量指定引擎 DLL 路径，`NODE_PATH` 指向 `sidecar-modules/`
 
 ## 设计理念与用户工作流
 
@@ -245,7 +258,7 @@ mpv 模式下自动记录播放进度到 `anime-data.json`。
 - **渐进增强**：先做本地管理，再打通外部同步
 - **尊重用户数据**：删除本地文件 ≠ 删除记录，归档自动保留
 
-## Tauri 桌面壳（Phases 0-3 已完成）
+## Tauri 桌面壳（Phases 0-6 已完成）
 
 ### 架构路线
 
@@ -261,9 +274,7 @@ Tauri (窗口壳)
 ### 关键注意事项
 
 - Dev 模式：sidecar 不自动启动，需先 `npm run dev:server`，再 `npm run dev:tauri`
-- 生产构建：`npm run build:server`（pkg打包 sidecar）→ `npm run build:tauri`（Tauri 构建 MSI/NSIS）
-- `sharp` 在 sidecar 中仍有原生模块问题（pkg 无法打包 native modules），`build.bat` 需手动复制 sharp 模块
-- `config.json` 和 `anime-data.json` 路径策略需要对齐 Tauri 的 `app_data_dir`
+- 生产构建：`npm run build:server`（pkg打包 sidecar）→ `npm run build:tauri`（Tauri 构建 MSI）
 - Cargo mirror：清华源配置在 `src-tauri/.cargo/config.toml`
 - 构建缓存：`src-tauri/target/` 可达 5GB+，可安全删除后重新构建
 
@@ -275,3 +286,45 @@ Tauri (窗口壳)
 - GSAP 已注册全局 `gsap.registerPlugin(Flip)`
 - 动画 `onComplete` 中不删除 `detail-enter-active` class（防止 `.view fadeSlideUp` 激活），由 `resetDetailEnter()` 在下次导航时清理
 - 搜索无结果时显示「未检索到结果 · 没有匹配"xxx"的动漫」（`library.js` 中动态切换 empty state 文案）
+
+## Development Workflow — 三层验证
+
+**目标**：避免每次修改都打包 MSI/NSIS，根据改动类型选择最快的验证方式。
+
+### Tier 1 — JS 改动（秒级）
+
+含 `server/*.js` 后端逻辑和 `public/*` 前端文件。
+
+```bash
+npm run dev:server:watch   # nodemon 自动监听 server/ + public/，修改后立即重启
+```
+
+- 后端改动 → nodemon 自动重启 Node.js 进程
+- 前端改动 → 直接 F5 刷新 Tauri 窗口（或浏览器 http://localhost:3456）
+- 无需任何构建步骤
+
+### Tier 2 — Rust 改动（~1 分钟）
+
+含 `src-tauri/src/main.rs`、`tauri.conf.json`、`Cargo.toml`。
+
+```bash
+# 终端 1：启动后端
+npm run dev:server:watch
+
+# 终端 2：启动 Tauri 开发窗口
+npm run dev:tauri            # cargo tauri dev，自动编译 Rust + 打开窗口
+```
+
+- `devUrl: "http://localhost:3456"` 已配置，Tauri 窗口指向 dev server
+- `!cfg!(debug_assertions)` 确保 dev 模式不启动 sidecar
+- Rust 不兼容的改动在 `cargo check` 阶段即可发现
+
+### Tier 3 — 最终打包（~5 分钟）
+
+Tier 1+2 验证通过后，确认整体可用性：
+
+```bash
+npm run build                # pkg sidecar → copy-sidecar-deps → tauri build (MSI + NSIS)
+```
+
+仅用于验证安装体验、中文安装器效果、升级覆盖等最终场景。

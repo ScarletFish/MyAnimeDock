@@ -4,7 +4,6 @@
   "version": "1.0.0",
   "identifier": "com.myanimedocker.app",
   "build": {
-    "beforeBuildCommand": "npm run build:server",
     "devUrl": "http://localhost:3456",
     "frontendDist": "../public"
   },
@@ -18,7 +17,8 @@
         "minHeight": 700,
         "center": true,
         "resizable": true,
-        "fullscreen": false
+        "fullscreen": false,
+        "visible": false
       }
     ],
     "security": {
@@ -27,23 +27,35 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["msi", "nsis"],
     "icon": [
       "icons/icon.png",
       "icons/icon.icns",
       "icons/icon.ico"
     ],
     "externalBin": [
-      "server.exe"
+      "server"
     ],
     "resources": [
-      "../server/node_modules/**/*",
-      "../server/scanner.js",
-      "../server/mpv-controller.js",
-      "../server/scrapers/**/*",
-      "../server/package.json",
-      "../server/package-lock.json"
-    ]
+      "sidecar-modules/prisma-engine",
+      "sidecar-modules/@prisma/client",
+      "sidecar-modules/@prisma/debug",
+      "sidecar-modules/@prisma/engines-version",
+      "sidecar-modules/@prisma/get-platform",
+      "sidecar-modules/ffmpeg.exe"
+    ],
+    "windows": {
+      "wix": {
+        "language": "zh-CN"
+      },
+      "nsis": {
+        "installerIcon": "icons/icon.ico",
+        "installMode": "perMachine",
+        "compression": "zlib",
+        "languages": ["SimpChinese", "English"],
+        "displayLanguageSelector": true
+      }
+    }
   },
   "plugins": {
     "fs": {

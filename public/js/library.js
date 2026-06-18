@@ -355,8 +355,11 @@ async function syncLibrary() {
 }
 
 // --- Grid Zoom: wheel listener (delta-proportional) ---
-document.getElementById('libraryGrid').addEventListener('wheel', function(e) {
+// 监听在滚动容器 .main-content 上，避免 Chromium 合成器滚动拦截 preventDefault()
+document.querySelector('.main-content').addEventListener('wheel', function(e) {
   if (!e.ctrlKey && !e.metaKey) return;
+  const grid = document.getElementById('libraryGrid');
+  if (!grid || !grid.contains(e.target)) return;
   e.preventDefault();
   // deltaY proportional: mouse notch ~100px → 0.08, trackpad light ~10px → 0.008
   const absDelta = Math.min(Math.abs(e.deltaY), 300);

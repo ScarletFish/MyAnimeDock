@@ -18,17 +18,20 @@ SHOKO_ANIDB_UPGRADE_PLAN.md
 
 # Tauri / Rust
 src-tauri/target/
-src-tauri/resources/server.exe*
 src-tauri/Cargo.lock
 src-tauri/.cargo/
 
 # Prisma
 prisma/anime.db
 
+# Tauri sidecar build artifacts
+src-tauri/server-x86_64*
+src-tauri/anime.db
+src-tauri/sidecar-modules/
+
 # Build artifacts
 build-tauri.bat
 rustup-init.exe
-src-tauri/server.exe*
 
 # Scripts
 scripts/

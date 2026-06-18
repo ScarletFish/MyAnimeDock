@@ -1,9 +1,17 @@
+// 在 Windows 上隐藏控制台窗口（仅在 release 模式生效，dev 模式保留控制台输出）
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 use tauri::Manager;
 use std::process::Command;
 use std::path::PathBuf;
 use std::sync::Mutex;
 use std::time::Duration;
-use std::env;
+
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+
+#[cfg(target_os = "windows")]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 struct SidecarProcess(Mutex<Option<std::process::Child>>);
 
@@ -20,32 +28,85 @@ fn main() {
             // 仅在生产模式下启动 sidecar；开发模式由手动启动的 `node server/server.js` 提供服务
             if !cfg!(debug_assertions) {
                 let sidecar_path = get_sidecar_path(&handle)?;
-                println!("Starting sidecar: {:?}", sidecar_path);
                 
-                let child = Command::new(&sidecar_path)
-                    .current_dir(sidecar_path.parent().unwrap())
-                    .env("TAURI_SIDECAR", "1")
-                    .spawn()
+                let mut cmd = Command::new(&sidecar_path);
+                cmd.current_dir(sidecar_path.parent().unwrap())
+                    .env("TAURI_SIDECAR", "1");
+                
+                // 隐藏 sidecar 的控制台窗口（GUI 应用不应显示后台控制台）
+                #[cfg(target_os = "windows")]
+                cmd.creation_flags(CREATE_NO_WINDOW);
+                
+                let child = cmd.spawn()
                     .expect("Failed to start Node.js sidecar");
                 
                 // 存储 child 以便退出时清理
                 if let Ok(mut guard) = handle.state::<SidecarProcess>().0.lock() {
                     *guard = Some(child);
                 }
+                
+                // 监控 sidecar 进程退出 → 自动关闭 Tauri 窗口
+                // 当用户在前端点击"退出"时，sidecar 会自我退出，
+                // 但 Tauri 窗口不会自动关闭（window.close() 在 WebView 中被阻止）。
+                // 此线程检测到 sidecar 退出后，关闭窗口实现完整退出。
+                let monitor_handle = handle.clone();
+                std::thread::spawn(move || {
+                    loop {
+                        std::thread::sleep(Duration::from_millis(500));
+                        let state = monitor_handle.state::<SidecarProcess>();
+                        let (done, is_graceful) = {
+                            if let Ok(mut guard) = state.0.lock() {
+                                if let Some(ref mut child) = *guard {
+                                    match child.try_wait() {
+                                        Ok(Some(_)) => (true, true),
+                                        _ => (false, false),
+                                    }
+                                } else {
+                                    // Sidecar 已被 CloseRequested 取走（用户手动关窗）
+                                    (true, false)
+                                }
+                            } else {
+                                (false, false)
+                            }
+                        };
+                        drop(state);
+                        if done {
+                            if is_graceful {
+                                // 给前端最后一条响应留出刷新时间
+                                std::thread::sleep(Duration::from_millis(500));
+                                if let Some(window) = monitor_handle.get_webview_window("main") {
+                                    let _ = window.close();
+                                }
+                            }
+                            return;
+                        }
+                    }
+                });
             }
             
             // 等待 server 就绪（轮询 /api/config）
             let handle_clone = handle.clone();
             std::thread::spawn(move || {
                 wait_for_server_ready(&handle_clone);
-                // server 就绪后，将窗口导航到 sidecar 页面（保持同源，API 调用正常）
+                
+                // server 就绪后，导航到 sidecar 页面并显示窗口
+                // 窗口初始隐藏（visible: false），等 DB 加载完后再展示
                 let max_nav_attempts = 10;
+                let mut shown = false;
                 for _i in 0..max_nav_attempts {
                     if let Some(window) = handle_clone.get_webview_window("main") {
                         let _ = window.eval("window.location.replace('http://localhost:3456')");
+                        let _ = window.show();
+                        shown = true;
                         break;
                     }
                     std::thread::sleep(Duration::from_millis(500));
+                }
+                if !shown {
+                    // 导航失败时仍然显示窗口，用户可以看到错误信息
+                    if let Some(window) = handle_clone.get_webview_window("main") {
+                        let _ = window.show();
+                    }
                 }
             });
             
@@ -71,34 +132,33 @@ fn main() {
 }
 
 fn get_sidecar_path(handle: &tauri::AppHandle) -> Result<PathBuf, Box<dyn std::error::Error>> {
-    // 在开发模式下，resource_dir 指向 target/debug，但实际资源在 src-tauri/resources
-    // 在生产模式下，resource_dir 指向正确的 resources 目录
     let resource_dir = handle.path().resource_dir()?;
-    println!("Resource dir: {:?}", resource_dir);
+    // 注意: executable_dir() 返回的是用户数据目录，不是安装目录。
+    // 需要 current_exe() 获取 MyAnimeDocker.exe 的实际位置。
+    let exe_dir = std::env::current_exe()?.parent().unwrap().to_path_buf();
+    // Tauri v2 将 externalBin "server" 解析为 server-x86_64-pc-windows-msvc.exe 作为源文件名，
+    // 最终安装为 server.exe（自动追加 .exe）
+    let expected = "server-x86_64-pc-windows-msvc.exe";
+    let fallback_base = "server.exe";
     
-    // 尝试多个可能的路径
+    // 优先搜索 exe 同级（MSI/NSIS 安装后 externalBin 的位置）
+    // 注意: Tauri v2 旧版 externalBin "server.exe" 会产生 server.exe.exe（双 .exe），
+    // 我们也搜索此名称作为兼容回退
     let candidates = vec![
-        resource_dir.join("server.exe"),
-        resource_dir.join("resources").join("server.exe"),
-        // 开发模式下的相对路径
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources").join("server.exe"),
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..").join("src-tauri").join("resources").join("server.exe"),
+        exe_dir.join(expected),
+        exe_dir.join(fallback_base),
+        exe_dir.join("server.exe.exe"),            // Tauri v2 旧版 externalBin bug 回退
+        resource_dir.join(expected),
+        resource_dir.join(fallback_base),
+        resource_dir.join("server.exe.exe"),        // 同上，resource 目录变体
+        resource_dir.join("resources").join(expected),
+        resource_dir.join("resources").join(fallback_base),
     ];
     
     for candidate in &candidates {
-        println!("Checking sidecar path: {:?} (exists: {})", candidate, candidate.exists());
         if candidate.exists() {
-            println!("Found sidecar at: {:?}", candidate);
             return Ok(candidate.clone());
         }
-    }
-    
-    // 最后尝试 exe 目录
-    let exe_dir = handle.path().executable_dir()?;
-    let exe_sidecar = exe_dir.join("server.exe");
-    println!("Checking exe dir sidecar: {:?} (exists: {})", exe_sidecar, exe_sidecar.exists());
-    if exe_sidecar.exists() {
-        return Ok(exe_sidecar);
     }
     
     Err("Sidecar executable not found".into())
@@ -108,14 +168,11 @@ fn wait_for_server_ready(handle: &tauri::AppHandle) {
     for _attempt in 0..30 {
         if let Ok(resp) = ureq::get("http://localhost:3456/api/config").call() {
             if resp.status() == 200 {
-                println!("Sidecar server ready");
                 return;
             }
         }
         std::thread::sleep(Duration::from_millis(500));
     }
-    eprintln!("Warning: Sidecar server did not become ready in time");
-    
     // 即使 server 未就绪，也显示窗口（用户可以看到错误信息）
     if let Some(window) = handle.get_webview_window("main") {
         let _ = window.show();

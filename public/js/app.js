@@ -39,6 +39,11 @@ function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
 }
 
+// Zoom
+function applyZoom(scale) {
+  document.documentElement.style.zoom = scale || 1;
+}
+
 // Settings
 async function openSettings() {
   try {
@@ -46,6 +51,8 @@ async function openSettings() {
     configCache = config;
     document.getElementById('settingsMediaDir').value = config.mediaDir || '';
     document.getElementById('settingsTheme').value = localStorage.getItem('theme') || config.theme || 'dark';
+    document.getElementById('settingsZoom').value = Math.round((config.uiScale || 1) * 100);
+    document.getElementById('zoomLabel').textContent = document.getElementById('settingsZoom').value + '%';
     document.getElementById('settingsPlayerMode').value = config.playerMode || 'system';
     document.getElementById('mpvPathGroup').style.display =
       config.playerMode === 'mpv' ? '' : 'none';
@@ -222,6 +229,7 @@ async function saveSettings() {
       playerMode, 
       mpvPath, 
       theme,
+      uiScale: parseInt(document.getElementById('settingsZoom').value) / 100,
       autoMarkWatched: document.getElementById('settingsAutoMark').checked,
       apiSources,
     });
@@ -238,25 +246,6 @@ document.getElementById('settingsPlayerMode').addEventListener('change', functio
   document.getElementById('mpvPathGroup').style.display =
     this.value === 'mpv' ? '' : 'none';
 });
-
-// Quit - auto close browser page
-async function quitApp() {
-  if (!confirm('确定要退出吗？')) return;
-  try {
-    const res = await API.post('/api/quit');
-    if (res.shutdown) {
-      // Server is shutting down, close this tab
-      window.close();
-      // Fallback: show message if window.close() is blocked
-      document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-size:20px;color:#999">服务器已停止，可以关闭此页面</div>';
-    }
-  } catch (e) {
-    // Server already stopped
-    window.close();
-    document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-size:20px;color:#999">服务器已停止</div>';
-  }
-}
-
 function goBack() {
   if (typeof stopDetailRefresh === 'function') stopDetailRefresh();
   isArchiveMode = false;
@@ -305,6 +294,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     configCache = await API.get('/api/config');
   } catch (_) {}
   loadTheme();
+  applyZoom(configCache?.uiScale || 1);
   initSortSelect();
   showView('library');
 });

@@ -6,10 +6,12 @@
   "scripts": {
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:tauri\"",
     "dev:server": "node server/server.js",
+    "dev:server:watch": "nodemon -w server -w public server/server.js",
     "dev:tauri": "tauri dev",
-    "build": "npm run build:server && npm run build:tauri",
-    "build:server": "cd server && pkg . --target node18-win-x64 --output ../src-tauri/server.exe-x86_64-pc-windows-msvc.exe",
-    "build:tauri": "tauri build",
+    "build": "npm run build:server && tauri build --bundles msi nsis",
+    "build:msi": "npm run build:server && tauri build --bundles msi",
+    "build:nsis": "npm run build:server && tauri build --bundles nsis",
+    "build:server": "cd server && pkg . --target node18-win-x64 --output ../src-tauri/server-x86_64-pc-windows-msvc.exe && node ../scripts/copy-sidecar-deps.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
@@ -26,6 +28,7 @@
   "devDependencies": {
     "@tauri-apps/cli": "^2.11.2",
     "concurrently": "^8.2.2",
+    "nodemon": "^3.1.14",
     "prisma": "^5.22.0",
     "typescript": "^6.0.3"
   }

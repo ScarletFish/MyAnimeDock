@@ -1,4 +1,4 @@
-* { margin: 0; padding: 0; box-sizing: border-box; }
+﻿* { margin: 0; padding: 0; box-sizing: border-box; }
 
 :root {
   --bg-deep: #0f0c09;
@@ -441,7 +441,7 @@ body {
   background: transparent;
   color: var(--fg-primary);
   font-family: var(--font-body);
-  font-size: 15px;
+  font-size: 0.938rem;
   line-height: 1.65;
   font-weight: 400;
   min-height: 100vh;
@@ -584,7 +584,7 @@ body {
   color: var(--fg-primary);
   padding: 4px 10px;
   border-radius: var(--radius-sm);
-  font-size: 12.5px;
+  font-size: 0.781rem;
   font-weight: 500;
   white-space: nowrap;
   border: 1px solid var(--border);
@@ -672,7 +672,7 @@ html {
   border-radius: var(--radius-sm);
   cursor: pointer;
   font-family: var(--font-body);
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 500;
   transition: all var(--duration-fast) var(--ease-out);
   display: inline-flex;
@@ -736,7 +736,7 @@ html {
   padding: 9px 12px;
   border-radius: var(--radius-sm);
   font-family: var(--font-body);
-  font-size: 13.5px;
+  font-size: 0.844rem;
   cursor: pointer;
   transition: all var(--duration-fast) var(--ease-out);
   appearance: none;
@@ -765,7 +765,7 @@ html {
   padding: 9px 16px;
   border-radius: var(--radius-sm);
   font-family: var(--font-body);
-  font-size: 13.5px;
+  font-size: 0.844rem;
   width: 220px;
   transition: all var(--duration-fast) var(--ease-out);
 }
@@ -783,7 +783,7 @@ html {
 /* ─── Card Grid ─── */
 .grid-container {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(clamp(150px, 12vw, 250px), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(9.375rem, 1fr));
   gap: clamp(0.85rem, 1.2vw, 1.25rem);
 }
 
@@ -859,7 +859,7 @@ html {
 
 .anime-card .overlay h3 {
   font-family: var(--font-body);
-  font-size: clamp(12px, 1.2vw, 14px);
+  font-size: clamp(0.75rem, 1.2vw, 0.875rem);
   font-weight: 600;
   line-height: 1.3;
   margin-bottom: 4px;
@@ -897,7 +897,7 @@ html {
   gap: 4px;
   padding: 2px 10px;
   border-radius: 100px;
-  font-size: 11.5px;
+  font-size: 0.719rem;
   font-weight: 600;
   background: var(--accent-gradient);
   color: white;
@@ -910,7 +910,7 @@ html {
   gap: 4px;
   padding: 2px 10px;
   border-radius: 100px;
-  font-size: 11.5px;
+  font-size: 0.719rem;
   font-weight: 500;
   background: rgba(255, 255, 255, 0.06);
   color: var(--fg-secondary);
@@ -922,7 +922,7 @@ html {
   gap: 4px;
   padding: 2px 10px;
   border-radius: 100px;
-  font-size: 11.5px;
+  font-size: 0.719rem;
   font-weight: 500;
 }
 
@@ -950,7 +950,7 @@ html {
 /* Two-column layout */
 .detail-layout {
   display: grid;
-  grid-template-columns: clamp(260px, 24vw, 360px) 1fr;
+  grid-template-columns: clamp(16.25rem, 24vw, 22.5rem) 1fr;
   gap: clamp(1.5rem, 2.5vw, 2.5rem);
   align-items: start;
 }
@@ -1108,7 +1108,7 @@ html {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   color: var(--fg-secondary);
-  font-size: 12.5px;
+  font-size: 0.781rem;
   font-weight: 500;
   cursor: pointer;
   transition: all var(--duration-fast) var(--ease-out);
@@ -1186,7 +1186,7 @@ html {
   color: var(--fg-secondary);
   line-height: 1.7;
   white-space: pre-wrap;
-  font-size: 13.5px;
+  font-size: 0.844rem;
 }
 
 .detail-actions {
@@ -1196,7 +1196,7 @@ html {
 }
 
 .detail-actions .btn {
-  font-size: 12px;
+  font-size: 0.75rem;
   padding: 6px 14px;
 }
 
@@ -1222,7 +1222,7 @@ html {
 }
 
 .episode-count {
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--fg-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -1365,12 +1365,12 @@ html {
   min-width: 36px;
   color: var(--fg-muted);
   font-variant-numeric: tabular-nums;
-  font-size: 13.5px;
+  font-size: 0.844rem;
 }
 
 .episode-name {
   flex: 1;
-  font-size: 13.5px;
+  font-size: 0.844rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1378,7 +1378,7 @@ html {
 }
 
 .episode-size {
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--fg-muted);
   min-width: 70px;
   text-align: right;
@@ -1386,7 +1386,7 @@ html {
 }
 
 .episode-status {
-  font-size: 11.5px;
+  font-size: 0.719rem;
   min-width: 50px;
   text-align: center;
   font-weight: 600;
@@ -1416,7 +1416,7 @@ html {
 
 .episode-actions .btn {
   padding: 5px 12px;
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .episode-progress-wrap {
@@ -1446,7 +1446,7 @@ html {
 
 .btn-xs {
   padding: 4px 10px;
-  font-size: 11.5px;
+  font-size: 0.719rem;
   line-height: 1.4;
 }
 
@@ -1475,7 +1475,7 @@ html {
 
 .memory-masonry {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(clamp(150px, 12vw, 250px), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(9.375rem, 1fr));
   gap: clamp(0.85rem, 1.2vw, 1.25rem);
   padding-bottom: 2rem;
 }
@@ -1539,7 +1539,7 @@ html {
 .memory-card-overlay h3 {
   color: #fff;
   font-family: var(--font-body);
-  font-size: clamp(12px, 1.2vw, 14px);
+  font-size: clamp(0.75rem, 1.2vw, 0.875rem);
   font-weight: 600;
   margin-bottom: 4px;
   overflow: hidden;
@@ -1549,19 +1549,19 @@ html {
 
 .memory-card-overlay .memory-card-rating {
   color: var(--accent-soft);
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
 }
 
 .memory-card-overlay .memory-card-date {
   color: rgba(237,232,226,0.5);
-  font-size: 11px;
+  font-size: 0.688rem;
   margin-left: 8px;
 }
 
 .memory-card-overlay .memory-card-thoughts {
   color: rgba(237,232,226,0.7);
-  font-size: 12px;
+  font-size: 0.75rem;
   margin-top: 6px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -1611,7 +1611,7 @@ html {
 }
 
 .memory-stat-label {
-  font-size: 11px;
+  font-size: 0.688rem;
   color: var(--fg-muted);
   margin-top: 4px;
 }
@@ -1696,7 +1696,7 @@ html {
 }
 
 .archive-magazine-stat-label {
-  font-size: 11px;
+  font-size: 0.688rem;
   font-weight: 500;
   color: var(--fg-muted);
   text-transform: uppercase;
@@ -1713,7 +1713,7 @@ html {
 }
 
 .archive-magazine-notes-label {
-  font-size: 11px;
+  font-size: 0.688rem;
   font-weight: 700;
   color: var(--fg-muted);
   text-transform: uppercase;
@@ -1722,7 +1722,7 @@ html {
 }
 
 .archive-magazine-notes-content {
-  font-size: 14px;
+  font-size: 0.875rem;
   line-height: 1.7;
   color: var(--fg-secondary);
 }
@@ -1743,7 +1743,7 @@ html {
     justify-content: space-between;
   }
   .archive-magazine-stat-label {
-    font-size: 12px;
+    font-size: 0.75rem;
   }
   .archive-magazine-essay {
     padding: 0;
@@ -1785,12 +1785,12 @@ html {
 }
 
 .empty-state p {
-  font-size: 15px;
+  font-size: 0.938rem;
   max-width: 320px;
 }
 
 .empty-hint {
-  font-size: 13px !important;
+  font-size: 0.8125rem !important;
   color: var(--fg-muted);
   opacity: 0.7;
 }
@@ -1844,7 +1844,7 @@ html {
 
 .discovery-hero-path {
   font-family: var(--font-mono);
-  font-size: 12.5px;
+  font-size: 0.781rem;
   color: var(--fg-muted);
   max-width: 400px;
   overflow: hidden;
@@ -1854,7 +1854,7 @@ html {
 
 .discovery-scan-btn {
   padding: 12px 28px;
-  font-size: 14px;
+  font-size: 0.875rem;
   gap: var(--space-3);
 }
 
@@ -1906,7 +1906,7 @@ html {
 }
 
 .discovery-stat-label {
-  font-size: 11.5px;
+  font-size: 0.719rem;
   color: var(--fg-muted);
   margin-top: var(--space-1);
 }
@@ -1927,7 +1927,7 @@ html {
 
 .filter-btn {
   padding: 6px 14px;
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 500;
   background: transparent;
   border: none;
@@ -2121,7 +2121,7 @@ html {
 }
 
 .discovery-card-title {
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 600;
   color: var(--fg-primary);
   line-height: 1.3;
@@ -2154,7 +2154,7 @@ html {
   align-items: center;
   gap: 3px;
   padding: 2px 8px;
-  font-size: 11px;
+  font-size: 0.688rem;
   font-weight: 500;
   font-family: inherit;
   color: var(--fg-muted);
@@ -2196,7 +2196,7 @@ html {
 }
 
 .discovery-card-meta {
-  font-size: 11px;
+  font-size: 0.688rem;
   color: var(--accent-soft);
   font-weight: 500;
   line-height: 1.3;
@@ -2209,7 +2209,7 @@ html {
 
 /* Badge */
 .discovery-badge {
-  font-size: 10.5px;
+  font-size: 0.656rem;
   font-weight: 600;
   padding: 2px 8px;
   border-radius: 99px;
@@ -2241,7 +2241,7 @@ html {
 /* Parent path (blockquote style) */
 .discovery-parent {
   position: relative;
-  font-size: 11px;
+  font-size: 0.688rem;
   color: var(--fg-muted);
   padding: 2px 10px 2px 44px;
   font-family: 'JetBrains Mono', var(--font-mono, monospace);
@@ -2280,7 +2280,7 @@ html {
   align-items: center;
   gap: 8px;
   min-height: 26px;
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--fg-muted);
   padding: 1px 6px;
   border-radius: 4px;
@@ -2334,14 +2334,14 @@ html {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: var(--font-mono);
-  font-size: 11.5px;
+  font-size: 0.719rem;
   flex: 1;
   min-width: 0;
 }
 
 .discovery-card-file-size {
   flex-shrink: 0;
-  font-size: 11px;
+  font-size: 0.688rem;
   opacity: 0.5;
   font-variant-numeric: tabular-nums;
 }
@@ -2358,7 +2358,7 @@ html {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 10px;
+  font-size: 0.625rem;
   font-weight: 600;
   padding: 2px 8px;
   border-radius: 100px;
@@ -2523,7 +2523,7 @@ html {
   border: none;
   color: var(--fg-muted);
   font-family: var(--font-body);
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 500;
   padding: 10px 20px;
   cursor: pointer;
@@ -2601,7 +2601,7 @@ html {
 
 .form-group label {
   display: block;
-  font-size: 12.5px;
+  font-size: 0.781rem;
   font-weight: 600;
   color: var(--fg-secondary);
   margin-bottom: 6px;
@@ -2619,7 +2619,7 @@ html {
   padding: 10px 14px;
   border-radius: var(--radius-sm);
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: 0.875rem;
   transition: all var(--duration-fast) var(--ease-out);
 }
 
@@ -2637,7 +2637,7 @@ html {
 }
 
 .form-hint {
-  font-size: 11.5px;
+  font-size: 0.719rem;
   color: var(--fg-muted);
   margin-top: 4px;
 }
@@ -2648,7 +2648,7 @@ html {
   align-items: center;
   gap: 10px;
   cursor: pointer;
-  font-size: 13px !important;
+  font-size: 0.8125rem !important;
   font-weight: 500 !important;
   color: var(--fg-primary) !important;
   letter-spacing: 0 !important;
@@ -2756,7 +2756,7 @@ html {
 
 .api-source-badge {
   display: inline-block;
-  font-size: 10px;
+  font-size: 0.625rem;
   font-weight: 700;
   padding: 2px 7px;
   border-radius: 3px;
@@ -2778,7 +2778,7 @@ html {
   background: transparent;
   border: 1px solid transparent;
   color: var(--fg-muted);
-  font-size: 11px;
+  font-size: 0.688rem;
   font-family: var(--font-body);
   padding: 1px 0;
   cursor: pointer;
@@ -2805,7 +2805,7 @@ html {
   color: var(--fg-primary);
   padding: 7px 10px;
   border-radius: var(--radius-sm);
-  font-size: 12.5px;
+  font-size: 0.781rem;
   font-family: var(--font-body);
   transition: all var(--duration-fast) var(--ease-out);
 }
@@ -2854,7 +2854,7 @@ html {
 
 .error-msg {
   color: var(--error);
-  font-size: 12.5px;
+  font-size: 0.781rem;
   padding: 0 var(--space-6);
   margin-top: -4px;
 }
@@ -2888,7 +2888,7 @@ html {
   color: var(--fg-primary);
   padding: 12px 22px;
   border-radius: var(--radius-md);
-  font-size: 13.5px;
+  font-size: 0.844rem;
   opacity: 0;
   transform: translateY(12px) scale(0.96);
   transition: all var(--duration-normal) var(--ease-spring);
@@ -2913,7 +2913,7 @@ html {
   color: var(--fg-primary);
   padding: 6px 16px;
   border-radius: 100px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   opacity: 0;
@@ -3000,7 +3000,7 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .watch-card-label {
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--accent);
   text-transform: uppercase;
@@ -3009,7 +3009,7 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .watch-card-title {
-  font-size: 14px;
+  font-size: 0.875rem;
   color: #fff;
   font-weight: 500;
   white-space: nowrap;
@@ -3044,7 +3044,7 @@ input[type="range"]::-webkit-slider-thumb {
   border-radius: 100px;
   background: var(--accent-gradient);
   color: #fff;
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s var(--ease-out);
@@ -3091,7 +3091,7 @@ input[type="range"]::-webkit-slider-thumb {
   gap: 1rem;
   align-items: center;
   margin-bottom: 1rem;
-  font-size: 11.5px;
+  font-size: 0.719rem;
   color: var(--fg-muted);
 }
 
@@ -3151,7 +3151,7 @@ input[type="range"]::-webkit-slider-thumb {
   transform: translateX(-50%) scale(0.9);
   background: var(--bg-deep);
   color: var(--fg-primary);
-  font-size: 11px;
+  font-size: 0.688rem;
   padding: 4px 10px;
   border-radius: 6px;
   white-space: nowrap;
@@ -3170,7 +3170,7 @@ input[type="range"]::-webkit-slider-thumb {
   color: var(--fg-muted);
   text-align: center;
   padding: 24px 0;
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 /* ─── Watch Stats ─── */
@@ -3243,10 +3243,10 @@ input[type="range"]::-webkit-slider-thumb {
   .discovery-card-main { min-height: 38px; }
   .discovery-card-toggle { width: 28px; }
   .discovery-card-row { padding: 6px 8px; gap: 6px; }
-  .discovery-card-title { font-size: 12px; }
+  .discovery-card-title { font-size: 0.75rem; }
   .discovery-annotation { padding-left: 28px; }
 
-  .discovery-parent { padding: 2px 10px 2px 34px; font-size: 10.5px; }
+  .discovery-parent { padding: 2px 10px 2px 34px; font-size: 0.656rem; }
   .discovery-parent::before { left: 12px; width: 22px; }
   .discovery-card-files { padding: 0 10px 4px 34px; }
 }
@@ -3291,7 +3291,7 @@ input[type="range"]::-webkit-slider-thumb {
   gap: 4px;
   padding: 12px 20px;
   border-radius: 8px;
-  font-size: 11px;
+  font-size: 0.688rem;
   font-weight: 450;
   color: var(--fg-primary);
   cursor: pointer;

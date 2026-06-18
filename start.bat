@@ -34,8 +34,6 @@ goto MENU
 cls
 echo --- Start dev server ---
 echo.
-echo Killing any existing node processes...
-taskkill /f /im node.exe 2>nul
 echo Press Ctrl+C to stop server.
 echo.
 call npm run dev:server:watch
@@ -57,8 +55,14 @@ if %ERRORLEVEL% neq 0 (
 echo.
 echo [DONE] MSI installer built successfully
 echo.
-start "" "src-tauri\target\release\bundle\msi"
 pause
+set "DIR_MSI=%~dp0src-tauri\target\release\bundle\msi"
+if exist "!DIR_MSI!" (
+    explorer "!DIR_MSI!"
+) else (
+    echo [WARN] MSI output folder not found
+)
+echo.
 goto MENU
 
 :BUILD_NSIS
@@ -77,8 +81,14 @@ if %ERRORLEVEL% neq 0 (
 echo.
 echo [DONE] NSIS installer built successfully
 echo.
-start "" "src-tauri\target\release\bundle\nsis"
 pause
+set "DIR_NSIS=%~dp0src-tauri\target\release\bundle\nsis"
+if exist "!DIR_NSIS!" (
+    explorer "!DIR_NSIS!"
+) else (
+    echo [WARN] NSIS output folder not found
+)
+echo.
 goto MENU
 
 :BUILD_ALL
@@ -97,11 +107,20 @@ if %ERRORLEVEL% neq 0 (
 echo.
 echo [DONE] Installers built successfully
 echo.
-echo Opening MSI folder...
-start "" "src-tauri\target\release\bundle\msi"
-echo Opening NSIS folder...
-start "" "src-tauri\target\release\bundle\nsis"
 pause
+set "DIR_MSI=%~dp0src-tauri\target\release\bundle\msi"
+set "DIR_NSIS=%~dp0src-tauri\target\release\bundle\nsis"
+if exist "!DIR_MSI!" (
+    explorer "!DIR_MSI!"
+) else (
+    echo [WARN] MSI output folder not found
+)
+if exist "!DIR_NSIS!" (
+    explorer "!DIR_NSIS!"
+) else (
+    echo [WARN] NSIS output folder not found
+)
+echo.
 goto MENU
 
 :PRISMA
@@ -122,28 +141,45 @@ echo   - src-tauri\target\     (Rust cache, ~5GB)
 echo   - src-tauri\sidecar-modules\  (copied modules)
 echo   - server\node_modules\.cache\
 echo.
+set "confirm="
 set /p confirm="Confirm cleanup? (y/N): "
-if /i not "%confirm%"=="y" goto MENU
+if /i not "!confirm!"=="y" goto MENU
 
+echo.
+echo Deleting src-tauri\target ...
 if exist "src-tauri\target" (
-    rmdir /s /q "src-tauri\target" 2>nul
-    echo  [DELETED] src-tauri\target
+    powershell -NoProfile -Command "Remove-Item -LiteralPath 'src-tauri\target' -Recurse -Force -ErrorAction SilentlyContinue" >nul 2>&1
+    if exist "src-tauri\target" (
+        echo  [WARN] Could not fully delete src-tauri\target (some files in use or permissions)
+    ) else (
+        echo  [DELETED] src-tauri\target
+    )
 ) else (
-    echo  [SKIP]   src-tauri\target (not found)
+    echo  [SKIP] src-tauri\target (not found)
 )
 
+echo Deleting src-tauri\sidecar-modules ...
 if exist "src-tauri\sidecar-modules" (
-    rmdir /s /q "src-tauri\sidecar-modules" 2>nul
-    echo  [DELETED] src-tauri\sidecar-modules
+    rd /s /q "src-tauri\sidecar-modules" 2>nul
+    if exist "src-tauri\sidecar-modules" (
+        echo  [WARN] Could not fully delete sidecar-modules
+    ) else (
+        echo  [DELETED] src-tauri\sidecar-modules
+    )
 ) else (
-    echo  [SKIP]   src-tauri\sidecar-modules (not found)
+    echo  [SKIP] src-tauri\sidecar-modules (not found)
 )
 
+echo Deleting server\node_modules\.cache ...
 if exist "server\node_modules\.cache" (
-    rmdir /s /q "server\node_modules\.cache" 2>nul
-    echo  [DELETED] server\node_modules\.cache
+    rd /s /q "server\node_modules\.cache" 2>nul
+    if exist "server\node_modules\.cache" (
+        echo  [WARN] Could not delete .cache
+    ) else (
+        echo  [DELETED] server\node_modules\.cache
+    )
 ) else (
-    echo  [SKIP]   server\node_modules\.cache (not found)
+    echo  [SKIP] server\node_modules\.cache (not found)
 )
 
 echo.

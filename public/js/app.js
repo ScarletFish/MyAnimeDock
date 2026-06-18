@@ -39,9 +39,9 @@ function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
 }
 
-// Zoom
+// Zoom via root rem scaling
 function applyZoom(scale) {
-  document.documentElement.style.zoom = scale || 1;
+  document.documentElement.style.fontSize = (16 * (scale || 1)) + 'px';
 }
 
 // Settings
@@ -210,7 +210,8 @@ async function saveSettings() {
   const playerMode = document.getElementById('settingsPlayerMode').value;
   const mpvPath = document.getElementById('settingsMpvPath').value.trim();
 
-  applyTheme(theme);
+    applyTheme(theme);
+  applyZoom(document.getElementById('settingsZoom').value / 100);
 
   if (!mediaDir) {
     document.getElementById('settingsError').textContent = '请输入媒体目录路径';

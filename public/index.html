@@ -377,7 +377,7 @@
         <div class="form-group">
           <label for="settingsZoom">界面缩放 <span id="zoomLabel">100%</span></label>
           <input type="range" id="settingsZoom" min="75" max="150" step="5" value="100"
-                 oninput="document.getElementById('zoomLabel').textContent=this.value+'%'">
+                 oninput="document.getElementById('zoomLabel').textContent=this.value+'%';applyZoom(this.value/100)">
           <p class="form-hint">调整界面的整体缩放比例（75% ~ 150%）</p>
         </div>
       </div>

@@ -14,6 +14,7 @@ PLAN.md
 thumbs/
 opencode.json
 SHOKO_ANIDB_UPGRADE_PLAN.md
+opencode.ps1
 
 # Tauri / Rust
 src-tauri/target/
@@ -31,6 +32,3 @@ src-tauri/sidecar-modules/
 # Build artifacts
 build-tauri.bat
 rustup-init.exe
-
-# Environment
-.env

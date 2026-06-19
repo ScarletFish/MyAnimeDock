@@ -58,7 +58,7 @@ echo.
 pause
 set "DIR_MSI=%~dp0src-tauri\target\release\bundle\msi"
 if exist "!DIR_MSI!" (
-    start "!DIR_MSI!"
+    start "" "!DIR_MSI!"
 ) else (
     echo [WARN] MSI output folder not found
 )
@@ -84,7 +84,7 @@ echo.
 pause
 set "DIR_NSIS=%~dp0src-tauri\target\release\bundle\nsis"
 if exist "!DIR_NSIS!" (
-    start "!DIR_NSIS!"
+    start "" "!DIR_NSIS!"
 ) else (
     echo [WARN] NSIS output folder not found
 )
@@ -108,9 +108,9 @@ echo.
 echo [DONE] Installers built successfully
 echo.
 pause
-set "DIR_Menu=%~dp0src-tauri\target\release\bundle
+set "DIR_Menu=%~dp0src-tauri\target\release\bundle"
 if exist "!DIR_Menu!" (
-    start "!DIR_Menu!"
+    start "" "!DIR_Menu!"
 ) else (
     echo [WARN] DIR_Menu output folder not found
 )

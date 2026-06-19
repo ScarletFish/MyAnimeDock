@@ -81,13 +81,33 @@ if (fs.existsSync(prismaJsSrc)) {
   console.log('  [SKIP] @prisma not found');
 }
 
-// ---- ffmpeg-static binary ----
+// ---- ffmpeg-static binary + UPX compression ----
 const serverModules = path.join(ROOT, 'server', 'node_modules');
 const ffmpegStaticSrc = path.join(serverModules, 'ffmpeg-static', 'ffmpeg.exe');
 const ffmpegDest = path.join(MODULES_TARGET, 'ffmpeg.exe');
 if (fs.existsSync(ffmpegStaticSrc)) {
+  const srcSizeKB = (fs.statSync(ffmpegStaticSrc).size / 1024).toFixed(1);
   fs.copyFileSync(ffmpegStaticSrc, ffmpegDest);
-  console.log(`  [COPY] ffmpeg.exe (${(fs.statSync(ffmpegStaticSrc).size / 1024).toFixed(1)} KB)`);
+  console.log(`  [COPY] ffmpeg.exe (${srcSizeKB} KB)`);
+
+  // UPX 压缩 ffmpeg.exe（减小安装包体积）
+  const upxPath = path.join(ROOT, 'scripts', 'upx.exe');
+  if (fs.existsSync(upxPath)) {
+    // 获取压缩前大小
+    const beforeBytes = fs.statSync(ffmpegDest).size;
+    console.log(`  [UPX]  Compressing ffmpeg.exe (${(beforeBytes / 1024).toFixed(1)} KB → ...)`);
+    const { execSync } = require('child_process');
+    try {
+      execSync(`"${upxPath}" --lzma --best "${ffmpegDest}"`, { stdio: 'pipe', timeout: 120000 });
+      const afterBytes = fs.statSync(ffmpegDest).size;
+      const saved = ((beforeBytes - afterBytes) / 1024 / 1024).toFixed(1);
+      console.log(`  [UPX]  Done: ${(afterBytes / 1024).toFixed(1)} KB (saved ${saved} MB, ${((1 - afterBytes/beforeBytes)*100).toFixed(0)}%)`);
+    } catch (e) {
+      console.warn(`  [UPX]  Compression failed: ${e.message}, keeping original`);
+    }
+  } else {
+    console.log('  [SKIP] UPX not found at scripts/upx.exe, skipping compression');
+  }
 } else {
   console.log('  [SKIP] ffmpeg-static not found in server/node_modules');
 }

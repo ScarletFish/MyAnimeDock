@@ -306,10 +306,11 @@ function renderWatchCard(anime) {
   bgEl.style.backgroundImage = '';
 
   // Set video thumbnail as full card background with version guard
+  // ★ 注意: 使用引号包裹 url() 防止路径中的 ) 破坏 CSS 解析
   const img = new Image();
   img.onload = () => {
     if (version === watchCardVersion) {
-      bgEl.style.backgroundImage = `url(${thumbUrl})`;
+      bgEl.style.backgroundImage = `url("${thumbUrl}")`;
     }
   };
   img.onerror = () => {

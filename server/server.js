@@ -182,7 +182,6 @@ function serveImage(filePath, url, res) {
   const params = new URL(url, 'http://localhost').searchParams;
   const w = parseInt(params.get('w'));
   const q = parseInt(params.get('q')) || 75;
-
   // 有宽度参数 + ffmpeg 可用 → 生成缩放缓存（消除原图过大导致的锯齿）
   if (w && ffmpegPath && fs.existsSync(ffmpegPath) && fs.existsSync(filePath)) {
     const ext = path.extname(filePath) || '.jpg';
@@ -1049,8 +1048,9 @@ const server = http.createServer((req, res) => {
         if (responded) return;
         responded = true;
         ff.kill();
+        console.warn(`[THUMB] Timeout (>60s) for: ${videoPath} @${time}s`);
         jsonResp(res, 500, { error: 'timeout' });
-      }, 30000);
+      }, 60000);
       ff.on('close', (code) => {
         clearTimeout(timeout);
         if (responded) return;
@@ -1058,13 +1058,15 @@ const server = http.createServer((req, res) => {
         if (code === 0 && fs.existsSync(thumbPath)) {
           serveImage(thumbPath, req.url, res);
         } else {
+          console.warn(`[THUMB] ffmpeg exited with code ${code} for: ${videoPath} @${time}s`);
           jsonResp(res, 500, { error: 'ffmpeg failed' });
         }
       });
-      ff.on('error', () => {
+      ff.on('error', (err) => {
         clearTimeout(timeout);
         if (responded) return;
         responded = true;
+        console.warn(`[THUMB] ffmpeg spawn error: ${err.message}`);
         jsonResp(res, 500, { error: 'ffmpeg not available' });
       });
     } catch (e) {
@@ -1096,7 +1098,35 @@ const server = http.createServer((req, res) => {
 });
 
 // ─── Async startup ───
+// --- 启动时清理超过 14 天的缩略图和封面缩放缓存 ---
+function cleanupOldCache() {
+  const dirs = [
+    path.join(DATA_DIR, 'thumbs'),
+    path.join(DATA_DIR, 'covers', '.resized'),
+  ];
+  const maxAge = 14 * 24 * 60 * 60 * 1000; // 14 天
+  const now = Date.now();
+  let total = 0;
+  for (const dir of dirs) {
+    if (!fs.existsSync(dir)) continue;
+    const files = fs.readdirSync(dir);
+    for (const f of files) {
+      const fp = path.join(dir, f);
+      try {
+        const stat = fs.statSync(fp);
+        if (stat.isFile() && (now - stat.mtimeMs) > maxAge) {
+          fs.unlinkSync(fp);
+          total++;
+        }
+      } catch (_) { /* 跳过无法访问的文件 */ }
+    }
+  }
+  if (total > 0) console.log(`[CACHE] Cleaned ${total} expired cache files (>14d)`);
+}
+
 async function init() {
+  cleanupOldCache();
+
   // JSON 是同步写入的数据源（saveData 同步写 JSON，异步写 SQLite）。
   // 启动时优先从 JSON 加载，再用 JSON 数据回填 SQLite，确保数据一致性。
   await db.loadData().catch(() => {});           // 确保 SQLite schema 存在

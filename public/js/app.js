@@ -54,6 +54,7 @@ async function openSettings() {
     document.getElementById('settingsZoom').value = Math.round((config.uiScale || 1) * 100);
     document.getElementById('zoomLabel').textContent = document.getElementById('settingsZoom').value + '%';
     document.getElementById('settingsPlayerMode').value = config.playerMode || 'system';
+    document.getElementById('settingsMpvPath').value = config.mpvPath || '';
     document.getElementById('mpvPathGroup').style.display =
       config.playerMode === 'mpv' ? '' : 'none';
     document.getElementById('settingsAutoMark').checked = config.autoMarkWatched !== false;

@@ -1,0 +1,401 @@
+---
+name: data-flow
+description: Complete data flow reference for MyAnimeDocker — covers all 10 major data flows: config, scan/discovery, import, metadata fetch, play sessions, memories, covers/thumbnails, JSON+SQLite dual-write, startup init, full call chain. Load this skill when you need to understand how data moves through the system, before making changes to data paths, or when debugging data persistence issues.
+---
+
+# MyAnimeDocker — Complete Data Flow Reference
+
+## Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                            Tauri Shell (Rust)                                │
+│  src-tauri/src/main.rs                                                       │
+│    • Spawns sidecar (Node.js server.exe)                                      │
+│    • Monitors sidecar exit → closes window                                    │
+│    • Hides window until server ready (visible:false → window.show())          │
+│    • In production: navigates to http://localhost:3456 after ready            │
+│                                                                               │
+│  Sidecar: server/server.js (Node.js, pkg-bundled)                            │
+│    • HTTP server @ :3456                                                      │
+│    • REST API (40+ endpoints)                                                 │
+│    • Dual persistence: JSON (sync) + SQLite (async, Prisma ORM)               │
+│    • Static file serving: public/ frontend + covers/ + thumbs/                │
+│    • ffmpeg: thumbnail extraction + cover resize                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+## Data Files
+
+| File | Location (dev) | Location (MSI/pkg) | Purpose |
+|------|---------------|-------------------|---------|
+| `anime-data.json` | `server/` | `%APPDATA%/com.myanimedocker.app/` | Primary persistence (sync write) |
+| `anime.db` | `server/` | `%APPDATA%/com.myanimedocker.app/` | SQLite replica (async sync) |
+| `config.json` | `server/` | `%APPDATA%/com.myanimedocker.app/` | Settings (JSON only) |
+| `covers/*.jpg` | `server/covers/` | `%APPDATA%/com.myanimedocker.app/covers/` | Downloaded cover images |
+| `thumbs/*.jpg` | `server/thumbs/` | `%APPDATA%/com.myanimedocker.app/thumbs/` | Video thumbnails (ffmpeg) |
+
+## 1. Startup Init Flow
+
+```
+server.js ⇒ init()
+  │
+  ├─ 1. Load config.json → global `config` object
+  │     (includes mediaDir, playerMode, mpvPath, theme, uiScale, scrapers config)
+  │
+  ├─ 2. Load anime-data.json → global `data` object
+  │     (source of truth — sync-written, always latest)
+  │
+  ├─ 3. db.loadData() — backfill SQLite from JSON
+  │     (async, best-effort copy; JSON is authoritative)
+  │     ├─ upsert Anime records
+  │     ├─ upsert Episode records
+  │     ├─ upsert PlaySession records
+  │     ├─ upsert Memory records
+  │     └─ upsert ScannedTree nodes (raw JSON stringified)
+  │
+  ├─ 4. Validate localCover paths
+  │     (if file missing → clear field → frontend shows gray placeholder)
+  │
+  ├─ 5. Initialize mpv-controller (activePlays Map)
+  │
+  └─ 6. Start HTTP server (http.createServer, listen :3456)
+```
+
+## 2. Config Flow
+
+### Read: `GET /api/config`
+```
+server.js:handleRequest()
+  → /api/config (line ~360)
+  → jsonResp(res, 200, { ...config, dirValid })
+    dirValid = fs.existsSync(config.mediaDir)
+```
+
+### Write: `POST /api/config`
+```
+server.js:handleRequest()
+  → /api/config (line ~400)
+  → Read body (JSON)
+  → Merge: config = { ...config, ...body }
+  → Save: fs.writeFileSync(configPath, JSON.stringify(config, null, 2))
+  → Apply side effects:
+      ├─ theme → document.documentElement.dataset.theme (if hot-reload in Tauri)
+      └─ (no server restart needed)
+  → jsonResp(res, 200, { ok: true })
+```
+
+### Config Fields
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `mediaDir` | string | `""` | Anime folder root path |
+| `playerMode` | string | `"system"` | `"system"` or `"mpv"` |
+| `mpvPath` | string | `"mpv"` | MPV executable path |
+| `theme` | string | `"dark"` | `"dark"` or `"light"` |
+| `uiScale` | number | `100` | 75–150, applied as CSS rem font-size |
+| `scrapers.bangumi.enabled` | bool | `true` | Enable Bangumi metadata |
+| `scrapers.bangumi.apiBase` | string | `"https://api.bgm.tv"` | Bangumi API mirror |
+| `scrapers.tmdb.enabled` | bool | `false` | Enable TMDB (needs API Key) |
+| `tmdbApiKey` | string | `""` | TMDB API Key |
+
+## 3. Scan / Discovery Flow
+
+```
+GET /api/browse?showExcluded
+  → server.js (line ~260)
+  → scanner.scanMediaDirFlat(config.mediaDir)
+      ├─ Recursively walk mediaDir
+      ├─ For each folder containing video files (.mkv/.mp4/.avi/.mov):
+      │   ├─ parseFolderName(name) using anitomy → { title, season }
+      │   └─ buildLeaf(item) → { name, path, type:'leaf', parsedTitle,
+      │                          parsedSeason, videoCount, totalSize, videos[],
+      │                          parentChain[], alreadyImported, excluded,
+      │                          bangumiMatched, bangumiId, ... }
+      └─ Returns flat leaf array
+  → Merge with data.scannedTree (preserve existing metadata/exclusion state)
+  → Save data to JSON
+  → jsonResp with merged result
+```
+
+### Scan Progress (SSE)
+
+```
+GET /api/scan
+  → server.js (line ~280)
+  → Sets res.headers: Content-Type: text/event-stream, Cache-Control: no-cache
+  → scanner.scanMediaDirFlat() with progress callback:
+      write `data: ${JSON.stringify({ type: 'progress'|'done', ... })}\n\n`
+  → Connection stays open until scan completes
+```
+
+## 4. Import Flow
+
+```
+POST /api/import
+  → server.js (line ~310)
+  → Body: { items: [{ path, name, parsedTitle, parsedSeason, ... }] }
+  → For each item:
+      ├─ Generate animeId = `${parsedTitle}${parsedSeason ? '-Season '+parsedSeason : ''}`
+      ├─ Find or create Anime in data.library[]:
+      │   { id, title, bangumiId, bangumiTitle, bangumiTitleJp, summary,
+      │     coverUrl, localCover, rating, metadataSource,
+      │     episodes: [{ id, animeId, episodeNumber, filePath, fileName,
+      │                  fileSize, progress, status, lastPlayed }] }
+      ├─ Mark node.alreadyImported = true in scannedTree
+      └─ saveData() → JSON + SQLite
+  → jsonResp(res, 200, { count: N })
+```
+
+## 5. Metadata Fetch Flow
+
+```
+POST /api/discovery/fetch-meta (for scanned items)
+POST /api/bangumi/fetch (for library items)
+  → server.js
+  → coverDir = path.join(DATA_DIR, 'covers')
+  → registry.fetchMetadata(source, title, coverDir, subjectId, config)
+      ├─ ScraperRegistry (scrapers/index.js)
+      │   ├─ bangumi.js:
+      │   │   ├─ fetchWithTimeout(url) using node-fetch polyfill (node-fetch.js)
+      │   │   │   (pkg compatible: http/https native modules, not global fetch)
+      │   │   ├─ getSubjectDetail(subjectId) → detail JSON from api.bgm.tv
+      │   │   └─ downloadCover(imageUrl, coverDir, subjectId):
+      │   │       ├─ Determine ext from URL (.jpg, .png, etc.)
+      │   │       ├─ filename = `${subjectId}${ext}`
+      │   │       ├─ Check cache: if exists → return path
+      │   │       ├─ fetch image → buffer → write to covers/
+      │   │       └─ Return absolute localCover path
+      │   └─ tmdb.js:
+      │       ├─ Same pattern (TMDB image base + seriesId)
+      │       └─ Requires tmdbApiKey in config
+      └─ Returns: { source, bangumiId, bangumiTitle, bangumiTitleJp,
+                     summary, coverUrl, localCover, rating }
+  → Update node/anime metadata fields
+  → saveData() → JSON + SQLite
+```
+
+## 6. Cover Serving Flow
+
+### Dev mode (`server/covers/`):
+```
+GET /covers/12345.jpg?w=400&q=75
+  → server.js (line ~970)
+  → serveImage(coverPath, req.url, res)
+      ├─ If no ?w param: readFile + serve raw
+      ├─ If ?w param present:
+      │   ├─ Check cache: covers/.resized/thumb_W_Q_NAME
+      │   ├─ Cache hit: serve cached file
+      │   ├─ Cache miss:
+      │   │   ├─ ffmpeg -i INPUT -vf "scale=W:-1" -q:v Q -y CACHEPATH
+      │   │   │   (W=width from ?w=, Q=quality from ?q= or default 75)
+      │   │   ├─ On success: serve CACHEPATH
+      │   │   └─ On error: fallback to raw file
+      └─ Cache-Control: max-age=86400
+```
+
+### MSI/pkg mode:
+```
+DATA_DIR = %APPDATA%/com.myanimedocker.app
+coverPath = path.join(DATA_DIR, 'covers/12345.jpg')
+  → Same serveImage() pipeline
+  → Resized cache at DATA_DIR/covers/.resized/
+```
+
+### Covers not in AppData yet:
+```
+init() validates localCover — if file doesn't exist → clear field
+Frontend shows gray SVG placeholder
+User must re-fetch metadata to download covers to AppData
+```
+
+## 7. Thumbnail Flow
+
+```
+GET /api/thumbnail?path=VIDEO_PATH&time=60
+  → server.js (line ~915)
+  → Validate videoPath exists
+  → hash = MD5(videoPath + time)
+  → thumbPath = DATA_DIR/thumbs/${hash}.jpg
+  → If cache hit: serveImage(thumbPath, ...) → same cover pipeline
+  → If cache miss:
+      ├─ mkdir thumbs/ if needed
+      ├─ spawn(ffmpegPath, ['-ss', time, '-i', videoPath,
+      │                      '-vframes', '1', '-q:v', '5',
+      │                      '-y', thumbPath, '-loglevel', 'error'])
+      ├─ 30s timeout
+      ├─ On close(code===0): serveImage(thumbPath, ...)
+      └─ On error/timeout: jsonResp 500
+```
+
+### ffmpeg Path Resolution
+```
+server.js: const ffmpegPath = require('ffmpeg-static') || 'ffmpeg';
+  → Dev: resolves to server/node_modules/ffmpeg-static/ffmpeg.exe
+  → pkg: db.js sets process.env.FFMPEG_BIN → sidecar-modules/ffmpeg.exe
+         (ffmpeg-static reads FFMPEG_BIN env var first)
+  → Fallback: 'ffmpeg' (system PATH)
+```
+
+## 8. Play Session Flow
+
+### Play Start
+```
+POST /api/play
+  → server.js (line ~540)
+  → Body: { episodeId, animeId, filePath, playerMode }
+  → If mode === 'system':
+      ├─ spawn('cmd', ['/c', 'start', '', filePath], { detached })
+      └─ (no progress tracking possible)
+  → If mode === 'mpv':
+      ├─ sessionId = `${Date.now()}-${Math.random().toString(36).slice(2)}`
+      ├─ spawn(mpvPath, ['--term-status-msg', filePath, ...])
+      ├─ Parse stderr for JSON lines: {"time-pos":...,"duration":...,"pause":...}
+      ├─ activePlays.set(filePath, { sessionId, episode, anime })
+      ├─ onProgress → update episode.progress, saveData() every 10s
+      └─ onClose (mpv exit):
+          ├─ Create PlaySession record { animeId, episodeNumber, sessionId,
+          │                               startTime, endTime, duration,
+          │                               clockTime, progressStart }
+          ├─ activePlays.delete(filePath)
+          ├─ Mark episode.status = 'completed' (if duration/clockTime > 0.8)
+          └─ saveData() with final:true
+```
+
+### Progress Update (manual via API)
+```
+POST /api/progress
+  → server.js (line ~570)
+  → Body: { animeId, episodeNumber, progress, status }
+  → Update episode.progress and episode.status
+  → saveData() → JSON + SQLite
+```
+
+### Watch Stats
+```
+GET /api/anime/:id/sessions
+  → server.js (line ~510)
+  → Query data.playSessions filtered by animeId
+  → Return last 90 days grouped by date
+  → Frontend: Canvas bar chart in detail.js renderWatchStats()
+```
+
+## 9. Memory Flow
+
+### List
+```
+GET /api/memories
+  → server.js (line ~160)
+  → Return data.memories[] sorted by updatedAt desc
+  → Frontend: memory-masonry grid (cards with cover + rating + thoughts)
+```
+
+### Create / Update
+```
+POST /api/memories
+  → server.js (line ~170)
+  → Body: { animeId, title, coverLocal, coverUrl, rating, thoughts, notes,
+             episodesWatched, totalEpisodes }
+  → Upsert: find by animeId → update, or create new
+  → saveData() → JSON + SQLite
+  → Frontend: open archive modal from detail view or memory page
+```
+
+## 10. JSON + SQLite Dual-Write Flow
+
+### `saveData(data)` — server.js (line ~190)
+```
+function saveData(data) {
+  // 1. JSON (sync, immediate)
+  fs.writeFileSync(dataPath, JSON.stringify(data, null, 2));
+  console.log('💾 Data saved');
+
+  // 2. SQLite (async, best-effort)
+  db.syncToSqlite(data).catch(e => console.error('SQLite sync error:', e));
+}
+```
+
+### `db.syncToSqlite(data)` — db.js (line ~220)
+```
+async syncToSqlite(data) {
+  ├─ Upsert Anime records (upsertAnimeBatch)
+  │   ├─ Find by id → update or create
+  │   └─ Upsert episodes (delete old → re-insert)
+  ├─ Upsert PlaySession records
+  ├─ Upsert Memory records
+  └─ Upsert ScannedTree (delete all → re-insert all)
+}
+```
+
+### `db.loadData()` — db.js (line ~170)
+```
+async loadData() {
+  ├─ Read all Anime + Episode from SQLite
+  ├─ Read all PlaySession
+  ├─ Read all Memory
+  ├─ Read all ScannedTree
+  └─ Return → server.js assigns to global `data`
+}
+```
+
+### Persistence Guarantee
+```
+JSON write: synchronous, always latest (authoritative)
+SQLite write: asynchronous, may lag (backup/replica)
+init(): load JSON first, then backfill from SQLite
+  → JSON wins on conflict (JSON may have newer data)
+```
+
+## 11. Full HTTP Call Chain
+
+Each API request flows through:
+
+```
+http.createServer((req, res) => {
+  ├─ CORS headers (Access-Control-Allow-*)
+  ├─ Parse URL + method
+  ├─ Route matching:
+  │   ├─ Static files: public/ (index.html, css, js, vendor/)
+  │   ├─ API routes (/api/*):
+  │   │   ├─ Read body (if POST/PUT/DELETE)
+  │   │   ├─ Execute handler logic
+  │   │   ├─ Mutate global `data` (if applicable)
+  │   │   ├─ saveData() → JSON + SQLite (if data changed)
+  │   │   └─ jsonResp(res, status, payload)
+  │   └─ Cover/thumbnail routes:
+  │       ├─ /covers/* → serveImage() → ffmpeg resize pipeline
+  │       └─ /api/thumbnail → ffmpeg extract → serveImage()
+  └─ 404 fallback
+})
+```
+
+## Key Files Reference
+
+| File | Lines | Purpose |
+|------|-------|---------|
+| `server/server.js` | ~1154 | HTTP server, routes, saveData, init, play sessions, cover serving |
+| `server/db.js` | ~391 | Prisma wrapper: loadData, syncToSqlite, shutdown, pkg paths |
+| `server/scanner.js` | ~323 | Media directory scanner, folder name parsing (anitomy) |
+| `server/mpv-controller.js` | ~146 | mpv process spawn, stderr parsing, progress tracking |
+| `server/scrapers/index.js` | ~557 | ScraperRegistry: multi-source metadata aggregation |
+| `server/scrapers/bangumi.js` | — | Bangumi API client + cover download |
+| `server/scrapers/tmdb.js` | — | TMDB API client + cover download |
+| `server/scrapers/node-fetch.js` | — | Node.js http/https fetch polyfill (pkg-compatible) |
+| `scripts/copy-sidecar-deps.js` | — | Build: copies Prisma engine + ffmpeg.exe to sidecar-modules/ |
+| `public/js/api.js` | — | Frontend fetch() wrapper (API.get, API.post, API.del) |
+| `public/js/app.js` | — | Router, theme, toast, settings, zoom |
+| `public/js/discovery.js` | — | Scan/browse UI, import panel |
+| `public/js/library.js` | — | Library grid, search, sort |
+| `public/js/detail.js` | — | Detail view, hero animation, episodes, heatmap, stats |
+| `public/js/memory.js` | — | Memories grid, archive |
+| `public/styles.css` | 3373 | All styling (dark/light theme, responsive, animations) |
+
+## Key Gotchas
+
+1. **JSON is authoritative**: `saveData()` writes JSON synchronously (always current), SQLite asynchronously (may lag). `init()` loads JSON first, SQLite only backfills.
+2. **Fetch in pkg**: Global `fetch()` is unavailable in pkg-bundled Node.js. `node-fetch.js` polyfill with http/https native modules replaces it in scrapers.
+3. **ffmpeg path**: Dev mode uses `require('ffmpeg-static')` from server/node_modules. pkg mode sets `FFMPEG_BIN` env var → `sidecar-modules/ffmpeg.exe` (copied during build by copy-sidecar-deps.js).
+4. **DATA_DIR differs**: Dev = `server/`, pkg/MSI = `%APPDATA%/com.myanimedocker.app`. File paths (config.json, anime-data.json, covers/, thumbs/) all resolve through DATA_DIR.
+5. **covers/ migration**: Covers downloaded in dev mode go to `server/covers/`. After MSI install, covers must be re-fetched (new AppData path). `init()` validates localCover existence and clears missing ones → gray placeholder shown.
+6. **Play sessions**: `activePlays` Map is in-memory only (lost on server restart). Persisted playSessions survive in JSON + SQLite.
+7. **CSS zoom** (`uiScale`): Applied via `document.documentElement.style.fontSize = (16 * scale/100) + 'px'`. All font sizes use rem units. Card grid min widths also in rem.

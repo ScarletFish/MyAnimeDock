@@ -16,6 +16,7 @@ npm run prisma:generate  # Regenerate Prisma client
 npm run prisma:migrate   # Create/apply Prisma migrations
 npm run prisma:studio    # Open Prisma Studio (SQLite browser)
 node scripts/migrate-to-sqlite.js  # 从 JSON 迁移数据到 SQLite（一次性）
+start.bat             # Windows 菜单：开发/构建/清理/prisma 操作
 ```
 
 ## API Endpoints
@@ -41,7 +42,7 @@ POST /api/bangumi/fetch       # Fetch metadata for library item
 GET  /api/mpv-status          # Active mpv sessions
 POST /api/quit                # Shutdown server
 GET  /api/thumbnail?path=&time # Video thumbnail (ffmpeg)
-GET  /covers/xxx.jpg?w=&q=    # Dynamic cover resize (sharp)
+GET  /covers/xxx.jpg?w=&q=    # Dynamic cover resize (ffmpeg)
 GET  /api/memories            # List memories
 POST /api/memories            # Create/update memory
 ```
@@ -61,6 +62,7 @@ server/            → Tauri sidecar (Node.js backend)
 │   └── parseFolderName()  → 使用 anitomy 提取标题和季号，回退到正则清洗
 ├── scrapers/      → 多源刮削架构
 │   ├── index.js   → ScraperRegistry（统一注册、优先级、批量搜索）
+│   ├── node-fetch.js → pkg 兼容的 fetch polyfill（http/https 原生模块）
 │   ├── bangumi.js → Bangumi API（curl fallback）
 │   └── tmdb.js    → TMDB API（需配置 API Key）
 ├── mpv-controller.js → mpv 进度追踪（spawn + --term-status-msg，final 标记）
@@ -149,19 +151,32 @@ scripts/            → 构建/迁移工具
 
 ```json
 {
-  "mediaDir": "",       // 动漫文件夹根目录
-  "playerMode": "system", // "system"（系统默认播放器）或 "mpv"（mpv + 进度追踪）
-  "mpvPath": "mpv",     // mpv 可执行文件路径
-  "theme": "dark",       // "dark" 或 "light"
-  "scrapers": {          // 刮削源配置
-    "bangumi": { "enabled": true, "apiBase": "https://api.bgm.tv" },  // apiBase 可换为镜像 https://api.bangumi.one
+  "mediaDir": "",
+  "playerMode": "system",
+  "mpvPath": "mpv",
+  "theme": "dark",
+  "uiScale": 100,
+  "scrapers": {
+    "bangumi": { "enabled": true, "apiBase": "https://api.bgm.tv" },
     "tmdb": { "enabled": false }
   },
-  "tmdbApiKey": ""       // TMDB API Key（从 themoviedb.org 获取）
+  "tmdbApiKey": ""
 }
 ```
 
-同级目录下有 `config.example.json` 作为模板，复制为 `config.json` 即可使用。
+定义于 `server/config.example.json`（同级目录），复制为 `server/config.json` 使用。
+
+| 字段 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `mediaDir` | string | `""` | 动漫文件夹根目录 |
+| `playerMode` | string | `"system"` | `"system"`（系统播放器）或 `"mpv"`（mpv + 进度追踪） |
+| `mpvPath` | string | `"mpv"` | mpv 可执行文件路径 |
+| `theme` | string | `"dark"` | `"dark"` 或 `"light"` |
+| `uiScale` | number | `100` | UI 缩放百分比 75-150 |
+| `scrapers.bangumi.enabled` | bool | `true` | 启用 Bangumi |
+| `scrapers.bangumi.apiBase` | string | `"https://api.bgm.tv"` | 可换为镜像 `https://api.bangumi.one` |
+| `scrapers.tmdb.enabled` | bool | `false` | 启用 TMDB（需 API Key） |
+| `tmdbApiKey` | string | `""` | TMDB API Key |
 
 **注意**: Discovery（发现）视图执行扫描后显示候选列表供用户勾选导入，支持排除/取消关联/获取元数据等管理操作。
 
@@ -328,3 +343,9 @@ npm run build                # pkg sidecar → copy-sidecar-deps → tauri build
 ```
 
 仅用于验证安装体验、中文安装器效果、升级覆盖等最终场景。
+
+## Available Skills
+
+| Skill | Load with | Purpose |
+|-------|-----------|---------|
+| **data-flow** | `skill("data-flow")` | Complete data flow reference: 10 major flows (config, scan, import, metadata, play sessions, memories, covers/thumbnails, dual-write, startup, call chain) with file:line references. Load before making data path changes or debugging persistence issues. |

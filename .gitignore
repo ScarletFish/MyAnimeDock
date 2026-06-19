@@ -7,12 +7,11 @@ covers/
 test-media/
 config.json
 skills-lock.json
-.agents/
 *.log
 PLAN.md
 .opencode/
-thumbs/
 .mimocode/
+thumbs/
 opencode.json
 SHOKO_ANIDB_UPGRADE_PLAN.md
 
@@ -22,7 +21,7 @@ src-tauri/Cargo.lock
 src-tauri/.cargo/
 
 # Prisma
-prisma/anime.db
+*.db
 
 # Tauri sidecar build artifacts
 src-tauri/server-x86_64*
@@ -32,12 +31,6 @@ src-tauri/sidecar-modules/
 # Build artifacts
 build-tauri.bat
 rustup-init.exe
-
-# Scripts
-scripts/
-
-# Server (copied for Tauri sidecar)
-server/
 
 # Environment
 .env

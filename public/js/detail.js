@@ -21,7 +21,7 @@ function initToggleChecks() {
   const tagsEl = document.getElementById('detailTags');
   const charWrap = document.getElementById('detailCharWrap');
   if (tagsEl) checkToggleOverflow(tagsEl, '.detail-tags-list', '.detail-tag-toggle', 8);
-  if (charWrap) checkToggleOverflow(charWrap, '.detail-char-grid', '.detail-char-toggle', 12);
+  if (charWrap) checkToggleOverflow(charWrap, '.detail-char-grid', '.detail-char-toggle', 6);
 }
 
 function toggleExpand(wrapId) {
@@ -29,7 +29,7 @@ function toggleExpand(wrapId) {
   wrap.classList.toggle('expanded');
   setTimeout(() => {
     if (wrapId === 'detailTags') checkToggleOverflow(wrap, '.detail-tags-list', '.detail-tag-toggle', 8);
-    if (wrapId === 'detailCharWrap') checkToggleOverflow(wrap, '.detail-char-grid', '.detail-char-toggle', 12);
+    if (wrapId === 'detailCharWrap') checkToggleOverflow(wrap, '.detail-char-grid', '.detail-char-toggle', 6);
   }, 50);
 }
 let archiveMemoryData = null;

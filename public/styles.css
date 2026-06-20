@@ -968,7 +968,7 @@ html {
 /* Two-column layout */
 .detail-layout {
   display: grid;
-  grid-template-columns: clamp(16.25rem, 24vw, 22.5rem) 1fr;
+  grid-template-columns: clamp(14rem, 21vw, 19.5rem) 1fr;
   gap: clamp(1.5rem, 2.5vw, 2.5rem);
   align-items: start;
 }
@@ -3107,6 +3107,7 @@ input[type="range"]::-webkit-slider-thumb {
   border-radius: var(--radius-lg);
   overflow: hidden;
   min-height: 200px;
+  margin-bottom: 1rem;
 }
 
 .watch-card-bg {
@@ -3216,6 +3217,7 @@ input[type="range"]::-webkit-slider-thumb {
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
   padding: 1.25rem 1.5rem;
+  margin-bottom: 1rem;
 }
 
 .episode-heatmap-header {
@@ -3341,14 +3343,16 @@ input[type="range"]::-webkit-slider-thumb {
 
 .detail-char-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr;
-  gap: 6px;
-  max-height: 216px;
-  overflow: hidden;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
 }
 
-.detail-char-wrap.expanded .detail-char-grid {
-  max-height: none;
+.detail-char-grid .detail-char-card:nth-child(n+7) {
+  display: none;
+}
+
+.detail-char-wrap.expanded .detail-char-card:nth-child(n+7) {
+  display: block;
 }
 
 .detail-char-wrap .detail-char-toggle {
@@ -3361,7 +3365,7 @@ input[type="range"]::-webkit-slider-thumb {
   width: 24px;
   height: 20px;
   border-radius: 4px;
-  background: var(--bg-elevated);
+  background: transparent;
   color: var(--fg-secondary);
   border: none;
   cursor: pointer;
@@ -3382,10 +3386,6 @@ input[type="range"]::-webkit-slider-thumb {
   color: var(--fg-primary);
 }
 
-[data-theme="light"] .detail-char-wrap .detail-char-toggle {
-  background: var(--bg-card);
-}
-
 .detail-char-card {
   display: flex;
   align-items: center;
@@ -3393,22 +3393,22 @@ input[type="range"]::-webkit-slider-thumb {
   padding: 8px;
   border-radius: var(--radius-md);
   background: var(--bg-canvas);
-  transition: background var(--duration-fast) var(--ease-out);
   min-width: 0;
 }
 
 .detail-char-avatar {
-  width: 48px;
-  height: 48px;
+  width: 60px;
+  height: 80px;
   border-radius: var(--radius-sm);
   object-fit: cover;
+  object-position: top center;
   flex-shrink: 0;
   background: var(--bg-surface);
 }
 
 .detail-char-avatar-placeholder {
-  width: 48px;
-  height: 48px;
+  width: 60px;
+  height: 80px;
   border-radius: var(--radius-sm);
   flex-shrink: 0;
   background: var(--bg-surface);
@@ -3435,7 +3435,7 @@ input[type="range"]::-webkit-slider-thumb {
 
 .detail-char-cv {
   font-size: 0.688rem;
-  color: var(--accent-soft);
+  color: var(--fg-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

@@ -179,13 +179,13 @@ class BangumiScraper {
             id: c.id,
             name: c.name,
             nameCn: c.name_cn || '',
-            image: c.images?.grid || c.images?.small || null,
-            roleName: c.relation || c.role_name || '',
-            actors: (c.actors || []).map(a => ({
-              id: a.id,
-              name: a.name,
-              nameCn: a.name_cn || '',
-              image: a.images?.grid || a.images?.small || null,
+        image: c.images?.small || c.images?.grid || null,
+        roleName: c.relation || c.role_name || '',
+        actors: (c.actors || []).map(a => ({
+          id: a.id,
+          name: a.name,
+          nameCn: a.name_cn || '',
+          image: a.images?.small || a.images?.grid || null,
             })),
             _i: i,
           }))

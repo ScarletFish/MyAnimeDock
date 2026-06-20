@@ -202,14 +202,11 @@
         <div class="detail-left">
           <div class="detail-sidebar">
             <div class="detail-cover-wrap" id="detailCover"></div>
-            <div class="detail-info-panel">
-              <h2 id="detailTitle"></h2>
-              <div class="detail-meta-row">
-                <span id="detailRating" class="rating-badge"></span>
-                <span id="detailSeason" class="season-badge"></span>
-                <span id="detailStatus" class="status-badge"></span>
-              </div>
-              <p id="detailSummary" class="detail-summary"></p>
+              <div class="detail-info-panel">
+                <h2 id="detailTitle"></h2>
+                <div class="detail-info-line" id="detailInfoLine"></div>
+                <div class="detail-tags" id="detailTags"></div>
+                <p id="detailSummary" class="detail-summary"></p>
               <div class="detail-actions">
                 <button class="btn btn-primary" id="btnWriteMemory" onclick="openMemoryEditor()">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -301,7 +298,10 @@
             <div class="detail-section-header">
               <h3>角色·声优</h3>
             </div>
-            <div class="detail-char-grid" id="detailCharGrid"></div>
+            <div class="detail-char-wrap" id="detailCharWrap">
+              <div class="detail-char-grid" id="detailCharGrid"></div>
+              <button class="detail-char-toggle" onclick="toggleExpand('detailCharWrap')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+            </div>
             <div class="detail-staff-section" id="detailStaffSection" style="display:none">
               <div class="detail-section-header" style="margin-top:1rem">
                 <h3>主要制作人员</h3>

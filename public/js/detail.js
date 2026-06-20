@@ -8,6 +8,30 @@ let wasMpvActive = false;
 
 // Archive mode flags (set by memory.js)
 let isArchiveMode = false;
+
+function checkToggleOverflow(wrap, listSel, toggleSel, threshold) {
+  if (!wrap) return;
+  const list = wrap.querySelector(listSel);
+  const toggle = wrap.querySelector(toggleSel);
+  if (!list || !toggle) return;
+  toggle.style.display = list.children.length > threshold ? 'inline-flex' : 'none';
+}
+
+function initToggleChecks() {
+  const tagsEl = document.getElementById('detailTags');
+  const charWrap = document.getElementById('detailCharWrap');
+  if (tagsEl) checkToggleOverflow(tagsEl, '.detail-tags-list', '.detail-tag-toggle', 8);
+  if (charWrap) checkToggleOverflow(charWrap, '.detail-char-grid', '.detail-char-toggle', 12);
+}
+
+function toggleExpand(wrapId) {
+  const wrap = document.getElementById(wrapId);
+  wrap.classList.toggle('expanded');
+  setTimeout(() => {
+    if (wrapId === 'detailTags') checkToggleOverflow(wrap, '.detail-tags-list', '.detail-tag-toggle', 8);
+    if (wrapId === 'detailCharWrap') checkToggleOverflow(wrap, '.detail-char-grid', '.detail-char-toggle', 12);
+  }, 50);
+}
 let archiveMemoryData = null;
 let detailSourceView = 'library';
 
@@ -154,24 +178,36 @@ function renderDetail() {
   document.getElementById('detailTitle').textContent = anime.bangumiTitle || anime.title;
 
   // ─── Info panel ───
-  const ratingEl = document.getElementById('detailRating');
-  ratingEl.textContent = anime.rating ? `★ ${anime.rating}` : '暂无评分';
+  const infoLine = document.getElementById('detailInfoLine');
+  const leftParts = [];
+  if (anime.rating) leftParts.push(`<span class="info-rating-num">★ ${anime.rating}</span>`);
+  if (anime.ratingRank) leftParts.push(`<span class="info-rating-sub">#${anime.ratingRank}</span>`);
+  if (anime.ratingTotal) leftParts.push(`<span class="info-rating-sub">${anime.ratingTotal}人</span>`);
 
-  const seasonEl = document.getElementById('detailSeason');
-  if (isArchiveMode) {
-    seasonEl.style.display = 'none';
-  } else {
-    seasonEl.textContent = anime.season ? `Season ${anime.season}` : '';
-    seasonEl.style.display = anime.season ? '' : 'none';
-  }
+  const rightParts = [];
+  if (anime.date) rightParts.push(`<span class="info-tag">${anime.date}</span>`);
+  if (anime.platform) rightParts.push(`<span class="info-tag">${escHtml(anime.platform)}</span>`);
+  infoLine.innerHTML =
+    (leftParts.length ? `<span class="info-left">${leftParts.join('')}</span>` : '') +
+    (rightParts.length ? `<span class="info-tags">${rightParts.join('')}</span>` : '');
+  infoLine.style.display = leftParts.length || rightParts.length ? '' : 'none';
 
-  const statusEl = document.getElementById('detailStatus');
-  if (isArchiveMode) {
-    statusEl.textContent = '已归档';
-    statusEl.className = 'status-badge deleted';
+  // ─── Tags ───
+  const tagsEl = document.getElementById('detailTags');
+  const tags = (anime.tags || []).filter(t => {
+    if (anime.platform && t === anime.platform) return false;
+    if (/\d{4}(年|年\d{1,2}月|\-\d{2})/.test(t)) return false;
+    if (/^\d{1,2}月$/.test(t)) return false;
+    return true;
+  });
+  if (tags.length) {
+    tagsEl.innerHTML = `<div class="detail-tags-list">${tags.map(t => `<span class="detail-tag">${escHtml(t)}</span>`).join('')}</div>` +
+      `<button class="detail-tag-toggle" onclick="toggleExpand('detailTags')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>`;
+    tagsEl.classList.remove('expanded');
+    tagsEl.style.display = '';
+    tagsEl._checkOverflow = () => checkToggleOverflow(tagsEl, '.detail-tags-list', '.detail-tag-toggle');
   } else {
-    statusEl.textContent = anime.downloaded ? '已下载' : '未下载';
-    statusEl.className = `status-badge ${anime.downloaded ? 'downloaded' : 'deleted'}`;
+    tagsEl.style.display = 'none';
   }
 
   renderSummary(anime);
@@ -217,6 +253,10 @@ function renderDetail() {
     renderCharacters(anime);
   }
   renderWatchStats(anime);
+
+  setTimeout(initToggleChecks, 100);
+  setTimeout(initToggleChecks, 300);
+  setTimeout(initToggleChecks, 600);
 }
 
 function renderArchiveDetail(anime) {
@@ -365,7 +405,11 @@ function renderEpisodeHeatmap(anime) {
     header.textContent = '剧集列表';
     return;
   }
-  header.textContent = `剧集列表 · ${anime.episodes.length} 集`;
+  const localCount = anime.episodes.length;
+  const totalCount = anime.totalEpisodes || anime.eps;
+  header.innerHTML = totalCount
+    ? `剧集列表 · <span class="ep-count">${localCount} /${totalCount}集</span>`
+    : `剧集列表 · <span class="ep-count">${localCount} 集</span>`;
 
   const cols = window.innerWidth < 768 ? 5 : 10;
   grid.innerHTML = anime.episodes.map((ep, i) => {

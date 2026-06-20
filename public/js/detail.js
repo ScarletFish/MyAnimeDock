@@ -174,13 +174,11 @@ function renderDetail() {
     statusEl.className = `status-badge ${anime.downloaded ? 'downloaded' : 'deleted'}`;
   }
 
-  const summaryEl = document.getElementById('detailSummary');
-  summaryEl.textContent = anime.summary || '暂无简介';
+  renderSummary(anime);
 
   // ─── Actions & metadata ───
-  document.getElementById('bangumiSearchResults').innerHTML = '';
-  document.getElementById('bangumiEditForm').style.display = 'none';
-  document.getElementById('bangumiEditKeyword').value = '';
+  const syncModal = document.getElementById('syncModal');
+  if (syncModal) syncModal.classList.remove('show');
 
   const fetchBtn = document.getElementById('btnFetchBangumi');
   const deleteBtn = document.getElementById('btnDeleteAnime');
@@ -276,6 +274,25 @@ function findWatchEpisode(anime) {
     if (!ep.watched) return ep;
   }
   return null;
+}
+
+function renderSummary(anime) {
+  const el = document.getElementById('detailSummary');
+  if (!el) return;
+  let text = anime.summary || '';
+  if (text && /[\u4e00-\u9fff]/.test(text)) {
+    // Has Chinese characters — try to keep only Chinese portion
+    // Bangumi often concatenates: "中文简介\n---\n日文简介"
+    const parts = text.split(/\[?简介原文\]?/);
+    if (parts.length > 1) {
+      text = parts[0].trim();
+    } else {
+      const paragraphs = text.split(/\n+/).filter(p => p.trim());
+      const cn = paragraphs.filter(p => /[\u4e00-\u9fff]/.test(p));
+      if (cn.length > 0) text = cn.join('\n');
+    }
+  }
+  el.textContent = text || '暂无简介';
 }
 
 function renderWatchCard(anime) {
@@ -596,23 +613,31 @@ async function toggleWatched(animeId, epNumber, watched) {
   }
 }
 
-function editBangumiMetadata() {
+function syncBangumiMetadata() {
   if (!currentAnime) return;
-  const editForm = document.getElementById('bangumiEditForm');
-  const keywordInput = document.getElementById('bangumiEditKeyword');
-  const resultsEl = document.getElementById('bangumiSearchResults');
-  
-  // Use bangumiTitle or title as default keyword
-  keywordInput.value = currentAnime.bangumiTitle || currentAnime.title;
-  editForm.style.display = 'block';
-  resultsEl.innerHTML = '';
-  keywordInput.focus();
+  const modal = document.getElementById('syncModal');
+  const input = document.getElementById('syncKeyword');
+  const results = document.getElementById('syncSearchResults');
+  if (!modal || !input) return;
+  input.value = currentAnime.bangumiTitle || currentAnime.title;
+  results.innerHTML = '';
+  modal.classList.add('show');
+  input.focus();
+  // Click overlay (outside modal content) to close
+  modal.onclick = function(e) {
+    if (e.target === this) closeSyncModal();
+  };
+}
+
+function closeSyncModal() {
+  const modal = document.getElementById('syncModal');
+  if (modal) modal.classList.remove('show');
 }
 
 async function searchBangumiWithKeyword() {
   if (!currentAnime) return;
-  const keyword = document.getElementById('bangumiEditKeyword').value.trim();
-  const resultsEl = document.getElementById('bangumiSearchResults');
+  const keyword = document.getElementById('syncKeyword').value.trim();
+  const resultsEl = document.getElementById('syncSearchResults');
   
   if (!keyword) {
     showToast('请输入搜索关键词');
@@ -635,7 +660,7 @@ async function searchBangumiWithKeyword() {
 }
 
 function showSearchResults(results, animeId) {
-  const el = document.getElementById('bangumiSearchResults');
+  const el = document.getElementById('syncSearchResults');
   if (!results || results.length === 0) {
     el.innerHTML = '<p class="search-result-empty">未找到匹配结果</p>';
     return;
@@ -656,12 +681,13 @@ function showSearchResults(results, animeId) {
 }
 
 async function attachBangumiSubject(animeId, subjectId) {
-  const resultsEl = document.getElementById('bangumiSearchResults');
+  const resultsEl = document.getElementById('syncSearchResults');
   resultsEl.innerHTML = '<p style="text-align:center;color:var(--text2);padding:16px">正在获取元数据...</p>';
   try {
     const result = await API.post('/api/bangumi/fetch', { animeId, subjectId });
     currentAnime = result.anime;
     renderDetail();
+    closeSyncModal();
     showToast('Bangumi 元数据获取成功');
   } catch (e) {
     showToast('获取失败: ' + e.message);

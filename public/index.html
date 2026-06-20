@@ -218,12 +218,12 @@
                   </svg>
                   写感想
                 </button>
-                <button class="btn" id="btnFetchBangumi" onclick="editBangumiMetadata()">
+                <button class="btn" id="btnFetchBangumi" onclick="syncBangumiMetadata()">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    <path d="M17 2.1 4 15l-1 1-1 6 6-1 1-1L21.9 7a2 2 0 0 0 0-2.8l-1.1-1.1a2 2 0 0 0-2.8 0z"></path>
+                    <path d="M15 5.5 18.5 9"></path>
                   </svg>
-                  编辑
+                  同步
                 </button>
                 <button class="btn btn-danger" id="btnDeleteAnime" onclick="deleteAnime()">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -234,17 +234,7 @@
                   移除
                 </button>
               </div>
-              <div class="bangumi-edit-form" id="bangumiEditForm" style="display:none; margin-top: 12px;">
-                <div class="form-group" style="margin-bottom: 8px;">
-                  <label for="bangumiEditKeyword">搜索关键词</label>
-                  <div style="display: flex; gap: 8px;">
-                    <input type="text" id="bangumiEditKeyword" placeholder="输入自定义搜索词..." style="flex: 1;">
-                    <button class="btn btn-primary" onclick="searchBangumiWithKeyword()" style="white-space: nowrap;">搜索</button>
-                  </div>
-                </div>
-              </div>
-              <div class="bangumi-search-results" id="bangumiSearchResults"></div>
-              <div class="bangumi-search-results" id="bangumiSearchResults"></div>
+              <!-- Modal-based sync replaces inline search -->
             </div>
           </div>
         </div>
@@ -324,7 +314,7 @@
 </main>
 
 <!-- Memory Editor Modal -->
-<div class="modal-overlay" id="memoryModal">
+<div class="modal-overlay" id="memoryModal" onclick="if(event.target===this)closeMemoryEditor()">
   <div class="modal">
     <h2>写感想</h2>
     <div class="form-group">
@@ -341,9 +331,29 @@
       <textarea id="memoryNotes" rows="6" placeholder="详细的观后感、印象深刻的场景、喜欢的角色..."></textarea>
     </div>
     <div class="modal-actions">
-      <button class="btn" onclick="closeMemoryEditor()">取消</button>
       <button class="btn btn-primary" onclick="saveMemory()">保存</button>
     </div>
+    <button class="modal-close-btn" onclick="closeMemoryEditor()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- Sync Metadata Modal -->
+<div class="modal-overlay" id="syncModal">
+  <div class="modal modal--large">
+    <h2>同步元数据</h2>
+    <div class="form-group">
+      <label for="syncKeyword">搜索关键词</label>
+      <div style="display: flex; gap: 8px;">
+        <input type="text" id="syncKeyword" placeholder="输入搜索词..." style="flex: 1;">
+        <button class="btn btn-primary" onclick="searchBangumiWithKeyword()">搜索</button>
+      </div>
+    </div>
+    <div class="bangumi-search-results" id="syncSearchResults"></div>
+    <button class="modal-close-btn" onclick="closeSyncModal()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
   </div>
 </div>
 

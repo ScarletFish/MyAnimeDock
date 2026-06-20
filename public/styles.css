@@ -2446,6 +2446,7 @@ html {
 }
 
 .modal {
+  position: relative;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -2474,6 +2475,33 @@ html {
 /* ─── Bangumi Search Modal ─── */
 .modal--large {
   max-width: 720px;
+}
+
+.modal-close-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-radius: 50%;
+  color: var(--fg-muted);
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-out), background var(--duration-fast) var(--ease-out);
+}
+
+.modal-close-btn:hover {
+  color: var(--fg-primary);
+  background: var(--bg-canvas);
+}
+
+.modal-close-btn svg {
+  width: 18px;
+  height: 18px;
 }
 
 .modal-header {

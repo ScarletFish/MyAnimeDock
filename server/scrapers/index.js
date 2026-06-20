@@ -225,8 +225,11 @@ async function findMainSubject(registry, folderParsed, config) {
  * Creates variants: cleanTitle, baseTitle, romaji, core words
  */
 function generateSearchKeywords(folderParsed) {
-  const { cleanTitle, title, animeTitle } = folderParsed;
+  const { cleanTitle, title, animeTitle, cjkTitle } = folderParsed;
   const keywords = new Set();
+
+  // Highest priority: CJK title (Bangumi prefers Japanese/Chinese originals)
+  if (cjkTitle) keywords.add(cjkTitle);
 
   // Primary: cleanTitle (anitomy's cleaned title)
   if (cleanTitle) keywords.add(cleanTitle);

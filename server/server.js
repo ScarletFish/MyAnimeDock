@@ -597,6 +597,7 @@ const server = http.createServer((req, res) => {
         if (!subjectIdToUse) {
           // Parse folder name for structured matching
           const folderParsed = parseFolderName(node.name);
+          if (!folderParsed.cjkTitle && node.cjkTitle) folderParsed.cjkTitle = node.cjkTitle;
           const videoCount = node.videoCount || 0;
 
           // Use new season-aware matching
@@ -1165,16 +1166,16 @@ async function init() {
     console.log(`Server running at http://localhost:${PORT}`);
     console.log(`Media directory: ${config.mediaDir || '(not configured)'}`);
 
-    // Auto-open browser (skip when running as Tauri sidecar)
-    if (!process.env.TAURI_SIDECAR) {
-      const url = `http://localhost:${PORT}`;
-      const cmd = process.platform === 'win32' ? `start "" "${url}"`
-        : process.platform === 'darwin' ? `open "${url}"`
-        : `xdg-open "${url}"`;
-      exec(cmd, (err) => {
-        if (err) console.log(`[INFO] Could not auto-open browser. Visit: ${url}`);
-      });
-    }
+    // Auto-open browser (skip when running as Tauri sidecar)不自动打开浏览器
+    // if (!process.env.TAURI_SIDECAR) {
+    //   const url = `http://localhost:${PORT}`;
+    //   const cmd = process.platform === 'win32' ? `start "" "${url}"`
+    //     : process.platform === 'darwin' ? `open "${url}"`
+    //     : `xdg-open "${url}"`;
+    //   exec(cmd, (err) => {
+    //     if (err) console.log(`[INFO] Could not auto-open browser. Visit: ${url}`);
+    //   });
+    // }
   });
 }
 

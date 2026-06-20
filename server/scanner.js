@@ -5,6 +5,12 @@ const { Parser } = require('anitomy');
 const VIDEO_EXTS = new Set(['.mkv', '.mp4', '.avi', '.mov', '.webm']);
 const anitomy = new Parser();
 
+const CJK_RE = /[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]/g;
+
+function hasLatinLetters(str) {
+  return (str || '').replace(/[^a-zA-Z]/g, '').length >= 3;
+}
+
 /**
  * Find all video files recursively in a directory
  */
@@ -40,28 +46,36 @@ function hasDirectVideos(dir) {
  * Returns rich metadata for precise Bangumi matching.
  */
 function parseFolderName(name) {
-  // 1. Pre-process: remove release group [Group] and quality tags [Ma10p_1080p]
-  //    but KEEP title punctuation (?, !, ~, etc.) for anitomy
-  let base = name.replace(/^\[[^\]]+\]\s*/, '');  // leading [Group]
-  base = base.replace(/\s*\[[^\]]+\]$/, '');       // trailing [Quality]
-  base = base.trim();
+  const base = name.replace(/^\[[^\]]+\]\s*/, '').replace(/\s*\[[^\]]+\]$/, '').trim();
 
-  // 2. Run anitomy for structure extraction
+  // 1. Try anitomy on original name first (handles [Group] brackets natively)
   let parsed = {};
-  try {
-    parsed = anitomy.parse(base);
-  } catch (e) {}
+  try { parsed = anitomy.parse(name); } catch (e) {}
 
-  // 3. Extract all useful fields from anitomy result
+  // 2. If no title found, retry with brackets stripped
+  if (!parsed.title) {
+    try { parsed = anitomy.parse(base); } catch (e) {}
+  }
+
+  // 3. Extract CJK title from original name (Bangumi prefers Japanese/Chinese)
+  let cjkTitle = null;
+  const cjkOnly = base.replace(/[^\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]/g, '').trim();
+  if (cjkOnly) cjkTitle = cjkOnly;
+
+  // 4. If anitomy title has both CJK and Latin, use CJK part (Latin is usually truncated/wrong)
+  let anitomyTitle = parsed.title?.trim() || base;
+  if (cjkTitle && anitomyTitle && /[\u4e00-\u9fff]/.test(anitomyTitle) && /[a-zA-Z]/.test(anitomyTitle)) {
+    anitomyTitle = cjkTitle;
+  }
+
+  // 5. Extract all useful fields from anitomy result
   const result = {
-    // Core identification (for matching)
-    title: parsed.title?.trim() || base,           // anitomy title (preserves ?, ??, ~)
-    cleanTitle: null,                              // title with season markers stripped
-    season: null,                                  // detected season number (null = S1)
-    year: null,                                    // extracted year if present
-    
-    // Structured metadata (for search filtering & scoring)
-    animeTitle: parsed.anime_title?.trim(),        // anitomy pure title (may differ)
+    title: anitomyTitle,
+    cjkTitle,
+    cleanTitle: null,
+    season: null,
+    year: null,
+    animeTitle: parsed.anime_title?.trim(),
     episode: parsed.episode?.number ? parseInt(parsed.episode.number) : null,
     seasonRaw: parsed.season ? parseInt(parsed.season) : null,
     resolution: parsed.video_resolution,
@@ -69,50 +83,46 @@ function parseFolderName(name) {
     videoCodec: parsed.video_codec,
     audioCodec: parsed.audio_codec,
     releaseGroup: parsed.release_group,
-    
-    // Raw anitomy object (debugging)
-    _raw: parsed
+    _raw: parsed,
   };
 
-  // 4. Season determination (priority: anitomy.season > anitomy.episode 2-20 > regex fallback)
+  // 6. Season determination (priority: anitomy.season > anitomy.episode 2-20 > regex fallback)
+  const isEpisodeRange = parsed.episode?.numberAlt != null;
+  const nameNoBrackets = name.replace(/\[[^\]]*\]/g, ' ');
+  const epHasDash = result.episode && new RegExp('[-–]\\s*' + result.episode + '\\b').test(nameNoBrackets);
+  const epIsTitleSuffix = result.episode && !epHasDash && nameNoBrackets.trim().endsWith(String(result.episode));
   if (result.seasonRaw) {
     result.season = result.seasonRaw;
-  } else if (result.episode && result.episode >= 2 && result.episode <= 20) {
+  } else if (!isEpisodeRange && !epIsTitleSuffix && result.episode && result.episode >= 2 && result.episode <= 20) {
     result.season = result.episode;
   }
 
-  // 5. Year extraction (from original name, doesn't affect title)
+  // 7. Year extraction
   const yearMatch = name.match(/\b(19\d{2}|20\d{2})\b/);
   if (yearMatch) result.year = parseInt(yearMatch[1]);
 
-  // 6. Clean title: strip only explicit season markers, preserve punctuation
+  // 8. Clean title: strip season markers, preserve punctuation
   let cleanTitle = result.title;
   cleanTitle = cleanTitle.replace(/\s*S\d+\s*$/i, '').trim();
   cleanTitle = cleanTitle.replace(/\s*Season\s*\d+\s*/i, '').trim();
   cleanTitle = cleanTitle.replace(/第(\d+)季/g, '').trim();
   result.cleanTitle = cleanTitle;
 
-  // 7. Regex fallback for season (raw base, when anitomy missed)
+  // 9. Regex fallback for season (raw base, when anitomy missed)
   if (!result.season) {
-    const sm = base.match(/(?:^|\s)Season\s*(\d+)/i)
-      || base.match(/(?:^|\s)S(\d+)\s*$/i);
-    if (sm) {
-      result.season = parseInt(sm[1]);
-      // Don't modify cleanTitle here - anitomy title is authoritative
-    }
+    const sm = base.match(/(?:^|\s)Season\s*(\d+)/i) || base.match(/(?:^|\s)S(\d+)\s*$/i);
+    if (sm) result.season = parseInt(sm[1]);
   }
 
-  // 8. Strip parenthetical metadata from cleanTitle only
+  // 10. Strip parenthetical metadata from cleanTitle only
   result.cleanTitle = result.cleanTitle.replace(/\([^)]*\)/g, '').trim();
 
-  // 9. Trailing number 2-20 → season (only if not volume)
+  // 11. Trailing number 2-20 → season (only if not volume)
   const trailingNum = result.cleanTitle.match(/\s+(\d+)\s*$/);
   if (trailingNum && parseInt(trailingNum[1]) >= 2 && parseInt(trailingNum[1]) <= 20) {
     const prefix = result.cleanTitle.slice(0, trailingNum.index).replace(/\s*$/, '');
     const isVolume = /(?:Vol|Volume|Part)\b/i.test(prefix);
-    if (!isVolume && !result.season) {
-      result.season = parseInt(trailingNum[1]);
-    }
+    if (!isVolume && !result.season && !epIsTitleSuffix) result.season = parseInt(trailingNum[1]);
   }
 
   // Season 1 is implicit default; only S2+ worth annotating
@@ -128,10 +138,19 @@ function buildAnimeEntry(fullPath, folderName) {
   const videos = findVideos(fullPath);
   if (videos.length === 0) return null;
   const parsed = parseFolderName(folderName);
+  const hasCjk = CJK_RE.test(parsed.title);
+  if (!parsed.title || (!hasLatinLetters(parsed.title) && !hasCjk)) {
+    const vp = parseFolderName(videos[0].name);
+    if (vp.title) {
+      parsed.title = vp.title;
+      if (!parsed.season && vp.season) parsed.season = vp.season;
+    }
+  }
   return {
     folderPath: fullPath,
     folderName,
     parsedTitle: parsed.title,
+    cjkTitle: parsed.cjkTitle || null,
     parsedSeason: parsed.season,
     videoCount: videos.length,
     totalSize: videos.reduce((sum, v) => sum + v.size, 0),
@@ -140,10 +159,6 @@ function buildAnimeEntry(fullPath, folderName) {
 
 /**
  * Scan a media directory for anime folders
- *
- * Smart depth detection:
- * - If a folder has video files directly → single anime
- * - If a folder only has sub-folders with videos → each sub-folder is a separate season
  */
 function scanMediaDir(mediaDir) {
   const results = [];
@@ -157,11 +172,9 @@ function scanMediaDir(mediaDir) {
       const fullPath = path.join(mediaDir, entry.name);
 
       if (hasDirectVideos(fullPath)) {
-        // Single anime directory (videos directly inside)
         const anime = buildAnimeEntry(fullPath, entry.name);
         if (anime) results.push(anime);
       } else {
-        // Series directory — scan sub-folders as separate seasons
         const subEntries = fs.readdirSync(fullPath, { withFileTypes: true });
         for (const sub of subEntries) {
           if (!sub.isDirectory()) continue;
@@ -180,39 +193,52 @@ function scanMediaDir(mediaDir) {
 
 /**
  * Build a leaf node for a folder that directly contains video files.
- * If the folder name is just a season indicator (e.g. "Season 1", "S1"),
- * walks up parentChain to find the anime title.
  * parentChain is an array of ancestor folder names from mediaDir to parent.
  */
 function buildLeaf(dirPath, name, parentName, parentChain) {
   const videos = findVideos(dirPath);
   if (videos.length === 0) return null;
   let parsed = parseFolderName(name);
-  // If parsed title is just a season indicator (e.g. "Season 1", "S1"),
-  // the parent folder holds the real anime title — fall through to parent chain lookup
+  // If parsed title is just a season indicator, fall through to parent chain lookup
   if (parsed.title && /^(?:Season\s*\d+|S\d+|第\d+季)$/i.test(parsed.title.trim())) {
     parsed.title = null;
   }
-  if (!parsed.title) {
-    const chain = parentChain || [];
-    for (let i = chain.length - 1; i >= 0; i--) {
-      const pParsed = parseFolderName(chain[i]);
-      if (pParsed.title) {
-        const isDuplicate = pParsed.title === name || pParsed.title === parsed.title;
-        parsed = { title: pParsed.title, season: parsed.season || pParsed.season };
-        if (isDuplicate) {
-          parsed.season = parsed.season || pParsed.season;
-        }
-        break;
-      }
+  const chain = parentChain || [];
+  // Check parentName first (immediate parent, highest priority for CJK)
+  let nearestCjk = null;
+  if (parentName) {
+    const parentParsed = parseFolderName(parentName);
+    if (parentParsed.cjkTitle) nearestCjk = parentParsed.cjkTitle;
+    if (!parsed.title && parentParsed.title) {
+      const isDuplicate = parentParsed.title === name;
+      parsed = { title: parentParsed.title, cjkTitle: parsed.cjkTitle || parentParsed.cjkTitle, season: parsed.season || parentParsed.season };
+      if (isDuplicate) parsed.season = parsed.season || parentParsed.season;
     }
-    if (!parsed.title && parentName) {
-      const parentParsed = parseFolderName(parentName);
-      const isDuplicate = parentParsed.title === name || parentParsed.title === parsed.title;
-      parsed = { title: parentParsed.title, season: parsed.season || parentParsed.season };
-      if (isDuplicate) {
-        parsed.season = parsed.season || parentParsed.season;
-      }
+  }
+  // Walk parentChain (closest first) for more distant ancestors
+  for (let i = 0; i < chain.length; i++) {
+    const pParsed = parseFolderName(chain[i]);
+    if (pParsed.cjkTitle && !nearestCjk) { nearestCjk = pParsed.cjkTitle; break; }
+    if (!parsed.title && pParsed.title) {
+      const isDuplicate = pParsed.title === name || pParsed.title === parsed.title;
+      parsed = { title: pParsed.title, cjkTitle: parsed.cjkTitle || pParsed.cjkTitle, season: parsed.season || pParsed.season };
+      if (isDuplicate) parsed.season = parsed.season || pParsed.season;
+      break;
+    }
+  }
+  // If leaf title is Latin-only and ancestor has CJK, prefer ancestor's CJK
+  if (nearestCjk && parsed.title && !/[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]/.test(parsed.title)) {
+    parsed.title = nearestCjk;
+  }
+  if (!parsed.cjkTitle && nearestCjk) parsed.cjkTitle = nearestCjk;
+  let episode = parsed.episode;
+  const hasCjkTitle = CJK_RE.test(parsed.title);
+  if (!parsed.title || (!hasLatinLetters(parsed.title) && !hasCjkTitle)) {
+    const vp = parseFolderName(videos[0].name);
+    if (vp.title) {
+      parsed.title = vp.title;
+      if (!episode && vp.episode) episode = vp.episode;
+      if (!parsed.season && vp.season) parsed.season = vp.season;
     }
   }
   return {
@@ -220,18 +246,17 @@ function buildLeaf(dirPath, name, parentName, parentChain) {
     path: dirPath,
     type: 'leaf',
     parsedTitle: parsed.title,
+    cjkTitle: parsed.cjkTitle || null,
     parsedSeason: parsed.season,
     videoCount: videos.length,
     totalSize: videos.reduce((sum, v) => sum + v.size, 0),
     videos: videos.map(v => ({ name: v.name, size: v.size })),
-    parentChain: parentChain || [],
+    parentChain: chain,
   };
 }
 
 /**
  * Recursively scan a directory's sub-directories for anime entries.
- * Returns an array of tree nodes (branch or leaf).
- * chain — ancestor folder names from mediaDir to dirPath (excluding dirPath).
  */
 function scanDir(dirPath, chain) {
   const children = [];
@@ -257,7 +282,6 @@ function scanDir(dirPath, chain) {
 
 /**
  * Scan a single top-level directory and return its tree node.
- * Used by both scanMediaDirTree and the scan endpoint for per-dir progress.
  */
 function scanTopDir(mediaDir, dirName) {
   const fullPath = path.join(mediaDir, dirName);
@@ -273,7 +297,6 @@ function scanTopDir(mediaDir, dirName) {
 
 /**
  * Scan media dir and return a tree of anime folders.
- * Top-level entries can be either leaves (direct anime) or branches (series containers).
  */
 function scanMediaDirTree(mediaDir) {
   const results = [];
@@ -292,8 +315,6 @@ function scanMediaDirTree(mediaDir) {
 
 /**
  * Scan media dir and return a flat array of leaf nodes.
- * Each leaf has a parentChain array of ancestor folder names.
- * Skips directories without direct video files (no branch nodes).
  */
 function scanMediaDirFlat(mediaDir) {
   const results = [];

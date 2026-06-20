@@ -1,4 +1,4 @@
-﻿* { margin: 0; padding: 0; box-sizing: border-box; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
 
 :root {
   --bg-deep: #0f0c09;
@@ -956,8 +956,7 @@ html {
 }
 
 .detail-left {
-  position: sticky;
-  top: 1.5rem;
+  position: static;
 }
 
 .detail-sidebar {
@@ -3201,21 +3200,119 @@ input[type="range"]::-webkit-slider-thumb {
   font-size: 0.8125rem;
 }
 
-/* ─── Watch Stats ─── */
-.watch-stats {
+/* ─── Characters & Staff ─── */
+.detail-characters {
   background: var(--bg-elevated);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
   padding: 1.25rem 1.5rem;
 }
 
+.detail-section-header h3 {
+  font-size: 0.719rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-muted);
+  margin: 0;
+}
+
+.detail-char-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 6px;
+  margin-top: 0.75rem;
+}
+
+.detail-char-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border-radius: var(--radius-md);
+  background: var(--bg-canvas);
+  transition: background var(--duration-fast) var(--ease-out);
+  min-width: 0;
+}
+
+.detail-char-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--bg-surface);
+}
+
+.detail-char-avatar-placeholder {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  background: var(--bg-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fg-muted);
+  font-size: 1rem;
+}
+
+.detail-char-info {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.detail-char-name {
+  font-size: 0.813rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.detail-char-cv {
+  font-size: 0.688rem;
+  color: var(--accent-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+}
+
+.detail-staff-list {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  margin-top: 0.75rem;
+  font-size: 0.813rem;
+}
+
+.detail-staff-role {
+  color: var(--fg-muted);
+  white-space: nowrap;
+}
+
+.detail-staff-name {
+  color: var(--fg-primary);
+}
+
+/* ─── Watch Stats ─── */
+.watch-stats {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  padding: 1.5rem 2rem;
+  margin-top: 1.5rem;
+}
+
 .watch-stats-header {
-  margin-bottom: 0.75rem;
+  margin-bottom: 1rem;
 }
 
 .watch-stats-header h3 {
   font-family: var(--font-display);
-  font-size: 1.05rem;
+  font-size: 1.1rem;
   font-weight: 600;
   letter-spacing: -0.01em;
 }

@@ -207,12 +207,14 @@ function renderDetail() {
     document.getElementById('archiveDetail').style.display = 'none';
     document.getElementById('watchCard').style.display = '';
     document.getElementById('episodeHeatmap').style.display = '';
+    document.getElementById('detailCharacters').style.display = '';
     document.getElementById('watchStats').style.display = '';
     // Remove archive layout class
     const layoutEl = document.querySelector('.detail-layout');
     if (layoutEl) layoutEl.classList.remove('detail-layout--archive');
     renderWatchCard(anime);
     renderEpisodeHeatmap(anime);
+    renderCharacters(anime);
   }
   renderWatchStats(anime);
 }
@@ -225,6 +227,7 @@ function renderArchiveDetail(anime) {
   // Hide library right-column modules
   document.getElementById('watchCard').style.display = 'none';
   document.getElementById('episodeHeatmap').style.display = 'none';
+  document.getElementById('detailCharacters').style.display = 'none';
   document.getElementById('watchStats').style.display = 'none';
 
   const archiveEl = document.getElementById('archiveDetail');
@@ -394,6 +397,72 @@ window.addEventListener('resize', () => {
   }, 200);
 });
 
+// ─── Key staff roles to display (filtered) ───
+const KEY_STAFF_ROLES = ['原作', '监督', '导演', '系列构成', '脚本', '音乐', '动画制作', '角色设计', '人物设定', '制作', '製作'];
+
+function renderCharacters(anime) {
+  const container = document.getElementById('detailCharacters');
+  const grid = document.getElementById('detailCharGrid');
+  const staffSection = document.getElementById('detailStaffSection');
+  const staffList = document.getElementById('detailStaffList');
+
+  if (!grid) return;
+  const chars = anime.characters || [];
+  const persons = anime.persons || [];
+
+  if (!chars.length) {
+    container.style.display = 'none';
+    return;
+  }
+
+  container.style.display = '';
+
+  grid.innerHTML = chars.slice(0, 24).map(c => {
+    const name = escHtml(c.nameCn || c.name);
+    const cv = c.actors && c.actors[0]
+      ? escHtml(c.actors[0].nameCn || c.actors[0].name)
+      : null;
+    const img = c.image
+      ? `<img class="detail-char-avatar" src="${escAttr(c.image)}" alt="" loading="lazy">`
+      : `<div class="detail-char-avatar-placeholder">${name.charAt(0)}</div>`;
+    return `<div class="detail-char-card">
+      ${img}
+      <div class="detail-char-info">
+        <div class="detail-char-name">${name}</div>
+        ${cv ? `<div class="detail-char-cv">${cv}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  // Render staff (filtered by key roles)
+  const filtered = persons.filter(p =>
+    p.jobs && p.jobs.some(j => KEY_STAFF_ROLES.includes(j))
+  );
+  const deduped = [];
+  const seen = new Set();
+  for (const p of filtered) {
+    const name = p.nameCn || p.name;
+    if (seen.has(name)) continue;
+    seen.add(name);
+    deduped.push(p);
+  }
+  const keyJobs = deduped.sort((a, b) => {
+    const ai = KEY_STAFF_ROLES.indexOf(a.jobs[0]);
+    const bi = KEY_STAFF_ROLES.indexOf(b.jobs[0]);
+    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+  });
+
+  const hasStaff = keyJobs.length > 0;
+  staffSection.style.display = hasStaff ? '' : 'none';
+  if (!hasStaff) return;
+
+  staffList.innerHTML = keyJobs.map(p => {
+    const role = escHtml(p.jobs[0]);
+    const name = escHtml(p.nameCn || p.name);
+    return `<span class="detail-staff-role">${role}</span><span class="detail-staff-name">${name}</span>`;
+  }).join('');
+}
+
 function renderWatchStats(anime) {
   const version = ++watchStatsVersion;
   const module = document.getElementById('watchStats');
@@ -433,15 +502,15 @@ function renderWatchStats(anime) {
 
     const dpr = window.devicePixelRatio || 1;
     const rect = canvas.parentElement.getBoundingClientRect();
-    const W = Math.min(820, rect.width - 2);
-    const H = 240;
+    const W = rect.width - 2;
+    const H = 300;
     canvas.width = W * dpr;
     canvas.height = H * dpr;
     canvas.style.width = W + 'px';
     canvas.style.height = H + 'px';
     ctx.scale(dpr, dpr);
 
-    const PAD = { top: 20, right: 16, bottom: 40, left: 48 };
+    const PAD = { top: 24, right: 24, bottom: 44, left: 56 };
     const cw = W - PAD.left - PAD.right;
     const ch = H - PAD.top - PAD.bottom;
 

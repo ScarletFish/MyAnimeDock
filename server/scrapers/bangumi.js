@@ -135,7 +135,11 @@ class BangumiScraper {
   }
 
   async fetchMetadata(title, coverDir, subjectId) {
-    const detail = await this.getSubjectDetail(subjectId);
+    const [detail, characters, persons] = await Promise.all([
+      this.getSubjectDetail(subjectId),
+      this.getCharacters(subjectId).catch(e => { console.error('getCharacters failed:', e.message); return []; }),
+      this.getPersons(subjectId).catch(e => { console.error('getPersons failed:', e.message); return []; }),
+    ]);
 
     let localCover = null;
     if (detail.images && detail.images.large) {
@@ -155,7 +159,72 @@ class BangumiScraper {
       coverUrl: detail.images?.large || null,
       localCover,
       rating: detail.rating?.score ? parseFloat(detail.rating.score.toFixed(1)) : null,
+      ratingRank: detail.rating?.rank || null,
+      ratingTotal: detail.rating?.total || null,
+      date: detail.date || null,
+      eps: detail.eps || null,
+      totalEpisodes: detail.total_episodes || null,
+      platform: detail.platform || null,
+      tags: (detail.tags || []).map(t => typeof t === 'string' ? t : (t.name || '')),
+      infobox: detail.infobox || [],
+      collection: detail.collection || null,
+      characters: (() => {
+        const ROLE_ORDER = { '主角': 0, '配角': 1, '客串': 2 };
+        const SKIP_NAMES = [
+          'アナウンス', '旁白', '解说', 'ナレーター', 'Narrator', '播报员', '播音员',
+          'モブキャラクター', '路人甲', '群演', 'extras', 'Mob',
+        ];
+        return characters
+          .map((c, i) => ({
+            id: c.id,
+            name: c.name,
+            nameCn: c.name_cn || '',
+            image: c.images?.grid || c.images?.small || null,
+            roleName: c.relation || c.role_name || '',
+            actors: (c.actors || []).map(a => ({
+              id: a.id,
+              name: a.name,
+              nameCn: a.name_cn || '',
+              image: a.images?.grid || a.images?.small || null,
+            })),
+            _i: i,
+          }))
+          .filter(c => {
+            if (SKIP_NAMES.includes(c.name) || SKIP_NAMES.includes(c.nameCn)) return false;
+            if (!c.actors || !c.actors.length) return false;
+            return true;
+          })
+          .sort((a, b) => {
+            const ra = ROLE_ORDER[a.roleName];
+            const rb = ROLE_ORDER[b.roleName];
+            if (ra != null && rb != null) return ra - rb;
+            if (ra != null) return -1;
+            if (rb != null) return 1;
+            return a._i - b._i;
+          })
+          .map(({ _i, ...rest }) => rest);
+      })(),
+      persons: persons.map(p => ({
+        id: p.id,
+        name: p.name,
+        nameCn: p.name_cn || '',
+        image: p.images?.grid || p.images?.small || null,
+        roleName: p.role_name || '',
+        jobs: p.jobs || [],
+      })),
     };
+  }
+
+  async getCharacters(subjectId) {
+    const url = `${this.apiBase}/v0/subjects/${subjectId}/characters`;
+    const res = await tryFetch(url, { headers: { 'User-Agent': USER_AGENT } });
+    return res.json();
+  }
+
+  async getPersons(subjectId) {
+    const url = `${this.apiBase}/v0/subjects/${subjectId}/persons`;
+    const res = await tryFetch(url, { headers: { 'User-Agent': USER_AGENT } });
+    return res.json();
   }
 
   /**

@@ -41,7 +41,7 @@ function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
 }
 
-// Zoom via root rem scaling
+// Zoom via root rem scaling（rem 统一缩放，滚动正确）
 function applyZoom(scale) {
   document.documentElement.style.fontSize = (16 * (scale || 1)) + 'px';
 }

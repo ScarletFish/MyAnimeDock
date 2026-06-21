@@ -93,7 +93,7 @@ const DEFAULT_CONFIG = {
   mpvPath: 'mpv', 
   theme: 'dark',
   autoMarkWatched: true,
-  uiScale: 1,
+  uiScale: 1.25,
   apiSources: [
     { type: 'bangumi', url: 'https://api.bangumi.one', key: '' },
   ],
@@ -1193,6 +1193,22 @@ async function validateCovers(data) {
 }
 
 async function init() {
+  // ── 端口清理：如果有旧进程占着 3456，强制关闭（sidecar 重启时旧进程未完全退出）──
+  try {
+    const out = require('child_process').execSync(
+      `netstat -ano | findstr ":${PORT} " | findstr LISTENING`,
+      { encoding: 'utf8', timeout: 3000, stdio: ['ignore', 'pipe', 'ignore'] }
+    ).trim();
+    for (const line of out.split('\n').filter(Boolean)) {
+      const pid = line.trim().split(/\s+/).pop();
+      if (pid && pid !== '0' && !isNaN(pid)) {
+        require('child_process').execSync(`taskkill /F /PID ${pid}`, { timeout: 3000, stdio: ['ignore', 'pipe', 'ignore'] });
+        bootLog(`Killed stale process on port ${PORT} (PID ${pid})`);
+        await new Promise(r => setTimeout(r, 200)); // 等端口释放
+      }
+    }
+  } catch (_) { /* 端口未被占用或查找失败，直接继续 */ }
+
   const startTime = Date.now();
   startupTime = startTime;
 

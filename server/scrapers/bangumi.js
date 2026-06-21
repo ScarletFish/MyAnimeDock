@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { nodeFetch } = require('./node-fetch');
+const logger = require('../logger').child('[BANGUMI]');
 
 const USER_AGENT = 'anime-manager (https://github.com/ScarletFish/Gallery)';
 const TIMEOUT = 15000;
@@ -14,7 +15,7 @@ function curlFetch(method, url, body) {
   args.push('-H', `User-Agent: ${USER_AGENT}`, url);
   const result = spawnSync('curl', args, { timeout: TIMEOUT, encoding: 'utf-8' });
   if (result.error) throw new Error(`curl 调用失败: ${result.error.message}`);
-  if (result.stderr) console.error('curl stderr:', result.stderr);
+  if (result.stderr) logger.error('curl stderr:', result.stderr);
   return JSON.parse(result.stdout);
 }
 
@@ -42,14 +43,14 @@ async function tryFetch(url, options = {}) {
       const text = await res.text();
       if (text.includes('illegal base64 data') || text.includes('can\'t decode request body')) {
         useCurlFallback = true;
-        console.log('Detected proxy interference, falling back to curl');
+        logger.info('Detected proxy interference, falling back to curl');
       } else {
         throw new Error(`Bangumi API error (${res.status}): ${text.substring(0, 200)}`);
       }
     } catch (e) {
       if (e.message.includes('fetch failed') || e.message.includes('ECONNREFUSED') || e.message.includes('ENOTFOUND')) {
         useCurlFallback = true;
-        console.log('Network fetch failed, falling back to curl');
+        logger.info('Network fetch failed, falling back to curl');
       } else {
         throw e;
       }
@@ -137,8 +138,8 @@ class BangumiScraper {
   async fetchMetadata(title, coverDir, subjectId) {
     const [detail, characters, persons] = await Promise.all([
       this.getSubjectDetail(subjectId),
-      this.getCharacters(subjectId).catch(e => { console.error('getCharacters failed:', e.message); return []; }),
-      this.getPersons(subjectId).catch(e => { console.error('getPersons failed:', e.message); return []; }),
+      this.getCharacters(subjectId).catch(e => { logger.error('getCharacters failed:', e.message); return []; }),
+      this.getPersons(subjectId).catch(e => { logger.error('getPersons failed:', e.message); return []; }),
     ]);
 
     let localCover = null;
@@ -146,7 +147,7 @@ class BangumiScraper {
       try {
         localCover = await this.downloadCover(detail.images.large, coverDir, subjectId);
       } catch (e) {
-        console.error('Cover download failed:', e.message);
+        logger.error('Cover download failed:', e.message);
       }
     }
 

@@ -11,7 +11,9 @@ npm run dev:tauri    # Start Tauri dev window (requires server running first)
 npm run dev          # Start both server + Tauri concurrently
 npm run build        # Build pkg sidecar + Tauri MSI/NSIS installer
 npm run build:server # Build standalone pkg sidecar executable
-npm run build:tauri  # Build Tauri MSI/NSIS installer only
+npm run build:exe    # Build Tauri release EXE only (no MSI/NSIS, ~1min)
+npm run check:rust   # Fast Rust type-check (cargo check, ~20s)
+npm run dev:prod     # Build sidecar + Tauri dev with production flow (sidecar spawn, visible:false, health polling)
 npm run prisma:generate  # Regenerate Prisma client
 npm run prisma:migrate   # Create/apply Prisma migrations
 npm run prisma:studio    # Open Prisma Studio (SQLite browser)
@@ -303,9 +305,20 @@ Tauri (窗口壳)
 - 搜索无结果时显示「未检索到结果 · 没有匹配"xxx"的动漫」（`library.js` 中动态切换 empty state 文案）
 - **Modal 弹窗模式**：`.modal-overlay` 包裹 `.modal`，overlay 设 `onclick="if(event.target===this)closeFn()"` 支持点击遮罩层关闭；右上角加 `.modal-close-btn`（✕ SVG 图标）作为显式关闭入口；底部 `.modal-actions` 不设「取消」文字按钮。参见 `#syncModal` 和 `#memoryModal`。
 
-## Development Workflow — 三层验证
+## Development Workflow — 四层验证
 
 **目标**：避免每次修改都打包 MSI/NSIS，根据改动类型选择最快的验证方式。
+
+### Tier 0 — Rust 类型检查（~20 秒）
+
+仅检查 Rust 代码是否编译通过，不生成二进制，比完整构建快得多。
+
+```bash
+npm run check:rust           # cargo check，只检查类型不编译
+```
+
+- 用于 `into_string` 这类编译错误的快速发现
+- 无需启动 server 或 Tauri 窗口
 
 ### Tier 1 — JS 改动（秒级）
 
@@ -319,31 +332,37 @@ npm run dev:server:watch   # nodemon 自动监听 server/ + public/，修改后�
 - 前端改动 → 直接 F5 刷新 Tauri 窗口（或浏览器 http://localhost:3456）
 - 无需任何构建步骤
 
-### Tier 2 — Rust 改动（~1 分钟）
+### Tier 2 — Rust 改动 + 生产流程模拟（~1 分钟）
 
 含 `src-tauri/src/main.rs`、`tauri.conf.json`、`Cargo.toml`。
 
 ```bash
-# 终端 1：启动后端
-npm run dev:server:watch
+# 方式 A：普通 dev（sidecar 手动启动，window 自动显示）
+npm run dev:server:watch    # 终端 1：后端
+npm run dev:tauri           # 终端 2：Tauri 窗口
 
-# 终端 2：启动 Tauri 开发窗口
-npm run dev:tauri            # cargo tauri dev，自动编译 Rust + 打开窗口
+# 方式 B：生产流程模拟（sidecar 自启，visible:false → 轮询 → 显示）
+npm run dev:prod            # 先 build:server，再 TAURI_PROD=1 tauri dev
 ```
 
-- `devUrl: "http://localhost:3456"` 已配置，Tauri 窗口指向 dev server
-- `!cfg!(debug_assertions)` 确保 dev 模式不启动 sidecar
-- Rust 不兼容的改动在 `cargo check` 阶段即可发现
+- **方式 A** 适用于日常 Rust 修改验证
+- **方式 B** 模拟完整生产启动流程（`TAURI_PROD=1` 环境变量使 dev 模式也启动 sidecar、隐藏窗口、轮询 /api/health、就绪后显示），可发现 toast 闪烁、窗口时序等问题
+- 也可以单独打包 release .exe 测试安装目录行为（不含 MSI 捆绑）：
+  ```bash
+  npm run build:exe   # cargo build --release，产出 target/release/myanimedocker.exe
+  ```
 
 ### Tier 3 — 最终打包（~5 分钟）
 
-Tier 1+2 验证通过后，确认整体可用性：
+Tier 0-2 验证通过后，确认 MSI/NSIS 安装体验：
 
 ```bash
 npm run build                # pkg sidecar → copy-sidecar-deps → tauri build (MSI + NSIS)
+npm run build:msi            # 仅 MSI
+npm run build:nsis           # 仅 NSIS
 ```
 
-仅用于验证安装体验、中文安装器效果、升级覆盖等最终场景。
+仅用于验证安装器效果、中文界面、升级覆盖等最终场景。
 
 ## Available Skills
 

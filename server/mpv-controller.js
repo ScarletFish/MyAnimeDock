@@ -3,6 +3,7 @@ const net = require('net');
 const os = require('os');
 const path = require('path');
 const fs = require('fs');
+const logger = require('./logger').child('[MPV]');
 
 const WATCHED_RATIO = 0.9;
 let sessionIdCounter = 0;
@@ -44,7 +45,7 @@ function startMpv(mpvPath, filePath, position, callbacks) {
         if (!running) return;
 
         ipcClient = net.connect(pipePath, () => {
-            console.log(`[mpv IPC] Connected to ${pipeName}`);
+            logger.info(`IPC connected to ${pipeName}`);
             ipcWrite({ command: ['observe_property', 1, 'time-pos'] });
             ipcWrite({ command: ['observe_property', 2, 'duration'] });
             ipcWrite({ command: ['observe_property', 3, 'pause'] });
@@ -74,7 +75,7 @@ function startMpv(mpvPath, filePath, position, callbacks) {
         });
 
         ipcClient.on('error', (err) => {
-            console.error('[mpv IPC] Error:', err.message);
+            logger.error('IPC error:', err.message);
             ipcClient = null;
             if (running) setTimeout(connectIPC, 1000);
         });
@@ -118,7 +119,7 @@ function startMpv(mpvPath, filePath, position, callbacks) {
     mpvProcess.on('error', (err) => {
         if (!running) return;
         clearInterval(progressInterval);
-        console.error('mpv error:', err);
+        logger.error('mpv error:', err);
         if (callbacks.onError) callbacks.onError(String(err));
         if (ipcClient) { ipcClient.destroy(); ipcClient = null; }
         running = false;

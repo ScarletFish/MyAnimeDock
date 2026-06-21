@@ -7,6 +7,8 @@ async function loadMemories() {
     memoriesData = await API.get('/api/memories');
     renderMemories();
   } catch (e) {
+    // Tauri 初始加载时静默失败
+    if (window.location.origin !== 'http://localhost:3456') return;
     showToast('加载归档失败: ' + e.message);
   }
 }

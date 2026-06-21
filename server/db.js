@@ -6,6 +6,7 @@
 const path = require('path');
 const fs = require('fs');
 const { PrismaClient } = require('@prisma/client');
+const logger = require('./logger').child('[DB]');
 
 // 数据目录：pkg 模式在 %APPDATA%/com.myanimedocker.app（可写），开发模式在项目根
 const DATA_DIR = process.pkg
@@ -15,7 +16,7 @@ const DATA_DIR = process.pkg
 // 确保数据目录存在
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
-  console.log(`[DB] Created data directory: ${DATA_DIR}`);
+  logger.info(`Created data directory: ${DATA_DIR}`);
 }
 
 // 开发模式：DB 在 prisma/anime.db（迁移已有）
@@ -54,28 +55,28 @@ if (process.pkg) {
   if (nodeModulesDir) {
     // Prisma 查询引擎路径（Tauri resources glob 不匹配 . 开头路径，使用 prisma-engine/）
     const prismaEngine = path.join(nodeModulesDir, 'prisma-engine', 'query_engine-windows.dll.node');
-    if (fs.existsSync(prismaEngine)) {
-      process.env.PRISMA_QUERY_ENGINE_LIBRARY = prismaEngine;
-      console.log(`[DB] Prisma engine: ${prismaEngine}`);
-    } else {
-      console.warn('[DB] Prisma engine not found — SQLite will be unavailable');
-    }
+      if (fs.existsSync(prismaEngine)) {
+        process.env.PRISMA_QUERY_ENGINE_LIBRARY = prismaEngine;
+        logger.info(`Prisma engine: ${prismaEngine}`);
+      } else {
+        logger.warn('Prisma engine not found — SQLite will be unavailable');
+      }
     
     // 配置 NODE_PATH 让 require() 能找到 Prisma 等模块
     const existingPath = process.env.NODE_PATH || '';
     const sep = existingPath ? ';' : '';
     process.env.NODE_PATH = existingPath + sep + nodeModulesDir;
     require('module').Module._initPaths();
-    console.log(`[DB] Added NODE_PATH: ${nodeModulesDir}`);
+    logger.info(`Added NODE_PATH: ${nodeModulesDir}`);
     
     // ffmpeg 二进制路径（ffmpeg-static 检查 FFMPEG_BIN 环境变量）
     const ffmpegBin = path.join(nodeModulesDir, 'ffmpeg.exe');
     if (fs.existsSync(ffmpegBin)) {
       process.env.FFMPEG_BIN = ffmpegBin;
-      console.log(`[DB] FFMPEG_BIN: ${ffmpegBin}`);
+      logger.info(`FFMPEG_BIN: ${ffmpegBin}`);
     }
   } else {
-    console.warn('[DB] Native modules directory not found alongside exe');
+    logger.warn('Native modules directory not found alongside exe');
   }
 }
 
@@ -130,7 +131,7 @@ async function ensureSchema() {
   const dbFile = DB_PATH.replace(/^file:/, '');
   if (!fs.existsSync(dbFile)) {
     // DB 文件不存在——由 PrismaClient 自己创建，但表需要自动建
-    console.log('[DB] Database file not found, will be created on first connect');
+    logger.info('Database file not found, will be created on first connect');
   }
 
   let tempClient = null;
@@ -141,15 +142,15 @@ async function ensureSchema() {
       `SELECT name FROM sqlite_master WHERE type='table' AND name='Anime'`
     );
     if (rows.length === 0) {
-      console.log('[DB] Initializing database schema...');
+      logger.info('Initializing database schema...');
       for (const sql of INIT_SQL) {
         await tempClient.$executeRawUnsafe(sql);
       }
-      console.log('[DB] Database schema initialized.');
+      logger.info('Database schema initialized.');
     }
     await tempClient.$disconnect();
   } catch (e) {
-    console.warn('[DB] Schema init skipped:', e.message);
+    logger.warn('Schema init skipped:', e.message);
   } finally {
     if (tempClient) {
       try { await tempClient.$disconnect(); } catch (_) {}
@@ -248,7 +249,7 @@ async function loadData() {
       scannedTree: scannedTreeRecord ? JSON.parse(scannedTreeRecord.data) : [],
     };
   } catch (e) {
-    console.error('[DB] Failed to load from SQLite:', e.message);
+    logger.error('Failed to load from SQLite:', e.message);
     return null;
   }
 }
@@ -382,10 +383,10 @@ async function syncToSqlite(data) {
       }
     });
 
-    console.log(`[DB] Synced to SQLite: ${data.library.length} anime`);
+    logger.info(`Synced to SQLite: ${data.library.length} anime`);
   } catch (e) {
-    console.error('[DB] SQLite sync error:', e.message);
+    logger.error('SQLite sync error:', e.message);
   }
 }
 
-module.exports = { loadData, syncToSqlite, shutdown, getPrisma };
+module.exports = { loadData, syncToSqlite, shutdown, getPrisma, ensureSchema };

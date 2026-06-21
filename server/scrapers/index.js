@@ -1,5 +1,6 @@
 const BangumiScraper = require('./bangumi');
 const TMDBScraper = require('./tmdb');
+const logger = require('../logger').child('[SCRAPER]');
 
 // Relation type mapping from Bangumi API
 const RELATION_TYPE = {
@@ -72,7 +73,7 @@ async function buildSeasonChain(registry, results, baseTitle, config) {
       const relations = await bangumi.getSubjectRelations(r.id);
       return { ...r, relations };
     } catch (e) {
-      console.error(`[bangumi] getSubjectRelations failed for ${r.id}:`, e.message);
+      logger.error('getSubjectRelations failed for', r.id, ':', e.message);
       return { ...r, relations: [] };
     }
   }));
@@ -214,7 +215,7 @@ async function findMainSubject(registry, folderParsed, config) {
       const detail = await bangumi.getSubjectDetail(best.id);
       if (detail) return detail;
     } catch (e) {
-      console.error(`[findMainSubject] keyword="${kw}" failed:`, e.message);
+      logger.error('findMainSubject keyword="', kw, '" failed:', e.message);
     }
   }
   return null;
@@ -282,7 +283,7 @@ async function searchMultiLang(registry, folderParsed, config) {
       const results = await registry.searchAll(kw, config);
       allResults.push(...results);
     } catch (e) {
-      console.error(`[searchMultiLang] keyword="${kw}" failed:`, e.message);
+      logger.error('searchMultiLang keyword="', kw, '" failed:', e.message);
     }
   }
 
@@ -515,7 +516,7 @@ class ScraperRegistry {
         results.push(...res.map(r => ({ ...r, source: scraper.name, _sourceUrl: source.url })));
       } catch (e) {
         // Try next source on failure
-        console.error(`[${source.type} @ ${source.url}] search failed:`, e.message);
+        logger.error(source.type, '@', source.url, 'search failed:', e.message);
       }
     }
     return results;

@@ -4,6 +4,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { exec, spawn } = require('child_process');
 let ffmpegPath = require('ffmpeg-static') || 'ffmpeg';
+const logger = require('./logger').child('[SERVER]');
 
 // ── 启动引导日志（写入 %TEMP%，早于一切模块加载，崩溃也不丢）──
 const BOOT_LOG = path.join(process.env.TEMP || process.env.TMP || '.', 'myanimedocker-bootstrap.log');
@@ -152,10 +153,11 @@ function saveData(data) {
   // JSON 写入（即时、同步、保持旧行为）
   fs.writeFileSync(DATA_PATH, JSON.stringify(data, null, 2), 'utf-8');
   // SQLite 同步（异步、后台、不阻塞请求）
-  db.syncToSqlite(data).catch(e => console.error('[DB] sync error:', e.message));
+  db.syncToSqlite(data).catch(e => logger.error('DB sync error:', e.message));
 }
 
 let data;
+let startupTime;
 
 // --- MIME ---
 const mime = {
@@ -289,6 +291,16 @@ const server = http.createServer((req, res) => {
       ? fs.existsSync(config.mediaDir) && fs.statSync(config.mediaDir).isDirectory()
       : false;
     jsonResp(res, 200, { ...config, dirValid });
+    return;
+  }
+
+  // --- API: health (for Tauri readiness polling) ---
+  if (urlPath === '/api/health' && req.method === 'GET') {
+    jsonResp(res, 200, {
+      ready: !!server._ready,
+      library: data ? data.library.length : 0,
+      uptime: server._ready ? Date.now() - startupTime : 0,
+    });
     return;
   }
 
@@ -828,7 +840,7 @@ const server = http.createServer((req, res) => {
                 activePlays.delete(filePath);
                 saveData(data);
               }
-              console.error('mpv error:', msg);
+              logger.error('mpv error:', msg);
             },
           });
           jsonResp(res, 200, { ok: true });
@@ -1009,7 +1021,7 @@ const server = http.createServer((req, res) => {
   // --- API: quit server ---
   if (urlPath === '/api/quit' && req.method === 'POST') {
     jsonResp(res, 200, { ok: true, shutdown: true });
-    console.log('Shutdown requested via web UI.');
+    logger.info('Shutdown requested via web UI.');
     // 注意：不调用 server.close() — 它会等待所有活跃 HTTP 连接关闭，
     // 导致响应无法刷新到客户端（keep-alive 连接阻塞），前端 fetch 卡死。
     // 直接延迟后退出，让已调用的 res.end() 有足够时间刷出。
@@ -1049,7 +1061,7 @@ const server = http.createServer((req, res) => {
         if (responded) return;
         responded = true;
         ff.kill();
-        console.warn(`[THUMB] Timeout (>60s) for: ${videoPath} @${time}s`);
+        logger.warn(`Thumbnail timeout (>60s) for: ${videoPath} @${time}s`);
         jsonResp(res, 500, { error: 'timeout' });
       }, 60000);
       ff.on('close', (code) => {
@@ -1059,7 +1071,7 @@ const server = http.createServer((req, res) => {
         if (code === 0 && fs.existsSync(thumbPath)) {
           serveImage(thumbPath, req.url, res);
         } else {
-          console.warn(`[THUMB] ffmpeg exited with code ${code} for: ${videoPath} @${time}s`);
+          logger.warn(`Thumbnail ffmpeg exited with code ${code} for: ${videoPath} @${time}s`);
           jsonResp(res, 500, { error: 'ffmpeg failed' });
         }
       });
@@ -1067,7 +1079,7 @@ const server = http.createServer((req, res) => {
         clearTimeout(timeout);
         if (responded) return;
         responded = true;
-        console.warn(`[THUMB] ffmpeg spawn error: ${err.message}`);
+        logger.warn(`Thumbnail ffmpeg spawn error: ${err.message}`);
         jsonResp(res, 500, { error: 'ffmpeg not available' });
       });
     } catch (e) {
@@ -1099,8 +1111,8 @@ const server = http.createServer((req, res) => {
 });
 
 // ─── Async startup ───
-// --- 启动时清理超过 14 天的缩略图和封面缩放缓存 ---
-function cleanupOldCache() {
+// --- 启动时清理超过 14 天的缩略图和封面缩放缓存（async，不阻塞启动） ---
+async function cleanupOldCache() {
   const dirs = [
     path.join(DATA_DIR, 'thumbs'),
     path.join(DATA_DIR, 'covers', '.resized'),
@@ -1109,43 +1121,25 @@ function cleanupOldCache() {
   const now = Date.now();
   let total = 0;
   for (const dir of dirs) {
-    if (!fs.existsSync(dir)) continue;
-    const files = fs.readdirSync(dir);
-    for (const f of files) {
-      const fp = path.join(dir, f);
-      try {
-        const stat = fs.statSync(fp);
-        if (stat.isFile() && (now - stat.mtimeMs) > maxAge) {
-          fs.unlinkSync(fp);
-          total++;
-        }
-      } catch (_) { /* 跳过无法访问的文件 */ }
-    }
+    try {
+      if (!fs.existsSync(dir)) continue;
+      const files = fs.readdirSync(dir);
+      for (const f of files) {
+        const fp = path.join(dir, f);
+        try {
+          const stat = fs.statSync(fp);
+          if (stat.isFile() && (now - stat.mtimeMs) > maxAge) {
+            fs.unlinkSync(fp);
+            total++;
+          }
+        } catch (_) { /* 跳过无法访问的文件 */ }
+      }
+    } catch (_) { /* 跳过不可读目录 */ }
   }
-  if (total > 0) console.log(`[CACHE] Cleaned ${total} expired cache files (>14d)`);
+  if (total > 0) logger.info(`Cleaned ${total} expired cache files (>14d)`);
 }
 
-async function init() {
-  cleanupOldCache();
-
-  // JSON 是同步写入的数据源（saveData 同步写 JSON，异步写 SQLite）。
-  // 启动时优先从 JSON 加载，再用 JSON 数据回填 SQLite，确保数据一致性。
-  await db.loadData().catch(() => {});           // 确保 SQLite schema 存在
-
-  // JSON 优先加载（saveData 同步写 JSON，始终最新）
-  const jsonData = loadData();
-  const hasJsonData = jsonData.library && jsonData.library.length > 0;
-  if (hasJsonData) {
-    data = jsonData;
-    // 用最新 JSON 回填 SQLite（异步不阻塞）
-    db.syncToSqlite(data).catch(e => console.error('[DB] Initial sync:', e.message));
-  } else {
-    // JSON 为空或不存在，回退到 SQLite
-    data = (await db.loadData()) || jsonData;
-  }
-
-  // 验证封面文件是否存在 — 若不存在则清空 localCover，
-  // 前端会显示灰色占位而非破碎图片（常见于 pkg/MSI 模式路径变更后）
+async function validateCovers(data) {
   const coverDir = path.join(DATA_DIR, 'covers');
   for (const item of data.library) {
     if (item.localCover) {
@@ -1159,27 +1153,41 @@ async function init() {
       if (!fs.existsSync(coverPath)) mem.coverLocal = undefined;
     }
   }
+}
 
-  console.log(`[DB] Loaded ${data.library.length} anime`);
+async function init() {
+  const startTime = Date.now();
+  startupTime = startTime;
 
-  server.listen(PORT, () => {
-    console.log(`Server running at http://localhost:${PORT}`);
-    console.log(`Media directory: ${config.mediaDir || '(not configured)'}`);
+  // Phase 1: Parallel independent init
+  cleanupOldCache().catch(e => logger.warn('Cache cleanup error:', e.message)); // fire-and-forget
+  const jsonData = loadData(); // sync, instant
+  await db.ensureSchema().catch(e => logger.warn('Schema ensure skipped:', e.message));
 
-    // Auto-open browser (skip when running as Tauri sidecar)不自动打开浏览器
-    // if (!process.env.TAURI_SIDECAR) {
-    //   const url = `http://localhost:${PORT}`;
-    //   const cmd = process.platform === 'win32' ? `start "" "${url}"`
-    //     : process.platform === 'darwin' ? `open "${url}"`
-    //     : `xdg-open "${url}"`;
-    //   exec(cmd, (err) => {
-    //     if (err) console.log(`[INFO] Could not auto-open browser. Visit: ${url}`);
-    //   });
-    // }
-  });
+  // Phase 2: Hydrate data — JSON 优先，SQLite 回退
+  const hasJsonData = jsonData.library && jsonData.library.length > 0;
+  if (hasJsonData) {
+    data = jsonData;
+    db.syncToSqlite(data).catch(e => logger.error('Initial DB sync:', e.message));
+  } else {
+    data = (await db.loadData()) || jsonData;
+  }
+
+  // Phase 3: Post-load validation (async, non-blocking)
+  validateCovers(data).catch(e => logger.warn('Cover validation error:', e.message));
+
+  // Phase 4: Start serving
+  await new Promise(resolve => server.listen(PORT, resolve));
+  server._ready = true;
+
+  const elapsed = Date.now() - startTime;
+  logger.info(`Ready in ${elapsed}ms — ${data.library.length} anime, port ${PORT}`);
+  if (config.mediaDir) {
+    logger.info(`Media directory: ${config.mediaDir}`);
+  }
 }
 
 init().catch(e => {
-  console.error('Failed to initialize server:', e);
+  logger.error('Failed to initialize server:', e);
   process.exit(1);
 });

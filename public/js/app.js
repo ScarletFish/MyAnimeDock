@@ -65,6 +65,7 @@ async function openSettings() {
 
     document.getElementById('settingsModal').classList.add('show');
   } catch (e) {
+    if (window.location.origin !== 'http://localhost:3456') return;
     showToast('加载设置失败: ' + e.message);
   }
 }
@@ -292,9 +293,15 @@ const path = {
 
 // Init
 document.addEventListener('DOMContentLoaded', async () => {
-  try {
-    configCache = await API.get('/api/config');
-  } catch (_) {}
+  // 仅当页面从 Node.js 服务器加载时才调用 API。
+  // Tauri 构建首次加载来自 frontendDist（tauri:// 协议），此时 API 调用会跨源失败。
+  // Rust 等待 server 就绪后会自动导航到 http://localhost:3456，届时页面重新加载。
+  const onServerOrigin = window.location.origin === 'http://localhost:3456';
+  if (onServerOrigin) {
+    try {
+      configCache = await API.get('/api/config');
+    } catch (_) {}
+  }
   loadTheme();
   applyZoom(configCache?.uiScale || 1);
   initSortSelect();

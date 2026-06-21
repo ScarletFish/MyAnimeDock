@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { nodeFetch } = require('./node-fetch');
+const logger = require('../logger').child('[TMDB]');
 
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
 const TIMEOUT = 15000;
@@ -14,7 +15,7 @@ function curlFetch(method, url, body) {
   args.push('-H', 'Accept: application/json', url);
   const result = spawnSync('curl', args, { timeout: TIMEOUT, encoding: 'utf-8' });
   if (result.error) throw new Error(`curl 调用失败: ${result.error.message}`);
-  if (result.stderr) console.error('curl stderr:', result.stderr);
+  if (result.stderr) logger.error('curl stderr:', result.stderr);
   return JSON.parse(result.stdout);
 }
 
@@ -44,7 +45,7 @@ async function tryFetch(url, options = {}) {
     } catch (e) {
       if (e.message.includes('fetch failed') || e.message.includes('ECONNREFUSED') || e.message.includes('ENOTFOUND')) {
         useCurlFallback = true;
-        console.log('TMDB Network fetch failed, falling back to curl');
+        logger.info('TMDB Network fetch failed, falling back to curl');
       } else {
         throw e;
       }
@@ -168,7 +169,7 @@ class TMDBScraper {
       try {
         localCover = await this.downloadCover(detail.poster_path, coverDir, seriesId, 'w500');
       } catch (e) {
-        console.error('Cover download failed:', e.message);
+        logger.error('Cover download failed:', e.message);
       }
     }
 

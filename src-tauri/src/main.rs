@@ -6,6 +6,7 @@ use std::process::Command;
 use std::path::PathBuf;
 use std::sync::Mutex;
 use std::time::Duration;
+use log::{info, warn};
 
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
@@ -15,7 +16,15 @@ const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 struct SidecarProcess(Mutex<Option<std::process::Child>>);
 
+/// 判断是否应自行启动 sidecar：
+/// - 生产构建（release）始终启动
+/// - dev 模式设置 `TAURI_PROD=1` 时也会启动（用于测试生产流程，无需打包 MSI）
+fn should_spawn_sidecar() -> bool {
+    !cfg!(debug_assertions) || std::env::var("TAURI_PROD").is_ok()
+}
+
 fn main() {
+    env_logger::init();
     tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
@@ -25,9 +34,11 @@ fn main() {
         .setup(|app| {
             let handle = app.handle();
             
-            // 仅在生产模式下启动 sidecar；开发模式由手动启动的 `node server/server.js` 提供服务
-            if !cfg!(debug_assertions) {
+            // 生产模式或 TAURI_PROD=1 时自行启动 sidecar；
+            // 普通 dev 模式由手动 `npm run dev:server` 提供后端
+            if should_spawn_sidecar() {
                 let sidecar_path = get_sidecar_path(&handle)?;
+                info!("Starting sidecar: {:?}", sidecar_path);
                 
                 let mut cmd = Command::new(&sidecar_path);
                 cmd.current_dir(sidecar_path.parent().unwrap())
@@ -84,10 +95,12 @@ fn main() {
                 });
             }
             
-            // 等待 server 就绪（轮询 /api/config）
+            // 等待 server 就绪（轮询 /api/health，等待 ready: true）
             let handle_clone = handle.clone();
             std::thread::spawn(move || {
+                info!("Waiting for server to be ready...");
                 wait_for_server_ready(&handle_clone);
+                info!("Server is ready, showing window");
                 
                 // server 就绪后，导航到 sidecar 页面并显示窗口
                 // 窗口初始隐藏（visible: false），等 DB 加载完后再展示
@@ -114,8 +127,8 @@ fn main() {
         })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { .. } = event {
-                // 清理 sidecar 进程（生产模式）
-                if !cfg!(debug_assertions) {
+                // 清理 sidecar 进程（生产模式或 TAURI_PROD=1）
+                if should_spawn_sidecar() {
                     if let Some(sidecar) = window.try_state::<SidecarProcess>() {
                         if let Ok(mut guard) = sidecar.0.lock() {
                             if let Some(mut child) = guard.take() {
@@ -165,14 +178,21 @@ fn get_sidecar_path(handle: &tauri::AppHandle) -> Result<PathBuf, Box<dyn std::e
 }
 
 fn wait_for_server_ready(handle: &tauri::AppHandle) {
-    for _attempt in 0..30 {
-        if let Ok(resp) = ureq::get("http://localhost:3456/api/config").call() {
+    for attempt in 1..=45 {
+        if let Ok(resp) = ureq::get("http://localhost:3456/api/health").call() {
             if resp.status() == 200 {
-                return;
+                // Parse response to check ready flag
+                if let Ok(body) = resp.into_body().read_to_string() {
+                    if body.contains("\"ready\":true") {
+                        info!("Server ready after {attempt} attempts");
+                        return;
+                    }
+                }
             }
         }
         std::thread::sleep(Duration::from_millis(500));
     }
+    warn!("Server did not become ready within timeout");
     // 即使 server 未就绪，也显示窗口（用户可以看到错误信息）
     if let Some(window) = handle.get_webview_window("main") {
         let _ = window.show();

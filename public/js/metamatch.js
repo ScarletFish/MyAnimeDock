@@ -33,6 +33,7 @@ async function mmLoadData() {
       episodeCount: a.episodes ? a.episodes.length : 0,
       status: a.bangumiId ? 'matched' : 'pending',
       error: null,
+      pinyinTitle: a.pinyinTitle || '',
       meta: a.bangumiId ? {
         bangumiId: a.bangumiId,
         bangumiTitle: a.bangumiTitle,
@@ -97,12 +98,13 @@ function mmApplyFilters() {
   mmFiltered = mmItems.filter(item => {
     // Status filter
     if (mmFilter !== 'all' && item.status !== mmFilter) return false;
-    // Text search
+    // Text search (supports Chinese, pinyin, and English)
     if (searchVal) {
       const searchable = [
         item.title,
         item.folderName,
         item.bangumiTitle,
+        item.pinyinTitle,
         item.meta?.bangumiTitle,
         item.meta?.bangumiTitleJp,
       ].filter(Boolean).map(s => s.toLowerCase()).join(' ');
@@ -300,6 +302,7 @@ function mmRenderPanel(item) {
   let matchHtml = '';
   if (item.status === 'matched' && item.meta) {
     const mc = item.meta.coverUrl ? `<img src="${escAttr(item.meta.coverUrl)}" alt="">` : '';
+    const summary = item.meta.summary ? `<div class="mm-panel-summary">${escHtml(item.meta.summary.substring(0, 200))}${item.meta.summary.length > 200 ? '...' : ''}</div>` : '';
     matchHtml = `
       <div class="mm-panel-label">当前匹配</div>
       <div class="mm-panel-match-info mm-panel-match-info--success">
@@ -308,7 +311,12 @@ function mmRenderPanel(item) {
           <div class="mm-panel-match-title">${escHtml(item.meta.bangumiTitle || '—')}</div>
           <div class="mm-panel-match-score">${item.meta.bangumiTitleJp ? escHtml(item.meta.bangumiTitleJp) + ' · ' : ''}<strong>⭐ ${item.meta.rating || '—'}</strong> · ${escHtml(item.meta.metadataSource || '—')}</div>
         </div>
-      </div>`;
+      </div>
+      ${summary}
+      <button class="btn" style="margin-top:var(--space-2);font-size:0.8125rem" onclick="mmStartResearch('${item.animeId}')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        重新搜索
+      </button>`;
   } else if (item.status === 'failed') {
     matchHtml = `
       <div class="mm-panel-label">当前匹配</div>
@@ -330,26 +338,33 @@ function mmRenderPanel(item) {
         </div>
       </div>`;
   } else {
+    // Pending - show parsed keywords
+    const keywords = [item.title, item.folderName].filter(Boolean);
     matchHtml = `
-      <div class="mm-panel-label">当前匹配</div>
+      <div class="mm-panel-label">检索信息</div>
       <div class="mm-panel-match-info" style="border-left:3px solid var(--fg-muted)">
         <div class="mm-panel-match-cover"></div>
         <div class="mm-panel-match-text">
           <div class="mm-panel-match-title" style="color:var(--fg-muted)">待处理</div>
           <div class="mm-panel-match-score">点击「开始匹配」批量处理</div>
         </div>
+      </div>
+      <div class="mm-panel-keywords">
+        <div class="mm-panel-label" style="margin-top:var(--space-3)">解析关键词</div>
+        ${keywords.map(kw => `<div class="mm-panel-keyword">${escHtml(kw)}</div>`).join('')}
       </div>`;
   }
 
-  // Fix section (only for pending/failed, not during sync)
+  // Fix section (show for all items, not during sync)
   let fixHtml = '';
-  if ((item.status === 'failed' || item.status === 'pending') && !mmSyncInProgress) {
+  if (!mmSyncInProgress) {
+    const defaultKeyword = item.title || item.folderName || '';
     fixHtml = `
       <div class="mm-panel-divider"></div>
       <div>
         <div class="mm-panel-label">搜索修正</div>
         <div class="mm-fix-search">
-          <input type="text" id="mmFixKeyword" placeholder="输入搜索词..." onkeydown="if(event.key==='Enter')mmSearchForFix('${item.animeId}')">
+          <input type="text" id="mmFixKeyword" placeholder="输入搜索词..." value="${escAttr(defaultKeyword)}" onkeydown="if(event.key==='Enter')mmSearchForFix('${item.animeId}')">
           <button class="btn btn-primary" style="padding:9px 14px;font-size:0.844rem" onclick="mmSearchForFix('${item.animeId}')">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
           </button>
@@ -625,6 +640,50 @@ async function mmRetryFailed() {
   mmStartSync();
 }
 
+// ─── Re-search single item ───
+
+async function mmStartResearch(animeId) {
+  const item = mmItems.find(i => i.animeId === animeId);
+  if (!item) return;
+
+  // Reset to pending for re-search
+  item.status = 'pending';
+  item.error = null;
+  item.meta = null;
+  mmUpdateUI();
+
+  // Start sync for this single item
+  mmSyncInProgress = true;
+  document.getElementById('mmStartBtn').style.display = 'none';
+  document.getElementById('mmRetryBtn').style.display = 'none';
+
+  try {
+    const result = await API.post('/api/library/sync', { animeIds: [animeId] });
+    if (result?.results?.[0]) {
+      const r = result.results[0];
+      if (r.success && r.meta) {
+        item.status = 'matched';
+        item.meta = r.meta;
+        item.coverUrl = r.meta.coverUrl || null;
+        item.error = null;
+      } else {
+        item.status = 'failed';
+        item.error = r.error || '匹配失败';
+      }
+    } else {
+      item.status = 'failed';
+      item.error = '无返回结果';
+    }
+  } catch (e) {
+    item.status = 'failed';
+    item.error = e.message;
+    showToast('重新搜索失败: ' + e.message);
+  }
+
+  mmSyncInProgress = false;
+  mmUpdateUI();
+}
+
 // ─── Expose globals ───
 window.mmLoadData = mmLoadData;
 window.mmSetFilter = mmSetFilter;
@@ -634,3 +693,4 @@ window.mmStartSync = mmStartSync;
 window.mmRetryFailed = mmRetryFailed;
 window.mmSearchForFix = mmSearchForFix;
 window.mmApplyFix = mmApplyFix;
+window.mmStartResearch = mmStartResearch;

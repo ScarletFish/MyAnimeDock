@@ -3861,8 +3861,8 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .mm-card-thumb {
-  width: 40px;
-  height: 56px;
+  width: 64px;
+  height: 90px;
   border-radius: 4px;
   background: var(--bg-surface);
   flex-shrink: 0;
@@ -4100,6 +4100,32 @@ input[type="range"]::-webkit-slider-thumb {
   height: 1px;
   background: var(--border);
   margin: var(--space-2) 0;
+}
+
+.mm-panel-summary {
+  font-size: 0.8125rem;
+  color: var(--fg-secondary);
+  line-height: 1.5;
+  margin-top: var(--space-2);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.mm-panel-keywords {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.mm-panel-keyword {
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  background: var(--bg-surface);
+  border-radius: 4px;
+  color: var(--fg-secondary);
+  font-family: monospace;
 }
 
 /* ─── Light Theme ─── */

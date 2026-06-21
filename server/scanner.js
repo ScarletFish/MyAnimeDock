@@ -46,7 +46,10 @@ function hasDirectVideos(dir) {
  * Returns rich metadata for precise Bangumi matching.
  */
 function parseFolderName(name) {
-  const base = name.replace(/^\[[^\]]+\]\s*/, '').replace(/\s*\[[^\]]+\]$/, '').trim();
+  // Strip trailing slash and clean up
+  name = name.replace(/\/+$/, '').trim();
+  // Strip leading and all trailing bracket groups
+  const base = name.replace(/^\[[^\]]+\]\s*/, '').replace(/(\s*\[[^\]]+\])*$/, '').trim();
 
   // 1. Try anitomy on original name first (handles [Group] brackets natively)
   let parsed = {};
@@ -66,6 +69,16 @@ function parseFolderName(name) {
   let anitomyTitle = parsed.title?.trim() || base;
   if (cjkTitle && anitomyTitle && /[\u4e00-\u9fff]/.test(anitomyTitle) && /[a-zA-Z]/.test(anitomyTitle)) {
     anitomyTitle = cjkTitle;
+  }
+
+  // 4b. Detect anitomy title truncation (e.g., "Yuru Yuri" → "Yuru")
+  // If anitomy title is significantly shorter than base, use base instead
+  if (anitomyTitle && base && !cjkTitle) {
+    const titleLen = anitomyTitle.replace(/\s/g, '').length;
+    const baseLen = base.replace(/\s/g, '').length;
+    if (titleLen > 0 && baseLen > titleLen + 3) {
+      anitomyTitle = base;
+    }
   }
 
   // 5. Extract all useful fields from anitomy result
@@ -110,7 +123,7 @@ function parseFolderName(name) {
 
   // 9. Regex fallback for season (raw base, when anitomy missed)
   if (!result.season) {
-    const sm = base.match(/(?:^|\s)Season\s*(\d+)/i) || base.match(/(?:^|\s)S(\d+)\s*$/i);
+    const sm = base.match(/(?:^|\s)Season\s*(\d+)/i) || base.match(/(?:^|\s)S(\d+)(?:\s|$)/i);
     if (sm) result.season = parseInt(sm[1]);
   }
 

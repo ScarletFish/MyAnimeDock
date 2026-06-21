@@ -13,12 +13,28 @@ const RELATION_TYPE = {
 };
 
 /**
+ * Process items in parallel with concurrency limit
+ */
+async function parallelMap(items, fn, concurrency = 3) {
+  const results = new Array(items.length);
+  let index = 0;
+  async function worker() {
+    while (index < items.length) {
+      const i = index++;
+      results[i] = await fn(items[i], i);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, () => worker()));
+  return results;
+}
+
+/**
  * Normalize title for comparison: remove punctuation, whitespace, case-insensitive
  */
 function normalizeTitle(title) {
   if (!title) return '';
   return title
-    .replace(/[？?！!。.、,，～~··・（ ）【】「」『』《》：；]/g, '')
+    .replace(/[？?！!。.、,，～~··・（ ）【】「」『』《》：；!@#$%^&*()_\-+=\[\]{}|\\;:'",.<>?/`~]/g, '')
     .replace(/\s+/g, '')
     .toLowerCase();
 }
@@ -59,82 +75,11 @@ function extractBaseAndSuffix(title) {
 }
 
 /**
- * Build season chain from Bangumi search results using subject relations
- * Also collects all specials from search results for exact suffix matching
- */
-async function buildSeasonChain(registry, results, baseTitle, config) {
-  const bangumi = registry.get('bangumi');
-  if (!bangumi) return { seasonMap: new Map(), main: null, specials: [] };
-
-  // 1. Parallel fetch relations for all anime-type results
-  const animeResults = results.filter(r => r.type === 2);
-  const enriched = await Promise.all(animeResults.map(async r => {
-    try {
-      const relations = await bangumi.getSubjectRelations(r.id);
-      return { ...r, relations };
-    } catch (e) {
-      logger.error('getSubjectRelations failed for', r.id, ':', e.message);
-      return { ...r, relations: [] };
-    }
-  }));
-
-  if (enriched.length === 0) return { seasonMap: new Map(), main: null, specials: [] };
-
-  // 2. Find main entry: best title match to baseTitle
-  const normBase = normalizeTitle(baseTitle);
-  const main = enriched.reduce((best, r) => {
-    const score = similarity(normBase, normalizeTitle(r.name_cn || r.name));
-    return score > best.score ? { item: r, score } : best;
-  }, { item: enriched[0], score: 0 }).item;
-
-  // 3. Build seasonMap by following sequel relations
-  const seasonMap = new Map();
-  seasonMap.set(1, main);
-
-  let current = main;
-  let season = 2;
-  const visited = new Set([main.id]);
-
-  while (current && season <= 10) {
-    const sequelRel = current.relations?.find(r => 
-      RELATION_TYPE[r.relation] === 'sequel' && r.type === 2 && !visited.has(r.id)
-    );
-    if (!sequelRel) break;
-
-    const sequel = enriched.find(r => r.id === sequelRel.id);
-    if (!sequel) break;
-
-    seasonMap.set(season, sequel);
-    visited.add(sequel.id);
-    current = sequel;
-    season++;
-  }
-
-  // 4. Collect ALL specials from search results (for exact suffix matching)
-  //    This catches specials that may not be linked via relations
-  const specials = [];
-  enriched.forEach(r => {
-    const cn = r.name_cn || '';
-    const jp = r.name || '';
-    const specialType = detectSpecialType(cn) || detectSpecialType(jp);
-    if (specialType) {
-      specials.push({ ...r, specialType });
-      // Also add to seasonMap as fallback (first one wins per type)
-      if (!seasonMap.has(specialType)) {
-        seasonMap.set(specialType, r);
-      }
-    }
-  });
-
-  return { seasonMap, main, specials };
-}
-
-/**
  * Select best match from seasonMap based on folder parsed info
  * @param {Map} seasonMap - season number -> subject
  * @param {Object} folderParsed - result from parseFolderName()
  * @param {number} videoCount - number of video files
- * @param {Array} specials - array of {subject, specialType} from buildSeasonChain
+ * @param {Array} specials - array of {subject, specialType}
  * @param {string} specialSuffix - extracted ~...~ suffix from folder title
  */
 function selectBestMatch(seasonMap, folderParsed, videoCount, specials = [], specialSuffix = null) {
@@ -181,8 +126,8 @@ function selectBestMatch(seasonMap, folderParsed, videoCount, specials = [], spe
   let best = seasonMap.get(1);
   let bestScore = 0;
 
-  for (const [, v] of seasonMap) {
-    if (['movie', 'ova', 'special'].includes(v)) continue;  // Skip specials
+  for (const [key, v] of seasonMap) {
+    if (typeof key === 'string') continue;  // Skip specials ('movie'/'ova'/'special' keys)
     const score = similarity(normTarget, normalizeTitle(v.name_cn || v.name));
     if (score > bestScore) { bestScore = score; best = v; }
   }
@@ -192,7 +137,7 @@ function selectBestMatch(seasonMap, folderParsed, videoCount, specials = [], spe
 
 /**
  * Phase 1: Find any main subject using multi-keyword search
- * Returns the full subject detail (with official name/name_cn)
+ * Returns { detail, searchResults } with full subject detail and the search results used
  */
 async function findMainSubject(registry, folderParsed, config) {
   const bangumi = registry.get('bangumi');
@@ -215,7 +160,7 @@ async function findMainSubject(registry, folderParsed, config) {
 
       // Fetch full detail to get official titles
       const detail = await bangumi.getSubjectDetail(best.id);
-      if (detail) return detail;
+      if (detail) return { detail, searchResults: results };
     } catch (e) {
       logger.error('findMainSubject keyword="', kw, '" failed:', e.message);
     }
@@ -280,31 +225,6 @@ function isPrimarilyRomaji(title) {
 }
 
 /**
- * Multi-language search: try Chinese, Japanese, and romaji keywords
- */
-async function searchMultiLang(registry, folderParsed, config) {
-  const keywords = generateSearchKeywords(folderParsed);
-  const allResults = [];
-
-  for (const kw of keywords) {
-    try {
-      const results = await registry.searchAll(kw, config);
-      allResults.push(...results);
-    } catch (e) {
-      logger.error('searchMultiLang keyword="', kw, '" failed:', e.message);
-    }
-  }
-
-  // Deduplicate by id
-  const seen = new Set();
-  return allResults.filter(r => {
-    if (seen.has(r.id)) return false;
-    seen.add(r.id);
-    return true;
-  });
-}
-
-/**
  * Extract season number from title (Chinese/Japanese)
  * Returns season number (1, 2, 3...) or null
  */
@@ -352,17 +272,23 @@ function extractSeasonFromTitle(title) {
 
 /**
  * Phase 2: Build complete season chain using official titles
+ * @param {Array} initialResults - Optional search results from Phase 1 to avoid redundant search
  */
-async function buildSeasonChainFromMain(registry, mainDetail, config) {
+async function buildSeasonChainFromMain(registry, mainDetail, config, initialResults = null) {
   if (!mainDetail) return { seasonMap: new Map(), specials: [] };
 
   const bangumi = registry.get('bangumi');
   if (!bangumi) return { seasonMap: new Map(), specials: [] };
 
-  // Use official Chinese title (preferred) or Japanese title for searching
-  const officialTitle = mainDetail.name_cn || mainDetail.name;
-  const results = await registry.searchAll(officialTitle, config);
-  const animeResults = results.filter(r => r.type === 2);
+  // Reuse initial results if available, otherwise search with official title
+  let animeResults;
+  if (initialResults && initialResults.length > 0) {
+    animeResults = initialResults.filter(r => r.type === 2);
+  } else {
+    const officialTitle = mainDetail.name_cn || mainDetail.name;
+    const results = await registry.searchAll(officialTitle, config);
+    animeResults = results.filter(r => r.type === 2);
+  }
 
   if (animeResults.length === 0) {
     // Fallback: just use the main detail as season 1
@@ -372,15 +298,15 @@ async function buildSeasonChainFromMain(registry, mainDetail, config) {
     return { seasonMap, specials: [] };
   }
 
-  // Enrich with relations (reuse existing logic)
-  const enriched = await Promise.all(animeResults.map(async r => {
+  // Enrich with relations (batched to avoid rate limits)
+  const enriched = await parallelMap(animeResults, async r => {
     try {
       const relations = await bangumi.getSubjectRelations(r.id);
       return { ...r, relations };
     } catch (e) {
       return { ...r, relations: [] };
     }
-  }));
+  });
 
   // Find the main entry in enriched results (match by id)
   const main = enriched.find(r => r.id === mainDetail.id) || enriched[0];
@@ -442,11 +368,11 @@ async function buildSeasonChainFromMain(registry, mainDetail, config) {
  */
 async function matchSeason(registry, keyword, folderParsed, videoCount, config) {
   // Phase 1: Find main subject (handles romaji, multi-lang)
-  const mainDetail = await findMainSubject(registry, folderParsed, config);
-  if (!mainDetail) return null;
+  const result = await findMainSubject(registry, folderParsed, config);
+  if (!result) return null;
 
-  // Phase 2: Build season chain using official titles
-  const { seasonMap, specials } = await buildSeasonChainFromMain(registry, mainDetail, config);
+  // Phase 2: Build season chain, reusing search results from Phase 1
+  const { seasonMap, specials } = await buildSeasonChainFromMain(registry, result.detail, config, result.searchResults);
   if (seasonMap.size === 0) return null;
 
   // Select best match using folder's season/special info
@@ -458,6 +384,8 @@ class ScraperRegistry {
   constructor() {
     this.scrapers = [];
     this.defaultOrder = ['bangumi', 'tmdb'];
+    this._searchCache = new Map();
+    this._cacheTTL = 5 * 60 * 1000; // 5 minutes
   }
 
   register(scraper) {
@@ -514,6 +442,12 @@ class ScraperRegistry {
   }
 
   async searchAll(keyword, config) {
+    // Check cache
+    const cached = this._searchCache.get(keyword);
+    if (cached && Date.now() - cached.timestamp < this._cacheTTL) {
+      return cached.results;
+    }
+
     const results = [];
     const sources = this.getSources(config);
 
@@ -528,7 +462,17 @@ class ScraperRegistry {
         logger.error(source.type, '@', source.url, 'search failed:', e.message);
       }
     }
+
+    // Cache results
+    this._searchCache.set(keyword, { results, timestamp: Date.now() });
     return results;
+  }
+
+  /**
+   * Clear search cache (call after batch operations)
+   */
+  clearSearchCache() {
+    this._searchCache.clear();
   }
 
   /**
@@ -555,7 +499,6 @@ module.exports = {
   registry, 
   ScraperRegistry, 
   matchSeason,
-  buildSeasonChain,
   buildSeasonChainFromMain,
   findMainSubject,
   selectBestMatch,
@@ -564,7 +507,7 @@ module.exports = {
   detectSpecialType,
   RELATION_TYPE,
   generateSearchKeywords,
-  searchMultiLang,
   extractBaseAndSuffix,
-  isPrimarilyRomaji
+  isPrimarilyRomaji,
+  parallelMap
 };

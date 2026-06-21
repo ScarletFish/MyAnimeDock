@@ -441,6 +441,27 @@ const server = http.createServer((req, res) => {
       data.scannedTree = tree;
       saveData(data);
       send({ type: 'done', tree });
+
+      // Background prefetch AniList data for romaji titles
+      if (config.apiSources?.some(s => s.type === 'anilist')) {
+        const { registry, isPrimarilyRomaji } = require('./scrapers');
+        const { parseFolderName } = require('./scanner');
+        const anilist = registry.get('anilist');
+        if (anilist) {
+          const romajiKeywords = tree
+            .filter(n => n.type === 'leaf' && !n.alreadyImported)
+            .map(n => parseFolderName(n.name))
+            .filter(p => isPrimarilyRomaji(p.cleanTitle || p.title))
+            .map(p => p.cleanTitle)
+            .filter(Boolean)
+            .slice(0, 20); // Limit to 20 to avoid rate limits
+
+          if (romajiKeywords.length > 0) {
+            // Don't await - run in background
+            anilist.prefetch(romajiKeywords, registry, config).catch(() => {});
+          }
+        }
+      }
     } catch (e) {
       send({ type: 'error', message: e.message });
     }

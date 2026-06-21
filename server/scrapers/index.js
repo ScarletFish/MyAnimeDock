@@ -1,5 +1,6 @@
 const BangumiScraper = require('./bangumi');
 const TMDBScraper = require('./tmdb');
+const AniListScraper = require('./anilist');
 const logger = require('../logger').child('[SCRAPER]');
 
 // Relation type mapping from Bangumi API
@@ -48,6 +49,87 @@ function similarity(a, b) {
   if (a.includes(b) || b.includes(a)) return 0.8;
   // Could add Levenshtein here if needed
   return 0;
+}
+
+/**
+ * Calculate confidence score for a match
+ * Factors: title similarity, source reliability, metadata completeness
+ */
+function calculateConfidence(folderParsed, matchResult, source) {
+  let score = 0;
+
+  // Title similarity (0-40 points)
+  const normTarget = normalizeTitle(folderParsed.cleanTitle);
+  const normMatch = normalizeTitle(matchResult.name_cn || matchResult.name || '');
+  const titleSim = similarity(normTarget, normMatch);
+  score += titleSim * 40;
+
+  // Source reliability (0-20 points)
+  if (source === 'bangumi') score += 20; // Bangumi is primary for CJK
+  else if (source === 'anilist') score += 15; // AniList is good for romaji
+  else score += 10; // TMDB fallback
+
+  // Metadata completeness (0-20 points)
+  if (matchResult.rating) score += 5;
+  if (matchResult.coverUrl) score += 5;
+  if (matchResult.summary) score += 5;
+  if (matchResult.episodes) score += 5;
+
+  // Cross-validation bonus (0-20 points)
+  // If both sources agree on the same entry, boost confidence
+  if (matchResult._crossValidated) score += 20;
+
+  return Math.min(100, Math.round(score));
+}
+
+/**
+ * Cross-validate match between Bangumi and AniList
+ * Returns { confidence, bestSource, bestMatch }
+ */
+function crossValidateMatches(folderParsed, bangumiMatch, anilistMatch) {
+  if (!bangumiMatch && !anilistMatch) return null;
+
+  // If only one source has a match, use it
+  if (!bangumiMatch) return { confidence: 50, bestSource: 'anilist', bestMatch: anilistMatch };
+  if (!anilistMatch) return { confidence: 60, bestSource: 'bangumi', bestMatch: bangumiMatch };
+
+  // Both sources have matches - compare
+  const bangumiTitle = normalizeTitle(bangumiMatch.name_cn || bangumiMatch.name);
+  const anilistTitle = normalizeTitle(anilistMatch.title_native || anilistMatch.name);
+
+  // Check if titles match (fuzzy)
+  const titleMatch = similarity(bangumiTitle, anilistTitle);
+
+  if (titleMatch >= 0.8) {
+    // Strong match - both sources agree
+    bangumiMatch._crossValidated = true;
+    return {
+      confidence: 90,
+      bestSource: 'bangumi', // Prefer Bangumi for Chinese metadata
+      bestMatch: bangumiMatch,
+      anilistMatch,
+    };
+  } else if (titleMatch > 0) {
+    // Partial match - use the one with better title similarity to folder
+    const bangumiSim = similarity(normalizeTitle(folderParsed.cleanTitle), bangumiTitle);
+    const anilistSim = similarity(normalizeTitle(folderParsed.cleanTitle), anilistTitle);
+
+    if (bangumiSim >= anilistSim) {
+      return { confidence: 70, bestSource: 'bangumi', bestMatch: bangumiMatch, anilistMatch };
+    } else {
+      return { confidence: 70, bestSource: 'anilist', bestMatch: anilistMatch, bangumiMatch };
+    }
+  }
+
+  // No title match - different entries, use the one with better similarity
+  const bangumiSim = similarity(normalizeTitle(folderParsed.cleanTitle), bangumiTitle);
+  const anilistSim = similarity(normalizeTitle(folderParsed.cleanTitle), anilistTitle);
+
+  if (bangumiSim >= anilistSim) {
+    return { confidence: 40, bestSource: 'bangumi', bestMatch: bangumiMatch };
+  } else {
+    return { confidence: 40, bestSource: 'anilist', bestMatch: anilistMatch };
+  }
 }
 
 /**
@@ -138,13 +220,47 @@ function selectBestMatch(seasonMap, folderParsed, videoCount, specials = [], spe
 /**
  * Phase 1: Find any main subject using multi-keyword search
  * Returns { detail, searchResults } with full subject detail and the search results used
+ * Smart routing: CJK → Bangumi first, Romaji → AniList first (get Japanese name) → Bangumi
  */
 async function findMainSubject(registry, folderParsed, config) {
   const bangumi = registry.get('bangumi');
+  const anilist = registry.get('anilist');
   if (!bangumi) return null;
 
   const keywords = generateSearchKeywords(folderParsed);
-  
+  const isRomaji = isPrimarilyRomaji(folderParsed.cleanTitle || folderParsed.title);
+
+  // Smart routing: romaji titles try AniList first to get Japanese name
+  if (isRomaji && anilist && anilist.enabled(config)) {
+    for (const kw of keywords.slice(0, 2)) {
+      try {
+        const anilistResults = await anilist.search(kw, config.apiSources?.find(s => s.type === 'anilist'));
+        if (anilistResults.length > 0) {
+          const best = anilistResults[0];
+          // Use Japanese title to search Bangumi
+          const jpTitle = best.title_native || best.name;
+          if (jpTitle) {
+            const bangumiResults = await registry.searchAll(jpTitle, config);
+            const animeResults = bangumiResults.filter(r => r.type === 2);
+            if (animeResults.length > 0) {
+              const normTarget = normalizeTitle(folderParsed.cleanTitle);
+              const bangumiBest = animeResults.reduce((b, r) => {
+                const score = similarity(normTarget, normalizeTitle(r.name_cn || r.name));
+                return score > b.score ? { item: r, score } : b;
+              }, { item: animeResults[0], score: 0 }).item;
+
+              const detail = await bangumi.getSubjectDetail(bangumiBest.id);
+              if (detail) return { detail, searchResults: bangumiResults, anilistMatch: best };
+            }
+          }
+        }
+      } catch (e) {
+        logger.error('AniList search failed:', e.message);
+      }
+    }
+  }
+
+  // Fallback: Bangumi search with multiple keywords
   for (const kw of keywords) {
     try {
       const results = await registry.searchAll(kw, config);
@@ -383,7 +499,7 @@ async function matchSeason(registry, keyword, folderParsed, videoCount, config) 
 class ScraperRegistry {
   constructor() {
     this.scrapers = [];
-    this.defaultOrder = ['bangumi', 'tmdb'];
+    this.defaultOrder = ['bangumi', 'anilist', 'tmdb'];
     this._searchCache = new Map();
     this._cacheTTL = 5 * 60 * 1000; // 5 minutes
   }
@@ -489,10 +605,38 @@ class ScraperRegistry {
     if (typeof scraper.setSource === 'function') scraper.setSource(source);
     return scraper.fetchMetadata(title, coverDir, subjectId);
   }
+
+  /**
+   * Batch fetch AniList details and build season chains
+   * Returns Map<anilistId, {detail, seasonChain}>
+   */
+  async batchFetchAniListSeasons(anilistIds, config) {
+    const anilist = this.get('anilist');
+    if (!anilist || !anilist.enabled(config)) return new Map();
+
+    const result = new Map();
+    const BATCH_SIZE = 10;
+
+    for (let i = 0; i < anilistIds.length; i += BATCH_SIZE) {
+      const batch = anilistIds.slice(i, i + BATCH_SIZE);
+      try {
+        const details = await anilist.batchGetDetails(batch);
+        for (const detail of details) {
+          const seasonChain = anilist.extractSeasonChain(detail);
+          result.set(detail.id, { detail, seasonChain });
+        }
+      } catch (e) {
+        logger.error('batchFetchAniListSeasons failed:', e.message);
+      }
+    }
+
+    return result;
+  }
 }
 
 const registry = new ScraperRegistry();
 registry.register(new BangumiScraper());
+registry.register(new AniListScraper());
 registry.register(new TMDBScraper());
 
 module.exports = { 
@@ -504,6 +648,8 @@ module.exports = {
   selectBestMatch,
   normalizeTitle,
   similarity,
+  calculateConfidence,
+  crossValidateMatches,
   detectSpecialType,
   RELATION_TYPE,
   generateSearchKeywords,

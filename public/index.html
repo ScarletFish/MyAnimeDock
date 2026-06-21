@@ -190,107 +190,106 @@
 
   <!-- MetaMatch View -->
   <section class="view hidden" id="metamatchView">
-    <div class="mm-hero">
-      <div class="mm-hero-content">
-        <div class="mm-hero-title-wrap">
-          <h2 class="mm-hero-title">匹配审查</h2>
-          <p class="mm-hero-sub">批量审核元数据匹配结果，修正未正确识别的条目</p>
+    <div class="mm-content">
+      <!-- Left Column: header + list -->
+      <div class="mm-left">
+        <!-- Hero -->
+        <div class="mm-hero">
+          <div class="mm-hero-left">
+            <h2 class="mm-hero-title">匹配审查</h2>
+            <p class="mm-hero-sub">批量审核元数据匹配结果，修正未正确识别的条目</p>
+          </div>
+          <div class="mm-hero-actions">
+            <button class="btn" id="mmRetryBtn" onclick="mmRetryFailed()" style="display:none">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+              重试失败
+            </button>
+            <button class="btn btn-primary" id="mmStartBtn" onclick="mmStartSync()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+              <span id="mmStartBtnText">开始匹配</span>
+            </button>
+            <button class="btn btn-ghost" onclick="showView('library')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+              返回
+            </button>
+          </div>
         </div>
-        <div class="mm-hero-actions">
-          <button class="btn btn-primary" id="mmStartBtn" onclick="mmStartSync()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M23 4v6h-6"></path>
-              <path d="M1 20v-6h6"></path>
-              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-            </svg>
-            <span id="mmStartBtnText">开始匹配</span>
-          </button>
-          <button class="btn" id="mmRetryBtn" onclick="mmRetryFailed()" style="display:none">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="23 4 23 10 17 10"></polyline>
-              <polyline points="1 20 1 14 7 14"></polyline>
-              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-            </svg>
-            重试失败
-          </button>
-          <button class="btn btn-ghost" onclick="showView('library')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M19 12H5"></path>
-              <path d="M12 19l-7-7 7-7"></path>
-            </svg>
-            返回资料库
-          </button>
+
+        <!-- Bento Stats -->
+        <div class="mm-bento" id="mmStats">
+          <div class="mm-bento-tile mm-bento-tile--total">
+            <span class="mm-bento-num" id="mmStatTotal">0</span>
+            <span class="mm-bento-label">全部</span>
+          </div>
+          <div class="mm-bento-tile mm-bento-tile--matched">
+            <span class="mm-bento-num" id="mmStatMatched">0</span>
+            <span class="mm-bento-label">已匹配</span>
+            <div class="mm-bento-glow"></div>
+          </div>
+          <div class="mm-bento-tile mm-bento-tile--pending">
+            <span class="mm-bento-num" id="mmStatPending">0</span>
+            <span class="mm-bento-label">待处理</span>
+          </div>
+          <div class="mm-bento-tile mm-bento-tile--progress">
+            <span class="mm-bento-num" id="mmStatMatching">0</span>
+            <span class="mm-bento-label">匹配中</span>
+            <div class="mm-bento-pulse"></div>
+          </div>
+          <div class="mm-bento-tile mm-bento-tile--failed">
+            <span class="mm-bento-num" id="mmStatFailed">0</span>
+            <span class="mm-bento-label">失败</span>
+          </div>
         </div>
-      </div>
-    </div>
 
-    <!-- Stats bar -->
-    <div class="mm-stats" id="mmStats">
-      <div class="mm-stat mm-stat--total">
-        <span class="mm-stat-num" id="mmStatTotal">0</span>
-        <span class="mm-stat-label">全部</span>
-      </div>
-      <div class="mm-stat mm-stat--matched">
-        <span class="mm-stat-num" id="mmStatMatched">0</span>
-        <span class="mm-stat-label">已匹配</span>
-      </div>
-      <div class="mm-stat mm-stat--failed">
-        <span class="mm-stat-num" id="mmStatFailed">0</span>
-        <span class="mm-stat-label">失败</span>
-      </div>
-      <div class="mm-stat mm-stat--progress" id="mmStatProgress">
-        <span class="mm-stat-num" id="mmStatMatching">0</span>
-        <span class="mm-stat-label">匹配中</span>
-      </div>
-      <div class="mm-stat mm-stat--pending">
-        <span class="mm-stat-num" id="mmStatPending">0</span>
-        <span class="mm-stat-label">待处理</span>
-      </div>
-    </div>
+        <!-- Progress -->
+        <div class="mm-progress-wrap" id="mmProgressWrap" style="display:none">
+          <div class="mm-progress-track"><div class="mm-progress-fill" id="mmProgressFill"></div></div>
+          <span class="mm-progress-text" id="mmProgressText">0 / 0</span>
+        </div>
 
-    <!-- Progress bar -->
-    <div class="mm-progress-wrap" id="mmProgressWrap" style="display:none">
-      <div class="mm-progress-bar" id="mmProgressBar"><div class="mm-progress-fill" id="mmProgressFill"></div></div>
-      <span class="mm-progress-text" id="mmProgressText">0 / 0</span>
-    </div>
+        <!-- Batch Action Bar -->
+        <div class="mm-batch-bar" id="mmBatchBar" style="display:none">
+          <div class="mm-batch-left">
+            <button class="mm-batch-check" id="mmSelectAllBtn" onclick="mmToggleSelectAll()" title="全选/取消全选">
+              <svg class="mm-check-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 8 7 12 13 4"/></svg>
+            </button>
+            <span class="mm-batch-count"><span id="mmSelectedCount">0</span> 已选择</span>
+          </div>
+          <div class="mm-batch-actions">
+            <button class="btn btn-sm" onclick="mmBatchRetry()">重试选中</button>
+            <button class="btn btn-sm" onclick="mmBatchResync()">重新匹配选中</button>
+            <button class="btn btn-sm btn-ghost" onclick="mmClearSelection()">取消选择</button>
+          </div>
+        </div>
 
-    <!-- Split content -->
-    <div class="mm-body">
-      <div class="mm-grid-wrap">
-        <div class="mm-grid-header">
-          <div class="mm-grid-filter">
+        <!-- List -->
+        <div class="mm-list-header">
+          <div class="mm-list-filter">
             <button class="mm-filter-btn mm-filter-btn--active" data-mmfilter="all" onclick="mmSetFilter('all')">全部</button>
-            <button class="mm-filter-btn" data-mmfilter="failed" onclick="mmSetFilter('failed')">失败</button>
             <button class="mm-filter-btn" data-mmfilter="pending" onclick="mmSetFilter('pending')">待处理</button>
+            <button class="mm-filter-btn" data-mmfilter="failed" onclick="mmSetFilter('failed')">失败</button>
             <button class="mm-filter-btn" data-mmfilter="matched" onclick="mmSetFilter('matched')">已匹配</button>
           </div>
-          <div class="mm-grid-search">
-            <input type="text" class="search-input" id="mmGridSearch" placeholder="过滤条目..." oninput="mmFilterGrid()">
+          <div class="mm-list-search">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input type="text" id="mmGridSearch" placeholder="搜索条目..." oninput="mmFilterGrid()">
           </div>
         </div>
-        <div class="mm-grid" id="mmGrid"></div>
-        <div class="empty-state" id="mmEmpty" style="display:none">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="11" cy="11" r="8"></circle>
-            <path d="m21 21-4.35-4.35"></path>
-          </svg>
+        <div class="mm-list" id="mmGrid"></div>
+        <div class="mm-list-empty" id="mmEmpty" style="display:none">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
           <p>没有需要匹配的条目</p>
           <p class="empty-hint">所有条目已有元数据，或资料库为空</p>
         </div>
       </div>
 
-      <!-- Focus Panel -->
+      <!-- Right: Detail Panel (full height) -->
       <div class="mm-panel" id="mmPanel">
         <div class="mm-panel-empty" id="mmPanelEmpty">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 20h9"></path>
-            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
-          </svg>
-          <p>选择一个条目查看详情或修正匹配</p>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          <p>选择一个条目查看详情</p>
         </div>
-        <div class="mm-panel-content" id="mmPanelContent" style="display:none">
-          <!-- Populated by JS -->
-        </div>
+        <div class="mm-panel-content" id="mmPanelContent" style="display:none"></div>
       </div>
     </div>
   </section>

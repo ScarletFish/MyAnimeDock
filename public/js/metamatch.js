@@ -1,14 +1,30 @@
-// MetaMatch — 批量元数据匹配审查工作台
-// ========================================
+// MetaMatch — 批量元数据匹配审查工作台 (v2: Bento + List)
+// ============================================================
 
-let mmItems = [];           // All items being processed
-let mmFiltered = [];        // Currently filtered/visible items
-let mmFilter = 'all';       // Current filter: all | matched | failed | pending
-let mmSelectedId = null;    // Currently selected animeId
+let mmItems = [];
+let mmFiltered = [];
+let mmFilter = 'all';
+let mmSelectedId = null;
 let mmSyncInProgress = false;
-let mmFixResults = [];      // Search results cache for the fix panel
+let mmFixResults = [];
+let mmSelectedIds = new Set();
 
 // ─── Public API ───
+
+function mmFilterSummary(text) {
+  if (!text) return '';
+  if (/[\u4e00-\u9fff]/.test(text)) {
+    const parts = text.split(/\[?简介原文\]?/);
+    if (parts.length > 1) {
+      text = parts[0].trim();
+    } else {
+      const paragraphs = text.split(/\n+/).filter(p => p.trim());
+      const cn = paragraphs.filter(p => /[\u4e00-\u9fff]/.test(p));
+      if (cn.length > 0) text = cn.join('\n');
+    }
+  }
+  return text;
+}
 
 async function mmLoadData() {
   try {
@@ -16,15 +32,14 @@ async function mmLoadData() {
     mmFilter = 'all';
     mmSelectedId = null;
     mmSyncInProgress = false;
+    mmSelectedIds.clear();
 
-    // Load library data
     const libData = await API.get('/api/library');
     if (!libData || libData.length === 0) {
       mmShowEmpty('资料库为空，请先导入动漫');
       return;
     }
 
-    // Build items list — only show items needing sync OR already synced for review
     mmItems = libData.map(a => ({
       animeId: a.id,
       title: a.title || a.folderName || a.bangumiTitle || '未知',
@@ -51,15 +66,16 @@ async function mmLoadData() {
     }));
 
     mmUpdateUI();
+    mmUpdateBatchBar();
   } catch (e) {
     if (window.location.origin !== 'http://localhost:3456') return;
     showToast('加载资料库失败: ' + e.message);
-    mmShowEmpty('加载资料库失败: ' + e.message + '· 请检查服务器是否运行');
+    mmShowEmpty('加载资料库失败: ' + e.message + ' · 请检查服务器是否运行');
   }
 }
 
 function mmShowEmpty(msg) {
-  const grid = document.getElementById('mmGrid');
+  const list = document.getElementById('mmGrid');
   const empty = document.getElementById('mmEmpty');
   const stats = document.getElementById('mmStats');
   const progress = document.getElementById('mmProgressWrap');
@@ -67,11 +83,13 @@ function mmShowEmpty(msg) {
   const panelContent = document.getElementById('mmPanelContent');
   const startBtn = document.getElementById('mmStartBtn');
   const retryBtn = document.getElementById('mmRetryBtn');
+  const batchBar = document.getElementById('mmBatchBar');
 
-  if (grid) { grid.innerHTML = ''; grid.style.display = 'none'; }
+  if (list) { list.innerHTML = ''; list.style.display = 'none'; }
   if (empty) { empty.style.display = 'flex'; const p = empty.querySelector('p'); if (p) p.textContent = msg || '没有需要匹配的条目'; }
   if (stats) stats.style.display = 'none';
   if (progress) progress.style.display = 'none';
+  if (batchBar) batchBar.style.display = 'none';
   if (startBtn) startBtn.style.display = 'none';
   if (retryBtn) retryBtn.style.display = 'none';
   if (panelEmpty) panelEmpty.style.display = 'flex';
@@ -96,9 +114,7 @@ function mmApplyFilters() {
   const searchVal = (document.getElementById('mmGridSearch')?.value || '').toLowerCase().trim();
 
   mmFiltered = mmItems.filter(item => {
-    // Status filter
     if (mmFilter !== 'all' && item.status !== mmFilter) return false;
-    // Text search (supports Chinese, pinyin, and English)
     if (searchVal) {
       const searchable = [
         item.title,
@@ -113,97 +129,99 @@ function mmApplyFilters() {
     return true;
   });
 
-  mmRenderCards();
+  mmRenderList();
 }
 
-// ─── Render Cards ───
+// ─── Render List ───
 
-function mmRenderCards() {
-  const grid = document.getElementById('mmGrid');
+function mmRenderList() {
+  const list = document.getElementById('mmGrid');
   const empty = document.getElementById('mmEmpty');
   const stats = document.getElementById('mmStats');
   const startBtn = document.getElementById('mmStartBtn');
   const retryBtn = document.getElementById('mmRetryBtn');
 
-  if (!grid) return;
+  if (!list) return;
 
-  // Show/hide empty state
   if (mmFiltered.length === 0) {
-    grid.innerHTML = '';
-    grid.style.display = 'none';
+    list.innerHTML = '';
+    list.style.display = 'none';
     if (empty) {
       empty.style.display = 'flex';
       const p = empty.querySelector('p');
       if (p) {
         p.textContent = mmItems.length === 0 ? '资料库为空' :
           (mmFilter === 'all' ? '没有条目' :
-            `没有 ${ {matched:'已匹配',failed:'失败',pending:'待处理'}[mmFilter] || '' } 的条目`);
+            `没有 ${ { matched: '已匹配', failed: '失败', pending: '待处理' }[mmFilter] || '' } 的条目`);
       }
     }
     if (stats) stats.style.display = 'none';
     return;
   }
   if (empty) empty.style.display = 'none';
-  grid.style.display = 'flex';
-  if (stats) stats.style.display = 'flex';
+  list.style.display = 'flex';
+  if (stats) stats.style.display = 'grid';
 
-  // Show/hide buttons
   const hasPending = mmItems.some(i => i.status === 'pending');
   const hasFailed = mmItems.some(i => i.status === 'failed');
   startBtn.style.display = hasPending && !mmSyncInProgress ? '' : 'none';
   retryBtn.style.display = hasFailed && !mmSyncInProgress ? '' : 'none';
 
-  // Build cards HTML
   let html = '';
   mmFiltered.forEach((item, i) => {
     const isSelected = item.animeId === mmSelectedId;
-    const statusClass = 'mm-card--' + item.status;
-    const selectedClass = isSelected ? 'mm-card--selected' : '';
-    const animDelay = `animation-delay:${(i % 20) * 30}ms`;
+    const isBatchSelected = mmSelectedIds.has(item.animeId);
+    const animDelay = `animation-delay:${Math.min(i, 30) * 18}ms`;
 
-    // Badge
-    let badge = '';
-    if (item.status === 'matched') {
-      badge = `<span class="mm-card-badge mm-card-badge--success">
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M20 6L9 17l-5-5"/></svg> 已匹配</span>`;
-    } else if (item.status === 'failed') {
-      badge = `<span class="mm-card-badge mm-card-badge--error">
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> 失败</span>`;
-    } else if (item.status === 'matching') {
-      badge = `<span class="mm-card-badge mm-card-badge--warn">
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg> 匹配中</span>`;
-    } else {
-      badge = `<span class="mm-card-badge mm-card-badge--muted">待处理</span>`;
-    }
+    const rowClasses = ['mm-row'];
+    if (isSelected) rowClasses.push('mm-row--selected');
+    if (item.status === 'matching') rowClasses.push('mm-row--matching');
 
-    // Thumbnail
-    let thumbHtml = '';
-    if (item.coverUrl && item.meta) {
-      thumbHtml = `<img src="${escAttr(item.coverUrl)}" alt="" loading="lazy" onerror="this.outerHTML='<span style=font-size:16px;font-weight:700>${escHtml((item.title||'?')[0].toUpperCase())}</span>'">`;
-    } else {
-      thumbHtml = `<span style="font-size:16px;font-weight:700;color:var(--fg-muted)">${escHtml((item.title||'?')[0].toUpperCase())}</span>`;
-    }
+    const dotClass = `mm-row-dot mm-row-dot--${item.status}`;
+    const checkClass = `mm-row-check${isBatchSelected ? ' mm-checked' : ''}`;
 
     const subParts = [];
     if (item.parsedSeason) subParts.push(`S${item.parsedSeason}`);
-    if (item.episodeCount) subParts.push(`${item.episodeCount} 集`);
-    if (item.meta?.bangumiTitle && item.meta.bangumiTitle !== item.title) subParts.push(item.meta.bangumiTitle);
+    if (item.episodeCount) subParts.push(`${item.episodeCount}集`);
 
-    const pulseEl = item.status === 'matching' ? '<div class="mm-card-pulse"></div>' : '';
+    const badgeLabels = { matched: '已匹配', failed: '失败', matching: '匹配中', pending: '待处理' };
+
+    // Match preview on the row
+    let matchPreview = '';
+    if (item.status === 'matched' && item.meta) {
+      const mTitle = item.meta.bangumiTitle || '';
+      const mJp = item.meta.bangumiTitleJp || '';
+      const mRating = item.meta.rating ? `<span class="mm-row-rating">★ ${escHtml(String(item.meta.rating))}</span>` : '';
+      matchPreview = `
+        <div class="mm-row-match">
+          <span class="mm-row-match-title">${escHtml(mTitle)}</span>
+          ${mJp ? `<span class="mm-row-match-jp">${escHtml(mJp)}</span>` : ''}
+          ${mRating}
+        </div>`;
+    } else if (item.status === 'failed') {
+      matchPreview = `<div class="mm-row-match mm-row-match--error">${escHtml(item.error || '匹配失败')}</div>`;
+    } else if (item.status === 'matching') {
+      matchPreview = `<div class="mm-row-match mm-row-match--pending">匹配中...</div>`;
+    } else {
+      matchPreview = `<div class="mm-row-match mm-row-match--pending">待匹配</div>`;
+    }
 
     html += `
-      <div class="mm-card ${statusClass} ${selectedClass}" data-id="${item.animeId}" style="${animDelay}" onclick="mmSelectCard('${item.animeId}')">
-        ${pulseEl}
-        <div class="mm-card-thumb">${thumbHtml}</div>
-        <div class="mm-card-body">
-          <div class="mm-card-title">${escHtml(item.title)}</div>
-          <div class="mm-card-sub">${escHtml(subParts.join(' · ') || '—')}</div>
+      <div class="${rowClasses.join(' ')}" data-id="${item.animeId}" style="${animDelay}" onclick="mmRowClick(event, '${item.animeId}')">
+        <button class="${checkClass}" onclick="event.stopPropagation();mmToggleSelect('${item.animeId}')" title="选择">
+          <svg class="mm-check-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 8 7 12 13 4"/></svg>
+        </button>
+        <div class="${dotClass}"></div>
+        <div class="mm-row-info">
+          <div class="mm-row-title">${escHtml(item.title)}</div>
+          <div class="mm-row-sub">${escHtml(subParts.join(' · ') || '—')}</div>
         </div>
-        ${badge}
+        ${matchPreview}
+        <span class="mm-row-badge mm-row-badge--${item.status}">${badgeLabels[item.status]}</span>
       </div>`;
   });
 
-  grid.innerHTML = html;
+  list.innerHTML = html;
   mmUpdateStats();
 }
 
@@ -216,11 +234,19 @@ function mmUpdateStats() {
   const matching = mmItems.filter(i => i.status === 'matching').length;
   const pending = mmItems.filter(i => i.status === 'pending').length;
 
-  document.getElementById('mmStatTotal').textContent = total;
-  document.getElementById('mmStatMatched').textContent = matched;
-  document.getElementById('mmStatFailed').textContent = failed;
-  document.getElementById('mmStatMatching').textContent = matching;
-  document.getElementById('mmStatPending').textContent = pending;
+  const animate = (el, val) => {
+    if (el && el.textContent !== String(val)) {
+      el.textContent = val;
+      el.style.transform = 'scale(1.15)';
+      setTimeout(() => { el.style.transform = ''; }, 200);
+    }
+  };
+
+  animate(document.getElementById('mmStatTotal'), total);
+  animate(document.getElementById('mmStatMatched'), matched);
+  animate(document.getElementById('mmStatFailed'), failed);
+  animate(document.getElementById('mmStatMatching'), matching);
+  animate(document.getElementById('mmStatPending'), pending);
 }
 
 function mmUpdateProgress() {
@@ -236,7 +262,6 @@ function mmUpdateProgress() {
   fill.style.width = pct + '%';
   text.textContent = `${done} / ${total}`;
 
-  // Hide when complete
   if (done === total && total > 0) {
     setTimeout(() => { wrap.style.display = 'none'; }, 800);
   }
@@ -249,7 +274,6 @@ function mmUpdateUI() {
   mmUpdateStats();
   mmUpdateProgress();
 
-  // Clear panel selection if item no longer exists
   if (mmSelectedId && !mmItems.some(i => i.animeId === mmSelectedId)) {
     mmSelectedId = null;
     mmShowPanelEmpty();
@@ -257,18 +281,139 @@ function mmUpdateUI() {
     const item = mmItems.find(i => i.animeId === mmSelectedId);
     if (item) mmRenderPanel(item);
   }
+
+  // Update row states in-place without full re-render when possible
+  document.querySelectorAll('.mm-row').forEach(row => {
+    const id = row.dataset.id;
+    const item = mmItems.find(i => i.animeId === id);
+    if (!item) return;
+
+    row.classList.toggle('mm-row--selected', id === mmSelectedId);
+    row.classList.toggle('mm-row--matching', item.status === 'matching');
+
+    const dot = row.querySelector('.mm-row-dot');
+    if (dot) {
+      dot.className = `mm-row-dot mm-row-dot--${item.status}`;
+    }
+
+    const badge = row.querySelector('.mm-row-badge');
+    if (badge) {
+      const labels = { matched: '已匹配', failed: '失败', matching: '匹配中', pending: '待处理' };
+      badge.className = `mm-row-badge mm-row-badge--${item.status}`;
+      badge.textContent = labels[item.status];
+    }
+  });
 }
 
-// ─── Card Selection ───
+// ─── Batch Selection ───
 
-function mmSelectCard(animeId) {
+function mmToggleSelect(animeId) {
+  if (mmSelectedIds.has(animeId)) {
+    mmSelectedIds.delete(animeId);
+  } else {
+    mmSelectedIds.add(animeId);
+  }
+  mmUpdateBatchBar();
+  mmUpdateRowChecks();
+}
+
+function mmToggleSelectAll() {
+  const allVisibleIds = mmFiltered.map(i => i.animeId);
+  const allSelected = allVisibleIds.every(id => mmSelectedIds.has(id));
+
+  if (allSelected) {
+    allVisibleIds.forEach(id => mmSelectedIds.delete(id));
+  } else {
+    allVisibleIds.forEach(id => mmSelectedIds.add(id));
+  }
+  mmUpdateBatchBar();
+  mmUpdateRowChecks();
+}
+
+function mmClearSelection() {
+  mmSelectedIds.clear();
+  mmUpdateBatchBar();
+  mmUpdateRowChecks();
+}
+
+function mmUpdateBatchBar() {
+  const bar = document.getElementById('mmBatchBar');
+  const count = document.getElementById('mmSelectedCount');
+  const selectAllBtn = document.getElementById('mmSelectAllBtn');
+
+  if (!bar) return;
+
+  if (mmSelectedIds.size > 0) {
+    bar.style.display = 'flex';
+    if (count) count.textContent = mmSelectedIds.size;
+
+    const allVisibleIds = mmFiltered.map(i => i.animeId);
+    const allSelected = allVisibleIds.length > 0 && allVisibleIds.every(id => mmSelectedIds.has(id));
+    if (selectAllBtn) selectAllBtn.classList.toggle('mm-checked', allSelected);
+  } else {
+    bar.style.display = 'none';
+    if (selectAllBtn) selectAllBtn.classList.remove('mm-checked');
+  }
+}
+
+function mmUpdateRowChecks() {
+  document.querySelectorAll('.mm-row').forEach(row => {
+    const id = row.dataset.id;
+    const check = row.querySelector('.mm-row-check');
+    if (check) {
+      check.classList.toggle('mm-checked', mmSelectedIds.has(id));
+    }
+  });
+}
+
+function mmBatchRetry() {
+  const ids = [...mmSelectedIds].filter(id => {
+    const item = mmItems.find(i => i.animeId === id);
+    return item && (item.status === 'failed' || item.status === 'pending');
+  });
+  if (ids.length === 0) {
+    showToast('选中条目无需重试');
+    return;
+  }
+  ids.forEach(id => {
+    const item = mmItems.find(i => i.animeId === id);
+    if (item) { item.status = 'pending'; item.error = null; }
+  });
+  mmSelectedIds.clear();
+  mmUpdateUI();
+  mmUpdateBatchBar();
+  mmStartSync();
+}
+
+function mmBatchResync() {
+  const ids = [...mmSelectedIds];
+  if (ids.length === 0) return;
+  ids.forEach(id => {
+    const item = mmItems.find(i => i.animeId === id);
+    if (item) { item.status = 'pending'; item.error = null; item.meta = null; }
+  });
+  mmSelectedIds.clear();
+  mmUpdateUI();
+  mmUpdateBatchBar();
+  mmStartSync();
+}
+
+// ─── Row Selection ───
+
+function mmRowClick(event, animeId) {
   if (mmSyncInProgress) return;
-  mmSelectedId = animeId;
-  mmApplyFilters(); // re-render cards to show selection
 
-  // Scroll the selected card into view
-  const card = document.querySelector(`.mm-card[data-id="${animeId}"]`);
-  if (card) card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  // If clicking on the checkbox area, don't select the row
+  if (event.target.closest('.mm-row-check')) return;
+
+  mmSelectedId = animeId;
+
+  document.querySelectorAll('.mm-row').forEach(row => {
+    row.classList.toggle('mm-row--selected', row.dataset.id === animeId);
+  });
+
+  const row = document.querySelector(`.mm-row[data-id="${animeId}"]`);
+  if (row) row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 
   const item = mmItems.find(i => i.animeId === animeId);
   if (item) mmRenderPanel(item);
@@ -290,103 +435,136 @@ function mmRenderPanel(item) {
   if (!content) return;
   content.style.display = 'flex';
 
-  // Cover
+  const title = item.title || item.folderName || '—';
+
+  // Small cover for header
   let coverHtml = '';
-  if (item.meta?.coverUrl) {
-    coverHtml = `<img src="${escAttr(item.meta.coverUrl)}" alt="" onerror="this.outerHTML='<div class=mm-panel-cover-fallback>${escHtml((item.title||'?')[0].toUpperCase())}</div>'">`;
+  if (item.meta?.coverUrl || item.coverUrl) {
+    const src = escAttr(item.meta?.coverUrl || item.coverUrl);
+    coverHtml = `<img src="${src}" alt="" onerror="this.outerHTML='<div class=mm-panel-cover-sm-fallback>${escHtml((item.title||'?')[0].toUpperCase())}</div>'">`;
   } else {
-    coverHtml = `<div class="mm-panel-cover-fallback">${escHtml((item.title||'?')[0].toUpperCase())}</div>`;
+    coverHtml = `<div class="mm-panel-cover-sm-fallback">${escHtml((item.title||'?')[0].toUpperCase())}</div>`;
   }
 
-  // Match info
-  let matchHtml = '';
+  // Meta tags
+  const metaParts = [];
+  if (item.parsedSeason) metaParts.push(`S${item.parsedSeason}`);
+  if (item.episodeCount) metaParts.push(`${item.episodeCount}集`);
+  if (item.meta?.rating) metaParts.push(`★ ${item.meta.rating}`);
+  if (item.meta?.metadataSource) metaParts.push(item.meta.metadataSource);
+  if (item.meta?.bangumiId) metaParts.push(`ID:${item.meta.bangumiId}`);
+
+  // Status
+  const statusLabels = { matched: '已匹配', failed: '匹配失败', matching: '匹配中...', pending: '待处理' };
+  const statusHtml = `<div class="mm-panel-status mm-panel-status--${item.status}"><div class="mm-panel-status-dot"></div>${statusLabels[item.status]}</div>`;
+
+  // Comparison — vertical stack
+  let compareHtml = '';
   if (item.status === 'matched' && item.meta) {
-    const mc = item.meta.coverUrl ? `<img src="${escAttr(item.meta.coverUrl)}" alt="">` : '';
-    const summary = item.meta.summary ? `<div class="mm-panel-summary">${escHtml(item.meta.summary.substring(0, 200))}${item.meta.summary.length > 200 ? '...' : ''}</div>` : '';
-    matchHtml = `
-      <div class="mm-panel-label">当前匹配</div>
-      <div class="mm-panel-match-info mm-panel-match-info--success">
-        <div class="mm-panel-match-cover">${mc}</div>
-        <div class="mm-panel-match-text">
-          <div class="mm-panel-match-title">${escHtml(item.meta.bangumiTitle || '—')}</div>
-          <div class="mm-panel-match-score">${item.meta.bangumiTitleJp ? escHtml(item.meta.bangumiTitleJp) + ' · ' : ''}<strong>⭐ ${item.meta.rating || '—'}</strong> · ${escHtml(item.meta.metadataSource || '—')}</div>
+    compareHtml = `
+      <div class="mm-compare">
+        <div class="mm-compare-side mm-compare-side--left">
+          <div class="mm-compare-label">原始解析</div>
+          <div class="mm-compare-title">${escHtml(item.title)}</div>
+          <div class="mm-compare-sub">${escHtml(item.parsedSeason ? '第' + item.parsedSeason + '季' : '—')} · ${escHtml(String(item.episodeCount) + '集')}</div>
+          <div class="mm-compare-sub" style="margin-top:4px;font-family:var(--font-mono);font-size:0.625rem;word-break:break-all;opacity:0.6">${escHtml(item.folderName || '')}</div>
         </div>
-      </div>
-      ${summary}
-      <button class="btn" style="margin-top:var(--space-2);font-size:0.8125rem" onclick="mmStartResearch('${item.animeId}')">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        重新搜索
-      </button>`;
-  } else if (item.status === 'failed') {
-    matchHtml = `
-      <div class="mm-panel-label">当前匹配</div>
-      <div class="mm-panel-match-info mm-panel-match-info--error">
-        <div class="mm-panel-match-cover"></div>
-        <div class="mm-panel-match-text">
-          <div class="mm-panel-match-title" style="color:var(--error)">匹配失败</div>
-          <div class="mm-panel-match-score">${escHtml(item.error || '未找到匹配结果 · 尝试修正关键词')}</div>
+        <div class="mm-compare-arrow">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>
         </div>
-      </div>`;
-  } else if (item.status === 'matching') {
-    matchHtml = `
-      <div class="mm-panel-label">当前匹配</div>
-      <div class="mm-panel-match-info" style="border-left:3px solid var(--warning)">
-        <div class="mm-panel-match-cover"></div>
-        <div class="mm-panel-match-text">
-          <div class="mm-panel-match-title" style="color:var(--warning)">匹配中...</div>
-          <div class="mm-panel-match-score">正在搜索元数据，请稍候</div>
+        <div class="mm-compare-side mm-compare-side--right">
+          <div class="mm-compare-label">匹配结果</div>
+          <div class="mm-compare-title">${escHtml(item.meta.bangumiTitle || '—')}</div>
+          <div class="mm-compare-sub">${escHtml(item.meta.bangumiTitleJp || '—')}</div>
+          ${item.meta.rating ? `<div class="mm-compare-rating">★ ${escHtml(String(item.meta.rating))}</div>` : ''}
         </div>
-      </div>`;
-  } else {
-    // Pending - show parsed keywords
-    const keywords = [item.title, item.folderName].filter(Boolean);
-    matchHtml = `
-      <div class="mm-panel-label">检索信息</div>
-      <div class="mm-panel-match-info" style="border-left:3px solid var(--fg-muted)">
-        <div class="mm-panel-match-cover"></div>
-        <div class="mm-panel-match-text">
-          <div class="mm-panel-match-title" style="color:var(--fg-muted)">待处理</div>
-          <div class="mm-panel-match-score">点击「开始匹配」批量处理</div>
-        </div>
-      </div>
-      <div class="mm-panel-keywords">
-        <div class="mm-panel-label" style="margin-top:var(--space-3)">解析关键词</div>
-        ${keywords.map(kw => `<div class="mm-panel-keyword">${escHtml(kw)}</div>`).join('')}
       </div>`;
   }
 
-  // Fix section (show for all items, not during sync)
+  // Summary
+  let summaryHtml = '';
+  if (item.status === 'matched' && item.meta?.summary) {
+    const filtered = mmFilterSummary(item.meta.summary);
+    if (filtered) {
+      summaryHtml = `
+        <div>
+          <div class="mm-panel-label">简介</div>
+          <div class="mm-panel-summary">${escHtml(filtered)}</div>
+        </div>`;
+    }
+  }
+
+  // Error
+  let errorHtml = '';
+  if (item.status === 'failed' && item.error) {
+    errorHtml = `
+      <div class="mm-panel-error">
+        <div class="mm-panel-error-title">错误信息</div>
+        <div class="mm-panel-error-msg">${escHtml(item.error)}</div>
+      </div>`;
+  }
+
+  // Keywords for pending
+  let keywordsHtml = '';
+  if (item.status === 'pending') {
+    const keywords = [item.title, item.folderName].filter(Boolean);
+    keywordsHtml = `
+      <div>
+        <div class="mm-panel-label">解析关键词</div>
+        <div class="mm-panel-keywords">
+          ${keywords.map(kw => `<span class="mm-panel-keyword">${escHtml(kw)}</span>`).join('')}
+        </div>
+      </div>`;
+  }
+
+  // Actions
+  let actionsHtml = '';
+  if (!mmSyncInProgress) {
+    if (item.status === 'matched') {
+      actionsHtml = `<button class="btn" style="font-size:0.8125rem" onclick="mmStartResearch('${item.animeId}')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        重新搜索</button>`;
+    } else if (item.status === 'failed') {
+      actionsHtml = `<button class="btn" style="font-size:0.8125rem" onclick="mmStartResearch('${item.animeId}')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        重试匹配</button>`;
+    }
+  }
+
+  // Fix search
   let fixHtml = '';
   if (!mmSyncInProgress) {
     const defaultKeyword = item.title || item.folderName || '';
     fixHtml = `
-      <div class="mm-panel-divider"></div>
-      <div>
-        <div class="mm-panel-label">搜索修正</div>
+      <div class="mm-fix-section">
+        <div class="mm-panel-label">手动搜索修正</div>
         <div class="mm-fix-search">
           <input type="text" id="mmFixKeyword" placeholder="输入搜索词..." value="${escAttr(defaultKeyword)}" onkeydown="if(event.key==='Enter')mmSearchForFix('${item.animeId}')">
-          <button class="btn btn-primary" style="padding:9px 14px;font-size:0.844rem" onclick="mmSearchForFix('${item.animeId}')">
+          <button class="btn btn-primary" style="padding:7px 12px;font-size:0.8125rem" onclick="mmSearchForFix('${item.animeId}')">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
           </button>
         </div>
-        <div class="mm-fix-results" id="mmFixResults" style="margin-top:var(--space-2)"></div>
+        <div class="mm-fix-results" id="mmFixResults"></div>
       </div>`;
   }
 
-  const title = item.title || item.folderName || '—';
-  const subParts = [];
-  if (item.parsedSeason) subParts.push(`第 ${item.parsedSeason} 季`);
-  if (item.episodeCount) subParts.push(`${item.episodeCount} 集`);
-  if (item.bangumiTitle && item.bangumiTitle !== title) subParts.push(item.bangumiTitle);
-
   content.innerHTML = `
-    <div class="mm-panel-cover">${coverHtml}</div>
-    <div class="mm-panel-body">
-      <div>
-        <div class="mm-panel-title">${escHtml(title)}</div>
-        <div class="mm-panel-meta-line">${escHtml(subParts.join(' · ') || '—')}</div>
+    <div class="mm-panel-header-area">
+      <div class="mm-panel-cover-sm">${coverHtml}</div>
+      <div class="mm-panel-header-info">
+        <div class="mm-panel-title">${escHtml(item.meta?.bangumiTitle || title)}</div>
+        <div class="mm-panel-meta-row">
+          ${metaParts.map(p => `<span class="mm-panel-meta-tag">${escHtml(p)}</span>`).join('')}
+        </div>
+        ${statusHtml}
       </div>
-      ${matchHtml}
+    </div>
+    <div class="mm-panel-scroll">
+      ${compareHtml}
+      ${summaryHtml}
+      ${errorHtml}
+      ${keywordsHtml}
+      ${actionsHtml ? `<div style="display:flex;gap:var(--space-2);flex-wrap:wrap">${actionsHtml}</div>` : ''}
       ${fixHtml}
     </div>`;
 }
@@ -405,7 +583,7 @@ async function mmSearchForFix(animeId) {
   }
 
   resultsDiv.innerHTML = `<div style="padding:var(--space-3);text-align:center;color:var(--fg-muted);font-size:0.8125rem">
-    <svg class="spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+    <svg class="spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
     <span style="margin-left:6px">搜索中...</span></div>`;
 
   try {
@@ -419,19 +597,21 @@ async function mmSearchForFix(animeId) {
 
     mmFixResults = results;
     resultsDiv.innerHTML = results.map((r, i) => {
-      const coverSrc = r.coverUrl || '';
-      const imgHtml = coverSrc ?
-        `<img src="${escAttr(coverSrc)}" alt="" loading="lazy" onerror="this.style.display='none'">` :
-        '';
-      const sourceBadge = r.source === 'tmdb' ? 'TMDB' : 'Bangumi';
+      const title = r.name_cn || r.name || r.title || '—';
+      const subtitle = r.name || '';
+      const coverSrc = r.images?.small || r.images?.grid || r.coverUrl || r.image?.large || r.image?.medium || '';
+      const year = r.date || '';
+      const rating = r.rating?.score ? r.rating.score.toFixed(1) : (r.score || '');
       return `
-        <div class="mm-fix-result" onclick="mmApplyFix('${animeId}', ${i})">
-          ${imgHtml}
-          <div class="mm-fix-result-info">
-            <div class="mm-fix-result-title">${escHtml(r.title || '—')}</div>
-            <div class="mm-fix-result-meta">${sourceBadge}${r.year ? ' · ' + r.year : ''}${r.rating ? ' · ⭐ ' + r.rating : ''}</div>
+        <div class="search-result-item" onclick="mmApplyFix('${animeId}', ${i})">
+          <img class="search-result-cover" src="${escAttr(coverSrc)}" alt=""
+            onerror="this.style.display='none'">
+          <div class="search-result-info">
+            <div class="search-result-title">${escHtml(title)}</div>
+            ${subtitle ? `<div class="search-result-subtitle">${escHtml(subtitle)}</div>` : ''}
+            <div class="search-result-meta">${year}${rating ? ' · ★' + rating : ''}</div>
           </div>
-          <button class="btn" style="padding:4px 12px;font-size:0.75rem">应用</button>
+          <button class="btn btn-primary search-result-btn">选择</button>
         </div>`;
     }).join('');
   } catch (e) {
@@ -446,22 +626,30 @@ async function mmApplyFix(animeId, resultIndex) {
   const item = mmItems.find(i => i.animeId === animeId);
   if (!item) return;
 
-  // Optimistic UI update
   item.status = 'matching';
   mmUpdateUI();
 
   try {
-    // Fetch metadata using the selected subject
     const fetchResult = await API.post('/api/bangumi/fetch', {
       animeId,
       subjectId: result.id,
       source: result.source,
     });
 
-    if (fetchResult?.meta) {
+    if (fetchResult?.anime) {
+      const a = fetchResult.anime;
       item.status = 'matched';
-      item.meta = fetchResult.meta;
-      item.coverUrl = fetchResult.meta.coverUrl;
+      item.meta = {
+        bangumiId: a.bangumiId,
+        bangumiTitle: a.bangumiTitle,
+        bangumiTitleJp: a.bangumiTitleJp,
+        summary: a.summary,
+        coverUrl: a.coverUrl,
+        localCover: a.localCover,
+        rating: a.rating,
+        metadataSource: a.metadataSource,
+      };
+      item.coverUrl = a.coverUrl || a.localCover || item.coverUrl;
       item.error = null;
     } else {
       item.status = 'failed';
@@ -473,7 +661,6 @@ async function mmApplyFix(animeId, resultIndex) {
     showToast('应用匹配失败: ' + e.message);
   }
 
-  // Clear search results cache so next search fetches fresh
   mmFixResults = [];
   const resultsDiv = document.getElementById('mmFixResults');
   if (resultsDiv) resultsDiv.innerHTML = '';
@@ -499,16 +686,12 @@ async function mmStartSync() {
   const progressWrap = document.getElementById('mmProgressWrap');
   progressWrap.style.display = 'flex';
 
-  // Mark all as matching
   pendingItems.forEach(i => { i.status = 'matching'; });
   mmUpdateUI();
 
   const animeIds = pendingItems.map(i => i.animeId);
-  let completed = 0;
-  const total = animeIds.length;
 
   try {
-    // Use SSE stream if available, fall back to batch POST
     if (typeof EventSource !== 'undefined' && await mmCanStream()) {
       await mmSyncViaSSE(animeIds);
     } else {
@@ -516,7 +699,6 @@ async function mmStartSync() {
     }
   } catch (e) {
     showToast('同步失败: ' + e.message);
-    // Mark remaining matching items as pending
     mmItems.forEach(i => {
       if (i.status === 'matching') i.status = 'pending';
     });
@@ -569,7 +751,6 @@ async function mmSyncViaSSE(animeIds) {
 
     function cleanup() {
       es.close();
-      // Mark any remaining 'matching' items as 'failed'
       let changed = false;
       mmItems.forEach(i => {
         if (i.status === 'matching') {
@@ -584,8 +765,6 @@ async function mmSyncViaSSE(animeIds) {
 
     es.addEventListener('done', cleanup);
     es.addEventListener('error', cleanup);
-
-    // Timeout fallback
     setTimeout(cleanup, 120000);
   });
 }
@@ -608,7 +787,6 @@ async function mmSyncViaBatch(animeIds) {
       if (r.skipped) {
         item.status = 'matched';
       } else if (r.meta) {
-        // Apply meta to library data — fetch library again for consistency
         item.status = 'matched';
         item.meta = r.meta;
         item.coverUrl = r.meta.coverUrl || null;
@@ -631,7 +809,6 @@ async function mmRetryFailed() {
     return;
   }
 
-  // Reset failed items to pending
   failedItems.forEach(i => {
     i.status = 'pending';
     i.error = null;
@@ -646,13 +823,11 @@ async function mmStartResearch(animeId) {
   const item = mmItems.find(i => i.animeId === animeId);
   if (!item) return;
 
-  // Reset to pending for re-search
   item.status = 'pending';
   item.error = null;
   item.meta = null;
   mmUpdateUI();
 
-  // Start sync for this single item
   mmSyncInProgress = true;
   document.getElementById('mmStartBtn').style.display = 'none';
   document.getElementById('mmRetryBtn').style.display = 'none';
@@ -688,9 +863,14 @@ async function mmStartResearch(animeId) {
 window.mmLoadData = mmLoadData;
 window.mmSetFilter = mmSetFilter;
 window.mmFilterGrid = mmFilterGrid;
-window.mmSelectCard = mmSelectCard;
+window.mmRowClick = mmRowClick;
 window.mmStartSync = mmStartSync;
 window.mmRetryFailed = mmRetryFailed;
 window.mmSearchForFix = mmSearchForFix;
 window.mmApplyFix = mmApplyFix;
 window.mmStartResearch = mmStartResearch;
+window.mmToggleSelect = mmToggleSelect;
+window.mmToggleSelectAll = mmToggleSelectAll;
+window.mmClearSelection = mmClearSelection;
+window.mmBatchRetry = mmBatchRetry;
+window.mmBatchResync = mmBatchResync;

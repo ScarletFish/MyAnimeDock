@@ -343,9 +343,11 @@ async function importSelected() {
   }
   try {
     const result = await API.post('/api/import', { items });
-    showToast(`已导入 ${result.imported.length} 部动漫`);
+    showToast(`已导入 ${result.imported.length} 部动漫 — 前往「匹配审查」完善元数据`);
     loadDiscovery();
     loadLibrary();
+    // Offer navigation to MetaMatch
+    setTimeout(() => showView('metamatch'), 1200);
   } catch (e) {
     showToast('导入失败: ' + e.message);
   }

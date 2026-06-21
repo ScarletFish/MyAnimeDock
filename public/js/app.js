@@ -3,7 +3,7 @@ let currentView = 'library';
 let configCache = null;
 
 function showView(view) {
-  const views = ['discovery', 'library', 'memories', 'detail'];
+  const views = ['discovery', 'metamatch', 'library', 'memories', 'detail'];
   for (const v of views) {
     const el = document.getElementById(v + 'View');
     if (el) el.classList.toggle('hidden', v !== view);
@@ -11,6 +11,7 @@ function showView(view) {
 
   // Update sidebar active state
   document.getElementById('btnDiscovery').classList.toggle('active', view === 'discovery');
+  document.getElementById('btnMetaMatch').classList.toggle('active', view === 'metamatch');
   document.getElementById('btnLibrary').classList.toggle('active', view === 'library');
   document.getElementById('btnMemories').classList.toggle('active', view === 'memories');
 
@@ -23,6 +24,7 @@ function showView(view) {
 
   // Load data for view
   if (view === 'discovery') loadDiscovery();
+  if (view === 'metamatch') mmLoadData();
   if (view === 'library') loadLibrary();
   if (view === 'memories') loadMemories();
 }

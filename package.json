@@ -14,7 +14,7 @@
     "build:server": "cd server && pkg . --target node18-win-x64 --output ../src-tauri/server-x86_64-pc-windows-msvc.exe && node ../scripts/copy-sidecar-deps.js",
     "check:rust": "cd src-tauri && cargo check 2>&1",
     "build:exe": "cd src-tauri && cargo build --release 2>&1",
-    "dev:prod": "npm run build:server && powershell -Command \"$env:TAURI_PROD='1'; npx tauri dev\"",
+    "dev:prod": "npm run build:server && powershell -Command \"$p=Start-Process -NoNewWindow -PassThru node -ArgumentList 'server/server.js'; Start-Sleep 3; try { npx tauri dev } finally { $p | Stop-Process -Force -ErrorAction SilentlyContinue }\"",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",

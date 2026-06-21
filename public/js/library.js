@@ -318,6 +318,16 @@ async function syncLibrary() {
 
   try {
     const animeIds = needsSync.map(a => a.id);
+    const total = animeIds.length;
+    btn.innerHTML = `
+      <svg class="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M23 4v6h-6"></path>
+        <path d="M1 20v-6h6"></path>
+        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+      </svg>
+      同步 0/${total}...
+    `;
+
     const result = await API.post('/api/library/sync', { animeIds });
 
     let successCount = 0;
@@ -330,10 +340,6 @@ async function syncLibrary() {
           skippedCount++;
         } else {
           successCount++;
-          const idx = libraryData.findIndex(a => a.id === r.animeId);
-          if (idx !== -1 && r.meta) {
-            Object.assign(libraryData[idx], r.meta);
-          }
         }
       } else {
         failCount++;
@@ -341,7 +347,8 @@ async function syncLibrary() {
       }
     }
 
-    renderLibrary(document.getElementById('librarySearch').value);
+    // Re-fetch from server to ensure consistency
+    await loadLibrary();
 
     let msg = `同步完成：成功 ${successCount}`;
     if (skippedCount) msg += `，跳过 ${skippedCount}`;

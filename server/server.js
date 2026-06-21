@@ -651,7 +651,11 @@ const server = http.createServer((req, res) => {
   if (urlPath === '/api/library' && req.method === 'GET') {
     data.library.forEach(a => {
       const name = a.bangumiTitle || a.title || '';
-      a.pinyinTitle = pinyinFn(name).map(p => p[0].normalize('NFD').replace(/[\u0300-\u036f]/g, '')).join('');
+      try {
+        a.pinyinTitle = pinyinFn(name).map(p => (p[0] || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')).join('');
+      } catch (_) {
+        a.pinyinTitle = '';
+      }
     });
     jsonResp(res, 200, data.library);
     return;
@@ -907,7 +911,7 @@ const server = http.createServer((req, res) => {
   if (urlPath === '/api/bangumi/fetch' && req.method === 'POST') {
     readBody(req).then(async body => {
       try {
-        const { animeId, subjectId, source = 'bangumi' } = JSON.parse(body);
+        let { animeId, subjectId, source = 'bangumi' } = JSON.parse(body);
         if (!animeId) { jsonResp(res, 400, { error: 'animeId is required' }); return; }
 
         const anime = data.library.find(a => a.id === animeId);
@@ -966,7 +970,10 @@ const server = http.createServer((req, res) => {
         const coverDir = path.join(DATA_DIR, 'covers');
         const results = [];
 
-        for (const animeId of animeIds) {
+        for (const [index, animeId] of animeIds.entries()) {
+          // Periodic save every 5 items
+          if (index > 0 && index % 5 === 0) saveData(data);
+
           const anime = data.library.find(a => a.id === animeId);
           if (!anime) {
             results.push({ animeId, success: false, error: 'Anime not found' });
@@ -980,24 +987,54 @@ const server = http.createServer((req, res) => {
 
           try {
             // Parse folder name for structured matching
-            const folderParsed = parseFolderName(anime.folderName);
+            let folderParsed = parseFolderName(anime.folderName);
             const videoCount = anime.episodes?.length || 0;
 
-            // Use new season-aware matching
-            const match = await matchSeason(registry, folderParsed.cleanTitle, folderParsed, videoCount, config);
-            if (!match) {
-              results.push({ animeId, success: false, error: '未找到匹配结果' });
-              continue;
+            // If folderName is a structural folder (Season 1, S1, etc.), parse from anime.title or parent dir
+            const isStructuralFolder = !folderParsed.cjkTitle && (!folderParsed.title || /^(?:Season\s*\d+|S\d+|第\d+季)$/i.test(folderParsed.title.trim()));
+            if (isStructuralFolder) {
+              // Try parent dir from folderPath
+              if (anime.folderPath) {
+                const parentDir = path.basename(path.dirname(anime.folderPath));
+                if (parentDir && parentDir !== '.') {
+                  const parentParsed = parseFolderName(parentDir);
+                  if (parentParsed.cjkTitle || parentParsed.cleanTitle) {
+                    folderParsed = parentParsed;
+                  }
+                }
+              }
+              // Fallback: parse from anime.title
+              if (!folderParsed.cjkTitle && !folderParsed.cleanTitle) {
+                const titleParsed = parseFolderName(anime.title);
+                if (titleParsed.cjkTitle || titleParsed.cleanTitle) {
+                  folderParsed = titleParsed;
+                }
+              }
             }
 
-            const meta = await registry.fetchMetadata(match.source, folderParsed.cleanTitle, coverDir, match.id, config);
-            if (!meta) {
-              results.push({ animeId, success: false, error: '获取元数据失败' });
-              continue;
-            }
+            // Use new season-aware matching with per-item timeout
+            const itemPromise = (async () => {
+              const match = await matchSeason(registry, folderParsed.cleanTitle, folderParsed, videoCount, config);
+              if (!match) {
+                results.push({ animeId, success: false, error: '未找到匹配结果' });
+                return;
+              }
 
-            Object.assign(anime, meta);
-            results.push({ animeId, success: true, meta, matchedSeason: folderParsed.season });
+              const meta = await registry.fetchMetadata(match.source, folderParsed.cleanTitle, coverDir, match.id, config);
+              if (!meta) {
+                results.push({ animeId, success: false, error: '获取元数据失败' });
+                return;
+              }
+
+              Object.assign(anime, meta);
+              results.push({ animeId, success: true, meta, matchedSeason: folderParsed.season });
+            })();
+
+            const timeout = new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('处理超时')), 60000)
+            );
+
+            await Promise.race([itemPromise, timeout]);
           } catch (e) {
             results.push({ animeId, success: false, error: e.message });
           }

@@ -29,6 +29,13 @@
         <path d="m21 21-4.35-4.35"></path>
       </svg>
     </button>
+    <button class="nav-btn" id="btnMetaMatch" data-tip="匹配审查" onclick="showView('metamatch')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 20h9"></path>
+        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+        <circle cx="14" cy="6" r="1" fill="currentColor"></circle>
+      </svg>
+    </button>
     <button class="nav-btn active" id="btnLibrary" data-tip="动漫库" onclick="showView('library')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path>
@@ -178,6 +185,113 @@
         <circle cx="12" cy="12" r="10"></circle>
       </svg>
       <p>暂无归档记录</p>
+    </div>
+  </section>
+
+  <!-- MetaMatch View -->
+  <section class="view hidden" id="metamatchView">
+    <div class="mm-hero">
+      <div class="mm-hero-content">
+        <div class="mm-hero-title-wrap">
+          <h2 class="mm-hero-title">匹配审查</h2>
+          <p class="mm-hero-sub">批量审核元数据匹配结果，修正未正确识别的条目</p>
+        </div>
+        <div class="mm-hero-actions">
+          <button class="btn btn-primary" id="mmStartBtn" onclick="mmStartSync()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M23 4v6h-6"></path>
+              <path d="M1 20v-6h6"></path>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
+            <span id="mmStartBtnText">开始匹配</span>
+          </button>
+          <button class="btn" id="mmRetryBtn" onclick="mmRetryFailed()" style="display:none">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="23 4 23 10 17 10"></polyline>
+              <polyline points="1 20 1 14 7 14"></polyline>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
+            重试失败
+          </button>
+          <button class="btn btn-ghost" onclick="showView('library')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M19 12H5"></path>
+              <path d="M12 19l-7-7 7-7"></path>
+            </svg>
+            返回资料库
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats bar -->
+    <div class="mm-stats" id="mmStats">
+      <div class="mm-stat mm-stat--total">
+        <span class="mm-stat-num" id="mmStatTotal">0</span>
+        <span class="mm-stat-label">全部</span>
+      </div>
+      <div class="mm-stat mm-stat--matched">
+        <span class="mm-stat-num" id="mmStatMatched">0</span>
+        <span class="mm-stat-label">已匹配</span>
+      </div>
+      <div class="mm-stat mm-stat--failed">
+        <span class="mm-stat-num" id="mmStatFailed">0</span>
+        <span class="mm-stat-label">失败</span>
+      </div>
+      <div class="mm-stat mm-stat--progress" id="mmStatProgress">
+        <span class="mm-stat-num" id="mmStatMatching">0</span>
+        <span class="mm-stat-label">匹配中</span>
+      </div>
+      <div class="mm-stat mm-stat--pending">
+        <span class="mm-stat-num" id="mmStatPending">0</span>
+        <span class="mm-stat-label">待处理</span>
+      </div>
+    </div>
+
+    <!-- Progress bar -->
+    <div class="mm-progress-wrap" id="mmProgressWrap" style="display:none">
+      <div class="mm-progress-bar" id="mmProgressBar"><div class="mm-progress-fill" id="mmProgressFill"></div></div>
+      <span class="mm-progress-text" id="mmProgressText">0 / 0</span>
+    </div>
+
+    <!-- Split content -->
+    <div class="mm-body">
+      <div class="mm-grid-wrap">
+        <div class="mm-grid-header">
+          <div class="mm-grid-filter">
+            <button class="mm-filter-btn mm-filter-btn--active" data-mmfilter="all" onclick="mmSetFilter('all')">全部</button>
+            <button class="mm-filter-btn" data-mmfilter="failed" onclick="mmSetFilter('failed')">失败</button>
+            <button class="mm-filter-btn" data-mmfilter="pending" onclick="mmSetFilter('pending')">待处理</button>
+            <button class="mm-filter-btn" data-mmfilter="matched" onclick="mmSetFilter('matched')">已匹配</button>
+          </div>
+          <div class="mm-grid-search">
+            <input type="text" class="search-input" id="mmGridSearch" placeholder="过滤条目..." oninput="mmFilterGrid()">
+          </div>
+        </div>
+        <div class="mm-grid" id="mmGrid"></div>
+        <div class="empty-state" id="mmEmpty" style="display:none">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.35-4.35"></path>
+          </svg>
+          <p>没有需要匹配的条目</p>
+          <p class="empty-hint">所有条目已有元数据，或资料库为空</p>
+        </div>
+      </div>
+
+      <!-- Focus Panel -->
+      <div class="mm-panel" id="mmPanel">
+        <div class="mm-panel-empty" id="mmPanelEmpty">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 20h9"></path>
+            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+          </svg>
+          <p>选择一个条目查看详情或修正匹配</p>
+        </div>
+        <div class="mm-panel-content" id="mmPanelContent" style="display:none">
+          <!-- Populated by JS -->
+        </div>
+      </div>
     </div>
   </section>
 
@@ -502,6 +616,7 @@ function switchSettingsTab(btn, tab) {
 <script src="/js/library.js"></script>
 <script src="/js/detail.js"></script>
 <script src="/js/memory.js"></script>
+<script src="/js/metamatch.js"></script>
 <script src="/js/app.js"></script>
 </body>
 </html>

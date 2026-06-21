@@ -323,9 +323,10 @@ async function syncToSqlite(data) {
 
       // ── Memories ──
       await tx.memory.deleteMany();
-      if (data.memories && data.memories.length > 0) {
+      const validMemories = (data.memories || []).filter(m => currentIds.has(m.animeId));
+      if (validMemories.length > 0) {
         await tx.memory.createMany({
-          data: data.memories.map(m => ({
+          data: validMemories.map(m => ({
             animeId: m.animeId,
             title: m.title,
             bangumiId: m.bangumiId,
@@ -337,6 +338,10 @@ async function syncToSqlite(data) {
             coverLocal: m.coverLocal,
           })),
         });
+      }
+      // Warn if any memories were skipped
+      if (validMemories.length < (data.memories || []).length) {
+        logger.warn(`SQLite sync: skipped ${(data.memories||[]).length - validMemories.length} orphan memories`);
       }
 
       // ── Play Sessions ──

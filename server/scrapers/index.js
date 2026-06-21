@@ -18,7 +18,7 @@ const RELATION_TYPE = {
 function normalizeTitle(title) {
   if (!title) return '';
   return title
-    .replace(/[？?！!。.、,～~]/g, '')
+    .replace(/[？?！!。.、,，～~··・（ ）【】「」『』《》：；]/g, '')
     .replace(/\s+/g, '')
     .toLowerCase();
 }
@@ -166,8 +166,10 @@ function selectBestMatch(seasonMap, folderParsed, videoCount, specials = [], spe
   if (candidate) {
     // Episode count verification
     if (candidate.eps && videoCount) {
+      // Proportional tolerance: 25%-100% of total eps, or absolute diff <= 3
+      const ratio = videoCount / candidate.eps;
       const diff = Math.abs(candidate.eps - videoCount);
-      if (diff <= 3) return candidate;  // Good match
+      if (diff <= 3 || (ratio >= 0.25 && ratio <= 1.0)) return candidate;
       // If eps mismatch, continue to fallback
     } else {
       return candidate;  // No eps data, trust the relation chain
@@ -256,6 +258,12 @@ function generateSearchKeywords(folderParsed) {
     // Try without season markers
     const noSeason = title.replace(/\s*(?:S|Season)\s*\d+/i, '').replace(/\s*\d+$/, '').trim();
     if (noSeason && noSeason !== title) keywords.add(noSeason);
+  }
+
+  // Sanitize: add variants with special characters that break search APIs replaced
+  for (const kw of Array.from(keywords)) {
+    const noAt = kw.replace(/[@＠]/g, 'a').trim();
+    if (noAt && noAt !== kw) keywords.add(noAt);
   }
 
   return Array.from(keywords);
@@ -359,6 +367,7 @@ async function buildSeasonChainFromMain(registry, mainDetail, config) {
   if (animeResults.length === 0) {
     // Fallback: just use the main detail as season 1
     const seasonMap = new Map();
+    mainDetail.source = 'bangumi';
     seasonMap.set(1, mainDetail);
     return { seasonMap, specials: [] };
   }

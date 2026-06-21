@@ -166,55 +166,52 @@ function extractBaseAndSuffix(title) {
  */
 function selectBestMatch(seasonMap, folderParsed, videoCount, specials = [], specialSuffix = null) {
   const { season, cleanTitle, title } = folderParsed;
-  
+  const totalSeasons = Math.max(...[...seasonMap.keys()].filter(k => typeof k === 'number'));
+
   // 1. EXACT SPECIAL SUFFIX MATCH (highest priority)
-  // If folder has ~...~ suffix, try to match exactly against specials
   if (specialSuffix) {
     const normSuffix = normalizeTitle(specialSuffix);
     for (const { subject, specialType } of specials) {
       const subjectTitle = normalizeTitle(subject.name_cn || subject.name);
-      // Check if subject title contains the special suffix
       if (subjectTitle.includes(normSuffix)) {
-        return subject;
+        return { ...subject, matchedSeason: null, totalSeasons };
       }
     }
   }
 
-  // 2. Special type detection fallback (for OVA/movie without ~...~)
+  // 2. Special type detection fallback
   const specialType = detectSpecialType(title);
   if (specialType && seasonMap.has(specialType)) {
-    return seasonMap.get(specialType);
+    return { ...seasonMap.get(specialType), matchedSeason: null, totalSeasons };
   }
 
   // 3. Normal season match
   const targetSeason = season || 1;
   const candidate = seasonMap.get(targetSeason);
-  
+
   if (candidate) {
-    // Episode count verification
     if (candidate.eps && videoCount) {
-      // Proportional tolerance: 25%-100% of total eps, or absolute diff <= 3
       const ratio = videoCount / candidate.eps;
       const diff = Math.abs(candidate.eps - videoCount);
-      if (diff <= 3 || (ratio >= 0.25 && ratio <= 1.0)) return candidate;
-      // If eps mismatch, continue to fallback
+      if (diff <= 3 || (ratio >= 0.25 && ratio <= 1.0)) return { ...candidate, matchedSeason: targetSeason, totalSeasons };
     } else {
-      return candidate;  // No eps data, trust the relation chain
+      return { ...candidate, matchedSeason: targetSeason, totalSeasons };
     }
   }
 
   // 4. Fallback: title similarity against all seasons
   const normTarget = normalizeTitle(cleanTitle);
   let best = seasonMap.get(1);
+  let bestKey = 1;
   let bestScore = 0;
 
   for (const [key, v] of seasonMap) {
-    if (typeof key === 'string') continue;  // Skip specials ('movie'/'ova'/'special' keys)
+    if (typeof key === 'string') continue;
     const score = similarity(normTarget, normalizeTitle(v.name_cn || v.name));
-    if (score > bestScore) { bestScore = score; best = v; }
+    if (score > bestScore) { bestScore = score; best = v; bestKey = key; }
   }
 
-  return best;
+  return { ...best, matchedSeason: bestKey, totalSeasons };
 }
 
 /**

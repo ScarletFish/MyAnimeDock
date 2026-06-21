@@ -26,6 +26,8 @@ model Anime {
   rating        Float?
   source        String?   // "bangumi" | "tmdb"
   pinyinTitle   String?
+  matchedSeason Int?      // 匹配到的季度编号（来自季度链分析）
+  totalSeasons  Int?      // 该作品总季数
   metadata      String?   // JSON 字符串（扩展字段，兼容旧数据）
   
   episodes      Episode[]

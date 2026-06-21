@@ -49,6 +49,8 @@ async function mmLoadData() {
       status: a.bangumiId ? 'matched' : 'pending',
       error: null,
       pinyinTitle: a.pinyinTitle || '',
+      matchedSeason: a.matchedSeason || null,
+      totalSeasons: a.totalSeasons || null,
       meta: a.bangumiId ? {
         bangumiId: a.bangumiId,
         bangumiTitle: a.bangumiTitle,
@@ -184,6 +186,17 @@ function mmRenderList() {
     if (item.parsedSeason) subParts.push(`S${item.parsedSeason}`);
     if (item.episodeCount) subParts.push(`${item.episodeCount}集`);
 
+    // Season chain info — only show for S2+ or specials
+    let seasonBadge = '';
+    if (item.matchedSeason != null && item.totalSeasons != null && item.totalSeasons > 1) {
+      const seasonMismatch = item.parsedSeason && item.matchedSeason !== item.parsedSeason;
+      if (item.matchedSeason !== 1 || seasonMismatch) {
+        seasonBadge = `<span class="mm-row-season${seasonMismatch ? ' mm-row-season--mismatch' : ''}">S${item.matchedSeason}/${item.totalSeasons}${seasonMismatch ? ' ⚠' : ''}</span>`;
+      }
+    } else if (item.totalSeasons != null && item.totalSeasons > 1) {
+      seasonBadge = `<span class="mm-row-season">共${item.totalSeasons}季</span>`;
+    }
+
     const badgeLabels = { matched: '已匹配', failed: '失败', matching: '匹配中', pending: '待处理' };
 
     // Match preview on the row
@@ -214,7 +227,7 @@ function mmRenderList() {
         <div class="${dotClass}"></div>
         <div class="mm-row-info">
           <div class="mm-row-title">${escHtml(item.title)}</div>
-          <div class="mm-row-sub">${escHtml(subParts.join(' · ') || '—')}</div>
+          <div class="mm-row-sub">${escHtml(subParts.join(' · ') || '—')}${seasonBadge}</div>
         </div>
         ${matchPreview}
         <span class="mm-row-badge mm-row-badge--${item.status}">${badgeLabels[item.status]}</span>
@@ -454,6 +467,17 @@ function mmRenderPanel(item) {
   if (item.meta?.metadataSource) metaParts.push(item.meta.metadataSource);
   if (item.meta?.bangumiId) metaParts.push(`ID:${item.meta.bangumiId}`);
 
+  // Season chain info in header — only show for multi-season
+  let seasonChainTag = '';
+  if (item.matchedSeason != null && item.totalSeasons != null && item.totalSeasons > 1) {
+    const seasonMismatch = item.parsedSeason && item.matchedSeason !== item.parsedSeason;
+    if (item.matchedSeason !== 1 || seasonMismatch) {
+      seasonChainTag = `<span class="mm-panel-meta-tag${seasonMismatch ? ' mm-panel-meta-tag--warn' : ''}">S${item.matchedSeason} / 共${item.totalSeasons}季${seasonMismatch ? ' ⚠' : ''}</span>`;
+    }
+  } else if (item.totalSeasons != null && item.totalSeasons > 1) {
+    seasonChainTag = `<span class="mm-panel-meta-tag">共${item.totalSeasons}季</span>`;
+  }
+
   // Status
   const statusLabels = { matched: '已匹配', failed: '匹配失败', matching: '匹配中...', pending: '待处理' };
   const statusHtml = `<div class="mm-panel-status mm-panel-status--${item.status}"><div class="mm-panel-status-dot"></div>${statusLabels[item.status]}</div>`;
@@ -555,6 +579,7 @@ function mmRenderPanel(item) {
         <div class="mm-panel-title">${escHtml(item.meta?.bangumiTitle || title)}</div>
         <div class="mm-panel-meta-row">
           ${metaParts.map(p => `<span class="mm-panel-meta-tag">${escHtml(p)}</span>`).join('')}
+          ${seasonChainTag}
         </div>
         ${statusHtml}
       </div>
@@ -651,6 +676,8 @@ async function mmApplyFix(animeId, resultIndex) {
       };
       item.coverUrl = a.coverUrl || a.localCover || item.coverUrl;
       item.error = null;
+      if (a.matchedSeason != null) item.matchedSeason = a.matchedSeason;
+      if (a.totalSeasons != null) item.totalSeasons = a.totalSeasons;
     } else {
       item.status = 'failed';
       item.error = '获取元数据返回空';
@@ -741,6 +768,8 @@ async function mmSyncViaSSE(animeIds) {
           item.meta = data.meta || null;
           item.coverUrl = data.meta?.coverUrl || null;
           item.error = null;
+          if (data.matchedSeason != null) item.matchedSeason = data.matchedSeason;
+          if (data.totalSeasons != null) item.totalSeasons = data.totalSeasons;
         } else {
           item.status = 'failed';
           item.error = data.error || '未知错误';
@@ -791,6 +820,8 @@ async function mmSyncViaBatch(animeIds) {
         item.meta = r.meta;
         item.coverUrl = r.meta.coverUrl || null;
         item.error = null;
+        if (r.matchedSeason != null) item.matchedSeason = r.matchedSeason;
+        if (r.totalSeasons != null) item.totalSeasons = r.totalSeasons;
       } else {
         item.status = 'failed';
         item.error = '无元数据返回';

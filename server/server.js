@@ -943,13 +943,13 @@ const server = http.createServer((req, res) => {
         const coverDir = path.join(DATA_DIR, 'covers');
 
         // If no subjectId provided, use season-aware matching
+        let matchInfo = null;
         if (!subjectId) {
           const folderParsed = parseFolderName(anime.folderName);
           const videoCount = anime.episodes?.length || 0;
 
           const match = await matchSeason(registry, folderParsed.cleanTitle, folderParsed, videoCount, config);
           if (!match) {
-            // Fallback to old behavior: return search results for user to pick
             const results = await registry.searchAll(anime.title, config);
             if (results.length === 0) {
               jsonResp(res, 404, { error: '未找到匹配结果' });
@@ -960,6 +960,7 @@ const server = http.createServer((req, res) => {
           }
           subjectId = match.id;
           source = match.source;
+          matchInfo = match;
         }
 
         const meta = await registry.fetchMetadata(source, anime.title, coverDir, subjectId, config);
@@ -967,6 +968,10 @@ const server = http.createServer((req, res) => {
         if (!meta) { jsonResp(res, 404, { error: '获取元数据失败' }); return; }
 
         Object.assign(anime, meta);
+        if (matchInfo) {
+          if (matchInfo.matchedSeason != null) anime.matchedSeason = matchInfo.matchedSeason;
+          if (matchInfo.totalSeasons != null) anime.totalSeasons = matchInfo.totalSeasons;
+        }
         saveData(data);
         jsonResp(res, 200, { ok: true, anime });
       } catch (e) {
@@ -1042,7 +1047,9 @@ const server = http.createServer((req, res) => {
             }
 
             Object.assign(anime, meta);
-            return { animeId, success: true, meta, matchedSeason: folderParsed.season };
+            if (match.matchedSeason != null) anime.matchedSeason = match.matchedSeason;
+            if (match.totalSeasons != null) anime.totalSeasons = match.totalSeasons;
+            return { animeId, success: true, meta, matchedSeason: match.matchedSeason, totalSeasons: match.totalSeasons };
           } catch (e) {
             return { animeId, success: false, error: e.message };
           }
@@ -1156,7 +1163,9 @@ const server = http.createServer((req, res) => {
           }
 
           Object.assign(anime, meta);
-          send('progress', { animeId, success: true, meta, matchedSeason: folderParsed.season });
+          if (match.matchedSeason != null) anime.matchedSeason = match.matchedSeason;
+          if (match.totalSeasons != null) anime.totalSeasons = match.totalSeasons;
+          send('progress', { animeId, success: true, meta, matchedSeason: match.matchedSeason, totalSeasons: match.totalSeasons });
         })();
 
         const timeout = new Promise((_, reject) =>

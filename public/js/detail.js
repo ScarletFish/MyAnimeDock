@@ -635,16 +635,26 @@ function renderCharacters(anime) {
     </div>`;
   }).join('');
 
-  // 初始化 max-height 为内容完整高度，确保 CSS transition 能在像素值之间动画
-  grid.style.maxHeight = grid.scrollHeight + 'px';
+  // 小网格（≤6 项 = ≤2 行）：不需要截断，让它们自然渲染
+  // 大网格（>6 项）：锁定初始高度，后续由 auto-expand 计算平衡行数
+  const needsClipping = grid.children.length > 6;
+  if (needsClipping) {
+    grid.style.maxHeight = grid.scrollHeight + 'px';
+  }
 
-  // 等待角色头像加载完成后重新校准 auto-expand
+  // 等待角色头像加载完成后重新校准
   waitForCharImages(grid).then(() => {
     const detailView = document.getElementById('detailView');
     if (detailView && detailView.classList.contains('hidden')) return;
     const wrap = document.getElementById('detailCharWrap');
-    if (wrap && wrap.dataset.userToggled !== 'true') {
+    if (!wrap || wrap.dataset.userToggled === 'true') return;
+
+    if (needsClipping) {
       autoExpandCharacters();
+    } else {
+      // 小网格：移除可能的 max-height 残留，确保完整显示
+      grid.style.maxHeight = '';
+      grid.style.overflow = '';
     }
   });
 

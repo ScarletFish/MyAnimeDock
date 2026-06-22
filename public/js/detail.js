@@ -9,13 +9,18 @@ let wasMpvActive = false;
 // Archive mode flags (set by memory.js)
 let isArchiveMode = false;
 
+// Character grid: large max-height for smooth CSS transition (replaces 'none')
+const MAX_GRID_HEIGHT = 10000;
+
 function checkToggleOverflow(wrap, listSel, toggleSel) {
   if (!wrap) return;
   const list = wrap.querySelector(listSel);
   const toggle = wrap.querySelector(toggleSel);
   if (!list || !toggle) return;
-  // Both states: show button only if content actually overflows
-  toggle.style.display = list.scrollHeight > list.clientHeight ? 'inline-flex' : 'none';
+  // 显示条件：内容有溢出（自动模式可折叠），或用户已手动切换过（始终可切换回）
+  const hasOverflow = list.scrollHeight > list.clientHeight;
+  const userToggled = wrap.dataset.userToggled === 'true';
+  toggle.style.display = (hasOverflow || userToggled) ? 'inline-flex' : 'none';
 }
 
 function getCharGridRowHeight() {
@@ -37,19 +42,18 @@ function toggleExpand(wrapId) {
   const wrap = document.getElementById(wrapId);
   const isExpanding = !wrap.classList.contains('expanded');
   wrap.classList.toggle('expanded');
+  wrap.dataset.userToggled = 'true';
 
   // For character grid, manage maxHeight based on rows when manually toggling
   if (wrapId === 'detailCharWrap') {
     const grid = wrap.querySelector('.detail-char-grid');
     if (grid) {
       if (isExpanding) {
-        grid.style.maxHeight = 'none';
         grid.style.overflow = '';
+        grid.style.maxHeight = MAX_GRID_HEIGHT + 'px';
       } else {
-        // Collapse: show 2 rows (6 items in 3-col grid)
-        const rowH = getCharGridRowHeight();
-        grid.style.maxHeight = (rowH * 2) + 'px';
-        grid.style.overflow = 'hidden';
+        // 折叠时恢复到动态平衡的行数（不固定为 2 行）
+        measureAndBalance(wrap);
       }
     }
   }
@@ -63,6 +67,7 @@ let archiveMemoryData = null;
 let detailSourceView = 'library';
 
 function resetDetailEnter() {
+  clearTimeout(charResizeTimer);
   const viewEl = document.getElementById('detailView');
   if (viewEl) {
     viewEl.classList.remove('detail-enter-active', 'show-content');
@@ -291,60 +296,104 @@ function renderDetail() {
   }
   renderWatchStats(anime);
 
+  // Reset character grid manual-toggle state for new anime
+  const charWrapForReset = document.getElementById('detailCharWrap');
+  if (charWrapForReset) delete charWrapForReset.dataset.userToggled;
+
   setTimeout(initToggleChecks, 100);
   setTimeout(initToggleChecks, 300);
   setTimeout(initToggleChecks, 600);
-  setTimeout(autoExpandCharacters, 50);
+  requestAnimationFrame(autoExpandCharacters);
 }
 
 function autoExpandCharacters() {
+  const charWrap = document.getElementById('detailCharWrap');
+  if (!canAutoExpand(charWrap)) return;
+  measureAndBalance(charWrap);
+  updateToggleVisibility(charWrap);
+}
+
+function canAutoExpand(wrap) {
+  if (!wrap) return false;
+  if (wrap.dataset.userToggled === 'true') return false;
+
+  const grid = wrap.querySelector('.detail-char-grid');
+  if (!grid || grid.children.length <= 6) return false;
+
+  const charWrapEl = wrap.closest('.detail-characters');
+  if (!charWrapEl || charWrapEl.style.display === 'none') return false;
+
+  const detailView = document.getElementById('detailView');
+  if (detailView && detailView.classList.contains('hidden')) return false;
+
   const left = document.querySelector('.detail-left');
   const right = document.querySelector('.detail-right');
-  const charWrap = document.getElementById('detailCharWrap');
-  if (!left || !right || !charWrap) return;
+  if (!left || !right) return false;
 
-  const grid = charWrap.querySelector('.detail-char-grid');
-  if (!grid || grid.children.length <= 6) return;
+  return true;
+}
 
-  const charWrapEl = charWrap.closest('.detail-characters');
-  if (!charWrapEl || charWrapEl.style.display === 'none') return;
+function measureAndBalance(wrap) {
+  const grid = wrap.querySelector('.detail-char-grid');
+  const left = document.querySelector('.detail-left');
+  const right = document.querySelector('.detail-right');
 
   const rowH = getCharGridRowHeight();
   const totalItems = grid.children.length;
   const maxRows = Math.ceil(totalItems / 3);
 
-  // 测量折叠状态（2行）时右栏高度
-  charWrap.classList.remove('expanded');
-  grid.style.maxHeight = (rowH * 2) + 'px';
-  grid.style.overflow = 'hidden';
-
+  // 无损测量：用 grid.clientHeight（渲染盒高度）替代 scrollHeight，
+  // 因为 right.scrollHeight 只包含 grid 的渲染盒高度，与 clientHeight 同坐标系。
+  const gridRendered = grid.clientHeight;
+  const rightFull = right.scrollHeight;
+  const nonGridHeight = rightFull - gridRendered;
   const leftH = left.scrollHeight;
-  const rightHCollapsed = right.scrollHeight;
-  const diff = leftH - rightHCollapsed;
 
-  if (diff <= 0) {
-    // 右栏已经比左栏高，保持 2 行
-    checkToggleOverflow(charWrap, '.detail-char-grid', '.detail-char-toggle');
-    return;
-  }
-
-  // 计算需要多少行来平衡
-  const rowsToAdd = Math.ceil(diff / rowH);
-  const targetRows = Math.min(2 + rowsToAdd, maxRows);
+  const availableRows = (leftH - nonGridHeight) / rowH;
+  const targetRows = Math.max(2, Math.min(Math.round(availableRows), maxRows));
 
   if (targetRows >= maxRows) {
-    // 展开全部也不超过左栏 → 全展开，隐藏按钮
-    charWrap.classList.add('expanded');
-    grid.style.maxHeight = 'none';
+    wrap.classList.add('expanded');
     grid.style.overflow = '';
   } else {
-    // 截断在 targetRows 行，显示按钮
-    charWrap.classList.remove('expanded');
-    grid.style.maxHeight = (rowH * targetRows) + 'px';
+    wrap.classList.remove('expanded');
     grid.style.overflow = 'hidden';
   }
-  checkToggleOverflow(charWrap, '.detail-char-grid', '.detail-char-toggle');
+
+  const targetHeight = targetRows >= maxRows ? MAX_GRID_HEIGHT : rowH * targetRows;
+  // Use CSS transition for max-height animation (GSAP CSSPlugin fails to set maxHeight on grid elements)
+  grid.style.maxHeight = targetHeight + 'px';
 }
+
+
+
+function updateToggleVisibility(wrap) {
+  checkToggleOverflow(wrap, '.detail-char-grid', '.detail-char-toggle');
+}
+
+function waitForCharImages(grid) {
+  const imgs = grid.querySelectorAll('.detail-char-avatar');
+  if (!imgs.length) return Promise.resolve();
+  const timeout = new Promise(r => setTimeout(r, 3000));
+  const loadAll = Promise.all(Array.from(imgs).map(img =>
+    img.complete ? Promise.resolve() : new Promise(r => { img.onload = r; img.onerror = r; })
+  ));
+  return Promise.race([loadAll, timeout]);
+}
+
+// ─── Window resize → reflow character auto-expand ───
+let charResizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(charResizeTimer);
+  charResizeTimer = setTimeout(() => {
+    if (currentAnime && !isArchiveMode && document.getElementById('detailView')?.classList.contains('hidden') === false) {
+      const wrap = document.getElementById('detailCharWrap');
+      if (wrap && wrap.dataset.userToggled !== 'true') {
+        autoExpandCharacters();
+      }
+    }
+  }, 300);
+});
 
 function renderArchiveDetail(anime) {
   // Switch layout to archive magazine mode
@@ -412,14 +461,35 @@ function renderSummary(anime) {
   let text = anime.summary || '';
   if (text && /[\u4e00-\u9fff]/.test(text)) {
     // Has Chinese characters — try to keep only Chinese portion
-    // Bangumi often concatenates: "中文简介\n---\n日文简介"
+    // Bangumi often concatenates: "中文简介\n---\n日文简介" or "中文[简介原文]日文"
+    // Step 1: split by Bangumi-specific marker
     const parts = text.split(/\[?简介原文\]?/);
     if (parts.length > 1) {
       text = parts[0].trim();
     } else {
-      const paragraphs = text.split(/\n+/).filter(p => p.trim());
-      const cn = paragraphs.filter(p => /[\u4e00-\u9fff]/.test(p));
-      if (cn.length > 0) text = cn.join('\n');
+      // Step 2: try \n---\n separator (common Bangumi pattern)
+      const dashed = text.split(/\n---+\n/);
+      if (dashed.length > 1) {
+        text = dashed[0].trim();
+      } else {
+        // Step 3: split paragraphs, keep only Chinese paragraphs
+        const paragraphs = text.split(/\n+/).filter(p => p.trim());
+        const cn = paragraphs.filter(p => {
+          // 平假名是日文最可靠的特征 —— 中文文本几乎不含平假名
+          const hiragana = (p.match(/[\u3040-\u309f]/g) || []).length;
+          const katakana = (p.match(/[\u30a0-\u30ff]/g) || []).length;
+          const hanCount = (p.match(/[\u4e00-\u9fff]/g) || []).length;
+          // 有 ≥3 个平假名 → 日文
+          if (hiragana >= 3) return false;
+          // 有大量片假名但很少汉字 → 日文
+          if (katakana >= 8 && hanCount < 3) return false;
+          // 没有汉字也没有假名 → 非中文段落（可能是英文）
+          if (hanCount === 0 && hiragana === 0 && katakana === 0) return false;
+          // 有汉字且没有明显日文特征 → 中文
+          return hanCount > 0;
+        });
+        if (cn.length > 0) text = cn.join('\n');
+      }
     }
   }
   el.textContent = text || '暂无简介';
@@ -554,7 +624,7 @@ function renderCharacters(anime) {
       ? escHtml(c.actors[0].nameCn || c.actors[0].name)
       : null;
     const img = c.image
-      ? `<img class="detail-char-avatar" src="${escAttr(c.image)}" alt="" loading="lazy">`
+      ? `<img class="detail-char-avatar" src="${escAttr(c.image)}" alt="">`
       : `<div class="detail-char-avatar-placeholder">${name.charAt(0)}</div>`;
     return `<div class="detail-char-card">
       ${img}
@@ -564,6 +634,19 @@ function renderCharacters(anime) {
       </div>
     </div>`;
   }).join('');
+
+  // 初始化 max-height 为内容完整高度，确保 CSS transition 能在像素值之间动画
+  grid.style.maxHeight = grid.scrollHeight + 'px';
+
+  // 等待角色头像加载完成后重新校准 auto-expand
+  waitForCharImages(grid).then(() => {
+    const detailView = document.getElementById('detailView');
+    if (detailView && detailView.classList.contains('hidden')) return;
+    const wrap = document.getElementById('detailCharWrap');
+    if (wrap && wrap.dataset.userToggled !== 'true') {
+      autoExpandCharacters();
+    }
+  });
 
   // Render staff (filtered by key roles)
   const filtered = persons.filter(p =>

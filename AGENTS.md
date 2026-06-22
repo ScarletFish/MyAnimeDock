@@ -43,8 +43,11 @@ POST /api/bangumi/search      # Search all enabled scrapers
 POST /api/bangumi/fetch       # Fetch metadata for library item
 GET  /api/mpv-status          # Active mpv sessions
 POST /api/quit                # Shutdown server
+GET  /api/health              # Tauri readiness polling
 GET  /api/thumbnail?path=&time # Video thumbnail (ffmpeg)
 GET  /covers/xxx.jpg?w=&q=    # Dynamic cover resize (ffmpeg)
+POST /api/library/sync        # Batch metadata sync (JSON)
+GET  /api/library/sync/stream # SSE batch sync (流式，支持取消)
 GET  /api/memories            # List memories
 POST /api/memories            # Create/update memory
 ```
@@ -63,11 +66,13 @@ server/            → Tauri sidecar (Node.js backend)
 │   ├── buildLeaf()        → 单条目构造（parentChain 回溯处理 Season 文件夹）
 │   └── parseFolderName()  → 使用 anitomy 提取标题和季号，回退到正则清洗
 ├── scrapers/      → 多源刮削架构
-│   ├── index.js   → ScraperRegistry（统一注册、优先级、批量搜索）
+│   ├── index.js   → ScraperRegistry（统一注册、优先级、批量搜索 + Sorensen-Dice 模糊匹配 + 搜索结果缓存 5min TTL）
 │   ├── node-fetch.js → pkg 兼容的 fetch polyfill（http/https 原生模块）
 │   ├── bangumi.js → Bangumi API（curl fallback）
+│   ├── anilist.js → AniList GraphQL API（免费无需 Key，含 seasonChain 提取）
 │   └── tmdb.js    → TMDB API（需配置 API Key）
 ├── mpv-controller.js → mpv 进度追踪（spawn + --term-status-msg，final 标记）
+├── logger.js      → 结构化日志（debug/info/warn/error + [TAG] 前缀，LOG_LEVEL 环境变量控制）
 └── package.json   → Sidecar dependencies (pkg target)
 src-tauri/         → Tauri v2 desktop shell (Rust)
 ├── src/main.rs    → Sidecar spawning + window management
@@ -88,6 +93,7 @@ public/            → 前端静态文件（无构建步骤）
     ├── library.js     → 资料库网格
     ├── detail.js      → 详情 + GSAP Flip Hero 动画 + 右侧 3 模块
     │                   （继续播放卡片 / 剧集热力图 / 观看统计图表）
+    ├── metamatch.js   → MetaMatch 批量元数据匹配工作台（列表+面板布局，SSE 流式同步）
     └── memory.js      → 观看记录
 scripts/            → 构建/迁移工具
 ├── copy-sidecar-deps.js   → pkg 打包后复制原生模块（Prisma 引擎 + ffmpeg）
@@ -148,6 +154,11 @@ scripts/            → 构建/迁移工具
 - **多源刮削**: `scrapers/index.js` → `ScraperRegistry` 统一注册、优先级、批量搜索；`bangumi.js`/`tmdb.js` 实现统一接口
 - **内联操作**: 卡片内直接显示「取消导入」「排除」「取消排除」按钮，无需详情抽屉
 - **数据持久化双写**: `saveData()` 同步写 JSON（立即落盘）+ 异步同步到 SQLite；`init()` 优先加载 JSON（最新版本），再从 SQLite 回填确保一致性
+- **MetaMatch 批量匹配**: `metamatch.js` 列表+面板布局，SSE 流式同步 `/api/library/sync/stream`，支持取消、重试失败项、手动修正搜索
+- **AniList 刮削**: `scrapers/anilist.js` — GraphQL API，免费无需 Key，返回 `seasonChain` 数据用于季度关系分析；扫描后自动后台预取
+- **季度匹配**: Anime 表 `matchedSeason`/`totalSeasons` 字段（Prisma schema），由 AniList `extractSeasonChain()` 提取
+- **结构化日志**: `server/logger.js` — `debug/info/warn/error` + `[TAG]` 前缀，`logger.child('[TAG]')` 模块级标签，`LOG_LEVEL` 环境变量控制
+- **Sorensen-Dice 模糊匹配**: `scrapers/index.js` 中 `sorensenDice()` 用于搜索结果匹配，5 分钟 TTL 缓存避免重复请求
 
 ## Config
 
@@ -230,6 +241,9 @@ mpv 模式下自动记录播放进度到 `anime-data.json` 和 SQLite。
 - **封面路径**：`localCover` 存储为绝对路径，迁移 DATA_DIR 后文件可能不存在，`init()` 中验证文件存在性，缺失则清空字段（前端显示灰色占位）
 - **window.close() 无效**：Tauri WebView 中 `window.close()` 仅对弹出窗口生效，需要通过 Rust `window.close()` 或 `__TAURI__` IPC 关闭主窗口
 - **Prisma 引擎路径**：pkg 模式下通过 `PRISMA_QUERY_ENGINE_LIBRARY` 环境变量指定引擎 DLL 路径，`NODE_PATH` 指向 `sidecar-modules/`
+- **AniList 预取**：扫描完成后自动后台调用 AniList 预取元数据（`prefetch()`），不阻塞主流程
+- **批量同步取消**：`/api/library/sync/stream` 支持客户端取消，`cancelledSyncSessions` Map 追踪取消状态
+- **Tauri sidecar 监控**：Rust 监控线程检测 sidecar 退出后自动关闭 Tauri 窗口；窗口关闭时 kill sidecar 进程
 
 ## 设计理念与用户工作流
 

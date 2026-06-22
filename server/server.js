@@ -86,6 +86,9 @@ const PORT = 3456;
 // In-memory active mpv sessions: filePath -> { sessionId, episode, anime }
 const activePlays = new Map();
 
+// Track active sync sessions for cancellation: sessionId -> boolean
+const cancelledSyncSessions = new Map();
+
 // --- Config ---
 const DEFAULT_CONFIG = { 
   mediaDir: '', 
@@ -1105,6 +1108,12 @@ const server = http.createServer((req, res) => {
     });
 
     const send = (event, obj) => res.write(`event: ${event}\ndata: ${JSON.stringify(obj)}\n\n`);
+    const sessionId = crypto.randomUUID();
+    cancelledSyncSessions.set(sessionId, false);
+
+    res.on('close', () => {
+      cancelledSyncSessions.set(sessionId, true);
+    });
 
     (async () => {
       const { registry, matchSeason } = require('./scrapers');
@@ -1112,6 +1121,10 @@ const server = http.createServer((req, res) => {
       const coverDir = path.join(DATA_DIR, 'covers');
 
       for (const [index, animeId] of animeIds.entries()) {
+      if (cancelledSyncSessions.get(sessionId) || res.writableEnded) {
+        send('cancelled', { ok: true });
+        break;
+      }
       if (index > 0 && index % 5 === 0) saveData(data);
 
       const anime = data.library.find(a => a.id === animeId);
@@ -1182,6 +1195,7 @@ const server = http.createServer((req, res) => {
 
       saveData(data);
       registry.clearSearchCache();
+      cancelledSyncSessions.delete(sessionId);
       send('done', { ok: true });
       res.end();
     })();

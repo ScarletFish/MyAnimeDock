@@ -9,27 +9,54 @@ let wasMpvActive = false;
 // Archive mode flags (set by memory.js)
 let isArchiveMode = false;
 
-function checkToggleOverflow(wrap, listSel, toggleSel, threshold) {
+function checkToggleOverflow(wrap, listSel, toggleSel) {
   if (!wrap) return;
   const list = wrap.querySelector(listSel);
   const toggle = wrap.querySelector(toggleSel);
   if (!list || !toggle) return;
-  toggle.style.display = list.children.length > threshold ? 'inline-flex' : 'none';
+  // Both states: show button only if content actually overflows
+  toggle.style.display = list.scrollHeight > list.clientHeight ? 'inline-flex' : 'none';
+}
+
+function getCharGridRowHeight() {
+  const grid = document.getElementById('detailCharGrid');
+  if (!grid || !grid.children[0]) return 104; // fallback: 80px avatar + 16px padding + 8px gap
+  const card = grid.children[0];
+  const gap = 8; // matches CSS gap: 8px
+  return card.offsetHeight + gap;
 }
 
 function initToggleChecks() {
   const tagsEl = document.getElementById('detailTags');
   const charWrap = document.getElementById('detailCharWrap');
-  if (tagsEl) checkToggleOverflow(tagsEl, '.detail-tags-list', '.detail-tag-toggle', 8);
-  if (charWrap) checkToggleOverflow(charWrap, '.detail-char-grid', '.detail-char-toggle', 6);
+  if (tagsEl) checkToggleOverflow(tagsEl, '.detail-tags-list', '.detail-tag-toggle');
+  if (charWrap) checkToggleOverflow(charWrap, '.detail-char-grid', '.detail-char-toggle');
 }
 
 function toggleExpand(wrapId) {
   const wrap = document.getElementById(wrapId);
+  const isExpanding = !wrap.classList.contains('expanded');
   wrap.classList.toggle('expanded');
+
+  // For character grid, manage maxHeight based on rows when manually toggling
+  if (wrapId === 'detailCharWrap') {
+    const grid = wrap.querySelector('.detail-char-grid');
+    if (grid) {
+      if (isExpanding) {
+        grid.style.maxHeight = 'none';
+        grid.style.overflow = '';
+      } else {
+        // Collapse: show 2 rows (6 items in 3-col grid)
+        const rowH = getCharGridRowHeight();
+        grid.style.maxHeight = (rowH * 2) + 'px';
+        grid.style.overflow = 'hidden';
+      }
+    }
+  }
+
   setTimeout(() => {
-    if (wrapId === 'detailTags') checkToggleOverflow(wrap, '.detail-tags-list', '.detail-tag-toggle', 8);
-    if (wrapId === 'detailCharWrap') checkToggleOverflow(wrap, '.detail-char-grid', '.detail-char-toggle', 6);
+    if (wrapId === 'detailTags') checkToggleOverflow(wrap, '.detail-tags-list', '.detail-tag-toggle');
+    if (wrapId === 'detailCharWrap') checkToggleOverflow(wrap, '.detail-char-grid', '.detail-char-toggle');
   }, 50);
 }
 let archiveMemoryData = null;
@@ -267,6 +294,56 @@ function renderDetail() {
   setTimeout(initToggleChecks, 100);
   setTimeout(initToggleChecks, 300);
   setTimeout(initToggleChecks, 600);
+  setTimeout(autoExpandCharacters, 50);
+}
+
+function autoExpandCharacters() {
+  const left = document.querySelector('.detail-left');
+  const right = document.querySelector('.detail-right');
+  const charWrap = document.getElementById('detailCharWrap');
+  if (!left || !right || !charWrap) return;
+
+  const grid = charWrap.querySelector('.detail-char-grid');
+  if (!grid || grid.children.length <= 6) return;
+
+  const charWrapEl = charWrap.closest('.detail-characters');
+  if (!charWrapEl || charWrapEl.style.display === 'none') return;
+
+  const rowH = getCharGridRowHeight();
+  const totalItems = grid.children.length;
+  const maxRows = Math.ceil(totalItems / 3);
+
+  // 测量折叠状态（2行）时右栏高度
+  charWrap.classList.remove('expanded');
+  grid.style.maxHeight = (rowH * 2) + 'px';
+  grid.style.overflow = 'hidden';
+
+  const leftH = left.scrollHeight;
+  const rightHCollapsed = right.scrollHeight;
+  const diff = leftH - rightHCollapsed;
+
+  if (diff <= 0) {
+    // 右栏已经比左栏高，保持 2 行
+    checkToggleOverflow(charWrap, '.detail-char-grid', '.detail-char-toggle');
+    return;
+  }
+
+  // 计算需要多少行来平衡
+  const rowsToAdd = Math.ceil(diff / rowH);
+  const targetRows = Math.min(2 + rowsToAdd, maxRows);
+
+  if (targetRows >= maxRows) {
+    // 展开全部也不超过左栏 → 全展开，隐藏按钮
+    charWrap.classList.add('expanded');
+    grid.style.maxHeight = 'none';
+    grid.style.overflow = '';
+  } else {
+    // 截断在 targetRows 行，显示按钮
+    charWrap.classList.remove('expanded');
+    grid.style.maxHeight = (rowH * targetRows) + 'px';
+    grid.style.overflow = 'hidden';
+  }
+  checkToggleOverflow(charWrap, '.detail-char-grid', '.detail-char-toggle');
 }
 
 function renderArchiveDetail(anime) {

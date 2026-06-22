@@ -5,12 +5,14 @@ const API = {
     if (!res.ok) throw new Error(await res.text());
     return res.json();
   },
-  async post(url, data) {
-    const res = await fetch(url, {
+  async post(url, data, signal) {
+    const opts = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
-    });
+    };
+    if (signal) opts.signal = signal;
+    const res = await fetch(url, opts);
     if (!res.ok) throw new Error(await res.text());
     return res.json();
   },

@@ -1254,7 +1254,7 @@ html {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  max-height: 3.2rem;
+  max-height: 2.8rem;
   overflow: hidden;
 }
 
@@ -3344,14 +3344,7 @@ input[type="range"]::-webkit-slider-thumb {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   gap: 8px;
-}
-
-.detail-char-grid .detail-char-card:nth-child(n+7) {
-  display: none;
-}
-
-.detail-char-wrap.expanded .detail-char-card:nth-child(n+7) {
-  display: block;
+  transition: max-height 0.3s ease;
 }
 
 .detail-char-wrap .detail-char-toggle {

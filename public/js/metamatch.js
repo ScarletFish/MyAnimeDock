@@ -8,6 +8,9 @@ let mmSelectedId = null;
 let mmSyncInProgress = false;
 let mmFixResults = [];
 let mmSelectedIds = new Set();
+let mmSyncCancelled = false;
+let mmSSESource = null;
+let mmUIThrottleTimer = null;
 
 // ─── Public API ───
 
@@ -282,7 +285,7 @@ function mmUpdateProgress() {
 
 // ─── UI Refresh ───
 
-function mmUpdateUI() {
+function mmUpdateUIImmediate() {
   mmApplyFilters();
   mmUpdateStats();
   mmUpdateProgress();
@@ -316,6 +319,19 @@ function mmUpdateUI() {
       badge.textContent = labels[item.status];
     }
   });
+}
+
+function mmUpdateUI() {
+  if (!mmSyncInProgress) {
+    mmUpdateUIImmediate();
+    return;
+  }
+  // Throttle during sync: max once per 300ms
+  if (mmUIThrottleTimer) return;
+  mmUIThrottleTimer = setTimeout(() => {
+    mmUIThrottleTimer = null;
+    mmUpdateUIImmediate();
+  }, 300);
 }
 
 // ─── Batch Selection ───
@@ -707,8 +723,10 @@ async function mmStartSync() {
   }
 
   mmSyncInProgress = true;
+  mmSyncCancelled = false;
   document.getElementById('mmStartBtn').style.display = 'none';
   document.getElementById('mmRetryBtn').style.display = 'none';
+  document.getElementById('mmCancelBtn').style.display = '';
 
   const progressWrap = document.getElementById('mmProgressWrap');
   progressWrap.style.display = 'flex';
@@ -725,21 +743,36 @@ async function mmStartSync() {
       await mmSyncViaBatch(animeIds);
     }
   } catch (e) {
-    showToast('同步失败: ' + e.message);
+    if (!mmSyncCancelled) {
+      showToast('同步失败: ' + e.message);
+    }
     mmItems.forEach(i => {
       if (i.status === 'matching') i.status = 'pending';
     });
   }
 
   mmSyncInProgress = false;
+  document.getElementById('mmCancelBtn').style.display = 'none';
   mmUpdateUI();
 
-  const hasFailed = mmItems.some(i => i.status === 'failed');
-  if (hasFailed) {
-    document.getElementById('mmRetryBtn').style.display = '';
-    showToast('部分条目匹配失败，请手动修正');
+  if (mmSyncCancelled) {
+    showToast('匹配已取消');
   } else {
-    showToast('全部匹配完成');
+    const hasFailed = mmItems.some(i => i.status === 'failed');
+    if (hasFailed) {
+      document.getElementById('mmRetryBtn').style.display = '';
+      showToast('部分条目匹配失败，请手动修正');
+    } else {
+      showToast('全部匹配完成');
+    }
+  }
+}
+
+function mmCancelSync() {
+  mmSyncCancelled = true;
+  if (mmSSESource) {
+    mmSSESource.close();
+    mmSSESource = null;
   }
 }
 
@@ -756,8 +789,10 @@ async function mmSyncViaSSE(animeIds) {
   return new Promise((resolve) => {
     const url = '/api/library/sync/stream?ids=' + encodeURIComponent(JSON.stringify(animeIds));
     const es = new EventSource(url);
+    mmSSESource = es;
 
     es.addEventListener('progress', (e) => {
+      if (mmSyncCancelled) return;
       try {
         const data = JSON.parse(e.data);
         const item = mmItems.find(i => i.animeId === data.animeId);
@@ -778,17 +813,24 @@ async function mmSyncViaSSE(animeIds) {
       } catch (_) {}
     });
 
+    es.addEventListener('cancelled', () => {
+      cleanup();
+    });
+
     function cleanup() {
       es.close();
-      let changed = false;
-      mmItems.forEach(i => {
-        if (i.status === 'matching') {
-          i.status = 'failed';
-          i.error = i.error || '连接断开，匹配中断';
-          changed = true;
-        }
-      });
-      if (changed) mmUpdateUI();
+      mmSSESource = null;
+      if (!mmSyncCancelled) {
+        let changed = false;
+        mmItems.forEach(i => {
+          if (i.status === 'matching') {
+            i.status = 'failed';
+            i.error = i.error || '连接断开，匹配中断';
+            changed = true;
+          }
+        });
+        if (changed) mmUpdateUI();
+      }
       resolve();
     }
 
@@ -799,37 +841,54 @@ async function mmSyncViaSSE(animeIds) {
 }
 
 async function mmSyncViaBatch(animeIds) {
-  const result = await API.post('/api/library/sync', { animeIds });
+  const controller = new AbortController();
+  const checkCancel = setInterval(() => {
+    if (mmSyncCancelled) controller.abort();
+  }, 500);
 
-  if (!result?.results) {
-    mmItems.forEach(i => {
-      if (i.status === 'matching') i.status = 'failed';
-    });
-    return;
-  }
+  try {
+    const result = await API.post('/api/library/sync', { animeIds }, controller.signal);
 
-  for (const r of result.results) {
-    const item = mmItems.find(i => i.animeId === r.animeId);
-    if (!item) continue;
+    if (!result?.results) {
+      mmItems.forEach(i => {
+        if (i.status === 'matching') i.status = 'failed';
+      });
+      return;
+    }
 
-    if (r.success) {
-      if (r.skipped) {
-        item.status = 'matched';
-      } else if (r.meta) {
-        item.status = 'matched';
-        item.meta = r.meta;
-        item.coverUrl = r.meta.coverUrl || null;
-        item.error = null;
-        if (r.matchedSeason != null) item.matchedSeason = r.matchedSeason;
-        if (r.totalSeasons != null) item.totalSeasons = r.totalSeasons;
+    for (const r of result.results) {
+      const item = mmItems.find(i => i.animeId === r.animeId);
+      if (!item) continue;
+
+      if (r.success) {
+        if (r.skipped) {
+          item.status = 'matched';
+        } else if (r.meta) {
+          item.status = 'matched';
+          item.meta = r.meta;
+          item.coverUrl = r.meta.coverUrl || null;
+          item.error = null;
+          if (r.matchedSeason != null) item.matchedSeason = r.matchedSeason;
+          if (r.totalSeasons != null) item.totalSeasons = r.totalSeasons;
+        } else {
+          item.status = 'failed';
+          item.error = '无元数据返回';
+        }
       } else {
         item.status = 'failed';
-        item.error = '无元数据返回';
+        item.error = r.error || '未知错误';
       }
-    } else {
-      item.status = 'failed';
-      item.error = r.error || '未知错误';
     }
+  } catch (e) {
+    if (e.name === 'AbortError') {
+      mmItems.forEach(i => {
+        if (i.status === 'matching') i.status = 'pending';
+      });
+    } else {
+      throw e;
+    }
+  } finally {
+    clearInterval(checkCancel);
   }
 }
 
@@ -896,6 +955,7 @@ window.mmSetFilter = mmSetFilter;
 window.mmFilterGrid = mmFilterGrid;
 window.mmRowClick = mmRowClick;
 window.mmStartSync = mmStartSync;
+window.mmCancelSync = mmCancelSync;
 window.mmRetryFailed = mmRetryFailed;
 window.mmSearchForFix = mmSearchForFix;
 window.mmApplyFix = mmApplyFix;

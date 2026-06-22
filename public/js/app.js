@@ -1,6 +1,7 @@
 // Main app logic
 let currentView = 'library';
 let configCache = null;
+let libraryScrollTop = 0;
 
 function showView(view) {
   const views = ['discovery', 'metamatch', 'library', 'memories', 'detail'];
@@ -15,7 +16,19 @@ function showView(view) {
   document.getElementById('btnLibrary').classList.toggle('active', view === 'library');
   document.getElementById('btnMemories').classList.toggle('active', view === 'memories');
 
+  const mc = document.querySelector('.main-content');
+
+  // Save library scroll before leaving
+  if (currentView === 'library' && view !== 'library' && mc) {
+    libraryScrollTop = mc.scrollTop;
+  }
+
   currentView = view;
+
+  // Scroll to top when entering detail view
+  if (view === 'detail') {
+    if (mc) mc.scrollTop = 0;
+  }
 
   if (view !== 'detail') {
     resetDetailEnter();
@@ -25,7 +38,11 @@ function showView(view) {
   // Load data for view
   if (view === 'discovery') loadDiscovery();
   if (view === 'metamatch') mmLoadData();
-  if (view === 'library') loadLibrary();
+  if (view === 'library') {
+    loadLibrary();
+    // Restore scroll after render
+    requestAnimationFrame(() => { if (mc) mc.scrollTop = libraryScrollTop; });
+  }
   if (view === 'memories') loadMemories();
 }
 

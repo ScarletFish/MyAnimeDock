@@ -2851,7 +2851,7 @@ html {
   border-color: var(--accent);
 }
 
-/* ─── API Source Cards (Draggable) ─── */
+/* ─── API Source Cards ─── */
 .api-source-card {
   display: flex;
   align-items: flex-start;
@@ -2859,38 +2859,13 @@ html {
   background: var(--bg-deep);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  padding: 10px 10px 10px 6px;
+  padding: 10px 10px 10px 12px;
   margin-bottom: 8px;
   transition: all var(--duration-fast) var(--ease-out);
+}
+
+.api-source-card--fixed {
   cursor: default;
-  user-select: none;
-}
-
-.api-source-card--dragging {
-  opacity: 0.4;
-  border-style: dashed;
-}
-
-.api-source-card--drag-over {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(225, 58, 90, 0.15);
-}
-
-.api-source-drag {
-  cursor: grab;
-  flex-shrink: 0;
-  padding: 6px 2px;
-  color: var(--fg-muted);
-  opacity: 0.5;
-  transition: opacity var(--duration-fast) var(--ease-out);
-}
-
-.api-source-drag:hover {
-  opacity: 1;
-}
-
-.api-source-card:active .api-source-drag {
-  cursor: grabbing;
 }
 
 .api-source-body {
@@ -2920,26 +2895,9 @@ html {
   color: #1e90ff;
 }
 
-.api-source-badge--tmdb {
-  background: rgba(3, 216, 147, 0.15);
-  color: #03d893;
-}
-
-.api-source-type-select {
-  background: transparent;
-  border: 1px solid transparent;
-  color: var(--fg-muted);
-  font-size: 0.688rem;
-  font-family: var(--font-body);
-  padding: 1px 0;
-  cursor: pointer;
-  border-radius: 2px;
-  transition: all var(--duration-fast) var(--ease-out);
-}
-
-.api-source-type-select:hover {
-  color: var(--fg-primary);
-  border-color: var(--border);
+.api-source-badge--anilist {
+  background: rgba(53, 152, 219, 0.15);
+  color: #3598db;
 }
 
 .api-source-fields {
@@ -2967,32 +2925,51 @@ html {
   box-shadow: 0 0 0 3px rgba(225, 58, 90, 0.06);
 }
 
-.api-source-key-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.api-source-key-row input {
-  flex: 1;
-}
-
-.api-source-remove {
-  background: none;
-  border: none;
-  color: var(--fg-muted);
-  cursor: pointer;
-  padding: 6px;
+/* ─── Toggle Switch ─── */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 32px;
+  height: 18px;
   flex-shrink: 0;
-  border-radius: var(--radius-sm);
-  transition: all var(--duration-fast) var(--ease-out);
-  opacity: 0.4;
 }
 
-.api-source-remove:hover {
-  opacity: 1;
-  color: var(--error);
-  background: rgba(225, 58, 90, 0.08);
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.toggle-slider::before {
+  content: '';
+  position: absolute;
+  height: 12px;
+  width: 12px;
+  left: 2px;
+  bottom: 2px;
+  background: var(--fg-muted);
+  border-radius: 50%;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.toggle-switch input:checked + .toggle-slider {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.toggle-switch input:checked + .toggle-slider::before {
+  transform: translateX(14px);
+  background: #fff;
 }
 
 /* ─── Settings Actions ─── */
@@ -3027,6 +3004,24 @@ html {
 [data-theme="light"] .checkbox-visual {
   background: #fff;
   border-color: rgba(44, 36, 24, 0.15);
+}
+
+[data-theme="light"] .toggle-slider {
+  background: #fff;
+  border-color: rgba(44, 36, 24, 0.15);
+}
+
+[data-theme="light"] .toggle-slider::before {
+  background: rgba(44, 36, 24, 0.4);
+}
+
+[data-theme="light"] .toggle-switch input:checked + .toggle-slider::before {
+  background: #fff;
+}
+
+[data-theme="light"] .api-source-badge--anilist {
+  background: rgba(53, 152, 219, 0.12);
+  color: #2980b9;
 }
 
 /* ─── Toast ─── */

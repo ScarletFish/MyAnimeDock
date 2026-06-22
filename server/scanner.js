@@ -114,11 +114,12 @@ function parseFolderName(name) {
   const yearMatch = name.match(/\b(19\d{2}|20\d{2})\b/);
   if (yearMatch) result.year = parseInt(yearMatch[1]);
 
-  // 8. Clean title: strip season markers, preserve punctuation
+  // 8. Clean title: strip season markers, special suffix, preserve punctuation
   let cleanTitle = result.title;
   cleanTitle = cleanTitle.replace(/\s*S\d+\s*$/i, '').trim();
   cleanTitle = cleanTitle.replace(/\s*Season\s*\d+\s*/i, '').trim();
   cleanTitle = cleanTitle.replace(/第(\d+)季/g, '').trim();
+  cleanTitle = cleanTitle.replace(/\s*[~～][^~～]*[~～]\s*$/, '').trim();
   result.cleanTitle = cleanTitle;
 
   // 9. Regex fallback for season (raw base, when anitomy missed)
@@ -127,10 +128,24 @@ function parseFolderName(name) {
     if (sm) result.season = parseInt(sm[1]);
   }
 
-  // 10. Strip parenthetical metadata from cleanTitle only
+  // 10. Symbol-based season markers: ？？=2, ♪♪♪=3, ！！=2, etc.
+  if (!result.season) {
+    const symbolMatch = base.match(/([？?！!♪♫★☆♥♡])\1+/);
+    if (symbolMatch) {
+      const count = symbolMatch[0].length;
+      if (count >= 2 && count <= 5) result.season = count;
+    }
+  }
+
+  // 11. Strip parenthetical metadata from cleanTitle only
   result.cleanTitle = result.cleanTitle.replace(/\([^)]*\)/g, '').trim();
 
-  // 11. Trailing number 2-20 → season (only if not volume)
+  // 12. Extract special suffix (~...~) for OVA/special detection
+  result.specialSuffix = null;
+  const suffixMatch = result.title.match(/([~～][^~～]*[~～])\s*$/);
+  if (suffixMatch) result.specialSuffix = suffixMatch[1].trim();
+
+  // 13. Trailing number 2-20 → season (only if not volume)
   const trailingNum = result.cleanTitle.match(/\s+(\d+)\s*$/);
   if (trailingNum && parseInt(trailingNum[1]) >= 2 && parseInt(trailingNum[1]) <= 20) {
     const prefix = result.cleanTitle.slice(0, trailingNum.index).replace(/\s*$/, '');

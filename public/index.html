@@ -545,19 +545,35 @@
       <!-- Tab: 刮削 -->
       <div class="settings-panel" id="tab-scraper">
         <div class="form-group">
-          <label>API 源（按顺序匹配，可拖拽排序）</label>
-          <div id="apiSourcesList"></div>
-          <div style="display:flex;gap:6px;margin-top:8px">
-            <button class="btn" onclick="addApiSource('bangumi')" title="添加 Bangumi 源（默认镜像站）">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              添加 Bangumi
-            </button>
-            <button class="btn" onclick="addApiSource('tmdb')" title="添加 TMDB 源（需填入 API Key）">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              添加 TMDB
-            </button>
+          <label>Bangumi</label>
+          <div class="api-source-card api-source-card--fixed">
+            <div class="api-source-body">
+              <div class="api-source-type">
+                <span class="api-source-badge api-source-badge--bangumi">Bangumi</span>
+              </div>
+              <div class="api-source-fields">
+                <input type="text" class="api-source-url" id="bangumiUrl" placeholder="API 地址" value="https://api.bangumi.one">
+                <p class="form-hint">默认使用 bangumi.one，可换为镜像站如 api.bgm.tv</p>
+              </div>
+            </div>
           </div>
-          <p class="form-hint">拖拽调整顺序，匹配时从上到下依次尝试。Bangumi 无需密钥，TMDB 需填入 API Key。</p>
+        </div>
+        <div class="form-group">
+          <label>AniList（可选，罗马音标题搜索用）</label>
+          <div class="api-source-card api-source-card--fixed">
+            <div class="api-source-body">
+              <div class="api-source-type">
+                <span class="api-source-badge api-source-badge--anilist">AniList</span>
+                <label class="toggle-switch" style="margin-left:8px">
+                  <input type="checkbox" id="anilistEnabled">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="api-source-fields">
+                <p class="form-hint">启用后，罗马音标题（如 Gochiusa）会先通过 AniList 获取日文名，再搜 Bangumi。无需 API Key。</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

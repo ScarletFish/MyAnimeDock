@@ -1019,19 +1019,20 @@ const server = http.createServer((req, res) => {
 
             const isStructuralFolder = !folderParsed.cjkTitle && (!folderParsed.title || /^(?:Season\s*\d+|S\d+|第\d+季)$/i.test(folderParsed.title.trim()));
             if (isStructuralFolder) {
+              const leafSeason = folderParsed.season;
               if (anime.folderPath) {
                 const parentDir = path.basename(path.dirname(anime.folderPath));
                 if (parentDir && parentDir !== '.') {
                   const parentParsed = parseFolderName(parentDir);
                   if (parentParsed.cjkTitle || parentParsed.cleanTitle) {
-                    folderParsed = parentParsed;
+                    folderParsed = { ...parentParsed, season: leafSeason || parentParsed.season };
                   }
                 }
               }
               if (!folderParsed.cjkTitle && !folderParsed.cleanTitle) {
                 const titleParsed = parseFolderName(anime.title);
                 if (titleParsed.cjkTitle || titleParsed.cleanTitle) {
-                  folderParsed = titleParsed;
+                  folderParsed = { ...titleParsed, season: leafSeason || titleParsed.season };
                 }
               }
             }

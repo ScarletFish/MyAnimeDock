@@ -1,17 +1,6 @@
 const BangumiScraper = require('./bangumi');
-const TMDBScraper = require('./tmdb');
 const AniListScraper = require('./anilist');
 const logger = require('../logger').child('[SCRAPER]');
-
-// Relation type mapping from Bangumi API
-const RELATION_TYPE = {
-  '续集': 'sequel',
-  '前传': 'prequel',
-  '同系列': 'same_series',
-  '外传': 'spin_off',
-  '合集': 'summary',
-  '其他': 'other'
-};
 
 /**
  * Process items in parallel with concurrency limit
@@ -41,95 +30,26 @@ function normalizeTitle(title) {
 }
 
 /**
- * Simple similarity score between two normalized titles
+ * Sorensen-Dice coefficient for fuzzy string comparison
+ * Returns 0-1, where 1 is identical
  */
-function similarity(a, b) {
+function sorensenDice(a, b) {
   if (!a || !b) return 0;
+  a = normalizeTitle(a);
+  b = normalizeTitle(b);
   if (a === b) return 1;
-  if (a.includes(b) || b.includes(a)) return 0.8;
-  // Could add Levenshtein here if needed
-  return 0;
-}
+  if (a.length < 2 || b.length < 2) return 0;
 
-/**
- * Calculate confidence score for a match
- * Factors: title similarity, source reliability, metadata completeness
- */
-function calculateConfidence(folderParsed, matchResult, source) {
-  let score = 0;
-
-  // Title similarity (0-40 points)
-  const normTarget = normalizeTitle(folderParsed.cleanTitle);
-  const normMatch = normalizeTitle(matchResult.name_cn || matchResult.name || '');
-  const titleSim = similarity(normTarget, normMatch);
-  score += titleSim * 40;
-
-  // Source reliability (0-20 points)
-  if (source === 'bangumi') score += 20; // Bangumi is primary for CJK
-  else if (source === 'anilist') score += 15; // AniList is good for romaji
-  else score += 10; // TMDB fallback
-
-  // Metadata completeness (0-20 points)
-  if (matchResult.rating) score += 5;
-  if (matchResult.coverUrl) score += 5;
-  if (matchResult.summary) score += 5;
-  if (matchResult.episodes) score += 5;
-
-  // Cross-validation bonus (0-20 points)
-  // If both sources agree on the same entry, boost confidence
-  if (matchResult._crossValidated) score += 20;
-
-  return Math.min(100, Math.round(score));
-}
-
-/**
- * Cross-validate match between Bangumi and AniList
- * Returns { confidence, bestSource, bestMatch }
- */
-function crossValidateMatches(folderParsed, bangumiMatch, anilistMatch) {
-  if (!bangumiMatch && !anilistMatch) return null;
-
-  // If only one source has a match, use it
-  if (!bangumiMatch) return { confidence: 50, bestSource: 'anilist', bestMatch: anilistMatch };
-  if (!anilistMatch) return { confidence: 60, bestSource: 'bangumi', bestMatch: bangumiMatch };
-
-  // Both sources have matches - compare
-  const bangumiTitle = normalizeTitle(bangumiMatch.name_cn || bangumiMatch.name);
-  const anilistTitle = normalizeTitle(anilistMatch.title_native || anilistMatch.name);
-
-  // Check if titles match (fuzzy)
-  const titleMatch = similarity(bangumiTitle, anilistTitle);
-
-  if (titleMatch >= 0.8) {
-    // Strong match - both sources agree
-    bangumiMatch._crossValidated = true;
-    return {
-      confidence: 90,
-      bestSource: 'bangumi', // Prefer Bangumi for Chinese metadata
-      bestMatch: bangumiMatch,
-      anilistMatch,
-    };
-  } else if (titleMatch > 0) {
-    // Partial match - use the one with better title similarity to folder
-    const bangumiSim = similarity(normalizeTitle(folderParsed.cleanTitle), bangumiTitle);
-    const anilistSim = similarity(normalizeTitle(folderParsed.cleanTitle), anilistTitle);
-
-    if (bangumiSim >= anilistSim) {
-      return { confidence: 70, bestSource: 'bangumi', bestMatch: bangumiMatch, anilistMatch };
-    } else {
-      return { confidence: 70, bestSource: 'anilist', bestMatch: anilistMatch, bangumiMatch };
-    }
-  }
-
-  // No title match - different entries, use the one with better similarity
-  const bangumiSim = similarity(normalizeTitle(folderParsed.cleanTitle), bangumiTitle);
-  const anilistSim = similarity(normalizeTitle(folderParsed.cleanTitle), anilistTitle);
-
-  if (bangumiSim >= anilistSim) {
-    return { confidence: 40, bestSource: 'bangumi', bestMatch: bangumiMatch };
-  } else {
-    return { confidence: 40, bestSource: 'anilist', bestMatch: anilistMatch };
-  }
+  const getBigrams = s => {
+    const bigrams = new Set();
+    for (let i = 0; i < s.length - 1; i++) bigrams.add(s.slice(i, i + 2));
+    return bigrams;
+  };
+  const aBigrams = getBigrams(a);
+  const bBigrams = getBigrams(b);
+  let overlap = 0;
+  for (const bg of aBigrams) if (bBigrams.has(bg)) overlap++;
+  return (2 * overlap) / (aBigrams.size + bBigrams.size);
 }
 
 /**
@@ -157,177 +77,6 @@ function extractBaseAndSuffix(title) {
 }
 
 /**
- * Select best match from seasonMap based on folder parsed info
- * @param {Map} seasonMap - season number -> subject
- * @param {Object} folderParsed - result from parseFolderName()
- * @param {number} videoCount - number of video files
- * @param {Array} specials - array of {subject, specialType}
- * @param {string} specialSuffix - extracted ~...~ suffix from folder title
- */
-function selectBestMatch(seasonMap, folderParsed, videoCount, specials = [], specialSuffix = null) {
-  const { season, cleanTitle, title } = folderParsed;
-  const totalSeasons = Math.max(...[...seasonMap.keys()].filter(k => typeof k === 'number'));
-
-  // 1. EXACT SPECIAL SUFFIX MATCH (highest priority)
-  if (specialSuffix) {
-    const normSuffix = normalizeTitle(specialSuffix);
-    for (const { subject, specialType } of specials) {
-      const subjectTitle = normalizeTitle(subject.name_cn || subject.name);
-      if (subjectTitle.includes(normSuffix)) {
-        return { ...subject, matchedSeason: null, totalSeasons };
-      }
-    }
-  }
-
-  // 2. Special type detection fallback
-  const specialType = detectSpecialType(title);
-  if (specialType && seasonMap.has(specialType)) {
-    return { ...seasonMap.get(specialType), matchedSeason: null, totalSeasons };
-  }
-
-  // 3. Normal season match
-  const targetSeason = season || 1;
-  const candidate = seasonMap.get(targetSeason);
-
-  if (candidate) {
-    if (candidate.eps && videoCount) {
-      const ratio = videoCount / candidate.eps;
-      const diff = Math.abs(candidate.eps - videoCount);
-      if (diff <= 3 || (ratio >= 0.25 && ratio <= 1.0)) return { ...candidate, matchedSeason: targetSeason, totalSeasons };
-    } else {
-      return { ...candidate, matchedSeason: targetSeason, totalSeasons };
-    }
-  }
-
-  // 4. Fallback: title similarity against all seasons
-  const normTarget = normalizeTitle(cleanTitle);
-  let best = seasonMap.get(1);
-  let bestKey = 1;
-  let bestScore = 0;
-
-  for (const [key, v] of seasonMap) {
-    if (typeof key === 'string') continue;
-    const score = similarity(normTarget, normalizeTitle(v.name_cn || v.name));
-    if (score > bestScore) { bestScore = score; best = v; bestKey = key; }
-  }
-
-  return { ...best, matchedSeason: bestKey, totalSeasons };
-}
-
-/**
- * Phase 1: Find any main subject using multi-keyword search
- * Returns { detail, searchResults } with full subject detail and the search results used
- * Smart routing: CJK → Bangumi first, Romaji → AniList first (get Japanese name) → Bangumi
- */
-async function findMainSubject(registry, folderParsed, config) {
-  const bangumi = registry.get('bangumi');
-  const anilist = registry.get('anilist');
-  if (!bangumi) return null;
-
-  const keywords = generateSearchKeywords(folderParsed);
-  const isRomaji = isPrimarilyRomaji(folderParsed.cleanTitle || folderParsed.title);
-
-  // Smart routing: romaji titles try AniList first to get Japanese name
-  if (isRomaji && anilist && anilist.enabled(config)) {
-    for (const kw of keywords.slice(0, 2)) {
-      try {
-        const anilistResults = await anilist.search(kw, config.apiSources?.find(s => s.type === 'anilist'));
-        if (anilistResults.length > 0) {
-          const best = anilistResults[0];
-          // Use Japanese title to search Bangumi
-          const jpTitle = best.title_native || best.name;
-          if (jpTitle) {
-            const bangumiResults = await registry.searchAll(jpTitle, config);
-            const animeResults = bangumiResults.filter(r => r.type === 2);
-            if (animeResults.length > 0) {
-              const normTarget = normalizeTitle(folderParsed.cleanTitle);
-              const bangumiBest = animeResults.reduce((b, r) => {
-                const score = similarity(normTarget, normalizeTitle(r.name_cn || r.name));
-                return score > b.score ? { item: r, score } : b;
-              }, { item: animeResults[0], score: 0 }).item;
-
-              const detail = await bangumi.getSubjectDetail(bangumiBest.id);
-              if (detail) return { detail, searchResults: bangumiResults, anilistMatch: best };
-            }
-          }
-        }
-      } catch (e) {
-        logger.error('AniList search failed:', e.message);
-      }
-    }
-  }
-
-  // Fallback: Bangumi search with multiple keywords
-  for (const kw of keywords) {
-    try {
-      const results = await registry.searchAll(kw, config);
-      const animeResults = results.filter(r => r.type === 2);
-      if (animeResults.length === 0) continue;
-
-      // Pick best match by title similarity
-      const normTarget = normalizeTitle(folderParsed.cleanTitle);
-      const best = animeResults.reduce((b, r) => {
-        const score = similarity(normTarget, normalizeTitle(r.name_cn || r.name));
-        return score > b.score ? { item: r, score } : b;
-      }, { item: animeResults[0], score: 0 }).item;
-
-      // Fetch full detail to get official titles
-      const detail = await bangumi.getSubjectDetail(best.id);
-      if (detail) return { detail, searchResults: results };
-    } catch (e) {
-      logger.error('findMainSubject keyword="', kw, '" failed:', e.message);
-    }
-  }
-  return null;
-}
-
-/**
- * Generate search keywords from folder parsed data
- * Creates variants: cleanTitle, baseTitle, romaji, core words
- */
-function generateSearchKeywords(folderParsed) {
-  const { cleanTitle, title, animeTitle, cjkTitle } = folderParsed;
-  const keywords = new Set();
-
-  // Highest priority: CJK title (Bangumi prefers Japanese/Chinese originals)
-  if (cjkTitle) keywords.add(cjkTitle);
-
-  // Primary: cleanTitle (anitomy's cleaned title)
-  if (cleanTitle) keywords.add(cleanTitle);
-
-  // Secondary: animeTitle (anitomy's animeTitle field)
-  if (animeTitle && animeTitle !== cleanTitle) keywords.add(animeTitle);
-
-  // Tertiary: base title without special suffix
-  const { baseTitle } = extractBaseAndSuffix(title);
-  if (baseTitle && baseTitle !== cleanTitle) keywords.add(baseTitle);
-
-  // Quaternary: core words (first 2-3 meaningful words)
-  const coreWords = cleanTitle
-    .split(/\s+/)
-    .filter(w => w.length > 1)
-    .slice(0, 3)
-    .join(' ');
-  if (coreWords && coreWords !== cleanTitle) keywords.add(coreWords);
-
-  // If primarily romaji, also try romaji variants
-  if (isPrimarilyRomaji(title)) {
-    keywords.add(title); // Original folder name
-    // Try without season markers
-    const noSeason = title.replace(/\s*(?:S|Season)\s*\d+/i, '').replace(/\s*\d+$/, '').trim();
-    if (noSeason && noSeason !== title) keywords.add(noSeason);
-  }
-
-  // Sanitize: add variants with special characters that break search APIs replaced
-  for (const kw of Array.from(keywords)) {
-    const noAt = kw.replace(/[@＠]/g, 'a').trim();
-    if (noAt && noAt !== kw) keywords.add(noAt);
-  }
-
-  return Array.from(keywords);
-}
-
-/**
  * Check if title is primarily romaji (Latin characters)
  */
 function isPrimarilyRomaji(title) {
@@ -338,165 +87,154 @@ function isPrimarilyRomaji(title) {
 }
 
 /**
- * Extract season number from title (Chinese/Japanese)
- * Returns season number (1, 2, 3...) or null
+ * Build search terms from folder parsed data (multiple variations)
  */
-function extractSeasonFromTitle(title) {
-  if (!title) return null;
-  
-  // Explicit season patterns with capture groups
-  const explicitPatterns = [
-    /第\s*(\d+)\s*[季期]/,           // 第2季, 第2期
-    /[Ss]\s*(\d+)\b/,                // S2, s2 (with word boundary)
-    /Season\s*(\d+)/i,               // Season 2
-    /(\d+)\s*[期季]/,                // 2期, 2季
-    /(\d+)(?:st|nd|rd|th)\s*[Ss]eason/i, // 2nd Season
-    // Trailing number at end of title (e.g., "Yuru Yuri 2", "Title 3")
-    /\s(\d+)$/,
-  ];
-  
-  for (const p of explicitPatterns) {
-    const m = title.match(p);
-    if (m && m[1]) {
-      const num = parseInt(m[1]);
-      if (num >= 1 && num <= 10) return num;
-    }
+function buildSearchTerms(folderParsed, keyword) {
+  const terms = [];
+  const base = folderParsed.cjkTitle || folderParsed.cleanTitle || keyword;
+  const season = folderParsed.season;
+
+  // Primary: base + season suffix
+  if (season) {
+    terms.push(`${base} 第${season}期`);
   }
-  
-  // Unicode numerals
-  if (/Ⅱ/.test(title)) return 2;
-  if (/Ⅲ/.test(title)) return 3;
-  if (/Ⅳ/.test(title)) return 4;
-  if (/Ⅴ/.test(title)) return 5;
-  
-  // Symbol-based season markers (count symbols)
-  // ♪♪ = 2, ♪♪♪ = 3, etc.
-  const symbolMatch = title.match(/([♪♫★☆♥♡!！])\1+/);
-  if (symbolMatch) {
-    const count = symbolMatch[0].length;
-    if (count >= 2 && count <= 5) return count;
+  terms.push(base);
+
+  // Fallback: if base is too short, use title (with suffix)
+  if (base.length < 4 && folderParsed.title && folderParsed.title !== base) {
+    terms.push(folderParsed.title);
   }
-  
-  // Prefix-based: 续/続/新/真/Zoku/Shin = Season 2
-  if (/^(?:续|続|新|真|Zoku|Shin)\s/.test(title)) return 2;
-  
-  return null;
+
+  return [...new Set(terms)];
 }
 
 /**
- * Phase 2: Build complete season chain using official titles
- * @param {Array} initialResults - Optional search results from Phase 1 to avoid redundant search
+ * Search Bangumi directly
  */
-async function buildSeasonChainFromMain(registry, mainDetail, config, initialResults = null) {
-  if (!mainDetail) return { seasonMap: new Map(), specials: [] };
-
-  const bangumi = registry.get('bangumi');
-  if (!bangumi) return { seasonMap: new Map(), specials: [] };
-
-  // Reuse initial results if available, otherwise search with official title
-  let animeResults;
-  if (initialResults && initialResults.length > 0) {
-    animeResults = initialResults.filter(r => r.type === 2);
-  } else {
-    const officialTitle = mainDetail.name_cn || mainDetail.name;
-    const results = await registry.searchAll(officialTitle, config);
-    animeResults = results.filter(r => r.type === 2);
+async function searchBangumi(bangumi, keyword, config) {
+  const source = config.apiSources?.find(s => s.type === 'bangumi');
+  if (!source) return [];
+  try {
+    const results = await bangumi.search(keyword, source);
+    return results.filter(r => r.type === 2);
+  } catch (e) {
+    logger.error('Bangumi search failed:', e.message);
+    return [];
   }
-
-  if (animeResults.length === 0) {
-    // Fallback: just use the main detail as season 1
-    const seasonMap = new Map();
-    mainDetail.source = 'bangumi';
-    seasonMap.set(1, mainDetail);
-    return { seasonMap, specials: [] };
-  }
-
-  // Enrich with relations (batched to avoid rate limits)
-  const enriched = await parallelMap(animeResults, async r => {
-    try {
-      const relations = await bangumi.getSubjectRelations(r.id);
-      return { ...r, relations };
-    } catch (e) {
-      return { ...r, relations: [] };
-    }
-  });
-
-  // Find the main entry in enriched results (match by id)
-  const main = enriched.find(r => r.id === mainDetail.id) || enriched[0];
-
-  // Build seasonMap by following sequel relations
-  const seasonMap = new Map();
-  seasonMap.set(1, main);
-
-  let current = main;
-  let season = 2;
-  const visited = new Set([main.id]);
-
-  while (current && season <= 10) {
-    const sequelRel = current.relations?.find(r => 
-      RELATION_TYPE[r.relation] === 'sequel' && r.type === 2 && !visited.has(r.id)
-    );
-    if (!sequelRel) break;
-
-    const sequel = enriched.find(r => r.id === sequelRel.id);
-    if (!sequel) break;
-
-    seasonMap.set(season, sequel);
-    visited.add(sequel.id);
-    current = sequel;
-    season++;
-  }
-
-  // ALSO: Direct title-based season detection from search results
-  // This catches cases where Bangumi has separate entries per season without proper relations
-  enriched.forEach(r => {
-    if (r.id === main.id) return; // Skip main
-    const detectedSeason = extractSeasonFromTitle(r.name_cn || r.name);
-    if (detectedSeason && detectedSeason >= 2 && !seasonMap.has(detectedSeason)) {
-      seasonMap.set(detectedSeason, r);
-    }
-  });
-
-  // Collect specials
-  const specials = [];
-  enriched.forEach(r => {
-    const cn = r.name_cn || '';
-    const jp = r.name || '';
-    const specialType = detectSpecialType(cn) || detectSpecialType(jp);
-    if (specialType) {
-      specials.push({ ...r, specialType });
-      if (!seasonMap.has(specialType)) {
-        seasonMap.set(specialType, r);
-      }
-    }
-  });
-
-  return { seasonMap, specials };
 }
 
 /**
- * Main entry: two-phase matching
- * Phase 1: Find any subject using multi-keyword search (handles romaji)
- * Phase 2: Use official titles to build complete season chain
+ * Search via AniList → get Japanese title → search Bangumi
+ */
+async function searchViaAniList(registry, bangumi, searchTerm, config) {
+  const anilist = registry.get('anilist');
+  if (!anilist || !anilist.enabled(config)) {
+    return searchBangumi(bangumi, searchTerm, config);
+  }
+
+  try {
+    const source = config.apiSources?.find(s => s.type === 'anilist');
+    const anilistResults = await anilist.search(searchTerm, source);
+    if (anilistResults.length === 0) {
+      return searchBangumi(bangumi, searchTerm, config);
+    }
+
+    // Use Japanese title to search Bangumi
+    const jpTitle = anilistResults[0].title_native || anilistResults[0].name;
+    if (jpTitle) {
+      const bangumiResults = await searchBangumi(bangumi, jpTitle, config);
+      if (bangumiResults.length > 0) return bangumiResults;
+    }
+
+    return anilistResults;
+  } catch (e) {
+    logger.error('AniList search failed, fallback to Bangumi:', e.message);
+    return searchBangumi(bangumi, searchTerm, config);
+  }
+}
+
+/**
+ * Pick best match from search results using Sorensen-Dice
+ */
+function pickBestBySimilarity(cleanTitle, results) {
+  return results.reduce((best, r) => {
+    const matchTitle = r.name_cn || r.name || '';
+    const score = sorensenDice(cleanTitle, matchTitle);
+    return score > best.score ? { item: r, score } : best;
+  }, { item: results[0], score: 0 }).item;
+}
+
+/**
+ * Validate match quality (optional, does not block matching)
+ * Returns confidence score 0-1
+ */
+function validateMatch(detail, folderParsed) {
+  let confidence = 0.5;
+
+  // Season match bonus
+  if (folderParsed.season && detail.eps) {
+    confidence += 0.1;
+  }
+
+  // Title similarity bonus
+  const titleScore = sorensenDice(folderParsed.cleanTitle, detail.name_cn || detail.name || '');
+  confidence += titleScore * 0.3;
+
+  // Format match bonus
+  const specialType = detectSpecialType(folderParsed.title);
+  if (specialType) {
+    confidence += 0.1;
+  }
+
+  return Math.min(1, confidence);
+}
+
+/**
+ * Main entry: single-phase matching
+ * Search by title → pick best → get detail
  */
 async function matchSeason(registry, keyword, folderParsed, videoCount, config) {
-  // Phase 1: Find main subject (handles romaji, multi-lang)
-  const result = await findMainSubject(registry, folderParsed, config);
-  if (!result) return null;
+  const bangumi = registry.get('bangumi');
+  if (!bangumi) return null;
 
-  // Phase 2: Build season chain, reusing search results from Phase 1
-  const { seasonMap, specials } = await buildSeasonChainFromMain(registry, result.detail, config, result.searchResults);
-  if (seasonMap.size === 0) return null;
+  // 1. Build search terms (multiple variations)
+  const searchTerms = buildSearchTerms(folderParsed, keyword);
 
-  // Select best match using folder's season/special info
-  const { specialSuffix } = extractBaseAndSuffix(folderParsed.title);
-  return selectBestMatch(seasonMap, folderParsed, videoCount, specials, specialSuffix);
+  // 2. Search by language route
+  const isRomaji = isPrimarilyRomaji(folderParsed.cleanTitle || folderParsed.title);
+  let results = [];
+  for (const term of searchTerms) {
+    if (isRomaji) {
+      results = await searchViaAniList(registry, bangumi, term, config);
+    } else {
+      results = await searchBangumi(bangumi, term, config);
+    }
+    if (results.length > 0) break;
+  }
+  if (results.length === 0) return null;
+
+  // 3. Pick best match using Sorensen-Dice
+  const best = pickBestBySimilarity(folderParsed.cleanTitle, results);
+
+  // 4. Get full detail
+  const detail = await bangumi.getSubjectDetail(best.id);
+  if (!detail) return null;
+
+  // 5. Validate (optional, for confidence reference)
+  const confidence = validateMatch(detail, folderParsed);
+
+  return {
+    ...detail,
+    source: 'bangumi',
+    matchedSeason: folderParsed.season || null,
+    confidence,
+  };
 }
 
 class ScraperRegistry {
   constructor() {
     this.scrapers = [];
-    this.defaultOrder = ['bangumi', 'anilist', 'tmdb'];
+    this.defaultOrder = ['bangumi', 'anilist'];
     this._searchCache = new Map();
     this._cacheTTL = 5 * 60 * 1000; // 5 minutes
   }
@@ -527,7 +265,7 @@ class ScraperRegistry {
   getSources(config) {
     if (!config) return [];
     if (config.apiSources && Array.isArray(config.apiSources)) {
-      return config.apiSources;
+      return config.apiSources.filter(s => s.type !== 'tmdb');
     }
     // Legacy format fallback
     const sources = [];
@@ -536,13 +274,6 @@ class ScraperRegistry {
         type: 'bangumi',
         url: config.scrapers.bangumi?.apiBase || 'https://api.bangumi.one',
         key: '',
-      });
-    }
-    if (config.scrapers?.tmdb?.enabled !== false && config.tmdbApiKey) {
-      sources.push({
-        type: 'tmdb',
-        url: 'https://api.themoviedb.org/3',
-        key: config.tmdbApiKey,
       });
     }
     return sources;
@@ -571,7 +302,6 @@ class ScraperRegistry {
         const res = await scraper.search(keyword, source);
         results.push(...res.map(r => ({ ...r, source: scraper.name, _sourceUrl: source.url })));
       } catch (e) {
-        // Try next source on failure
         logger.error(source.type, '@', source.url, 'search failed:', e.message);
       }
     }
@@ -596,61 +326,31 @@ class ScraperRegistry {
     if (!scraper) throw new Error(`Scraper not found: ${scraperName}`);
 
     const sources = this.getSources(config).filter(s => s.type === scraperName);
-    const source = sources[0]; // Use first matching source
+    const source = sources[0];
     if (!source) throw new Error(`No configured source for ${scraperName}`);
 
     if (typeof scraper.setSource === 'function') scraper.setSource(source);
     return scraper.fetchMetadata(title, coverDir, subjectId);
-  }
-
-  /**
-   * Batch fetch AniList details and build season chains
-   * Returns Map<anilistId, {detail, seasonChain}>
-   */
-  async batchFetchAniListSeasons(anilistIds, config) {
-    const anilist = this.get('anilist');
-    if (!anilist || !anilist.enabled(config)) return new Map();
-
-    const result = new Map();
-    const BATCH_SIZE = 10;
-
-    for (let i = 0; i < anilistIds.length; i += BATCH_SIZE) {
-      const batch = anilistIds.slice(i, i + BATCH_SIZE);
-      try {
-        const details = await anilist.batchGetDetails(batch);
-        for (const detail of details) {
-          const seasonChain = anilist.extractSeasonChain(detail);
-          result.set(detail.id, { detail, seasonChain });
-        }
-      } catch (e) {
-        logger.error('batchFetchAniListSeasons failed:', e.message);
-      }
-    }
-
-    return result;
   }
 }
 
 const registry = new ScraperRegistry();
 registry.register(new BangumiScraper());
 registry.register(new AniListScraper());
-registry.register(new TMDBScraper());
 
-module.exports = { 
-  registry, 
-  ScraperRegistry, 
+module.exports = {
+  registry,
+  ScraperRegistry,
   matchSeason,
-  buildSeasonChainFromMain,
-  findMainSubject,
-  selectBestMatch,
+  searchViaAniList,
+  searchBangumi,
+  pickBestBySimilarity,
+  buildSearchTerms,
+  validateMatch,
+  sorensenDice,
   normalizeTitle,
-  similarity,
-  calculateConfidence,
-  crossValidateMatches,
   detectSpecialType,
-  RELATION_TYPE,
-  generateSearchKeywords,
   extractBaseAndSuffix,
+  parallelMap,
   isPrimarilyRomaji,
-  parallelMap
 };

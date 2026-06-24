@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "concurrently -n server,tauri -c cyan,magenta \"npm run dev:server:watch\" \"npm run dev:tauri\"",
     "dev:server": "node server/server.js",
-    "dev:server:watch": "nodemon -w server -w public --ignore server/anime-data.json --ignore server/config.json server/server.js",
+    "dev:server:watch": "nodemon -w server -w public --ignore server/anime-data.json --ignore server/config.json --ignore server/scanned-tree.json --ignore server/prisma/ --ignore server/covers/ --ignore server/thumbs/ server/server.js",
     "dev:tauri": "tauri dev",
     "build": "npm run build:server && tauri build --bundles msi nsis",
     "build:msi": "npm run build:server && tauri build --bundles msi",

@@ -242,39 +242,40 @@ server.js: const ffmpegPath = require('ffmpeg-static') || 'ffmpeg';
 ### Play Start
 ```
 POST /api/play
-  → server.js (line ~540)
-  → Body: { episodeId, animeId, filePath, playerMode }
+  → server.js (line ~831)
+  → Body: { filePath, position }
+  → Validate filePath exists (fs.existsSync)
   → If mode === 'system':
-      ├─ spawn('cmd', ['/c', 'start', '', filePath], { detached })
+      ├─ exec(`start "" "${filePath}"`)
       └─ (no progress tracking possible)
   → If mode === 'mpv':
-      ├─ sessionId = `${Date.now()}-${Math.random().toString(36).slice(2)}`
-      ├─ spawn(mpvPath, ['--term-status-msg', filePath, ...])
-      ├─ Parse stderr for JSON lines: {"time-pos":...,"duration":...,"pause":...}
+      ├─ Find targetAnime/targetEp from data.library
+      ├─ Create playSession record in data.playSessions
       ├─ activePlays.set(filePath, { sessionId, episode, anime })
-      ├─ onProgress → update episode.progress, saveData() every 10s
-      └─ onClose (mpv exit):
-          ├─ Create PlaySession record { animeId, episodeNumber, sessionId,
-          │                               startTime, endTime, duration,
-          │                               clockTime, progressStart }
-          ├─ activePlays.delete(filePath)
-          ├─ Mark episode.status = 'completed' (if duration/clockTime > 0.8)
-          └─ saveData() with final:true
+      ├─ db.savePlaySessions(data) — only writes playSession table
+      ├─ startMpv(mpvPath, filePath, position, callbacks):
+      │   ├─ Spawn mpv with IPC pipe (--input-ipc-server)
+      │   ├─ onProgress (every 10s) → db.updateEpisodeProgress() + db.updatePlaySession()
+      │   ├─ onError → clean up session, return error to frontend via Promise
+      │   └─ onClose (code≠0 && lived<3s) → report crash to frontend
+      ├─ await Promise with 2s timeout (capture sync spawn errors)
+      └─ Return 200 OK or 500 { error: msg }
 ```
 
 ### Progress Update (manual via API)
 ```
 POST /api/progress
-  → server.js (line ~570)
-  → Body: { animeId, episodeNumber, progress, status }
-  → Update episode.progress and episode.status
-  → saveData() → JSON + SQLite
+  → server.js (line ~942)
+  → Body: { animeId, episodeNumber, progress, duration, watched }
+  → Update ep.progress/duration/watched in memory
+  → db.updateEpisodeProgress(animeId, epNumber, { progress, duration, watched })
+    (only writes episode table, no full saveData)
 ```
 
 ### Watch Stats
 ```
 GET /api/anime/:id/sessions
-  → server.js (line ~510)
+  → server.js (line ~950)
   → Query data.playSessions filtered by animeId
   → Return last 90 days grouped by date
   → Frontend: Canvas bar chart in detail.js renderWatchStats()
@@ -301,33 +302,43 @@ POST /api/memories
   → Frontend: open archive modal from detail view or memory page
 ```
 
-## 10. JSON + SQLite Dual-Write Flow
+## 10. Fine-Grained Save Flow
 
-### `saveData(data)` — server.js (line ~190)
+### Save Function Taxonomy (db.js)
+
+| Function | Writes | When to use |
+|----------|--------|-------------|
+| `db.saveLibrary(data)` | anime + episode tables | Import, delete, metadata fetch |
+| `db.saveMemories(data)` | memory table | Archive create/update |
+| `db.savePlaySessions(data)` | playSession table | Play start, mpv final/error |
+| `db.updateEpisodeProgress(id, n, fields)` | single episode row | mpv progress (every 10s), manual update |
+| `db.updatePlaySession(sid, fields)` | single playSession row | mpv progress (every 10s) |
+| `db.saveAll(data)` | all three tables in parallel | Full sync (fallback) |
+| `saveScannedTree(tree)` | `scanned-tree.json` (sync) | Scan, exclude, unlink, metadata |
+
+### `saveData(data)` — server.js (line ~175)
 ```
+// Composite: calls saveAll + saveScannedTree
 function saveData(data) {
-  // 1. JSON (sync, immediate)
-  fs.writeFileSync(dataPath, JSON.stringify(data, null, 2));
-  console.log('💾 Data saved');
-
-  // 2. SQLite (async, best-effort)
-  db.syncToSqlite(data).catch(e => console.error('SQLite sync error:', e));
+  const p1 = db.saveAll(data);
+  if (data.scannedTree !== undefined) {
+    saveScannedTree(data.scannedTree);
+  }
+  return p1;
 }
 ```
 
-### `db.syncToSqlite(data)` — db.js (line ~220)
-```
-async syncToSqlite(data) {
-  ├─ Upsert Anime records (upsertAnimeBatch)
-  │   ├─ Find by id → update or create
-  │   └─ Upsert episodes (delete old → re-insert)
-  ├─ Upsert PlaySession records
-  ├─ Upsert Memory records
-  └─ Upsert ScannedTree (delete all → re-insert all)
-}
-```
+### Call Site → Save Function Mapping
 
-### `db.loadData()` — db.js (line ~170)
+| Scenario | Save function used |
+|----------|-------------------|
+| Scan/browse/exclude/unlink/fetch-meta | `saveScannedTree()` |
+| Import, delete anime, bangumi fetch | `db.saveLibrary()` + `saveScannedTree()` |
+| Memory create/update | `db.saveMemories()` |
+| Play start, mpv final/error cleanup | `db.savePlaySessions()` |
+| Episode progress (manual/mpv) | `db.updateEpisodeProgress()` |
+
+### `db.loadData()` — db.js
 ```
 async loadData() {
   ├─ Read all Anime + Episode from SQLite
@@ -340,16 +351,38 @@ async loadData() {
 
 ### Persistence Guarantee
 ```
-JSON write: synchronous, always latest (authoritative)
-SQLite write: asynchronous, may lag (backup/replica)
-init(): load JSON first, then backfill from SQLite
-  → JSON wins on conflict (JSON may have newer data)
+Fine-grained writes: each function writes only its own SQLite table
+ScannedTree: sync JSON write (separate from SQLite)
+init(): load from SQLite, backfill consistency
 ```
 
 ## 11. Full HTTP Call Chain
 
 Each API request flows through:
 
+```
+http.createServer((req, res) => {
+  ├─ CORS headers (Access-Control-Allow-*)
+  ├─ Parse URL + method
+  ├─ Route matching:
+  │   ├─ Static files: public/ (index.html, css, js, vendor/)
+  │   ├─ API routes (/api/*):
+  │   │   ├─ Read body (if POST/PUT/DELETE)
+  │   │   ├─ Execute handler logic
+  │   │   ├─ Mutate global `data` (if applicable)
+  │   │   ├─ Fine-grained save (only affected table/file):
+  │   │   │   ├─ db.saveLibrary() — anime/episode changes
+  │   │   │   ├─ db.saveMemories() — memory changes
+  │   │   │   ├─ db.savePlaySessions() — play session changes
+  │   │   │   ├─ db.updateEpisodeProgress() — single episode update
+  │   │   │   ├─ db.updatePlaySession() — single session update
+  │   │   │   └─ saveScannedTree() — scanned tree JSON
+  │   │   └─ jsonResp(res, status, payload)
+  │   └─ Cover/thumbnail routes:
+  │       ├─ /covers/* → serveImage() → ffmpeg resize pipeline
+  │       └─ /api/thumbnail → ffmpeg extract → serveImage()
+  └─ 404 fallback
+})
 ```
 http.createServer((req, res) => {
   ├─ CORS headers (Access-Control-Allow-*)
@@ -373,10 +406,10 @@ http.createServer((req, res) => {
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| `server/server.js` | ~1154 | HTTP server, routes, saveData, init, play sessions, cover serving |
-| `server/db.js` | ~391 | Prisma wrapper: loadData, syncToSqlite, shutdown, pkg paths |
-| `server/scanner.js` | ~323 | Media directory scanner, folder name parsing (anitomy) |
-| `server/mpv-controller.js` | ~146 | mpv process spawn, stderr parsing, progress tracking |
+| `server/server.js` | ~1468 | HTTP server, routes, fine-grained saves, init, play sessions, cover serving |
+| `server/db.js` | ~465 | Prisma wrapper: saveLibrary, saveMemories, savePlaySessions, loadData, updateEpisodeProgress, updatePlaySession |
+| `server/scanner.js` | ~372 | Media directory scanner, folder name parsing (anitomy) |
+| `server/mpv-controller.js` | ~177 | mpv process spawn, IPC progress tracking, error/crash reporting |
 | `server/scrapers/index.js` | ~557 | ScraperRegistry: multi-source metadata aggregation |
 | `server/scrapers/bangumi.js` | — | Bangumi API client + cover download |
 | `server/scrapers/tmdb.js` | — | TMDB API client + cover download |
@@ -392,10 +425,12 @@ http.createServer((req, res) => {
 
 ## Key Gotchas
 
-1. **JSON is authoritative**: `saveData()` writes JSON synchronously (always current), SQLite asynchronously (may lag). `init()` loads JSON first, SQLite only backfills.
+1. **Fine-grained saves**: Each API endpoint only writes the SQLite table(s) it actually modifies. `saveScannedTree()` writes `scanned-tree.json` (sync). `saveData()` is a composite fallback for multi-type changes.
 2. **Fetch in pkg**: Global `fetch()` is unavailable in pkg-bundled Node.js. `node-fetch.js` polyfill with http/https native modules replaces it in scrapers.
 3. **ffmpeg path**: Dev mode uses `require('ffmpeg-static')` from server/node_modules. pkg mode sets `FFMPEG_BIN` env var → `sidecar-modules/ffmpeg.exe` (copied during build by copy-sidecar-deps.js).
 4. **DATA_DIR differs**: Dev = `server/`, pkg/MSI = `%APPDATA%/com.myanimedocker.app`. File paths (config.json, anime-data.json, covers/, thumbs/) all resolve through DATA_DIR.
 5. **covers/ migration**: Covers downloaded in dev mode go to `server/covers/`. After MSI install, covers must be re-fetched (new AppData path). `init()` validates localCover existence and clears missing ones → gray placeholder shown.
-6. **Play sessions**: `activePlays` Map is in-memory only (lost on server restart). Persisted playSessions survive in JSON + SQLite.
+6. **Play sessions**: `activePlays` Map is in-memory only (lost on server restart). Persisted playSessions survive in SQLite.
 7. **CSS zoom** (`uiScale`): Applied via `document.documentElement.style.fontSize = (16 * scale/100) + 'px'`. All font sizes use rem units. Card grid min widths also in rem.
+8. **mpv error propagation**: `/api/play` uses Promise with 2s timeout to capture spawn errors. `mpv-controller.js` reports ENOENT/early crashes via `onError` callback. Frontend sees "播放失败: ..." toast.
+9. **nodemon data ignore**: `dev:server:watch` must ignore `server/prisma/`, `server/covers/`, `server/thumbs/`, `server/scanned-tree.json` to prevent data writes from triggering server restarts.

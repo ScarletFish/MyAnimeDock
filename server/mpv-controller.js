@@ -37,7 +37,16 @@ function startMpv(mpvPath, filePath, position, callbacks) {
         `--input-ipc-server=${pipePath}`,
     ];
 
-    mpvProcess = spawn(mpvPath, args, { windowsHide: isWin, stdio: ['pipe', 'ignore', 'ignore'] });
+    const spawnTime = Date.now();
+    logger.info(`Spawning: ${mpvPath} ${args.join(' ')}`);
+    try {
+        mpvProcess = spawn(mpvPath, args, { stdio: ['pipe', 'ignore', 'ignore'] });
+    } catch (e) {
+        logger.error('mpv spawn threw:', e.message);
+        if (callbacks.onError) callbacks.onError(`mpv 启动异常: ${e.message}`);
+        return { stop: () => {}, kill: () => {} };
+    }
+    logger.info(`mpv spawned with pid=${mpvProcess.pid}`);
 
     function ipcWrite(obj) {
         if (ipcClient && running) {
@@ -115,6 +124,12 @@ function startMpv(mpvPath, filePath, position, callbacks) {
     mpvProcess.on('close', (code) => {
         if (!running) return;
         clearInterval(progressInterval);
+        const lived = Date.now() - spawnTime;
+        logger.info(`mpv closed: code=${code} lived=${lived}ms`);
+        if (code !== 0 && lived < 3000) {
+            // mpv crashed shortly after start — report error to frontend
+            if (callbacks.onError) callbacks.onError(`mpv 退出 (code=${code})，请检查路径和依赖`);
+        }
         callbacks.onProgress({
             filePath,
             progress: currentPos,

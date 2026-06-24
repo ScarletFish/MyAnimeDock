@@ -171,7 +171,7 @@ function saveScannedTree(tree) {
   }
 }
 
-/** 持久化保存。返回 promise，调用方可 await 确保写入完成。 */
+/** 持久化保存（全量，用于多类型数据同时变更）。 */
 function saveData(data) {
   const p1 = db.saveAll(data);
   if (data.scannedTree !== undefined) {
@@ -395,7 +395,7 @@ const server = http.createServer((req, res) => {
         };
         tree = flatten(tree);
         data.scannedTree = tree;
-        saveData(data);
+        saveScannedTree(data.scannedTree);
       }
       const libraryPaths = new Set(data.library.map(a => a.folderPath));
       for (const n of tree) {
@@ -468,7 +468,7 @@ const server = http.createServer((req, res) => {
         }
       }
       data.scannedTree = tree;
-      saveData(data);
+      saveScannedTree(data.scannedTree);
       send({ type: 'done', tree });
 
       // Background prefetch AniList data for romaji titles
@@ -548,7 +548,7 @@ const server = http.createServer((req, res) => {
           scannedNode.excluded = false;
         }
       }
-      saveData(data);
+      Promise.all([db.saveLibrary(data), saveScannedTree(data.scannedTree)]);
       jsonResp(res, 200, { ok: true, imported });
     }).catch(e => {
       jsonResp(res, 400, { error: 'Invalid request body' });
@@ -586,7 +586,7 @@ const server = http.createServer((req, res) => {
         scannedNode.rating = null;
         scannedNode.metadataSource = null;
       }
-      saveData(data);
+      saveScannedTree(data.scannedTree);
       jsonResp(res, 200, { ok: true });
     }).catch(e => {
       jsonResp(res, 400, { error: 'Invalid request body' });
@@ -608,7 +608,7 @@ const server = http.createServer((req, res) => {
         return;
       }
       node.excluded = true;
-      saveData(data);
+      saveScannedTree(data.scannedTree);
       jsonResp(res, 200, { ok: true });
     }).catch(e => {
       jsonResp(res, 400, { error: 'Invalid request body' });
@@ -630,7 +630,7 @@ const server = http.createServer((req, res) => {
         return;
       }
       node.excluded = false;
-      saveData(data);
+      saveScannedTree(data.scannedTree);
       jsonResp(res, 200, { ok: true });
     }).catch(e => {
       jsonResp(res, 400, { error: 'Invalid request body' });
@@ -689,7 +689,7 @@ const server = http.createServer((req, res) => {
         node.localCover = meta.localCover;
         node.rating = meta.rating;
         node.metadataSource = meta.source;
-        saveData(data);
+        saveScannedTree(data.scannedTree);
         jsonResp(res, 200, { ok: true, meta, node });
       } catch (e) {
         jsonResp(res, 500, { error: e.message });
@@ -779,7 +779,7 @@ const server = http.createServer((req, res) => {
       scannedNode.metadataSource = null;
     }
     // await persistence so data survives restart
-    saveData(data).then(() => jsonResp(res, 200, { ok: true })).catch(e => {
+    Promise.all([db.saveLibrary(data), saveScannedTree(data.scannedTree)]).then(() => jsonResp(res, 200, { ok: true })).catch(e => {
       logger.error('Delete save error:', e);
       jsonResp(res, 500, { error: 'Failed to persist' });
     });
@@ -819,7 +819,7 @@ const server = http.createServer((req, res) => {
         };
         data.memories.push(existing);
       }
-      saveData(data);
+      db.saveMemories(data);
       jsonResp(res, 200, { ok: true, memory: existing });
     }).catch(e => {
       jsonResp(res, 400, { error: 'Invalid request body' });
@@ -829,7 +829,7 @@ const server = http.createServer((req, res) => {
 
   // --- API: play video ---
   if (urlPath === '/api/play' && req.method === 'POST') {
-    readBody(req).then(body => {
+    readBody(req).then(async body => {
       const { filePath, position } = JSON.parse(body);
       if (!filePath) {
         jsonResp(res, 400, { error: 'filePath is required' });
@@ -869,54 +869,67 @@ const server = http.createServer((req, res) => {
             progressStart: position || 0,
           });
           activePlays.set(filePath, { sessionId, episode: targetEp, anime: targetAnime });
-          saveData(data);
+          db.savePlaySessions(data);
         }
         const { startMpv } = require('./mpv-controller');
         try {
-          startMpv(mpvPath, filePath, position || 0, {
-            onProgress: ({ filePath: fp, progress, peakPos, watched, duration, final }) => {
-              const active = activePlays.get(fp);
-              if (active) {
-                const ep = active.episode;
-                ep.progress = progress;
-                if (duration > 0) ep.duration = duration;
-                if (watched) ep.watched = true;
-                // 精细化 SQLite 更新（不触发全量 saveData）
-                db.updateEpisodeProgress(active.anime.id, ep.number, { progress, duration: duration > 0 ? duration : undefined, watched });
-                if (active.sessionId) {
-                  const session = data.playSessions.find(s => s.sessionId === active.sessionId);
-                  if (session) {
-                    session.duration = Math.max(0, (peakPos || progress) - (session.progressStart || 0));
-                    session.endTime = new Date().toISOString();
-                    if (final) {
-                      const startMs = new Date(session.startTime).getTime();
-                      session.clockTime = Math.round((Date.now() - startMs) / 1000);
+          let settled = false;
+          let spawnError = null;
+          const spawnResult = await new Promise((resolve) => {
+            startMpv(mpvPath, filePath, position || 0, {
+              onProgress: ({ filePath: fp, progress, peakPos, watched, duration, final }) => {
+                const active = activePlays.get(fp);
+                if (active) {
+                  const ep = active.episode;
+                  ep.progress = progress;
+                  if (duration > 0) ep.duration = duration;
+                  if (watched) ep.watched = true;
+                  db.updateEpisodeProgress(active.anime.id, ep.number, { progress, duration: duration > 0 ? duration : undefined, watched });
+                  if (active.sessionId) {
+                    const session = data.playSessions.find(s => s.sessionId === active.sessionId);
+                    if (session) {
+                      session.duration = Math.max(0, (peakPos || progress) - (session.progressStart || 0));
+                      session.endTime = new Date().toISOString();
+                      if (final) {
+                        const startMs = new Date(session.startTime).getTime();
+                        session.clockTime = Math.round((Date.now() - startMs) / 1000);
+                      }
+                      db.updatePlaySession(active.sessionId, {
+                        endTime: session.endTime,
+                        duration: session.duration,
+                        clockTime: final ? session.clockTime : undefined,
+                      });
                     }
-                    db.updatePlaySession(active.sessionId, {
-                      endTime: session.endTime,
-                      duration: session.duration,
-                      clockTime: final ? session.clockTime : undefined,
-                    });
+                  }
+                  if (final) {
+                    activePlays.delete(fp);
+                    db.savePlaySessions(data);
                   }
                 }
-                if (final) {
-                  activePlays.delete(fp);
-                  saveData(data); // final 时全量 save 确保 playSession 持久化
+              },
+              onError: (msg) => {
+                const active = activePlays.get(filePath);
+                if (active && active.sessionId) {
+                  const idx = data.playSessions.findIndex(s => s.sessionId === active.sessionId);
+                  if (idx !== -1) data.playSessions.splice(idx, 1);
+                  activePlays.delete(filePath);
+                  db.savePlaySessions(data);
                 }
-              }
-            },
-            onError: (msg) => {
-              const active = activePlays.get(filePath);
-              if (active && active.sessionId) {
-                const idx = data.playSessions.findIndex(s => s.sessionId === active.sessionId);
-                if (idx !== -1) data.playSessions.splice(idx, 1);
-                activePlays.delete(filePath);
-                saveData(data);
-              }
-              logger.error('mpv error:', msg);
-            },
+                spawnError = msg;
+                logger.error('mpv error:', msg);
+                if (!settled) { settled = true; resolve({ error: msg }); }
+              },
+            });
+            // Timeout: if no error within 2s, assume mpv launched successfully
+            setTimeout(() => {
+              if (!settled) { settled = true; resolve(null); }
+            }, 2000);
           });
-          jsonResp(res, 200, { ok: true });
+          if (spawnResult?.error) {
+            jsonResp(res, 500, { error: spawnResult.error });
+          } else {
+            jsonResp(res, 200, { ok: true });
+          }
         } catch (e) {
           jsonResp(res, 500, { error: e.message });
         }
@@ -953,7 +966,7 @@ const server = http.createServer((req, res) => {
       if (progress !== undefined) ep.progress = progress;
       if (duration !== undefined) ep.duration = duration;
       if (watched !== undefined) ep.watched = watched;
-      saveData(data);
+      db.updateEpisodeProgress(animeId, episodeNumber, { progress, duration, watched });
       jsonResp(res, 200, { ok: true, episode: ep });
     }).catch(e => jsonResp(res, 400, { error: 'Invalid request body' }));
     return;
@@ -1020,7 +1033,7 @@ const server = http.createServer((req, res) => {
           if (matchInfo.matchedSeason != null) anime.matchedSeason = matchInfo.matchedSeason;
           if (matchInfo.totalSeasons != null) anime.totalSeasons = matchInfo.totalSeasons;
         }
-        saveData(data);
+        Promise.all([db.saveLibrary(data), saveScannedTree(data.scannedTree)]);
         jsonResp(res, 200, { ok: true, anime });
       } catch (e) {
         jsonResp(res, 500, { error: e.message });
@@ -1105,7 +1118,7 @@ const server = http.createServer((req, res) => {
         }, 3);
 
         results.push(...syncResults);
-        saveData(data);
+        Promise.all([db.saveLibrary(data), saveScannedTree(data.scannedTree)]);
         registry.clearSearchCache();
         jsonResp(res, 200, { ok: true, results });
       } catch (e) {
@@ -1170,7 +1183,7 @@ const server = http.createServer((req, res) => {
         send('cancelled', { ok: true });
         break;
       }
-      if (index > 0 && index % 5 === 0) saveData(data);
+      if (index > 0 && index % 5 === 0) Promise.all([db.saveLibrary(data), saveScannedTree(data.scannedTree)]);
 
       const anime = data.library.find(a => a.id === animeId);
       if (!anime) {
@@ -1238,7 +1251,7 @@ const server = http.createServer((req, res) => {
       }
     }
 
-      saveData(data);
+      Promise.all([db.saveLibrary(data), saveScannedTree(data.scannedTree)]);
       registry.clearSearchCache();
       cancelledSyncSessions.delete(sessionId);
       send('done', { ok: true });

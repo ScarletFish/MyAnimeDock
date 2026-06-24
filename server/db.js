@@ -273,24 +273,29 @@ async function loadData() {
 // scannedTree 由 server.js 独立写入 JSON 文件
 async function saveAll(data) {
   if (!data) return;
-  const p = getPrisma();
+  await Promise.all([
+    saveLibrary(data),
+    saveMemories(data),
+    savePlaySessions(data),
+  ]);
+}
 
+async function saveLibrary(data) {
+  if (!data) return;
+  const p = getPrisma();
   try {
     await p.$transaction(async (tx) => {
-      // ── Library / Anime ──
       const existingIds = new Set(
         (await tx.anime.findMany({ select: { id: true } })).map(a => a.id)
       );
       const currentIds = new Set(data.library.map(a => a.id));
 
-      // 删除已被移除的 anime
       for (const id of existingIds) {
         if (!currentIds.has(id)) {
           await tx.anime.delete({ where: { id } });
         }
       }
 
-      // Upsert anime + episodes
       for (const a of data.library) {
         let ratingVal = a.rating;
         if (ratingVal != null && typeof ratingVal !== 'number') {
@@ -321,7 +326,6 @@ async function saveAll(data) {
           update: animeData,
         });
 
-        // Episodes：全量替换（删除已有 → 重新插入）
         if (a.episodes && a.episodes.length > 0) {
           await tx.episode.deleteMany({ where: { animeId: a.id } });
           await tx.episode.createMany({
@@ -338,8 +342,20 @@ async function saveAll(data) {
           });
         }
       }
+    });
+    logger.info(`Synced library: ${data.library.length} anime`);
+  } catch (e) {
+    logger.error('SQLite library save error:', e.message);
+    throw e;
+  }
+}
 
-      // ── Memories ──
+async function saveMemories(data) {
+  if (!data) return;
+  const p = getPrisma();
+  try {
+    await p.$transaction(async (tx) => {
+      const currentIds = new Set(data.library.map(a => a.id));
       await tx.memory.deleteMany();
       const validMemories = (data.memories || []).filter(m => currentIds.has(m.animeId));
       if (validMemories.length > 0) {
@@ -360,9 +376,19 @@ async function saveAll(data) {
       if (validMemories.length < (data.memories || []).length) {
         logger.warn(`SQLite sync: skipped ${(data.memories||[]).length - validMemories.length} orphan memories`);
       }
+    });
+  } catch (e) {
+    logger.error('SQLite memories save error:', e.message);
+    throw e;
+  }
+}
 
-      // ── Play Sessions ──
-      // 1) Delete orphan sessions whose anime was removed
+async function savePlaySessions(data) {
+  if (!data) return;
+  const p = getPrisma();
+  try {
+    await p.$transaction(async (tx) => {
+      const currentIds = new Set(data.library.map(a => a.id));
       if (currentIds.size > 0) {
         await tx.playSession.deleteMany({
           where: { animeId: { notIn: Array.from(currentIds) } },
@@ -371,7 +397,6 @@ async function saveAll(data) {
         await tx.playSession.deleteMany();
       }
 
-      // 2) Upsert sessions that still belong to existing anime
       const validSessions = (data.playSessions || []).filter(s => currentIds.has(s.animeId));
       for (const s of validSessions) {
         await tx.playSession.upsert({
@@ -394,11 +419,9 @@ async function saveAll(data) {
         });
       }
     });
-
-    logger.info(`Synced to SQLite: ${data.library.length} anime`);
   } catch (e) {
-    logger.error('SQLite save error:', e.message);
-    throw e; // 让调用方知道写入失败
+    logger.error('SQLite playSessions save error:', e.message);
+    throw e;
   }
 }
 
@@ -439,4 +462,4 @@ async function updatePlaySession(sessionId, fields) {
   }
 }
 
-module.exports = { loadData, saveAll, updateEpisodeProgress, updatePlaySession, shutdown, getPrisma, ensureSchema };
+module.exports = { loadData, saveAll, saveLibrary, saveMemories, savePlaySessions, updateEpisodeProgress, updatePlaySession, shutdown, getPrisma, ensureSchema };

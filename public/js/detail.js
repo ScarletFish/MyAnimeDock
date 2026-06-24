@@ -990,16 +990,15 @@ async function attachBangumiSubject(animeId, subjectId) {
 
 async function deleteAnime() {
   if (!currentAnime) return;
-  if (!confirm(`确定要从资料库移除「${currentAnime.title}」吗？\n观看记录将被保留。`)) return;
+  if (!(await showConfirm(`确定要彻底删除「${currentAnime.title}」吗？<br>数据将被清除，不可恢复。`))) return;
 
   try {
     await API.del(`/api/anime/${encodeURIComponent(currentAnime.id)}`);
-    showToast('已移除');
+    showToast('已删除');
     goBack();
     loadLibrary();
-    loadMemories();
   } catch (e) {
-    showToast('移除失败: ' + e.message);
+    showToast('删除失败: ' + e.message);
   }
 }
 

@@ -84,7 +84,7 @@ if (process.pkg) {
 // 首次启动时 anime.db 不存在，PrismaClient 连接后自动创建空文件，
 // 但不会创建表。以下 SQL 在首次启动时自建制表（CREATE TABLE IF NOT EXISTS）。
 const INIT_SQL = [
-  `CREATE TABLE IF NOT EXISTS "Anime" ("id" TEXT NOT NULL PRIMARY KEY, "folderPath" TEXT NOT NULL, "folderName" TEXT NOT NULL, "title" TEXT NOT NULL, "season" INTEGER, "importedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "downloaded" BOOLEAN NOT NULL DEFAULT true, "bangumiId" INTEGER, "bangumiTitle" TEXT, "bangumiTitleJp" TEXT, "summary" TEXT, "coverUrl" TEXT, "localCover" TEXT, "rating" REAL, "source" TEXT, "pinyinTitle" TEXT, "metadata" TEXT)`,
+  `CREATE TABLE IF NOT EXISTS "Anime" ("id" TEXT NOT NULL PRIMARY KEY, "folderPath" TEXT NOT NULL, "folderName" TEXT NOT NULL, "title" TEXT NOT NULL, "season" INTEGER, "importedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "downloaded" BOOLEAN NOT NULL DEFAULT true, "bangumiId" INTEGER, "bangumiTitle" TEXT, "bangumiTitleJp" TEXT, "summary" TEXT, "coverUrl" TEXT, "localCover" TEXT, "rating" REAL, "source" TEXT, "pinyinTitle" TEXT, "matchedSeason" INTEGER, "totalSeasons" INTEGER, "metadata" TEXT)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "Anime_folderPath_key" ON "Anime"("folderPath")`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "Anime_bangumiId_key" ON "Anime"("bangumiId")`,
   `CREATE INDEX IF NOT EXISTS "Anime_bangumiId_idx" ON "Anime"("bangumiId")`,
@@ -147,6 +147,19 @@ async function ensureSchema() {
         await tempClient.$executeRawUnsafe(sql);
       }
       logger.info('Database schema initialized.');
+    }
+    // 迁移：为旧数据库添加缺失的列（如果有）
+    const columnsToAdd = [
+      { col: 'matchedSeason', def: '"matchedSeason" INTEGER' },
+      { col: 'totalSeasons', def: '"totalSeasons" INTEGER' },
+    ];
+    for (const c of columnsToAdd) {
+      try {
+        await tempClient.$executeRawUnsafe(`ALTER TABLE "Anime" ADD COLUMN ${c.def}`);
+        logger.info(`Added column ${c.col} to Anime table`);
+      } catch (_) {
+        // column already exists, ignore
+      }
     }
     await tempClient.$disconnect();
   } catch (e) {
@@ -279,6 +292,12 @@ async function syncToSqlite(data) {
 
       // Upsert anime + episodes
       for (const a of data.library) {
+        // Normalize rating to number|null (old JSON data may store it as string)
+        let ratingVal = a.rating;
+        if (ratingVal != null && typeof ratingVal !== 'number') {
+          ratingVal = parseFloat(ratingVal);
+          if (isNaN(ratingVal)) ratingVal = null;
+        }
         const animeData = {
           folderPath: a.folderPath,
           folderName: a.folderName,
@@ -292,7 +311,7 @@ async function syncToSqlite(data) {
           summary: a.summary,
           coverUrl: a.coverUrl,
           localCover: a.localCover,
-          rating: a.rating,
+          rating: ratingVal,
           source: a.source,
           pinyinTitle: a.pinyinTitle,
         };

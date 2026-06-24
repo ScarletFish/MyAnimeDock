@@ -2793,6 +2793,20 @@ html {
   margin-top: 4px;
 }
 
+/* ─── Input with inline browse/action buttons ─── */
+.input-with-btn {
+  display: flex;
+  gap: 6px;
+}
+.input-with-btn input[type="text"] {
+  flex: 1;
+  min-width: 0;
+}
+.input-with-btn .btn-sm {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 /* ─── Custom Checkbox ─── */
 .checkbox-label {
   display: inline-flex !important;

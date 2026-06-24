@@ -20,6 +20,10 @@ function startMpv(mpvPath, filePath, position, callbacks) {
     let ipcBuffer = '';
 
     const isWin = process.platform === 'win32';
+    // Windows: prefer mpv.exe for proper window foreground behavior
+    if (isWin && (mpvPath === 'mpv' || mpvPath === 'mpv.com')) {
+        mpvPath = 'mpv.exe';
+    }
     const pipeName = `mpv-ipc-${process.pid}-${sessionId}`;
     const pipePath = isWin
         ? `\\\\.\\pipe\\${pipeName}`
@@ -49,6 +53,17 @@ function startMpv(mpvPath, filePath, position, callbacks) {
             ipcWrite({ command: ['observe_property', 1, 'time-pos'] });
             ipcWrite({ command: ['observe_property', 2, 'duration'] });
             ipcWrite({ command: ['observe_property', 3, 'pause'] });
+            // 窗口已前置弹出，延迟解除 ontop 避免永久置顶
+            setTimeout(() => {
+                try {
+                    if (running) {
+                        ipcWrite({ command: ['set', 'ontop', 'no'] });
+                        logger.info('ontop disabled after initial show');
+                    }
+                } catch (e) {
+                    logger.warn('ontop disable failed:', e.message);
+                }
+            }, 2000);
         });
 
         ipcClient.on('data', (data) => {

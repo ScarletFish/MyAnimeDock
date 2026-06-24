@@ -30,14 +30,10 @@ goto MENU
 cls
 echo --- Tauri Dev One-click ---
 echo.
-echo Starting dev server (new window)...
-start "MyAnimeDocker Server" cmd /c "npm run dev:server:watch"
-echo Waiting for server...
-timeout /t 4 /nobreak >nul
-echo Opening Tauri dev window...
-echo Tip: close Server window manually after closing Tauri
+echo Starting server + Tauri in current window...
+echo Press Ctrl+C to stop both
 echo.
-call npm run dev:tauri
+call npm run dev
 echo.
 echo [Done]
 pause

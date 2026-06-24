@@ -1,0 +1,11 @@
+{
+  "$schema": "https://schema.tauri.app/config/2/capability.json",
+  "identifier": "dialog-capability",
+  "description": "Native file/directory selection dialogs for settings",
+  "windows": ["main"],
+  "permissions": [
+    "dialog:default",
+    "dialog:allow-open",
+    "dialog:allow-confirm"
+  ]
+}

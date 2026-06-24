@@ -8,7 +8,7 @@ Vanilla JS SPA + Node.js HTTP server. 自托管动漫媒体库管理器。
 npm run dev:server   # Start Node.js server on port 3456
 npm run dev:server:watch  # Nodemon 自动重启（监听 server/ + public/ 变化）
 npm run dev:tauri    # Start Tauri dev window (requires server running first)
-npm run dev          # Start both server + Tauri concurrently
+npm run dev          # Start both server (nodemon) + Tauri concurrently (single terminal)
 npm run build        # Build pkg sidecar + Tauri MSI/NSIS installer
 npm run build:server # Build standalone pkg sidecar executable
 npm run build:exe    # Build Tauri release EXE only (no MSI/NSIS, ~1min)

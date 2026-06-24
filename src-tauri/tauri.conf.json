@@ -8,6 +8,7 @@
     "frontendDist": "../public"
   },
   "app": {
+    "withGlobalTauri": true,
     "windows": [
       {
         "title": "MyAnimeDocker",

@@ -492,7 +492,10 @@
       <div class="settings-panel active" id="tab-basic">
         <div class="form-group">
           <label for="settingsMediaDir">媒体目录路径</label>
-          <input type="text" id="settingsMediaDir" placeholder="E:/Anime">
+          <div class="input-with-btn">
+            <input type="text" id="settingsMediaDir" placeholder="E:/Anime">
+            <button class="btn btn-sm" onclick="browseFolder('settingsMediaDir')" title="选择文件夹">浏览</button>
+          </div>
           <p class="form-hint">动漫文件夹所在的根目录</p>
         </div>
         <div class="form-group">
@@ -521,7 +524,10 @@
         </div>
         <div class="form-group" id="mpvPathGroup" style="display:none">
           <label for="settingsMpvPath">mpv 可执行文件路径</label>
-          <input type="text" id="settingsMpvPath" placeholder="mpv">
+          <div class="input-with-btn">
+            <input type="text" id="settingsMpvPath" placeholder="mpv">
+            <button class="btn btn-sm" onclick="browseFile('settingsMpvPath')" title="选择文件">浏览</button>
+          </div>
         </div>
         <div class="form-group">
           <label class="checkbox-label">

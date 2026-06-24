@@ -77,6 +77,14 @@ const pinyinModule = require('pinyin');
 const pinyinFn = pinyinModule.pinyin || pinyinModule.default || pinyinModule;
 bootLog('All modules loaded OK');
 
+// ── 全局 Promise 拒绝处理，防止未捕获拒绝导致进程退出 ──
+process.on('unhandledRejection', (reason, promise) => {
+  logger.warn('Unhandled Rejection:', reason?.message || reason);
+});
+process.on('uncaughtException', (err) => {
+  logger.error('Uncaught Exception:', err?.message || err);
+});
+
 // 前端静态资源目录：pkg 打包后在临时解压目录（__dirname），开发模式在脚本上级目录（public/ 在项目根）
 const ASSET_DIR = path.join(__dirname, '..');
 const CONFIG_PATH = path.join(DATA_DIR, 'config.json');
@@ -543,19 +551,22 @@ const server = http.createServer((req, res) => {
         jsonResp(res, 404, { error: 'Anime not found in library' });
         return;
       }
-      const removed = data.library.splice(idx, 1)[0];
-      if (!data.memories.find(m => m.animeId === removed.id)) {
-        data.memories.push({
-          animeId: removed.id,
-          title: removed.title,
-          bangumiId: removed.bangumiId,
-          bangumiTitle: removed.bangumiTitle,
-          rating: null,
-          thoughts: '',
-          notes: '',
-          watchedAt: new Date().toISOString(),
-          coverLocal: removed.localCover,
-        });
+      data.library.splice(idx, 1);
+      // Clear scannedTree metadata so Discovery view reflects the change
+      const scannedNode = data.scannedTree && data.scannedTree.find(n => n.path === path);
+      if (scannedNode) {
+        scannedNode.alreadyImported = false;
+        scannedNode.bangumiMatched = false;
+        scannedNode.bangumiId = null;
+        scannedNode.bangumiTitle = null;
+        scannedNode.bangumiTitleJp = null;
+        scannedNode.bangumiTitleEn = null;
+        scannedNode.bangumiTitleRomaji = null;
+        scannedNode.summary = null;
+        scannedNode.coverUrl = null;
+        scannedNode.localCover = null;
+        scannedNode.rating = null;
+        scannedNode.metadataSource = null;
       }
       saveData(data);
       jsonResp(res, 200, { ok: true });
@@ -674,6 +685,8 @@ const server = http.createServer((req, res) => {
   // --- API: library list ---
   if (urlPath === '/api/library' && req.method === 'GET') {
     data.library.forEach(a => {
+      // 防御：episodes 可能存为数字（旧数据），统一转为数组
+      if (a.episodes != null && !Array.isArray(a.episodes)) a.episodes = [];
       const name = a.bangumiTitle || a.title || '';
       try {
         a.pinyinTitle = pinyinFn(name).map(p => (p[0] || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')).join('');
@@ -722,7 +735,7 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // --- API: delete anime (remove from library, keep memory) ---
+  // --- API: delete anime (remove from library permanently) ---
   if (urlPath.startsWith('/api/anime/') && req.method === 'DELETE') {
     const id = decodeURIComponent(urlPath.slice('/api/anime/'.length));
     const idx = data.library.findIndex(a => a.id === id);
@@ -731,19 +744,21 @@ const server = http.createServer((req, res) => {
       return;
     }
     const removed = data.library.splice(idx, 1)[0];
-    // Auto-archive to memory if not exists
-    if (!data.memories.find(m => m.animeId === removed.id)) {
-      data.memories.push({
-        animeId: removed.id,
-        title: removed.title,
-        bangumiId: removed.bangumiId,
-        bangumiTitle: removed.bangumiTitle,
-        rating: null,
-        thoughts: '',
-        notes: '',
-        watchedAt: new Date().toISOString(),
-        coverLocal: removed.localCover,
-      });
+    // Clear metadata in scannedTree so Discovery view reflects the removal
+    const scannedNode = data.scannedTree && data.scannedTree.find(n => n.path === removed.folderPath);
+    if (scannedNode) {
+      scannedNode.alreadyImported = false;
+      scannedNode.bangumiMatched = false;
+      scannedNode.bangumiId = null;
+      scannedNode.bangumiTitle = null;
+      scannedNode.bangumiTitleJp = null;
+      scannedNode.bangumiTitleEn = null;
+      scannedNode.bangumiTitleRomaji = null;
+      scannedNode.summary = null;
+      scannedNode.coverUrl = null;
+      scannedNode.localCover = null;
+      scannedNode.rating = null;
+      scannedNode.metadataSource = null;
     }
     saveData(data);
     jsonResp(res, 200, { ok: true });

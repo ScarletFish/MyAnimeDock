@@ -155,6 +155,41 @@ function goBack() {
   showView(target);
 }
 
+// ─── Modal confirm (replaces window.confirm, works in Tauri too) ───
+function showConfirm(message) {
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.style.zIndex = '9999';
+    overlay.innerHTML = `
+      <div class="modal" style="max-width:420px;text-align:center">
+        <p style="margin:0 0 24px;line-height:1.6;color:var(--text1);font-size:15px">${message}</p>
+        <div class="modal-actions" style="justify-content:center;gap:12px">
+          <button class="btn btn-ghost confirm-cancel" style="min-width:80px">取消</button>
+          <button class="btn btn-danger confirm-ok" style="min-width:80px">确认</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    // Trigger show transition
+    requestAnimationFrame(() => overlay.classList.add('show'));
+
+    const close = (result) => {
+      overlay.classList.remove('show');
+      setTimeout(() => overlay.remove(), 200);
+      resolve(result);
+    };
+
+    overlay.addEventListener('click', e => {
+      if (e.target === overlay) close(false);
+    });
+    overlay.querySelector('.confirm-cancel').addEventListener('click', () => close(false));
+    overlay.querySelector('.confirm-ok').addEventListener('click', () => close(true));
+    overlay.querySelector('.confirm-ok').focus();
+  });
+}
+
 // Toast
 function showToast(msg) {
   const t = document.getElementById('toast');
@@ -187,6 +222,57 @@ const path = {
     return p.split(/[\\/]/).pop();
   }
 };
+
+// ─── Native file/directory dialogs (Tauri) ───
+
+async function openDialog(options) {
+  // Tauri v2 withGlobalTauri: plugin API 直接挂载在 __TAURI__.dialog
+  if (window.__TAURI__?.dialog?.open) {
+    return await window.__TAURI__.dialog.open(options);
+  }
+  // 回退：raw invoke
+  if (window.__TAURI__?.invoke) {
+    return await window.__TAURI__.invoke('plugin:dialog:open', { options });
+  }
+  if (window.__TAURI__?.core?.invoke) {
+    return await window.__TAURI__.core.invoke('plugin:dialog:open', { options });
+  }
+  return null;
+}
+
+async function browseFolder(inputId) {
+  try {
+    const selected = await openDialog({
+      directory: true,
+      multiple: false,
+      title: '选择媒体目录'
+    });
+    if (selected) {
+      document.getElementById(inputId).value = selected;
+    } else if (!window.__TAURI__) {
+      showToast('浏览器模式下请在输入框中手动输入路径');
+    }
+  } catch (e) {
+    showToast('选择目录失败: ' + e.message);
+  }
+}
+
+async function browseFile(inputId) {
+  try {
+    const selected = await openDialog({
+      multiple: false,
+      title: '选择 mpv 可执行文件',
+      filters: [{ name: '可执行文件', extensions: ['exe', 'com'] }]
+    });
+    if (selected) {
+      document.getElementById(inputId).value = selected;
+    } else if (!window.__TAURI__) {
+      showToast('浏览器模式下请在输入框中手动输入路径');
+    }
+  } catch (e) {
+    showToast('选择文件失败: ' + e.message);
+  }
+}
 
 // Init
 document.addEventListener('DOMContentLoaded', async () => {

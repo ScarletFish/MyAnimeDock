@@ -207,7 +207,7 @@ class AniListScraper {
         title_english: m.title.english,
         title_native: m.title.native,
         coverUrl: m.coverImage?.large || m.coverImage?.medium || null,
-        rating: m.meanScore ? (m.meanScore / 10).toFixed(1) : null,
+        rating: m.meanScore ? Number((m.meanScore / 10).toFixed(1)) : null,
         episodes: m.episodes,
         status: m.status,
         format: m.format,
@@ -287,7 +287,7 @@ class AniListScraper {
       summary: detail.description || null,
       coverUrl: detail.coverImage?.large || null,
       localCover,
-      rating: detail.meanScore ? (detail.meanScore / 10).toFixed(1) : null,
+      rating: detail.meanScore ? Number((detail.meanScore / 10).toFixed(1)) : null,
       episodes: detail.episodes,
       genres: detail.genres || [],
       relations: (detail.relations?.edges || []).map(e => ({

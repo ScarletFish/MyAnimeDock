@@ -234,14 +234,13 @@ async function contextDeleteAnime() {
   if (!animeId) return;
   const anime = libraryData.find(a => a.id === animeId);
   const title = anime ? anime.title : animeId;
-  if (!confirm(`确定要从资料库移除「${title}」吗？\n观看记录将被保留。`)) return;
+  if (!(await showConfirm(`确定要彻底删除「${title}」吗？<br>数据将被清除，不可恢复。`))) return;
   try {
     await API.del(`/api/anime/${encodeURIComponent(animeId)}`);
-    showToast('已移除');
+    showToast('已删除');
     loadLibrary();
-    loadMemories();
   } catch (e) {
-    showToast('移除失败: ' + e.message);
+    showToast('删除失败: ' + e.message);
   }
 }
 
@@ -255,7 +254,7 @@ document.getElementById('ctxArchive').addEventListener('click', contextArchiveAn
 
 function getWatchStatus(anime) {
   const eps = anime.episodes;
-  if (!eps || eps.length === 0) return { label: '未观看', cls: 'unwatched' };
+  if (!Array.isArray(eps) || eps.length === 0) return { label: '未观看', cls: 'unwatched' };
   const n = eps.filter(ep => ep.watched).length;
   if (n === 0) return { label: '未观看', cls: 'unwatched' };
   if (n === eps.length) return { label: '已看完', cls: 'completed' };
@@ -268,8 +267,15 @@ async function contextArchiveAnime() {
   if (!animeId) return;
   const anime = libraryData.find(a => a.id === animeId);
   const title = anime ? anime.title : animeId;
-  if (!confirm(`将「${title}」归档到收藏？\n条目将从资料库移除，观看记录保留在归档页。`)) return;
+  if (!(await showConfirm(`将「${title}」归档到收藏？<br>条目将从资料库移除，在归档页保留记录。`))) return;
   try {
+    // Create memory entry first, then delete from library
+    await API.post('/api/memories', {
+      animeId,
+      rating: null,
+      thoughts: '',
+      notes: '',
+    });
     await API.del(`/api/anime/${encodeURIComponent(animeId)}`);
     showToast('已归档');
     loadLibrary();

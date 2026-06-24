@@ -134,6 +134,14 @@ function mmApplyFilters() {
     return true;
   });
 
+  const statusOrder = { pending: 0, failed: 1, matching: 2, matched: 3 };
+  mmFiltered.sort((a, b) => {
+    const sa = statusOrder[a.status] ?? 4;
+    const sb = statusOrder[b.status] ?? 4;
+    if (sa !== sb) return sa - sb;
+    return mmItems.indexOf(a) - mmItems.indexOf(b);
+  });
+
   mmRenderList();
 }
 

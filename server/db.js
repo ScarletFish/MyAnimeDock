@@ -248,7 +248,7 @@ async function loadData() {
     const p = getPrisma();
 
     const [animeList, memories, playSessions, scannedTreeRecord] = await Promise.all([
-      p.anime.findMany({ include: { episodes: { orderBy: { number: 'asc' } } } }),
+      p.anime.findMany({ orderBy: { importedAt: 'asc' }, include: { episodes: { orderBy: { number: 'asc' } } } }),
       p.memory.findMany({ orderBy: { watchedAt: 'desc' } }),
       p.playSession.findMany(),
       p.scannedTree.findUnique({ where: { id: 'current' } }),

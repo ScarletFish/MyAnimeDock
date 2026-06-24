@@ -142,6 +142,13 @@ function renderDiscovery() {
     displayData = discoveryData.filter(n => !n.excluded);
   }
 
+  displayData.sort((a, b) => {
+    const aMatch = a.bangumiId ? 1 : 0;
+    const bMatch = b.bangumiId ? 1 : 0;
+    if (aMatch !== bMatch) return aMatch - bMatch;
+    return (a.parsedTitle || '').localeCompare(b.parsedTitle || '');
+  });
+
   const parentCounts = {};
   for (const n of displayData) {
     const key = (n.parentChain || []).join('\0');

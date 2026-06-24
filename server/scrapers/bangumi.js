@@ -219,13 +219,25 @@ class BangumiScraper {
   async getCharacters(subjectId) {
     const url = `${this.apiBase}/v0/subjects/${subjectId}/characters`;
     const res = await tryFetch(url, { headers: { 'User-Agent': USER_AGENT } });
-    return res.json();
+    const text = await res.text();
+    try {
+      return JSON.parse(text);
+    } catch (e) {
+      logger.error(`getCharacters JSON parse failed (${text.length} bytes): ${text.substring(0, 100)}`);
+      throw new Error('声优数据解析失败');
+    }
   }
 
   async getPersons(subjectId) {
     const url = `${this.apiBase}/v0/subjects/${subjectId}/persons`;
     const res = await tryFetch(url, { headers: { 'User-Agent': USER_AGENT } });
-    return res.json();
+    const text = await res.text();
+    try {
+      return JSON.parse(text);
+    } catch (e) {
+      logger.error(`getPersons JSON parse failed (${text.length} bytes): ${text.substring(0, 100)}`);
+      throw new Error('制作人员数据解析失败');
+    }
   }
 
   /**

@@ -1,7 +1,7 @@
-// server/db.js — Prisma/SQLite 数据层封装
-// 提供 loadData() / syncToSqlite() / shutdown()
-// 统一转换 SQLite 规范化表 ↔ server.js 传统 JSON 格式
-// 允许渐进式迁移：JSON 文件作为运行时缓存兼备份，SQLite 作为持久化目标
+// server/db.js — Prisma/SQLite 数据层封装（单存储）
+// SQLite 是 library / memories / playSessions 唯一持久化目标
+// scannedTree 和 config 由 server.js 独立管理 JSON 文件
+// 提供 loadData() / saveAll() / shutdown()
 
 const path = require('path');
 const fs = require('fs');
@@ -269,9 +269,9 @@ async function loadData() {
 
 // ─── Save ───
 
-// 将完整 data 对象同步到 SQLite。
-// 使用事务确保一致性，upsert 避免主键冲突。
-async function syncToSqlite(data) {
+// ─── Save (SQLite 批量全同步，library/memories/playSessions) ───
+// scannedTree 由 server.js 独立写入 JSON 文件
+async function saveAll(data) {
   if (!data) return;
   const p = getPrisma();
 
@@ -292,7 +292,6 @@ async function syncToSqlite(data) {
 
       // Upsert anime + episodes
       for (const a of data.library) {
-        // Normalize rating to number|null (old JSON data may store it as string)
         let ratingVal = a.rating;
         if (ratingVal != null && typeof ratingVal !== 'number') {
           ratingVal = parseFloat(ratingVal);
@@ -358,25 +357,23 @@ async function syncToSqlite(data) {
           })),
         });
       }
-      // Warn if any memories were skipped
       if (validMemories.length < (data.memories || []).length) {
         logger.warn(`SQLite sync: skipped ${(data.memories||[]).length - validMemories.length} orphan memories`);
       }
 
       // ── Play Sessions ──
-      const existingSessions = await tx.playSession.findMany({ select: { sessionId: true } });
-      const existingSessionIds = new Set(existingSessions.map(s => s.sessionId));
-      const currentSessionIds = new Set((data.playSessions || []).map(s => s.sessionId));
-
-      // 删除已移除的 session
-      for (const sid of existingSessionIds) {
-        if (!currentSessionIds.has(sid)) {
-          await tx.playSession.delete({ where: { sessionId: sid } });
-        }
+      // 1) Delete orphan sessions whose anime was removed
+      if (currentIds.size > 0) {
+        await tx.playSession.deleteMany({
+          where: { animeId: { notIn: Array.from(currentIds) } },
+        });
+      } else {
+        await tx.playSession.deleteMany();
       }
 
-      // Upsert 变更/新增的 session
-      for (const s of data.playSessions || []) {
+      // 2) Upsert sessions that still belong to existing anime
+      const validSessions = (data.playSessions || []).filter(s => currentIds.has(s.animeId));
+      for (const s of validSessions) {
         await tx.playSession.upsert({
           where: { sessionId: s.sessionId },
           create: {
@@ -396,21 +393,50 @@ async function syncToSqlite(data) {
           },
         });
       }
-
-      // ── ScannedTree ──
-      if (data.scannedTree !== undefined) {
-        await tx.scannedTree.upsert({
-          where: { id: 'current' },
-          create: { id: 'current', data: JSON.stringify(data.scannedTree) },
-          update: { data: JSON.stringify(data.scannedTree) },
-        });
-      }
     });
 
     logger.info(`Synced to SQLite: ${data.library.length} anime`);
   } catch (e) {
-    logger.error('SQLite sync error:', e.message);
+    logger.error('SQLite save error:', e.message);
+    throw e; // 让调用方知道写入失败
   }
 }
 
-module.exports = { loadData, syncToSqlite, shutdown, getPrisma, ensureSchema };
+// ─── 精细化更新：mpv 每 10s 进度 ───
+
+async function updateEpisodeProgress(animeId, epNumber, fields) {
+  try {
+    const p = getPrisma();
+    const data = {};
+    if (fields.progress !== undefined) data.progress = fields.progress;
+    if (fields.duration !== undefined) data.duration = fields.duration;
+    if (fields.watched !== undefined) data.watched = fields.watched;
+    if (Object.keys(data).length === 0) return;
+    await p.episode.updateMany({
+      where: { animeId, number: epNumber },
+      data,
+    });
+  } catch (e) {
+    logger.error('Episode progress update error:', e.message);
+  }
+}
+
+async function updatePlaySession(sessionId, fields) {
+  try {
+    if (!sessionId) return;
+    const p = getPrisma();
+    const data = {};
+    if (fields.endTime !== undefined) data.endTime = new Date(fields.endTime);
+    if (fields.duration !== undefined) data.duration = fields.duration;
+    if (fields.clockTime !== undefined) data.clockTime = fields.clockTime;
+    if (Object.keys(data).length === 0) return;
+    await p.playSession.updateMany({
+      where: { sessionId },
+      data,
+    });
+  } catch (e) {
+    logger.error('PlaySession update error:', e.message);
+  }
+}
+
+module.exports = { loadData, saveAll, updateEpisodeProgress, updatePlaySession, shutdown, getPrisma, ensureSchema };

@@ -2,7 +2,9 @@ node_modules/
 dist/
 anime-data.json
 anime-data.json.pre-sqlite-backup
+scanned-tree.json
 .migrated-to-sqlite
+server_*.txt
 covers/
 test-media/
 config.json

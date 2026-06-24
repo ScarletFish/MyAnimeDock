@@ -88,7 +88,7 @@ process.on('uncaughtException', (err) => {
 // 前端静态资源目录：pkg 打包后在临时解压目录（__dirname），开发模式在脚本上级目录（public/ 在项目根）
 const ASSET_DIR = path.join(__dirname, '..');
 const CONFIG_PATH = path.join(DATA_DIR, 'config.json');
-const DATA_PATH = path.join(DATA_DIR, 'anime-data.json');
+const SCANNED_TREE_PATH = path.join(DATA_DIR, 'scanned-tree.json');
 const PORT = 3456;
 
 // In-memory active mpv sessions: filePath -> { sessionId, episode, anime }
@@ -149,22 +149,40 @@ function saveConfig(cfg) {
 let config = loadConfig();
 
 // --- Data ---
-const DEFAULT_DATA = { discovered: [], library: [], memories: [], playSessions: [], scannedTree: [] };
+// SQLite 是 library / memories / playSessions 的主存储
+// scannedTree 独立写 JSON 文件
+// config.json 独立管理
 
-function loadData() {
+function loadScannedTree() {
   try {
-    const raw = fs.readFileSync(DATA_PATH, 'utf-8');
-    return { ...DEFAULT_DATA, ...JSON.parse(raw) };
+    const raw = fs.readFileSync(SCANNED_TREE_PATH, 'utf-8');
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : [];
   } catch (e) {
-    return { ...DEFAULT_DATA };
+    return [];
   }
 }
 
+function saveScannedTree(tree) {
+  try {
+    fs.writeFileSync(SCANNED_TREE_PATH, JSON.stringify(tree, null, 2), 'utf-8');
+  } catch (e) {
+    logger.error('ScannedTree save error:', e.message);
+  }
+}
+
+/** 持久化保存。返回 promise，调用方可 await 确保写入完成。 */
 function saveData(data) {
-  // JSON 写入（即时、同步、保持旧行为）
-  fs.writeFileSync(DATA_PATH, JSON.stringify(data, null, 2), 'utf-8');
-  // SQLite 同步（异步、后台、不阻塞请求）
-  db.syncToSqlite(data).catch(e => logger.error('DB sync error:', e.message));
+  const p1 = db.saveAll(data);
+  if (data.scannedTree !== undefined) {
+    saveScannedTree(data.scannedTree);
+  }
+  return p1;
+}
+
+/** 等待所有未完成的保存操作完成（用于优雅关闭前） */
+async function flushSaves() {
+  // saveAll 是串行的，直接 await 当前即可
 }
 
 let data;
@@ -760,8 +778,11 @@ const server = http.createServer((req, res) => {
       scannedNode.rating = null;
       scannedNode.metadataSource = null;
     }
-    saveData(data);
-    jsonResp(res, 200, { ok: true });
+    // await persistence so data survives restart
+    saveData(data).then(() => jsonResp(res, 200, { ok: true })).catch(e => {
+      logger.error('Delete save error:', e);
+      jsonResp(res, 500, { error: 'Failed to persist' });
+    });
     return;
   }
 
@@ -860,6 +881,8 @@ const server = http.createServer((req, res) => {
                 ep.progress = progress;
                 if (duration > 0) ep.duration = duration;
                 if (watched) ep.watched = true;
+                // 精细化 SQLite 更新（不触发全量 saveData）
+                db.updateEpisodeProgress(active.anime.id, ep.number, { progress, duration: duration > 0 ? duration : undefined, watched });
                 if (active.sessionId) {
                   const session = data.playSessions.find(s => s.sessionId === active.sessionId);
                   if (session) {
@@ -869,10 +892,17 @@ const server = http.createServer((req, res) => {
                       const startMs = new Date(session.startTime).getTime();
                       session.clockTime = Math.round((Date.now() - startMs) / 1000);
                     }
+                    db.updatePlaySession(active.sessionId, {
+                      endTime: session.endTime,
+                      duration: session.duration,
+                      clockTime: final ? session.clockTime : undefined,
+                    });
                   }
                 }
-                saveData(data);
-                if (final) activePlays.delete(fp);
+                if (final) {
+                  activePlays.delete(fp);
+                  saveData(data); // final 时全量 save 确保 playSession 持久化
+                }
               }
             },
             onError: (msg) => {
@@ -1382,17 +1412,28 @@ async function init() {
 
   // Phase 1: Parallel independent init
   cleanupOldCache().catch(e => logger.warn('Cache cleanup error:', e.message)); // fire-and-forget
-  const jsonData = loadData(); // sync, instant
   await db.ensureSchema().catch(e => logger.warn('Schema ensure skipped:', e.message));
 
-  // Phase 2: Hydrate data — JSON 优先，SQLite 回退
-  const hasJsonData = jsonData.library && jsonData.library.length > 0;
-  if (hasJsonData) {
-    data = jsonData;
-    db.syncToSqlite(data).catch(e => logger.error('Initial DB sync:', e.message));
-  } else {
-    data = (await db.loadData()) || jsonData;
+  // Phase 2: Hydrate data — SQLite 主存储，scannedTree 从 JSON
+  data = (await db.loadData()) || { discovered: [], library: [], memories: [], playSessions: [] };
+
+  // 迁移：从旧的 anime-data.json 提取 scannedTree（如存在）
+  const OLD_DATA_PATH = path.join(DATA_DIR, 'anime-data.json');
+  let scannedTree = loadScannedTree();
+  if ((!scannedTree || scannedTree.length === 0) && fs.existsSync(OLD_DATA_PATH)) {
+    try {
+      const oldRaw = fs.readFileSync(OLD_DATA_PATH, 'utf-8');
+      const oldData = JSON.parse(oldRaw);
+      if (oldData.scannedTree && Array.isArray(oldData.scannedTree) && oldData.scannedTree.length > 0) {
+        scannedTree = oldData.scannedTree;
+        saveScannedTree(scannedTree);
+        logger.info(`Migrated scannedTree from anime-data.json (${scannedTree.length} nodes)`);
+      }
+    } catch (e) {
+      logger.warn('ScannedTree migration skipped:', e.message);
+    }
   }
+  data.scannedTree = scannedTree;
 
   // Phase 3: Post-load validation (async, non-blocking)
   validateCovers(data).catch(e => logger.warn('Cover validation error:', e.message));

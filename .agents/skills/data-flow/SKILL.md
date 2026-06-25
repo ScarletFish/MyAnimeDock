@@ -1,6 +1,6 @@
 ---
 name: data-flow
-description: Complete data flow reference for MyAnimeDocker — covers all 10 major data flows: config, scan/discovery, import, metadata fetch, play sessions, memories, covers/thumbnails, JSON+SQLite dual-write, startup init, full call chain. Load this skill when you need to understand how data moves through the system, before making changes to data paths, or when debugging data persistence issues.
+description: Complete data flow reference for MyAnimeDocker — covers all 10 major data flows: config, scan/discovery, import, metadata fetch, play sessions, memories, covers/thumbnails, SQLite persistence, startup init, full call chain. Load this skill when you need to understand how data moves through the system, before making changes to data paths, or when debugging data persistence issues.
 ---
 
 # MyAnimeDocker — Complete Data Flow Reference
@@ -19,7 +19,8 @@ description: Complete data flow reference for MyAnimeDocker — covers all 10 ma
 │  Sidecar: server/server.js (Node.js, pkg-bundled)                            │
 │    • HTTP server @ :3456                                                      │
 │    • REST API (40+ endpoints)                                                 │
-│    • Dual persistence: JSON (sync) + SQLite (async, Prisma ORM)               │
+│    • Persistence: SQLite (Prisma ORM) — library/memories/playSessions         │
+│    • JSON files: config.json (settings), scanned-tree.json (scan result)      │
 │    • Static file serving: public/ frontend + covers/ + thumbs/                │
 │    • ffmpeg: thumbnail extraction + cover resize                               │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -29,9 +30,10 @@ description: Complete data flow reference for MyAnimeDocker — covers all 10 ma
 
 | File | Location (dev) | Location (MSI/pkg) | Purpose |
 |------|---------------|-------------------|---------|
-| `anime-data.json` | `server/` | `%APPDATA%/com.myanimedocker.app/` | Primary persistence (sync write) |
-| `anime.db` | `server/` | `%APPDATA%/com.myanimedocker.app/` | SQLite replica (async sync) |
-| `config.json` | `server/` | `%APPDATA%/com.myanimedocker.app/` | Settings (JSON only) |
+| `anime.db` | `prisma/anime.db` | `%APPDATA%/com.myanimedocker.app/anime.db` | SQLite — primary store for library, memories, playSessions |
+| `config.json` | `server/config.json` | `%APPDATA%/com.myanimedocker.app/config.json` | Settings (JSON only, managed by server.js) |
+| `scanned-tree.json` | `server/scanned-tree.json` | `%APPDATA%/com.myanimedocker.app/scanned-tree.json` | Scan result tree (JSON only, managed by server.js) |
+| `anime-data.json` | (legacy) | (legacy) | **Removed**. Only used as migration fallback for scannedTree on first startup |
 | `covers/*.jpg` | `server/covers/` | `%APPDATA%/com.myanimedocker.app/covers/` | Downloaded cover images |
 | `thumbs/*.jpg` | `server/thumbs/` | `%APPDATA%/com.myanimedocker.app/thumbs/` | Video thumbnails (ffmpeg) |
 
@@ -43,23 +45,24 @@ server.js ⇒ init()
   ├─ 1. Load config.json → global `config` object
   │     (includes mediaDir, playerMode, mpvPath, theme, uiScale, scrapers config)
   │
-  ├─ 2. Load anime-data.json → global `data` object
-  │     (source of truth — sync-written, always latest)
+  ├─ 2. db.ensureSchema() — auto-create SQLite tables if not exist
   │
-  ├─ 3. db.loadData() — backfill SQLite from JSON
-  │     (async, best-effort copy; JSON is authoritative)
-  │     ├─ upsert Anime records
-  │     ├─ upsert Episode records
-  │     ├─ upsert PlaySession records
-  │     ├─ upsert Memory records
-  │     └─ upsert ScannedTree nodes (raw JSON stringified)
+  ├─ 3. db.loadData() — read all data from SQLite → global `data` object
+  │     (SQLite is the PRIMARY store for library/memories/playSessions)
+  │     ├─ Anime + Episode records → data.library
+  │     ├─ Memory records → data.memories
+  │     ├─ PlaySession records → data.playSessions
+  │     └─ ScannedTree record (JSON stored in SQLite) → data.scannedTree
   │
-  ├─ 4. Validate localCover paths
+  ├─ 4. Fallback: if scannedTree empty, check legacy anime-data.json
+  │     (one-time migration for users upgrading from old JSON-only version)
+  │
+  ├─ 5. Validate localCover paths
   │     (if file missing → clear field → frontend shows gray placeholder)
   │
-  ├─ 5. Initialize mpv-controller (activePlays Map)
+  ├─ 6. Initialize mpv-controller (activePlays Map)
   │
-  └─ 6. Start HTTP server (http.createServer, listen :3456)
+  └─ 7. Start HTTP server (http.createServer, listen :3456)
 ```
 
 ## 2. Config Flow
@@ -107,15 +110,20 @@ GET /api/browse?showExcluded
   → scanner.scanMediaDirFlat(config.mediaDir)
       ├─ Recursively walk mediaDir
       ├─ For each folder containing video files (.mkv/.mp4/.avi/.mov):
-      │   ├─ parseFolderName(name) using anitomy → { title, season }
+      │   ├─ parseFolderName(name) using anitomy → { title, season, specialSuffix }
       │   └─ buildLeaf(item) → { name, path, type:'leaf', parsedTitle,
-      │                          parsedSeason, videoCount, totalSize, videos[],
-      │                          parentChain[], alreadyImported, excluded,
-      │                          bangumiMatched, bangumiId, ... }
+      │                          parsedSeason, videoCount, totalVideoFiles,
+      │                          videos[], parentChain[], alreadyImported,
+      │                          excluded, bangumiMatched, bangumiId, ... }
       └─ Returns flat leaf array
   → Merge with data.scannedTree (preserve existing metadata/exclusion state)
-  → Save data to JSON
+  → saveScannedTree(scannedTree) → scanned-tree.json
   → jsonResp with merged result
+
+  NOTE: Also runs migrations on existing data:
+    • parsedSeason === 1 → null
+    • Remove S\d+ from parsedTitle
+    • Compute specialSuffix from parsedTitle
 ```
 
 ### Scan Progress (SSE)
@@ -134,16 +142,14 @@ GET /api/scan
 ```
 POST /api/import
   → server.js (line ~310)
-  → Body: { items: [{ path, name, parsedTitle, parsedSeason, ... }] }
+  → Body: { items: [{ path, name, parsedTitle, parsedSeason, specialSuffix, ... }] }
   → For each item:
       ├─ Generate animeId = `${parsedTitle}${parsedSeason ? '-Season '+parsedSeason : ''}`
-      ├─ Find or create Anime in data.library[]:
-      │   { id, title, bangumiId, bangumiTitle, bangumiTitleJp, summary,
-      │     coverUrl, localCover, rating, metadataSource,
-      │     episodes: [{ id, animeId, episodeNumber, filePath, fileName,
-      │                  fileSize, progress, status, lastPlayed }] }
+      ├─ Build anime + episodes in data.library[]:
+      │   { id, title, folderName, folderPath, season, specialSuffix,
+      │     episodes: [{ animeId, episodeNumber, filePath, fileName, fileSize }] }
       ├─ Mark node.alreadyImported = true in scannedTree
-      └─ saveData() → JSON + SQLite
+      └─ db.saveLibrary(data) + saveScannedTree(scannedTree)
   → jsonResp(res, 200, { count: N })
 ```
 
@@ -172,7 +178,7 @@ POST /api/bangumi/fetch (for library items)
       └─ Returns: { source, bangumiId, bangumiTitle, bangumiTitleJp,
                      summary, coverUrl, localCover, rating }
   → Update node/anime metadata fields
-  → saveData() → JSON + SQLite
+  → db.saveLibrary(data) + saveScannedTree(scannedTree)
 ```
 
 ## 6. Cover Serving Flow
@@ -269,7 +275,7 @@ POST /api/progress
   → Body: { animeId, episodeNumber, progress, duration, watched }
   → Update ep.progress/duration/watched in memory
   → db.updateEpisodeProgress(animeId, epNumber, { progress, duration, watched })
-    (only writes episode table, no full saveData)
+    (only writes episode table, no full saveAll)
 ```
 
 ### Watch Stats
@@ -298,13 +304,11 @@ POST /api/memories
   → Body: { animeId, title, coverLocal, coverUrl, rating, thoughts, notes,
              episodesWatched, totalEpisodes }
   → Upsert: find by animeId → update, or create new
-  → saveData() → JSON + SQLite
+  → db.saveMemories(data) — only writes memory table
   → Frontend: open archive modal from detail view or memory page
 ```
 
-## 10. Fine-Grained Save Flow
-
-### Save Function Taxonomy (db.js)
+## 10. Save Function Taxonomy (db.js)
 
 | Function | Writes | When to use |
 |----------|--------|-------------|
@@ -313,20 +317,8 @@ POST /api/memories
 | `db.savePlaySessions(data)` | playSession table | Play start, mpv final/error |
 | `db.updateEpisodeProgress(id, n, fields)` | single episode row | mpv progress (every 10s), manual update |
 | `db.updatePlaySession(sid, fields)` | single playSession row | mpv progress (every 10s) |
-| `db.saveAll(data)` | all three tables in parallel | Full sync (fallback) |
+| `db.saveAll(data)` | all three tables in parallel | Composite fallback for multi-table saves |
 | `saveScannedTree(tree)` | `scanned-tree.json` (sync) | Scan, exclude, unlink, metadata |
-
-### `saveData(data)` — server.js (line ~175)
-```
-// Composite: calls saveAll + saveScannedTree
-function saveData(data) {
-  const p1 = db.saveAll(data);
-  if (data.scannedTree !== undefined) {
-    saveScannedTree(data.scannedTree);
-  }
-  return p1;
-}
-```
 
 ### Call Site → Save Function Mapping
 
@@ -339,21 +331,31 @@ function saveData(data) {
 | Episode progress (manual/mpv) | `db.updateEpisodeProgress()` |
 
 ### `db.loadData()` — db.js
+
 ```
 async loadData() {
+  ├─ ensureSchema() — auto-create tables if missing
   ├─ Read all Anime + Episode from SQLite
-  ├─ Read all PlaySession
-  ├─ Read all Memory
-  ├─ Read all ScannedTree
+  ├─ Read all Memory from SQLite
+  ├─ Read all PlaySession from SQLite
+  ├─ Read ScannedTree from SQLite (JSON stringified in single row)
+  ├─ Convert Prisma models → legacy JSON format
   └─ Return → server.js assigns to global `data`
 }
 ```
 
-### Persistence Guarantee
+### Persistence Architecture
 ```
-Fine-grained writes: each function writes only its own SQLite table
-ScannedTree: sync JSON write (separate from SQLite)
-init(): load from SQLite, backfill consistency
+SQLite (anime.db): primary store for library, memories, playSessions
+  → Fine-grained writes: each function writes only its table
+  → Full-state sync: db.saveAll() writes all three tables
+
+scanned-tree.json: independent JSON file for scan tree
+  → sync write, separate from SQLite
+  → Also persisted in SQLite ScannedTree table for consistency
+
+config.json: independent JSON file for settings
+  → Managed separately, never in SQLite
 ```
 
 ## 11. Full HTTP Call Chain
@@ -384,31 +386,14 @@ http.createServer((req, res) => {
   └─ 404 fallback
 })
 ```
-http.createServer((req, res) => {
-  ├─ CORS headers (Access-Control-Allow-*)
-  ├─ Parse URL + method
-  ├─ Route matching:
-  │   ├─ Static files: public/ (index.html, css, js, vendor/)
-  │   ├─ API routes (/api/*):
-  │   │   ├─ Read body (if POST/PUT/DELETE)
-  │   │   ├─ Execute handler logic
-  │   │   ├─ Mutate global `data` (if applicable)
-  │   │   ├─ saveData() → JSON + SQLite (if data changed)
-  │   │   └─ jsonResp(res, status, payload)
-  │   └─ Cover/thumbnail routes:
-  │       ├─ /covers/* → serveImage() → ffmpeg resize pipeline
-  │       └─ /api/thumbnail → ffmpeg extract → serveImage()
-  └─ 404 fallback
-})
-```
 
 ## Key Files Reference
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| `server/server.js` | ~1468 | HTTP server, routes, fine-grained saves, init, play sessions, cover serving |
+| `server/server.js` | ~1499 | HTTP server, routes, fine-grained saves, init, play sessions, cover serving |
 | `server/db.js` | ~465 | Prisma wrapper: saveLibrary, saveMemories, savePlaySessions, loadData, updateEpisodeProgress, updatePlaySession |
-| `server/scanner.js` | ~372 | Media directory scanner, folder name parsing (anitomy) |
+| `server/scanner.js` | ~372 | Media directory scanner, folder name parsing (anitomy) with extra video filtering |
 | `server/mpv-controller.js` | ~177 | mpv process spawn, IPC progress tracking, error/crash reporting |
 | `server/scrapers/index.js` | ~557 | ScraperRegistry: multi-source metadata aggregation |
 | `server/scrapers/bangumi.js` | — | Bangumi API client + cover download |
@@ -425,12 +410,13 @@ http.createServer((req, res) => {
 
 ## Key Gotchas
 
-1. **Fine-grained saves**: Each API endpoint only writes the SQLite table(s) it actually modifies. `saveScannedTree()` writes `scanned-tree.json` (sync). `saveData()` is a composite fallback for multi-type changes.
+1. **Fine-grained saves**: Each API endpoint only writes the SQLite table(s) it actually modifies. `saveScannedTree()` writes `scanned-tree.json` (sync). Never use `db.saveAll()` unless you're changing data in multiple tables simultaneously.
 2. **Fetch in pkg**: Global `fetch()` is unavailable in pkg-bundled Node.js. `node-fetch.js` polyfill with http/https native modules replaces it in scrapers.
 3. **ffmpeg path**: Dev mode uses `require('ffmpeg-static')` from server/node_modules. pkg mode sets `FFMPEG_BIN` env var → `sidecar-modules/ffmpeg.exe` (copied during build by copy-sidecar-deps.js).
-4. **DATA_DIR differs**: Dev = `server/`, pkg/MSI = `%APPDATA%/com.myanimedocker.app`. File paths (config.json, anime-data.json, covers/, thumbs/) all resolve through DATA_DIR.
+4. **DATA_DIR differs**: Dev = `server/`, pkg/MSI = `%APPDATA%/com.myanimedocker.app`. File paths (config.json, scanned-tree.json, covers/, thumbs/) all resolve through DATA_DIR.
 5. **covers/ migration**: Covers downloaded in dev mode go to `server/covers/`. After MSI install, covers must be re-fetched (new AppData path). `init()` validates localCover existence and clears missing ones → gray placeholder shown.
 6. **Play sessions**: `activePlays` Map is in-memory only (lost on server restart). Persisted playSessions survive in SQLite.
 7. **CSS zoom** (`uiScale`): Applied via `document.documentElement.style.fontSize = (16 * scale/100) + 'px'`. All font sizes use rem units. Card grid min widths also in rem.
 8. **mpv error propagation**: `/api/play` uses Promise with 2s timeout to capture spawn errors. `mpv-controller.js` reports ENOENT/early crashes via `onError` callback. Frontend sees "播放失败: ..." toast.
 9. **nodemon data ignore**: `dev:server:watch` must ignore `server/prisma/`, `server/covers/`, `server/thumbs/`, `server/scanned-tree.json` to prevent data writes from triggering server restarts.
+10. **DB path in dev mode**: `server/db.js` uses `path.join(__dirname, '..', 'prisma', 'anime.db')` — i.e. project root → `prisma/anime.db`. The SQLite database is at project root `prisma/` directory, not inside `server/`.

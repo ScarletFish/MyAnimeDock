@@ -336,6 +336,7 @@ async function importSelected() {
     folderName: n.name,
     parsedTitle: n.parsedTitle,
     parsedSeason: n.parsedSeason,
+    specialSuffix: n.specialSuffix,
   }));
   if (items.length === 0) {
     showToast('请先选择要导入的动漫');

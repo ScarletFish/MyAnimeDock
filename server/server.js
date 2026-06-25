@@ -71,7 +71,7 @@ try {
   throw e;
 }
 bootLog('Loading scanner...');
-const { scanMediaDirFlat } = require('./scanner');
+const { scanMediaDirFlat, isExtraVideo } = require('./scanner');
 bootLog('Loading pinyin...');
 const pinyinModule = require('pinyin');
 const pinyinFn = pinyinModule.pinyin || pinyinModule.default || pinyinModule;
@@ -397,6 +397,24 @@ const server = http.createServer((req, res) => {
         data.scannedTree = tree;
         saveScannedTree(data.scannedTree);
       }
+      // Normalize season 1 → null (implicit default; only S2+ worth annotating)
+      for (const n of tree) {
+        if (n.type === 'leaf' && n.parsedSeason === 1) {
+          n.parsedSeason = null;
+        }
+      }
+      // Migrate existing scannedTree titles: strip S\d+ from parsedTitle, compute specialSuffix
+      for (const n of tree) {
+        if (n.type === 'leaf') {
+          if (n.parsedTitle) {
+            n.parsedTitle = n.parsedTitle.replace(/\s*S\d+\s*$/i, '').trim();
+          }
+          if (!n.specialSuffix && n.parsedTitle) {
+            const suffixMatch = n.parsedTitle.match(/([~～][^~～]*[~～])\s*$/);
+            if (suffixMatch) n.specialSuffix = suffixMatch[1].trim();
+          }
+        }
+      }
       const libraryPaths = new Set(data.library.map(a => a.folderPath));
       for (const n of tree) {
         if (n.type === 'leaf') {
@@ -506,14 +524,16 @@ const server = http.createServer((req, res) => {
         jsonResp(res, 400, { error: 'items array is required' });
         return;
       }
-      const { findVideos } = require('./scanner');
+      const { findVideos, isExtraVideo } = require('./scanner');
       const imported = [];
       for (const item of items) {
-        const { folderPath, folderName, parsedTitle, parsedSeason } = item;
+        const { folderPath, folderName, parsedTitle, parsedSeason, specialSuffix } = item;
         if (!folderPath || !folderName) continue;
         if (data.library.some(a => a.folderPath === folderPath)) continue;
 
         const videos = findVideos(folderPath);
+        // Filter out NCOP/NCED/Menu/etc. from episode list
+        const episodeFiles = videos.filter(v => !isExtraVideo(v.name));
         // Check scannedTree for existing metadata
         const scannedNode = data.scannedTree.find(n => n.path === folderPath);
         const anime = {
@@ -522,6 +542,7 @@ const server = http.createServer((req, res) => {
           folderName,
           title: parsedTitle,
           season: parsedSeason || null,
+          specialSuffix: specialSuffix || null,
           importedAt: new Date().toISOString(),
           downloaded: true,
           bangumiId: scannedNode?.bangumiId || null,
@@ -531,7 +552,7 @@ const server = http.createServer((req, res) => {
           coverUrl: scannedNode?.coverUrl || null,
           localCover: scannedNode?.localCover || null,
           rating: scannedNode?.rating || null,
-          episodes: videos.map((v, i) => ({
+          episodes: episodeFiles.map((v, i) => ({
             number: i + 1,
             filePath: v.path,
             fileName: v.name,
@@ -705,6 +726,14 @@ const server = http.createServer((req, res) => {
     data.library.forEach(a => {
       // 防御：episodes 可能存为数字（旧数据），统一转为数组
       if (a.episodes != null && !Array.isArray(a.episodes)) a.episodes = [];
+      // Migrate existing titles: compute specialSuffix from title (which has ~...~ at end), strip S\d+ from title
+      if (a.specialSuffix == null && a.title) {
+        const suffixMatch = a.title.match(/([~～][^~～]*[~～])\s*$/);
+        if (suffixMatch) a.specialSuffix = suffixMatch[1].trim();
+      }
+      if (a.title) {
+        a.title = a.title.replace(/\s*S\d+\s*$/i, '').trim();
+      }
       const name = a.bangumiTitle || a.title || '';
       try {
         a.pinyinTitle = pinyinFn(name).map(p => (p[0] || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')).join('');
@@ -976,8 +1005,10 @@ const server = http.createServer((req, res) => {
   if (urlPath === '/api/bangumi/search' && req.method === 'POST') {
     readBody(req).then(async body => {
       try {
-        const { keyword } = JSON.parse(body);
+        let { keyword } = JSON.parse(body);
         if (!keyword) { jsonResp(res, 400, { error: 'keyword is required' }); return; }
+        // Strip ~ from manual search keyword
+        keyword = keyword.replace(/[~～]/g, '').trim();
 
         const { registry } = require('./scrapers');
         const results = await registry.searchAll(keyword, config);

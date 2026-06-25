@@ -91,10 +91,19 @@ function isPrimarilyRomaji(title) {
  */
 function buildSearchTerms(folderParsed, keyword) {
   const terms = [];
-  const base = folderParsed.cjkTitle || folderParsed.cleanTitle || keyword;
+  const base = (folderParsed.cjkTitle || folderParsed.cleanTitle || keyword).replace(/[~～]/g, '').trim();
   const season = folderParsed.season;
 
-  // Primary: base + season suffix
+  // Priority 1: suffix content (e.g., "Dear My Sister") — more precise for OVA/movie
+  if (folderParsed.specialSuffix) {
+    const content = folderParsed.specialSuffix.replace(/[~～]/g, '').trim();
+    const generic = /^(OVA|OAD|Special|PV\d*|NCOP|NCED|CM[ \d]*|Menu\d*|Preview|Trailer|特典)$/i;
+    if (content.length > 3 && !generic.test(content)) {
+      terms.push(content);
+    }
+  }
+
+  // Priority 2: base + season suffix
   if (season) {
     terms.push(`${base} 第${season}期`);
   }

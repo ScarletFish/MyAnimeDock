@@ -5,6 +5,13 @@ const { Parser } = require('anitomy');
 const VIDEO_EXTS = new Set(['.mkv', '.mp4', '.avi', '.mov', '.webm']);
 const anitomy = new Parser();
 
+// Non-episode video patterns: NCOP, NCED, PV, CM, Menu, Preview, Trailer
+const EXTRA_VIDEO_RE = /\b(NCOP|NCED|PV\s*\d*|CM[ \d]*|Menu\d*|Preview|Trailer)\b/i;
+
+function isExtraVideo(fileName) {
+  return EXTRA_VIDEO_RE.test(fileName.replace(/\[[^\]]*\]/g, ' '));
+}
+
 const CJK_RE = /[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]/g;
 
 function hasLatinLetters(str) {
@@ -101,12 +108,9 @@ function parseFolderName(name) {
 
   // 6. Season determination (priority: anitomy.season > anitomy.episode 2-20 > regex fallback)
   const isEpisodeRange = parsed.episode?.numberAlt != null;
-  const nameNoBrackets = name.replace(/\[[^\]]*\]/g, ' ');
-  const epHasDash = result.episode && new RegExp('[-–]\\s*' + result.episode + '\\b').test(nameNoBrackets);
-  const epIsTitleSuffix = result.episode && !epHasDash && nameNoBrackets.trim().endsWith(String(result.episode));
   if (result.seasonRaw) {
     result.season = result.seasonRaw;
-  } else if (!isEpisodeRange && !epIsTitleSuffix && result.episode && result.episode >= 2 && result.episode <= 20) {
+  } else if (!isEpisodeRange && result.episode && result.episode >= 2 && result.episode <= 20) {
     result.season = result.episode;
   }
 
@@ -120,7 +124,10 @@ function parseFolderName(name) {
   cleanTitle = cleanTitle.replace(/\s*Season\s*\d+\s*/i, '').trim();
   cleanTitle = cleanTitle.replace(/第(\d+)季/g, '').trim();
   cleanTitle = cleanTitle.replace(/\s*[~～][^~～]*[~～]\s*$/, '').trim();
+  cleanTitle = cleanTitle.replace(/[~～]/g, '').trim();
   result.cleanTitle = cleanTitle;
+  // Also strip S\d+ from result.title (not just cleanTitle), for cleaner display title
+  result.title = result.title.replace(/\s*S\d+\s*$/i, '').trim();
 
   // 9. Regex fallback for season (raw base, when anitomy missed)
   if (!result.season) {
@@ -128,9 +135,10 @@ function parseFolderName(name) {
     if (sm) result.season = parseInt(sm[1]);
   }
 
-  // 10. Symbol-based season markers: ？？=2, ♪♪♪=3, ！！=2, etc.
+  // 10. Symbol-based season markers: ♪♪=2, ♪♪♪=3, ！！=2, etc.
+  // Note: ? and ？ are excluded — they are part of actual titles (e.g. Gochuumon wa Usagi Desu ka??)
   if (!result.season) {
-    const symbolMatch = base.match(/([？?！!♪♫★☆♥♡])\1+/);
+    const symbolMatch = base.match(/([！!♪♫★☆♥♡])\1+/);
     if (symbolMatch) {
       const count = symbolMatch[0].length;
       if (count >= 2 && count <= 5) result.season = count;
@@ -140,7 +148,7 @@ function parseFolderName(name) {
   // 11. Strip parenthetical metadata from cleanTitle only
   result.cleanTitle = result.cleanTitle.replace(/\([^)]*\)/g, '').trim();
 
-  // 12. Extract special suffix (~...~) for OVA/special detection
+  // 12. Extract special suffix (~...~) for OVA/special detection (retain in title for display)
   result.specialSuffix = null;
   const suffixMatch = result.title.match(/([~～][^~～]*[~～])\s*$/);
   if (suffixMatch) result.specialSuffix = suffixMatch[1].trim();
@@ -150,7 +158,7 @@ function parseFolderName(name) {
   if (trailingNum && parseInt(trailingNum[1]) >= 2 && parseInt(trailingNum[1]) <= 20) {
     const prefix = result.cleanTitle.slice(0, trailingNum.index).replace(/\s*$/, '');
     const isVolume = /(?:Vol|Volume|Part)\b/i.test(prefix);
-    if (!isVolume && !result.season && !epIsTitleSuffix) result.season = parseInt(trailingNum[1]);
+    if (!isVolume && !result.season) result.season = parseInt(trailingNum[1]);
   }
 
   // Season 1 is implicit default; only S2+ worth annotating
@@ -163,25 +171,28 @@ function parseFolderName(name) {
  * Build an anime entry from a directory path
  */
 function buildAnimeEntry(fullPath, folderName) {
-  const videos = findVideos(fullPath);
-  if (videos.length === 0) return null;
+  const allVideos = findVideos(fullPath);
+  if (allVideos.length === 0) return null;
   const parsed = parseFolderName(folderName);
   const hasCjk = CJK_RE.test(parsed.title);
   if (!parsed.title || (!hasLatinLetters(parsed.title) && !hasCjk)) {
-    const vp = parseFolderName(videos[0].name);
+    const vp = parseFolderName(allVideos[0].name);
     if (vp.title) {
       parsed.title = vp.title;
       if (!parsed.season && vp.season) parsed.season = vp.season;
     }
   }
+  const videoCount = allVideos.filter(v => !isExtraVideo(v.name)).length;
   return {
     folderPath: fullPath,
     folderName,
     parsedTitle: parsed.title,
     cjkTitle: parsed.cjkTitle || null,
     parsedSeason: parsed.season,
-    videoCount: videos.length,
-    totalSize: videos.reduce((sum, v) => sum + v.size, 0),
+    specialSuffix: parsed.specialSuffix || null,
+    videoCount,
+    totalVideoFiles: allVideos.length,
+    totalSize: allVideos.reduce((sum, v) => sum + v.size, 0),
   };
 }
 
@@ -224,8 +235,8 @@ function scanMediaDir(mediaDir) {
  * parentChain is an array of ancestor folder names from mediaDir to parent.
  */
 function buildLeaf(dirPath, name, parentName, parentChain) {
-  const videos = findVideos(dirPath);
-  if (videos.length === 0) return null;
+  const allVideos = findVideos(dirPath);
+  if (allVideos.length === 0) return null;
   let parsed = parseFolderName(name);
   // If parsed title is just a season indicator, fall through to parent chain lookup
   if (parsed.title && /^(?:Season\s*\d+|S\d+|第\d+季)$/i.test(parsed.title.trim())) {
@@ -262,13 +273,14 @@ function buildLeaf(dirPath, name, parentName, parentChain) {
   let episode = parsed.episode;
   const hasCjkTitle = CJK_RE.test(parsed.title);
   if (!parsed.title || (!hasLatinLetters(parsed.title) && !hasCjkTitle)) {
-    const vp = parseFolderName(videos[0].name);
+    const vp = parseFolderName(allVideos[0].name);
     if (vp.title) {
       parsed.title = vp.title;
       if (!episode && vp.episode) episode = vp.episode;
       if (!parsed.season && vp.season) parsed.season = vp.season;
     }
   }
+  const videoCount = allVideos.filter(v => !isExtraVideo(v.name)).length;
   return {
     name,
     path: dirPath,
@@ -276,9 +288,11 @@ function buildLeaf(dirPath, name, parentName, parentChain) {
     parsedTitle: parsed.title,
     cjkTitle: parsed.cjkTitle || null,
     parsedSeason: parsed.season,
-    videoCount: videos.length,
-    totalSize: videos.reduce((sum, v) => sum + v.size, 0),
-    videos: videos.map(v => ({ name: v.name, size: v.size })),
+    specialSuffix: parsed.specialSuffix || null,
+    videoCount,
+    totalVideoFiles: allVideos.length,
+    totalSize: allVideos.reduce((sum, v) => sum + v.size, 0),
+    videos: allVideos.map(v => ({ name: v.name, size: v.size, isExtra: isExtraVideo(v.name) })),
     parentChain: chain,
   };
 }
@@ -369,4 +383,4 @@ function scanMediaDirFlat(mediaDir) {
   return results;
 }
 
-module.exports = { scanMediaDir, scanMediaDirTree, scanMediaDirFlat, scanTopDir, parseFolderName, findVideos, hasDirectVideos, VIDEO_EXTS };
+module.exports = { scanMediaDir, scanMediaDirTree, scanMediaDirFlat, scanTopDir, parseFolderName, findVideos, hasDirectVideos, isExtraVideo, VIDEO_EXTS };

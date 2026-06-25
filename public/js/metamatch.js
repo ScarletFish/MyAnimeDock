@@ -47,6 +47,7 @@ async function mmLoadData() {
       animeId: a.id,
       title: a.title || a.folderName || a.bangumiTitle || '未知',
       folderName: a.folderName || a.title || '',
+      specialSuffix: a.specialSuffix || null,
       parsedSeason: a.parsedSeason || 1,
       episodeCount: a.episodes ? a.episodes.length : 0,
       status: a.bangumiId ? 'matched' : 'pending',
@@ -582,7 +583,7 @@ function mmRenderPanel(item) {
   // Fix search
   let fixHtml = '';
   if (!mmSyncInProgress) {
-    const defaultKeyword = item.title || item.folderName || '';
+    const defaultKeyword = (item.specialSuffix || item.title || item.folderName || '').replace(/[~～]/g, '').trim();
     fixHtml = `
       <div class="mm-fix-section">
         <div class="mm-panel-label">手动搜索修正</div>

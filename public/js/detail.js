@@ -912,7 +912,7 @@ function syncBangumiMetadata() {
   const input = document.getElementById('syncKeyword');
   const results = document.getElementById('syncSearchResults');
   if (!modal || !input) return;
-  input.value = currentAnime.bangumiTitle || currentAnime.title;
+  input.value = (currentAnime.specialSuffix || currentAnime.bangumiTitle || currentAnime.title).replace(/[~～]/g, '').trim();
   results.innerHTML = '';
   modal.classList.add('show');
   input.focus();

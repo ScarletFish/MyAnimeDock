@@ -21,9 +21,12 @@ if (!fs.existsSync(DATA_DIR)) {
 
 // 开发模式：DB 在 prisma/anime.db（迁移已有）
 // 生产模式：DB 在 %APPDATA%/com.myanimedocker.app/anime.db（可写）
+// 使用绝对路径 + 正斜杠，因为 Prisma 将相对路径解析为相对 schema 目录
 const DB_PATH = process.pkg
-  ? `file:${path.join(DATA_DIR, 'anime.db')}`
-  : `file:${path.join(DATA_DIR, 'prisma', 'anime.db')}`;
+  ? `file:${path.join(DATA_DIR, 'anime.db').replace(/\\/g, '/')}`
+  : `file:${path.join(DATA_DIR, 'prisma', 'anime.db').replace(/\\/g, '/')}`;
+// 用于文件存在性检查
+const DB_FILE = path.join(DATA_DIR, 'prisma', 'anime.db');
 
 // ─── pkg 模式：原生模块路径修复 ───
 // pkg 无法打包 .node 原生模块，需要从外部 node_modules/ 加载。
@@ -100,10 +103,13 @@ const INIT_SQL = [
   `CREATE INDEX IF NOT EXISTS "PlaySession_animeId_idx" ON "PlaySession"("animeId")`,
   `CREATE INDEX IF NOT EXISTS "PlaySession_sessionId_idx" ON "PlaySession"("sessionId")`,
   `CREATE INDEX IF NOT EXISTS "PlaySession_startTime_idx" ON "PlaySession"("startTime")`,
-  `CREATE TABLE IF NOT EXISTS "Memory" ("id" TEXT NOT NULL PRIMARY KEY, "animeId" TEXT NOT NULL REFERENCES "Anime"("id") ON DELETE CASCADE, "title" TEXT NOT NULL, "bangumiId" INTEGER, "bangumiTitle" TEXT, "rating" REAL, "thoughts" TEXT, "notes" TEXT, "watchedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "coverLocal" TEXT)`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS "Memory_animeId_key" ON "Memory"("animeId")`,
-  `CREATE INDEX IF NOT EXISTS "Memory_animeId_idx" ON "Memory"("animeId")`,
-  `CREATE INDEX IF NOT EXISTS "Memory_watchedAt_idx" ON "Memory"("watchedAt")`,
+  `CREATE TABLE IF NOT EXISTS "MyList" ("id" TEXT NOT NULL PRIMARY KEY, "animeId" TEXT NOT NULL REFERENCES "Anime"("id") ON DELETE CASCADE, "status" TEXT NOT NULL DEFAULT 'watching', "rating" REAL, "thoughts" TEXT, "notes" TEXT, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" DATETIME NOT NULL)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "MyList_animeId_key" ON "MyList"("animeId")`,
+  `CREATE INDEX IF NOT EXISTS "MyList_animeId_idx" ON "MyList"("animeId")`,
+  `CREATE INDEX IF NOT EXISTS "MyList_status_idx" ON "MyList"("status")`,
+  `CREATE TABLE IF NOT EXISTS "Wishlist" ("id" TEXT NOT NULL PRIMARY KEY, "bangumiId" INTEGER NOT NULL, "title" TEXT NOT NULL, "bangumiTitle" TEXT, "coverUrl" TEXT, "summary" TEXT, "rating" REAL, "addedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "Wishlist_bangumiId_key" ON "Wishlist"("bangumiId")`,
+  `CREATE INDEX IF NOT EXISTS "Wishlist_bangumiId_idx" ON "Wishlist"("bangumiId")`,
   `CREATE TABLE IF NOT EXISTS "ScannedTree" ("id" TEXT NOT NULL PRIMARY KEY DEFAULT 'current', "data" TEXT NOT NULL, "updatedAt" DATETIME NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS "Config" ("id" TEXT NOT NULL PRIMARY KEY DEFAULT 'singleton', "data" TEXT NOT NULL, "updatedAt" DATETIME NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS "MigrationLog" ("id" TEXT NOT NULL PRIMARY KEY, "version" TEXT NOT NULL, "appliedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "description" TEXT)`,
@@ -127,47 +133,33 @@ function getPrisma() {
  * 会正确读取完整 schema。避免了同一连接中 DDL 后 schema 缓存未刷新的问题。
  */
 async function ensureSchema() {
-  // 检查 DB 文件是否存在
-  const dbFile = DB_PATH.replace(/^file:/, '');
-  if (!fs.existsSync(dbFile)) {
-    // DB 文件不存在——由 PrismaClient 自己创建，但表需要自动建
+  if (!fs.existsSync(DB_FILE)) {
     logger.info('Database file not found, will be created on first connect');
+    return;
   }
 
-  let tempClient = null;
   try {
-    tempClient = new PrismaClient({ datasources: { db: { url: DB_PATH } } });
-    await tempClient.$connect();
-    const rows = await tempClient.$queryRawUnsafe(
+    const p = getPrisma();
+    const rows = await p.$queryRawUnsafe(
+      `SELECT name FROM sqlite_master WHERE type='table' AND name='MyList'`
+    );
+    if (rows.length > 0) {
+      // Migration already applied
+      return;
+    }
+    // Fallback: try old Anime table check
+    const animeExists = await p.$queryRawUnsafe(
       `SELECT name FROM sqlite_master WHERE type='table' AND name='Anime'`
     );
-    if (rows.length === 0) {
+    if (animeExists.length === 0) {
       logger.info('Initializing database schema...');
       for (const sql of INIT_SQL) {
-        await tempClient.$executeRawUnsafe(sql);
+        await p.$executeRawUnsafe(sql);
       }
       logger.info('Database schema initialized.');
     }
-    // 迁移：为旧数据库添加缺失的列（如果有）
-    const columnsToAdd = [
-      { col: 'matchedSeason', def: '"matchedSeason" INTEGER' },
-      { col: 'totalSeasons', def: '"totalSeasons" INTEGER' },
-    ];
-    for (const c of columnsToAdd) {
-      try {
-        await tempClient.$executeRawUnsafe(`ALTER TABLE "Anime" ADD COLUMN ${c.def}`);
-        logger.info(`Added column ${c.col} to Anime table`);
-      } catch (_) {
-        // column already exists, ignore
-      }
-    }
-    await tempClient.$disconnect();
   } catch (e) {
     logger.warn('Schema init skipped:', e.message);
-  } finally {
-    if (tempClient) {
-      try { await tempClient.$disconnect(); } catch (_) {}
-    }
   }
 }
 
@@ -210,17 +202,43 @@ function animeToLegacy(a) {
   };
 }
 
-function memoryToLegacy(m) {
+function myListToLegacy(m) {
   return {
     animeId: m.animeId,
-    title: m.title,
-    bangumiId: m.bangumiId,
-    bangumiTitle: m.bangumiTitle,
+    status: m.status,
     rating: m.rating,
     thoughts: m.thoughts || '',
     notes: m.notes || '',
-    watchedAt: m.watchedAt.toISOString(),
-    coverLocal: m.coverLocal,
+    createdAt: m.createdAt.toISOString(),
+    updatedAt: m.updatedAt.toISOString(),
+  };
+}
+
+function wishlistToLegacy(w) {
+  return {
+    id: w.id,
+    bangumiId: w.bangumiId,
+    title: w.title,
+    bangumiTitle: w.bangumiTitle,
+    coverUrl: w.coverUrl,
+    summary: w.summary,
+    rating: w.rating,
+    addedAt: w.addedAt.toISOString(),
+  };
+}
+
+// Backward compat: convert MyList to old Memory shape for legacy endpoints
+function myListToMemoryLegacy(m, anime) {
+  return {
+    animeId: m.animeId,
+    title: anime ? anime.title : m.animeId,
+    bangumiId: anime ? anime.bangumiId : null,
+    bangumiTitle: anime ? anime.bangumiTitle : null,
+    rating: m.rating,
+    thoughts: m.thoughts || '',
+    notes: m.notes || '',
+    watchedAt: m.createdAt.toISOString(),
+    coverLocal: anime ? anime.localCover : null,
   };
 }
 
@@ -247,17 +265,28 @@ async function loadData() {
     await ensureSchema();
     const p = getPrisma();
 
-    const [animeList, memories, playSessions, scannedTreeRecord] = await Promise.all([
+    const [animeList, myList, wishlist, playSessions, scannedTreeRecord] = await Promise.all([
       p.anime.findMany({ orderBy: { importedAt: 'asc' }, include: { episodes: { orderBy: { number: 'asc' } } } }),
-      p.memory.findMany({ orderBy: { watchedAt: 'desc' } }),
+      p.myList.findMany({ orderBy: { createdAt: 'desc' } }),
+      p.wishlist.findMany({ orderBy: { addedAt: 'desc' } }),
       p.playSession.findMany(),
       p.scannedTree.findUnique({ where: { id: 'current' } }),
     ]);
 
+    // Build legacy memories from MyList for backward compat
+    const animeMap = new Map(animeList.map(a => [a.id, a]));
+    const memoriesLegacy = myList.map(m => {
+      const anime = animeMap.get(m.animeId);
+      return myListToMemoryLegacy(m, anime);
+    });
+
     return {
       discovered: [],
       library: animeList.map(animeToLegacy),
-      memories: memories.map(memoryToLegacy),
+      myList: myList.map(myListToLegacy),
+      wishlist: wishlist.map(wishlistToLegacy),
+      // Backward compat: memories computed from MyList
+      memories: memoriesLegacy,
       playSessions: playSessions.map(sessionToLegacy),
       scannedTree: scannedTreeRecord ? JSON.parse(scannedTreeRecord.data) : [],
     };
@@ -275,7 +304,8 @@ async function saveAll(data) {
   if (!data) return;
   await Promise.all([
     saveLibrary(data),
-    saveMemories(data),
+    saveMyList(data),
+    saveWishlist(data),
     savePlaySessions(data),
   ]);
 }
@@ -350,37 +380,132 @@ async function saveLibrary(data) {
   }
 }
 
-async function saveMemories(data) {
+// ─── MyList (替代旧 Memories) ───
+// 使用 upsert 逐条写入，不做 deleteMany，不会丢弃无 Anime 记录的条目
+async function saveMyList(data) {
   if (!data) return;
   const p = getPrisma();
   try {
     await p.$transaction(async (tx) => {
-      const currentIds = new Set(data.library.map(a => a.id));
-      await tx.memory.deleteMany();
-      const validMemories = (data.memories || []).filter(m => currentIds.has(m.animeId));
-      if (validMemories.length > 0) {
-        await tx.memory.createMany({
-          data: validMemories.map(m => ({
-            animeId: m.animeId,
-            title: m.title,
-            bangumiId: m.bangumiId,
-            bangumiTitle: m.bangumiTitle,
-            rating: m.rating,
-            thoughts: m.thoughts || '',
-            notes: m.notes || '',
-            watchedAt: new Date(m.watchedAt),
-            coverLocal: m.coverLocal,
-          })),
+      const existing = await tx.myList.findMany({ select: { animeId: true } });
+      const existingSet = new Set(existing.map(x => x.animeId));
+      const incomingSet = new Set((data.myList || []).map(x => x.animeId));
+
+      // Delete removed items
+      for (const animeId of existingSet) {
+        if (!incomingSet.has(animeId)) {
+          await tx.myList.deleteMany({ where: { animeId } });
+        }
+      }
+
+      // Upsert incoming items
+      for (const item of data.myList || []) {
+        await tx.myList.upsert({
+          where: { animeId: item.animeId },
+          create: {
+            animeId: item.animeId,
+            status: item.status || 'watching',
+            rating: item.rating,
+            thoughts: item.thoughts || '',
+            notes: item.notes || '',
+          },
+          update: {
+            status: item.status,
+            rating: item.rating,
+            thoughts: item.thoughts || '',
+            notes: item.notes || '',
+          },
         });
       }
-      if (validMemories.length < (data.memories || []).length) {
-        logger.warn(`SQLite sync: skipped ${(data.memories||[]).length - validMemories.length} orphan memories`);
-      }
     });
+    logger.info(`Synced MyList: ${(data.myList || []).length} items`);
   } catch (e) {
-    logger.error('SQLite memories save error:', e.message);
+    logger.error('SQLite myList save error:', e.message);
     throw e;
   }
+}
+
+// ─── Wishlist ───
+async function saveWishlist(data) {
+  if (!data) return;
+  const p = getPrisma();
+  try {
+    await p.$transaction(async (tx) => {
+      const existing = await tx.wishlist.findMany({ select: { id: true } });
+      const existingSet = new Set(existing.map(x => x.id));
+      const incomingSet = new Set((data.wishlist || []).map(x => x.id));
+
+      for (const id of existingSet) {
+        if (!incomingSet.has(id)) {
+          await tx.wishlist.delete({ where: { id } });
+        }
+      }
+
+      for (const item of data.wishlist || []) {
+        await tx.wishlist.upsert({
+          where: { id: item.id },
+          create: {
+            id: item.id,
+            bangumiId: item.bangumiId,
+            title: item.title,
+            bangumiTitle: item.bangumiTitle,
+            coverUrl: item.coverUrl,
+            summary: item.summary,
+            rating: item.rating,
+          },
+          update: {
+            title: item.title,
+            bangumiTitle: item.bangumiTitle,
+            coverUrl: item.coverUrl,
+            summary: item.summary,
+            rating: item.rating,
+          },
+        });
+      }
+    });
+    logger.info(`Synced Wishlist: ${(data.wishlist || []).length} items`);
+  } catch (e) {
+    logger.error('SQLite wishlist save error:', e.message);
+    throw e;
+  }
+}
+
+// ─── 精细化更新：单条 MyList 状态 ───
+async function updateMyItemStatus(animeId, status) {
+  try {
+    const p = getPrisma();
+    await p.myList.upsert({
+      where: { animeId },
+      create: { animeId, status },
+      update: { status },
+    });
+    logger.info(`Updated MyList status: ${animeId} → ${status}`);
+  } catch (e) {
+    logger.error('MyList status update error:', e.message);
+  }
+}
+
+// ─── 旧 saveMemories 兼容包装 ───
+async function saveMemories(data) {
+  if (!data) return;
+  // 旧 memories 格式转为 myList 格式后写入
+  const legacyMemories = (data.memories || []).filter(m => m.animeId);
+  if (legacyMemories.length > 0) {
+    data.myList = data.myList || [];
+    for (const m of legacyMemories) {
+      const existing = data.myList.find(x => x.animeId === m.animeId);
+      if (!existing) {
+        data.myList.push({
+          animeId: m.animeId,
+          status: 'completed',
+          rating: m.rating,
+          thoughts: m.thoughts || '',
+          notes: m.notes || '',
+        });
+      }
+    }
+  }
+  return saveMyList(data);
 }
 
 async function savePlaySessions(data) {
@@ -462,4 +587,4 @@ async function updatePlaySession(sessionId, fields) {
   }
 }
 
-module.exports = { loadData, saveAll, saveLibrary, saveMemories, savePlaySessions, updateEpisodeProgress, updatePlaySession, shutdown, getPrisma, ensureSchema };
+module.exports = { loadData, saveAll, saveLibrary, saveMyList, saveMemories, saveWishlist, updateMyItemStatus, savePlaySessions, updateEpisodeProgress, updatePlaySession, shutdown, getPrisma, ensureSchema };

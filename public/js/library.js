@@ -4,6 +4,15 @@ let contextMenuAnimeId = null;
 let cardScrollTrigger = null;
 let cardTween = null;
 
+// MyList status labels
+const MYLIST_STATUS_LABELS = {
+  watching: '当前观看',
+  wish: '计划中',
+  completed: '已完成',
+  on_hold: '搁置',
+  dropped: '抛弃'
+};
+
 // Grid zoom
 const GRID_ZOOM_MIN = 0.5;
 const GRID_ZOOM_MAX = 2.0;
@@ -16,6 +25,11 @@ function applyGridZoom() {
   const size = Math.round(GRID_BASE_SIZE * gridZoom);
   grid.style.setProperty('--grid-min', size + 'px');
   grid.style.gridTemplateColumns = `repeat(auto-fill, minmax(${size}px, 1fr))`;
+  // Also apply to mylist grids
+  document.documentElement.style.setProperty('--grid-zoom-size', size + 'px');
+  document.querySelectorAll('#mylistView .grid-container').forEach(g => {
+    g.style.gridTemplateColumns = `repeat(auto-fill, minmax(${size}px, 1fr))`;
+  });
 }
 
 function showZoomLevel() {
@@ -95,19 +109,25 @@ function renderLibrary(filter = '') {
   grid.innerHTML = filtered.map((anime) => {
     const coverSrc = anime.localCover ? `/covers/${path.basename(anime.localCover)}?w=400&q=75` : '';
     const id = escAttr(anime.id);
-    const status = getWatchStatus(anime);
+    const mylistLabel = anime.myListStatus ? MYLIST_STATUS_LABELS[anime.myListStatus] : null;
+    const moreBtn = `<div class="card-more-btn" onclick="event.stopPropagation();toggleStatusPopover(event, '${id}')" title="设置状态">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+        <circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/>
+      </svg>
+    </div>`;
     return `
       <div class="anime-card" onclick="navigateToDetail('${id}', this)" oncontextmenu="showContextMenu(event, '${id}')">
         ${coverSrc
           ? `<img src="${coverSrc}" loading="lazy" decoding="async" alt="${escAttr(anime.title)}">`
           : `<div class="gray-cover"><svg viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8 12.5v-9l6 4.5-6 4.5z"/></svg></div>`
         }
+        ${moreBtn}
         <div class="overlay">
           <h3>${escHtml(anime.bangumiTitle || anime.title)}</h3>
           <div class="meta">
             ${anime.rating ? `<span class="rating-badge">★ ${anime.rating}</span>` : ''}
             ${anime.season ? `<span class="season-badge">S${anime.season}</span>` : ''}
-            <span class="status-badge ${status.cls}">${status.label}</span>
+            ${mylistLabel ? `<span class="mylist-badge ${anime.myListStatus}">${mylistLabel}</span>` : ''}
           </div>
         </div>
       </div>
@@ -213,6 +233,29 @@ function showContextMenu(e, animeId) {
   e.stopPropagation();
   contextMenuAnimeId = animeId;
   const menu = document.getElementById('contextMenu');
+  // Restore default library context menu items
+  menu.innerHTML = `
+    <div class="context-menu-item" id="ctxArchive">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 8v13H3V8"></path>
+        <path d="M1 3h22v5H1z"></path>
+        <path d="M10 12h4"></path>
+      </svg>
+      归档
+    </div>
+    <div class="context-menu-divider"></div>
+    <div class="context-menu-item context-menu-danger" id="ctxDelete">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 6h18"></path>
+        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+      </svg>
+      移除
+    </div>`;
+  // Re-bind event listeners after restoring content
+  document.getElementById('ctxDelete').addEventListener('click', contextDeleteAnime);
+  document.getElementById('ctxArchive').addEventListener('click', contextArchiveAnime);
+  // Position
   let x = e.clientX;
   let y = e.clientY;
   menu.classList.add('show');
@@ -252,15 +295,6 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideContex
 document.getElementById('ctxDelete').addEventListener('click', contextDeleteAnime);
 document.getElementById('ctxArchive').addEventListener('click', contextArchiveAnime);
 
-function getWatchStatus(anime) {
-  const eps = anime.episodes;
-  if (!Array.isArray(eps) || eps.length === 0) return { label: '未观看', cls: 'unwatched' };
-  const n = eps.filter(ep => ep.watched).length;
-  if (n === 0) return { label: '未观看', cls: 'unwatched' };
-  if (n === eps.length) return { label: '已看完', cls: 'completed' };
-  return { label: '观看中', cls: 'watching' };
-}
-
 async function contextArchiveAnime() {
   const animeId = contextMenuAnimeId;
   hideContextMenu();
@@ -279,7 +313,7 @@ async function contextArchiveAnime() {
     await API.del(`/api/anime/${encodeURIComponent(animeId)}`);
     showToast('已归档');
     loadLibrary();
-    loadMemories();
+    if (typeof loadMyList === 'function') loadMyList();
   } catch (e) {
     showToast('归档失败: ' + e.message);
   }
@@ -305,7 +339,8 @@ let syncInProgress = false;
 document.querySelector('.main-content').addEventListener('wheel', function(e) {
   if (!e.ctrlKey && !e.metaKey) return;
   const grid = document.getElementById('libraryGrid');
-  if (!grid || !grid.contains(e.target)) return;
+  const mylistGrid = document.querySelector('#mylistView .grid-container');
+  if (!grid || (!grid.contains(e.target) && (!mylistGrid || !mylistGrid.contains(e.target)))) return;
   e.preventDefault();
   // deltaY proportional: mouse notch ~100px → 0.08, trackpad light ~10px → 0.008
   const absDelta = Math.min(Math.abs(e.deltaY), 300);

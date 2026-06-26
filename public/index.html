@@ -41,10 +41,12 @@
         <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path>
       </svg>
     </button>
-    <button class="nav-btn" id="btnMemories" data-tip="归档" onclick="showView('memories')">
+    <button class="nav-btn" id="btnMyList" data-tip="我的列表" onclick="showView('mylist')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 8v4l3 3"></path>
-        <circle cx="12" cy="12" r="10"></circle>
+        <rect x="3" y="3" width="7" height="7"></rect>
+        <rect x="14" y="3" width="7" height="7"></rect>
+        <rect x="3" y="14" width="7" height="7"></rect>
+        <rect x="14" y="14" width="7" height="7"></rect>
       </svg>
     </button>
   </nav>
@@ -149,28 +151,28 @@
     </div>
   </section>
 
-  <!-- Memories / Archive View -->
-  <section class="view hidden" id="memoriesView">
+  <!-- My List View -->
+  <section class="view hidden" id="mylistView">
     <div class="view-header">
-      <h2>归档</h2>
-    </div>
-    <div class="memory-stats" id="memoryStats" style="display:none">
-      <div class="memory-stat memory-stat--accent">
-        <span class="memory-stat-num" id="memoryCount">0</span>
-        <span class="memory-stat-label">已归档</span>
-      </div>
-      <div class="memory-stat">
-        <span class="memory-stat-num" id="memoryAvgRating">--</span>
-        <span class="memory-stat-label">平均评分</span>
+      <h2>我的列表</h2>
+      <div class="mylist-tab-bar">
+        <button class="mylist-tab active" data-filter="all" onclick="setMyListFilter('all')">全部</button>
+        <button class="mylist-tab" data-filter="watching" onclick="setMyListFilter('watching')">当前观看</button>
+        <button class="mylist-tab" data-filter="wish" onclick="setMyListFilter('wish')">计划中</button>
+        <button class="mylist-tab" data-filter="completed" onclick="setMyListFilter('completed')">已完成</button>
+        <button class="mylist-tab" data-filter="on_hold" onclick="setMyListFilter('on_hold')">搁置</button>
+        <button class="mylist-tab" data-filter="dropped" onclick="setMyListFilter('dropped')">抛弃</button>
       </div>
     </div>
-    <div class="memory-masonry" id="memoriesGrid"></div>
-    <div class="empty-state" id="memoriesEmpty" style="display:none">
+    <div id="mylistGrid" class="mylist-grid"></div>
+    <div class="empty-state" id="mylistEmpty" style="display:none">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 8v4l3 3"></path>
-        <circle cx="12" cy="12" r="10"></circle>
+        <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+        <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+        <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+        <rect x="14" y="14" width="7" height="7" rx="1"></rect>
       </svg>
-      <p>暂无归档记录</p>
+      <p>暂无内容</p>
     </div>
   </section>
 
@@ -626,7 +628,7 @@ function switchSettingsTab(btn, tab) {
 <script src="/js/discovery.js"></script>
 <script src="/js/library.js"></script>
 <script src="/js/detail.js"></script>
-<script src="/js/memory.js"></script>
+<script src="/js/mylist.js"></script>
 <script src="/js/metamatch.js"></script>
 <script src="/js/app.js"></script>
 </body>

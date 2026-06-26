@@ -8,6 +8,8 @@ let wasMpvActive = false;
 
 // Archive mode flags (set by memory.js)
 let isArchiveMode = false;
+// Wishlist mode (set when viewing mylist wishlist items)
+let isWishlistMode = false;
 
 // Character grid: large max-height for smooth CSS transition (replaces 'none')
 const MAX_GRID_HEIGHT = 10000;
@@ -108,6 +110,7 @@ function stopDetailRefresh() {
 async function showDetail(id, fromRect, fromSrc) {
   // Reset archive mode when viewing library items
   isArchiveMode = false;
+  isWishlistMode = false;
   archiveMemoryData = null;
   detailSourceView = 'library';
   // Remove archive magazine layout class if present
@@ -203,6 +206,8 @@ function renderDetail() {
   const coverEl = document.getElementById('detailCover');
   if (anime.localCover) {
     coverEl.innerHTML = `<img src="/covers/${path.basename(anime.localCover)}?w=540&q=80" alt="${escAttr(anime.title)}">`;
+  } else if (anime.coverUrl) {
+    coverEl.innerHTML = `<img src="${escAttr(anime.coverUrl)}" alt="${escAttr(anime.title)}">`;
   } else {
     coverEl.innerHTML = `<div class="gray-cover"><svg viewBox="0 0 24 24" width="64" height="64" fill="#555"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8 12.5v-9l6 4.5-6 4.5z"/></svg></div>`;
   }
@@ -281,6 +286,8 @@ function renderDetail() {
   // ─── Right column modules ───
   if (isArchiveMode) {
     renderArchiveDetail(anime);
+  } else if (isWishlistMode) {
+    renderWishlistDetail(anime);
   } else {
     document.getElementById('archiveDetail').style.display = 'none';
     document.getElementById('watchCard').style.display = '';
@@ -394,6 +401,52 @@ window.addEventListener('resize', () => {
     }
   }, 300);
 });
+
+function renderWishlistDetail(anime) {
+  // Hide interactive modules
+  document.getElementById('watchCard').style.display = 'none';
+  document.getElementById('episodeHeatmap').style.display = 'none';
+  document.getElementById('detailCharacters').style.display = 'none';
+  document.getElementById('watchStats').style.display = 'none';
+  document.getElementById('archiveDetail').style.display = 'none';
+
+  // Hide action buttons
+  const fetchBtn = document.getElementById('btnFetchBangumi');
+  const deleteBtn = document.getElementById('btnDeleteAnime');
+  const writeBtn = document.getElementById('btnWriteMemory');
+  if (fetchBtn) fetchBtn.style.display = 'none';
+  if (deleteBtn) deleteBtn.style.display = 'none';
+  if (writeBtn) writeBtn.style.display = 'none';
+
+  const layoutEl = document.querySelector('.detail-layout');
+  if (layoutEl) layoutEl.classList.remove('detail-layout--archive');
+
+  // Show wishlist info in the right column
+  document.getElementById('archiveDetail').style.display = 'block';
+  const archiveEl = document.getElementById('archiveDetail');
+  archiveEl.innerHTML = `
+    <div class="archive-magazine-essay">
+      <div class="archive-magazine-thoughts" style="font-size:0.875rem;color:var(--text2);line-height:1.7">此条目来自愿望单，目前没有本地文件。</div>
+    </div>
+    <div class="archive-magazine-meta">
+      ${anime.rating ? `
+        <div class="archive-magazine-stat">
+          <span class="archive-magazine-stat-value">★ ${anime.rating}</span>
+          <span class="archive-magazine-stat-label">评分</span>
+        </div>` : ''}
+      <div class="archive-magazine-stat">
+        <span class="archive-magazine-stat-value">愿望单</span>
+        <span class="archive-magazine-stat-label">来源</span>
+      </div>
+    </div>
+    <div class="wishlist-detail-actions" style="margin-top:1rem">
+      <a class="btn btn-primary" href="https://bgm.tv/subject/${anime.bangumiId}" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        在 Bangumi 中打开
+      </a>
+    </div>
+  `;
+}
 
 function renderArchiveDetail(anime) {
   // Switch layout to archive magazine mode
@@ -583,6 +636,16 @@ function renderEpisodeHeatmap(anime) {
       const path = el.dataset.path;
       const pos = parseFloat(el.dataset.pos) || 0;
       playEpisode(path, pos);
+    });
+    // Right-click to toggle watched status
+    el.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!currentAnime) return;
+      const epNumber = parseInt(el.dataset.ep);
+      const ep = currentAnime.episodes.find(e => e.number === epNumber);
+      if (!ep) return;
+      toggleWatched(currentAnime.id, epNumber, !ep.watched);
     });
   });
 }
@@ -1063,6 +1126,17 @@ let isSliding = false;
 
 function goPrev() {
   if (isSliding) return;
+  if (detailSourceView === 'mylist' && typeof mylistData !== 'undefined' && mylistData.length > 0) {
+    const idx = mylistData.findIndex(i => i.id === currentAnime.id);
+    if (idx === -1) return;
+    const prevIdx = idx === 0 ? mylistData.length - 1 : idx - 1;
+    const prev = mylistData[prevIdx];
+    if (prev) {
+      showToast(`← ${prev.bangumiTitle || prev.title}`);
+      slideToAnime(prev.id, 'prev');
+    }
+    return;
+  }
   if (isArchiveMode) {
     const idx = findCurrentMemoryIndex();
     if (idx === -1) return;
@@ -1086,6 +1160,17 @@ function goPrev() {
 
 function goNext() {
   if (isSliding) return;
+  if (detailSourceView === 'mylist' && typeof mylistData !== 'undefined' && mylistData.length > 0) {
+    const idx = mylistData.findIndex(i => i.id === currentAnime.id);
+    if (idx === -1) return;
+    const nextIdx = idx === mylistData.length - 1 ? 0 : idx + 1;
+    const next = mylistData[nextIdx];
+    if (next) {
+      showToast(`${next.bangumiTitle || next.title} →`);
+      slideToAnime(next.id, 'next');
+    }
+    return;
+  }
   if (isArchiveMode) {
     const idx = findCurrentMemoryIndex();
     if (idx === -1) return;
@@ -1131,7 +1216,31 @@ async function slideToAnime(id, direction) {
   resetDetailEnter();
   stopDetailRefresh();
   try {
-    if (isArchiveMode) {
+    if (detailSourceView === 'mylist' && typeof mylistData !== 'undefined') {
+      const item = mylistData.find(i => i.id === id);
+      if (!item) throw new Error('条目不存在');
+      if (item.source === 'wishlist') {
+        isWishlistMode = true;
+        isArchiveMode = false;
+        currentAnime = {
+          id: item.id,
+          title: item.title,
+          bangumiTitle: item.bangumiTitle || item.title,
+          localCover: null,
+          coverUrl: item.coverUrl || '',
+          rating: item.rating || null,
+          summary: item.summary || '',
+          bangumiId: item.bangumiId,
+          season: null,
+          episodes: [],
+          downloaded: false,
+        };
+      } else {
+        isWishlistMode = false;
+        isArchiveMode = false;
+        currentAnime = await API.get(`/api/anime/${encodeURIComponent(id)}`);
+      }
+    } else if (isArchiveMode) {
       const memory = memoriesData.find(m => m.animeId === id);
       if (!memory) throw new Error('归档记录不存在');
       archiveMemoryData = memory;
@@ -1157,7 +1266,7 @@ async function slideToAnime(id, direction) {
       wrap.style.transform = 'scale(1)';
     }
     document.getElementById('headerTitle').textContent = currentAnime.bangumiTitle || currentAnime.title;
-    if (!isArchiveMode) startDetailRefresh();
+    if (!isArchiveMode && !isWishlistMode) startDetailRefresh();
   } catch (e) {
     showToast('加载详情失败: ' + e.message);
     isSliding = false;

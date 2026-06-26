@@ -529,13 +529,32 @@ const server = http.createServer((req, res) => {
       for (const item of items) {
         const { folderPath, folderName, parsedTitle, parsedSeason, specialSuffix } = item;
         if (!folderPath || !folderName) continue;
-        if (data.library.some(a => a.folderPath === folderPath)) continue;
 
         const videos = findVideos(folderPath);
-        // Filter out NCOP/NCED/Menu/etc. from episode list
         const episodeFiles = videos.filter(v => !isExtraVideo(v.name));
-        // Check scannedTree for existing metadata
         const scannedNode = data.scannedTree.find(n => n.path === folderPath);
+
+        // Allow re-import of previously deleted (downloaded=false) items
+        const existing = data.library.find(a => a.folderPath === folderPath);
+        if (existing) {
+          if (existing.downloaded !== false) continue;
+          // Reactivate: just flip downloaded flag and refresh episodes
+          existing.downloaded = true;
+          existing.importedAt = new Date().toISOString();
+          existing.episodes = episodeFiles.map((v, i) => ({
+            number: i + 1,
+            filePath: v.path,
+            fileName: v.name,
+            fileSize: v.size,
+            duration: null,
+            watched: false,
+            progress: 0,
+          }));
+          imported.push(existing.id);
+          if (scannedNode) scannedNode.excluded = false;
+          continue;
+        }
+
         const anime = {
           id: parsedTitle + (parsedSeason ? `-Season ${parsedSeason}` : ''),
           folderPath,
@@ -564,12 +583,17 @@ const server = http.createServer((req, res) => {
         };
         data.library.push(anime);
         imported.push(anime.id);
+        // Auto-create MyList entry so imported items appear in MyList immediately
+        if (!data.myList) data.myList = [];
+        if (!data.myList.find(m => m.animeId === anime.id)) {
+          data.myList.push({ animeId: anime.id, status: 'watching', rating: null, thoughts: '', notes: '' });
+        }
         // Clear excluded flag if it was excluded
         if (scannedNode) {
           scannedNode.excluded = false;
         }
       }
-      Promise.all([db.saveLibrary(data), saveScannedTree(data.scannedTree)]);
+      Promise.all([db.saveLibrary(data), db.saveMyList(data), saveScannedTree(data.scannedTree)]);
       jsonResp(res, 200, { ok: true, imported });
     }).catch(e => {
       jsonResp(res, 400, { error: 'Invalid request body' });
@@ -740,8 +764,11 @@ const server = http.createServer((req, res) => {
       } catch (_) {
         a.pinyinTitle = '';
       }
+      // Merge MyList status so library cards can display it
+      const myItem = (data.myList || []).find(m => m.animeId === a.id);
+      a.myListStatus = myItem ? myItem.status : null;
     });
-    jsonResp(res, 200, data.library);
+    jsonResp(res, 200, data.library.filter(a => a.downloaded !== false));
     return;
   }
 
@@ -790,7 +817,23 @@ const server = http.createServer((req, res) => {
       jsonResp(res, 404, { error: 'Anime not found' });
       return;
     }
-    const removed = data.library.splice(idx, 1)[0];
+    const removed = data.library[idx];
+    removed.downloaded = false;
+    // Ensure MyList entry persists (delete = archive in MyList)
+    const existingMyItem = (data.myList || []).find(m => m.animeId === id);
+    if (existingMyItem) {
+      // keep existing status/thoughts/rating — user's manual data preserved
+    } else {
+      // auto-create MyList record with completed status
+      if (!data.myList) data.myList = [];
+      data.myList.push({
+        animeId: id,
+        status: 'completed',
+        rating: removed.rating || null,
+        thoughts: '',
+        notes: '',
+      });
+    }
     // Clear metadata in scannedTree so Discovery view reflects the removal
     const scannedNode = data.scannedTree && data.scannedTree.find(n => n.path === removed.folderPath);
     if (scannedNode) {
@@ -800,7 +843,6 @@ const server = http.createServer((req, res) => {
       scannedNode.bangumiTitle = null;
       scannedNode.bangumiTitleJp = null;
       scannedNode.bangumiTitleEn = null;
-      scannedNode.bangumiTitleRomaji = null;
       scannedNode.summary = null;
       scannedNode.coverUrl = null;
       scannedNode.localCover = null;
@@ -808,14 +850,92 @@ const server = http.createServer((req, res) => {
       scannedNode.metadataSource = null;
     }
     // await persistence so data survives restart
-    Promise.all([db.saveLibrary(data), saveScannedTree(data.scannedTree)]).then(() => jsonResp(res, 200, { ok: true })).catch(e => {
+    Promise.all([db.saveLibrary(data), db.saveMyList(data), saveScannedTree(data.scannedTree)]).then(() => jsonResp(res, 200, { ok: true })).catch(e => {
       logger.error('Delete save error:', e);
       jsonResp(res, 500, { error: 'Failed to persist' });
     });
     return;
   }
 
-  // --- API: memories ---
+  // --- API: MyList (统一列表) ---
+  if (urlPath === '/api/mylist' && req.method === 'GET') {
+    // Merge MyList items (with Anime data) + Wishlist items
+    const merged = [];
+    const animeMap = new Map(data.library.map(a => [a.id, a]));
+    for (const item of data.myList || []) {
+      const anime = animeMap.get(item.animeId);
+      merged.push({
+        id: item.animeId,
+        title: anime ? anime.title : item.animeId,
+        bangumiTitle: anime ? anime.bangumiTitle : null,
+        coverUrl: anime ? anime.coverUrl : null,
+        localCover: anime ? anime.localCover : null,
+        season: anime ? anime.season : null,
+        rating: item.rating,
+        thoughts: item.thoughts,
+        status: item.status,
+        episodeCount: anime ? anime.episodes.length : 0,
+        episodesWatched: anime ? anime.episodes.filter(e => e.watched).length : 0,
+        hasLocalFiles: !!anime,
+        source: 'library',
+        summary: anime ? anime.summary : null,
+      });
+    }
+    for (const item of data.wishlist || []) {
+      merged.push({
+        id: 'wish-' + item.bangumiId,
+        bangumiId: item.bangumiId,
+        title: item.title,
+        bangumiTitle: item.bangumiTitle,
+        coverUrl: item.coverUrl,
+        rating: item.rating,
+        status: 'wish',
+        hasLocalFiles: false,
+        source: 'wishlist',
+        summary: item.summary,
+      });
+    }
+    jsonResp(res, 200, merged);
+    return;
+  }
+
+  // PUT /api/mylist/:animeId/status — manually set status
+  const mylistStatusMatch = urlPath.match(/^\/api\/mylist\/([^/]+)\/status$/);
+  if (mylistStatusMatch && req.method === 'PUT') {
+    readBody(req).then(body => {
+      const { status } = JSON.parse(body);
+      const animeId = decodeURIComponent(mylistStatusMatch[1]);
+      if (!status || !['watching', 'wish', 'completed', 'on_hold', 'dropped'].includes(status)) {
+        jsonResp(res, 400, { error: 'Invalid status' });
+        return;
+      }
+      // Update in-memory data
+      if (!data.myList) data.myList = [];
+      let existing = data.myList.find(m => m.animeId === animeId);
+      if (existing) {
+        existing.status = status;
+      } else {
+        data.myList.push({
+          animeId,
+          status,
+          rating: null,
+          thoughts: '',
+          notes: '',
+        });
+      }
+      db.updateMyItemStatus(animeId, status).then(() => {
+        jsonResp(res, 200, { ok: true });
+      }).catch(e => {
+        logger.error('MyList status save error:', e);
+        jsonResp(res, 500, { error: 'Failed to save status' });
+      });
+    }).catch(e => {
+      jsonResp(res, 400, { error: 'Invalid request body' });
+    });
+    return;
+  }
+
+  // --- API: memories (backward compat, read from myList) ---
   if (urlPath === '/api/memories' && req.method === 'GET') {
     jsonResp(res, 200, data.memories);
     return;
@@ -828,30 +948,95 @@ const server = http.createServer((req, res) => {
         jsonResp(res, 400, { error: 'animeId is required' });
         return;
       }
-      const anime = data.library.find(a => a.id === animeId);
-      let existing = data.memories.find(m => m.animeId === animeId);
+      // Write to myList backend with completed status (archive)
+      if (!data.myList) data.myList = [];
+      let existing = data.myList.find(m => m.animeId === animeId);
       if (existing) {
         if (rating !== undefined) existing.rating = rating;
         if (thoughts !== undefined) existing.thoughts = thoughts;
         if (notes !== undefined) existing.notes = notes;
+        if (!existing.status) existing.status = 'completed';
       } else {
-        existing = {
+        data.myList.push({
           animeId,
-          title: anime ? anime.title : animeId,
-          bangumiId: anime ? anime.bangumiId : null,
-          bangumiTitle: anime ? anime.bangumiTitle : null,
+          status: 'completed',
           rating: rating || null,
           thoughts: thoughts || '',
           notes: notes || '',
-          watchedAt: new Date().toISOString(),
-          coverLocal: anime ? anime.localCover : null,
-        };
-        data.memories.push(existing);
+        });
       }
-      db.saveMemories(data);
-      jsonResp(res, 200, { ok: true, memory: existing });
+      db.saveMyList(data);
+      // Build legacy response
+      const anime = data.library.find(a => a.id === animeId);
+      const legacy = {
+        animeId,
+        title: anime ? anime.title : animeId,
+        bangumiId: anime ? anime.bangumiId : null,
+        bangumiTitle: anime ? anime.bangumiTitle : null,
+        rating: rating || null,
+        thoughts: thoughts || '',
+        notes: notes || '',
+        watchedAt: new Date().toISOString(),
+        coverLocal: anime ? anime.localCover : null,
+      };
+      jsonResp(res, 200, { ok: true, memory: legacy });
     }).catch(e => {
       jsonResp(res, 400, { error: 'Invalid request body' });
+    });
+    return;
+  }
+
+  // --- API: Wishlist ---
+  if (urlPath === '/api/wishlist' && req.method === 'GET') {
+    jsonResp(res, 200, data.wishlist || []);
+    return;
+  }
+
+  if (urlPath === '/api/wishlist' && req.method === 'POST') {
+    readBody(req).then(body => {
+      const item = JSON.parse(body);
+      if (!item.bangumiId || !item.title) {
+        jsonResp(res, 400, { error: 'bangumiId and title required' });
+        return;
+      }
+      if (!data.wishlist) data.wishlist = [];
+      const existing = data.wishlist.find(w => w.bangumiId === item.bangumiId);
+      if (existing) {
+        jsonResp(res, 200, { ok: true, wishlist: existing });
+        return;
+      }
+      const entry = {
+        id: 'wish-' + Date.now(),
+        bangumiId: item.bangumiId,
+        title: item.title,
+        bangumiTitle: item.bangumiTitle || null,
+        coverUrl: item.coverUrl || null,
+        summary: item.summary || null,
+        rating: item.rating || null,
+        addedAt: new Date().toISOString(),
+      };
+      data.wishlist.push(entry);
+      db.saveWishlist(data);
+      jsonResp(res, 200, { ok: true, wishlist: entry });
+    }).catch(e => {
+      jsonResp(res, 400, { error: 'Invalid request body' });
+    });
+    return;
+  }
+
+  // DELETE /api/wishlist/:id
+  const wishlistDeleteMatch = urlPath.match(/^\/api\/wishlist\/([^/]+)$/);
+  if (wishlistDeleteMatch && req.method === 'DELETE') {
+    const id = decodeURIComponent(wishlistDeleteMatch[1]);
+    const idx = (data.wishlist || []).findIndex(w => w.id === id);
+    if (idx === -1) {
+      jsonResp(res, 404, { error: 'Wishlist item not found' });
+      return;
+    }
+    data.wishlist.splice(idx, 1);
+    db.saveWishlist(data).then(() => jsonResp(res, 200, { ok: true })).catch(e => {
+      logger.error('Wishlist delete save error:', e);
+      jsonResp(res, 500, { error: 'Failed to persist' });
     });
     return;
   }
@@ -1426,10 +1611,16 @@ async function validateCovers(data) {
       if (!fs.existsSync(coverPath)) item.localCover = undefined;
     }
   }
-  for (const mem of data.memories) {
+  for (const mem of data.memories || []) {
     if (mem.coverLocal) {
       const coverPath = path.join(coverDir, path.basename(mem.coverLocal));
       if (!fs.existsSync(coverPath)) mem.coverLocal = undefined;
+    }
+  }
+  for (const item of data.wishlist || []) {
+    if (item.coverUrl && item.coverUrl.startsWith(DATA_DIR)) {
+      const coverPath = path.join(coverDir, path.basename(item.coverUrl));
+      if (!fs.existsSync(coverPath)) item.coverUrl = null;
     }
   }
 }
@@ -1459,7 +1650,7 @@ async function init() {
   await db.ensureSchema().catch(e => logger.warn('Schema ensure skipped:', e.message));
 
   // Phase 2: Hydrate data — SQLite 主存储，scannedTree 从 JSON
-  data = (await db.loadData()) || { discovered: [], library: [], memories: [], playSessions: [] };
+  data = (await db.loadData()) || { discovered: [], library: [], memories: [], myList: [], wishlist: [], playSessions: [] };
 
   // 迁移：从旧的 anime-data.json 提取 scannedTree（如存在）
   const OLD_DATA_PATH = path.join(DATA_DIR, 'anime-data.json');
@@ -1478,6 +1669,20 @@ async function init() {
     }
   }
   data.scannedTree = scannedTree;
+
+  // 迁移：已有库项目自动创建 MyList 记录（无状态则默认为 watching）
+  if (!data.myList) data.myList = [];
+  let myListDirty = false;
+  for (const anime of data.library) {
+    if (!data.myList.find(m => m.animeId === anime.id)) {
+      data.myList.push({ animeId: anime.id, status: 'watching', rating: null, thoughts: '', notes: '' });
+      myListDirty = true;
+    }
+  }
+  if (myListDirty) {
+    db.saveMyList(data).catch(e => logger.warn('MyList migration save error:', e.message));
+    logger.info(`Auto-created MyList entries for ${data.library.length} library items`);
+  }
 
   // Phase 3: Post-load validation (async, non-blocking)
   validateCovers(data).catch(e => logger.warn('Cover validation error:', e.message));

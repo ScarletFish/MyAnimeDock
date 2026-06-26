@@ -32,7 +32,7 @@ model Anime {
   
   episodes      Episode[]
   playSessions  PlaySession[]
-  memories      Memory[]
+  myList        MyList?
   
   @@index([bangumiId])
   @@index([title])
@@ -76,22 +76,33 @@ model PlaySession {
   @@index([startTime])
 }
 
-model Memory {
-  id           String   @id @default(cuid())
-  animeId      String   @unique
-  title        String
-  bangumiId    Int?
-  bangumiTitle String?
-  rating       Float?
-  thoughts     String?
-  notes        String?
-  watchedAt    DateTime @default(now())
-  coverLocal   String?
-  
-  anime        Anime    @relation(fields: [animeId], references: [id], onDelete: Cascade)
-  
+model MyList {
+  id        String   @id @default(cuid())
+  animeId   String   @unique
+  status    String   @default("watching")  // watching | completed | on_hold | dropped
+  rating    Float?
+  thoughts  String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  anime     Anime    @relation(fields: [animeId], references: [id], onDelete: Cascade)
+
   @@index([animeId])
-  @@index([watchedAt])
+  @@index([status])
+}
+
+model Wishlist {
+  id           String   @id @default(cuid())
+  bangumiId    Int      @unique
+  title        String
+  bangumiTitle String?
+  coverUrl     String?
+  summary      String?
+  rating       Float?
+  addedAt      DateTime @default(now())
+
+  @@index([bangumiId])
 }
 
 // ===== JSON 存储表（用 String 存储 JSON 字符串）=====

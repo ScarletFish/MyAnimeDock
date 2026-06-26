@@ -4,7 +4,7 @@ let configCache = null;
 let libraryScrollTop = 0;
 
 function showView(view) {
-  const views = ['discovery', 'metamatch', 'library', 'memories', 'detail'];
+  const views = ['discovery', 'metamatch', 'library', 'mylist', 'detail'];
   for (const v of views) {
     const el = document.getElementById(v + 'View');
     if (el) el.classList.toggle('hidden', v !== view);
@@ -14,7 +14,7 @@ function showView(view) {
   document.getElementById('btnDiscovery').classList.toggle('active', view === 'discovery');
   document.getElementById('btnMetaMatch').classList.toggle('active', view === 'metamatch');
   document.getElementById('btnLibrary').classList.toggle('active', view === 'library');
-  document.getElementById('btnMemories').classList.toggle('active', view === 'memories');
+  document.getElementById('btnMyList').classList.toggle('active', view === 'mylist');
 
   const mc = document.querySelector('.main-content');
 
@@ -43,7 +43,7 @@ function showView(view) {
     // Restore scroll after render
     requestAnimationFrame(() => { if (mc) mc.scrollTop = libraryScrollTop; });
   }
-  if (view === 'memories') loadMemories();
+  if (view === 'mylist') loadMyList();
 }
 
 // Theme

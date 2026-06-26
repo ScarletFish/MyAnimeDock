@@ -934,7 +934,7 @@ html {
   color: var(--fg-secondary);
 }
 
-.status-badge {
+.mylist-badge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -944,19 +944,29 @@ html {
   font-weight: 500;
 }
 
-.status-badge.unwatched {
-  background: rgba(156, 163, 175, 0.12);
-  color: var(--fg-tertiary);
-}
-
-.status-badge.watching {
+.mylist-badge.watching {
   background: rgba(96, 165, 250, 0.12);
   color: var(--accent);
 }
 
-.status-badge.completed {
+.mylist-badge.wish {
+  background: rgba(168, 85, 247, 0.12);
+  color: #a855f7;
+}
+
+.mylist-badge.completed {
   background: rgba(34, 197, 94, 0.12);
   color: var(--success);
+}
+
+.mylist-badge.on_hold {
+  background: rgba(251, 191, 36, 0.12);
+  color: #f59e0b;
+}
+
+.mylist-badge.dropped {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
 }
 
 /* ─── Detail View ─── */
@@ -1594,154 +1604,240 @@ html {
   color: var(--fg-primary);
 }
 
-/* ─── Memories / Archive (uniform grid) ─── */
+/* ─── My List ─── */
 
-.memory-masonry {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(9.375rem, 1fr));
-  gap: clamp(0.85rem, 1.2vw, 1.25rem);
+.mylist-grid {
   padding-bottom: 2rem;
 }
 
-/* Poster Card */
-.memory-card {
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  cursor: pointer;
-  position: relative;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  transition: transform 0.35s var(--ease-spring),
-              box-shadow 0.4s var(--ease-out),
-              border-color 0.25s var(--ease-out);
-  line-height: 0;
+.mylist-section {
+  margin-bottom: 2rem;
 }
 
-.memory-card:hover {
-  transform: translateY(-4px) scale(1.01);
-  box-shadow: 0 12px 48px rgba(0,0,0,0.5), 0 0 60px rgba(225,58,90,0.08);
-  border-color: rgba(225,58,90,0.2);
+.mylist-section-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding: 0 0.25rem;
 }
 
-.memory-card-cover {
-  width: 100%;
-  display: block;
-}
-
-.memory-card-cover img {
-  width: 100%;
-  display: block;
-  aspect-ratio: 3/4;
-  object-fit: cover;
-  image-rendering: -webkit-optimize-contrast;
-  transition: transform 0.5s var(--ease-out);
-}
-
-.memory-card:hover .memory-card-cover img {
-  transform: scale(1.05);
-}
-
-/* Hover overlay */
-.memory-card-overlay {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 3rem 1rem 1rem;
-  background: linear-gradient(transparent 0%, rgba(0,0,0,0.88) 60%);
-  opacity: 0;
-  transition: opacity 0.35s var(--ease-out);
-  pointer-events: none;
-  line-height: 1.4;
-}
-
-.memory-card:hover .memory-card-overlay {
-  opacity: 1;
-}
-
-.memory-card-overlay h3 {
-  color: #fff;
+.mylist-section-title {
   font-family: var(--font-body);
-  font-size: clamp(0.75rem, 1.2vw, 0.875rem);
+  font-size: 1rem;
   font-weight: 600;
-  margin-bottom: 4px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  color: var(--fg-primary);
+  letter-spacing: -0.01em;
 }
 
-.memory-card-overlay .memory-card-rating {
-  color: var(--accent-soft);
+.mylist-section-count {
+  font-family: var(--font-mono);
   font-size: 0.75rem;
-  font-weight: 600;
-}
-
-.memory-card-overlay .memory-card-date {
-  color: rgba(237,232,226,0.5);
-  font-size: 0.688rem;
-  margin-left: 8px;
-}
-
-.memory-card-overlay .memory-card-thoughts {
-  color: rgba(237,232,226,0.7);
-  font-size: 0.75rem;
-  margin-top: 6px;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  line-height: 1.4;
-}
-
-/* Gray cover placeholder */
-.memory-card-cover .memory-card-placeholder {
-  aspect-ratio: 3/4;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  font-weight: 500;
+  color: var(--fg-muted);
   background: var(--bg-elevated);
+  padding: 1px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
 }
 
-/* Stats Bar */
-.memory-stats {
+/* Tab bar */
+.mylist-tab-bar {
   display: flex;
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
-  flex-wrap: wrap;
-}
-
-.memory-stat {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 12px 24px;
+  gap: 4px;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  min-width: 90px;
+  padding: 3px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
-.memory-stat-num {
-  font-family: var(--font-display);
-  font-size: 1.4rem;
-  font-weight: 700;
+.mylist-tab {
+  padding: 6px 14px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: transparent;
+  border: none;
+  color: var(--fg-muted);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  font-family: inherit;
+  line-height: 1.4;
+  white-space: nowrap;
+  border-radius: calc(var(--radius-md) - 2px);
+}
+
+.mylist-tab:hover {
   color: var(--fg-primary);
-  line-height: 1.2;
+  background: var(--bg-surface);
 }
 
-.memory-stat.memory-stat--accent .memory-stat-num {
+.mylist-tab.active {
+  color: #fff;
+  background: var(--accent);
+}
+
+/* Wishlist card */
+.anime-card--wish {
+  /* Dimmed 效果由 img style 处理 */
+}
+
+.anime-card--wish:hover {
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  border-color: rgba(225, 58, 90, 0.1);
+}
+
+.anime-card--wish:hover img {
+  transform: scale(1.05);
+}
+
+.wishlist-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 100px;
+  font-size: 0.688rem;
+  font-weight: 600;
+  background: rgba(225, 58, 90, 0.08);
+  color: var(--accent-soft);
+}
+
+/* Wishlist detail modal */
+.wishlist-detail-modal {
+  max-width: 32rem !important;
+}
+
+.wishlist-detail-cover {
+  width: 100%;
+  max-height: 320px;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  margin-bottom: 1rem;
+}
+
+.wishlist-detail-cover img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: cover;
+}
+
+.wishlist-detail-rating {
+  margin: 0.5rem 0;
+  font-size: 1rem;
+  font-weight: 600;
   color: var(--accent);
 }
 
-.memory-stat-label {
-  font-size: 0.688rem;
-  color: var(--fg-muted);
-  margin-top: 4px;
+.wishlist-detail-summary {
+  font-size: 0.875rem;
+  line-height: 1.7;
+  color: var(--text2);
+  margin: 0.75rem 0;
 }
 
+.wishlist-detail-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+/* Context menu active state */
+.context-menu-item--active {
+  color: var(--accent) !important;
+  font-weight: 600;
+}
+
+/* ─── "..." more button in overlay ─── */
+.card-more-btn {
+  position: absolute;
+  bottom: 0.5rem;
+  right: 0.5rem;
+  z-index: 2;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.55);
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  padding: 0;
+  line-height: 0;
+  opacity: 0;
+  transition: opacity 0.2s var(--ease-out), background 0.2s var(--ease-out);
+}
+
+.anime-card:hover .card-more-btn {
+  opacity: 1;
+}
+
+.card-more-btn:hover {
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+}
+
+/* ─── Status popover ─── */
+.status-popover {
+  position: fixed;
+  z-index: 1000;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-hover);
+  border-radius: var(--radius-md);
+  padding: 4px;
+  min-width: 140px;
+  box-shadow: var(--shadow-lg);
+  opacity: 0;
+  transform: translateY(4px) scale(0.96);
+  transition: all 0.15s var(--ease-out);
+  pointer-events: none;
+}
+
+.status-popover.show {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.status-popover-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 14px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+  border-radius: calc(var(--radius-md) - 2px);
+  cursor: pointer;
+  transition: all 0.15s var(--ease-out);
+  white-space: nowrap;
+  text-align: center;
+}
+
+.status-popover-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--fg-primary);
+}
+
+.status-popover-item--active {
+  color: var(--accent) !important;
+  font-weight: 600;
+}
+
+/* Responsive */
 @media (max-width: 768px) {
-  .memory-stat { padding: 10px 16px; min-width: 80px; }
-  .memory-stat-num { font-size: 1.2rem; }
+  .mylist-tab {
+    padding: 5px 10px;
+    font-size: 0.688rem;
+  }
+  .mylist-section-title {
+    font-size: 0.875rem;
+  }
 }
 
 /* ─── Archive Magazine Layout ─── */

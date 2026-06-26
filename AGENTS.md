@@ -41,6 +41,8 @@ POST /api/play                # Play video (system/mpv)
 POST /api/progress            # Update episode progress
 POST /api/bangumi/search      # Search all enabled scrapers
 POST /api/bangumi/fetch       # Fetch metadata for library item
+GET  /api/mylist              # List MyList (library + wishlist, merged)
+PUT  /api/mylist/:id/status   # Update MyList status (watching/wish/completed/on_hold/dropped)
 GET  /api/mpv-status          # Active mpv sessions
 POST /api/quit                # Shutdown server
 GET  /api/health              # Tauri readiness polling
@@ -89,15 +91,19 @@ public/            → 前端静态文件（无构建步骤）
 └── js/
     ├── api.js         → fetch() 封装
     ├── app.js         → 路由、主题、toast、设置页
-    ├── discovery.js   → 发现/扫描视图（扁平卡片列表 + 兄弟组连续竖线 + 右侧详情抽屉）
+    ├── discovery.js   → 发现/扫描视图（扁平卡片列表 + 兄弟组连续竖线 + 内联操作按钮）
     ├── library.js     → 资料库网格
     ├── detail.js      → 详情 + GSAP Flip Hero 动画 + 右侧 3 模块
     │                   （继续播放卡片 / 剧集热力图 / 观看统计图表）
-    ├── metamatch.js   → MetaMatch 批量元数据匹配工作台（列表+面板布局，SSE 流式同步）
+    ├── metamatch.js   → MetaMatch 批量元数据匹配工作台（列表+右侧滑入面板，SSE 流式同步）
+    ├── mylist.js      → MyList 视图（当前观看/计划中/已完成/搁置/抛弃状态管理）
     └── memory.js      → 观看记录
 scripts/            → 构建/迁移工具
 ├── copy-sidecar-deps.js   → pkg 打包后复制原生模块（Prisma 引擎 + ffmpeg）
 └── migrate-to-sqlite.js   → JSON → SQLite 数据迁移（一次性）
+.agents/            → Agent 规则/技能
+└── skills/         → 专业技能（16 个：data-flow, gsap-*, feature-dev, code-reviewer 等）
+opencode.json       → OpenCode 配置（插件声明）
 ```
 
 **数据持久化**: SQLite (Prisma ORM)，规范化表 (Anime, Episode, PlaySession, Memory) + JSON 文件 (ScannedTree)。
@@ -159,6 +165,9 @@ scripts/            → 构建/迁移工具
 - **季度匹配**: Anime 表 `matchedSeason`/`totalSeasons` 字段（Prisma schema），由 AniList `extractSeasonChain()` 提取
 - **结构化日志**: `server/logger.js` — `debug/info/warn/error` + `[TAG]` 前缀，`logger.child('[TAG]')` 模块级标签，`LOG_LEVEL` 环境变量控制
 - **Sorensen-Dice 模糊匹配**: `scrapers/index.js` 中 `sorensenDice()` 用于搜索结果匹配，5 分钟 TTL 缓存避免重复请求
+- **MyList 状态管理**: `mylist.js` 中 `toggleStatusPopover()`/`setMyListItemStatus()` 管理状态（watching/wish/completed/on_hold/dropped）；卡片左上角 `.mylist-badge` 显示当前状态；弹窗支持鼠标离开 >100px 自动关闭
+- **状态自动创建**: 导入时自动创建 MyList 条目（默认 `watching`），删除动画时自动标记 `completed`；`db.saveMyList()` 仅写入 mylist 表
+- **主题切换按钮**: 设置页 theme 从 `<select>` 改为 toggle switch（`<input type="checkbox">`），onchange 实时调用 `handleThemeToggle()` + GSAP 波纹动画（从 toggle 位置向外扩散） + 全页 CSS 过渡（bg 0.7s/其他 0.55s）
 
 ## Config
 
@@ -195,7 +204,7 @@ scripts/            → 构建/迁移工具
 
 ## Play Sessions（播放会话追踪）
 
-mpv 模式下自动记录播放进度到 `anime-data.json` 和 SQLite。
+mpv 模式下自动记录播放进度到 SQLite。
 
 ```json
 {
@@ -219,7 +228,7 @@ mpv 模式下自动记录播放进度到 `anime-data.json` 和 SQLite。
 ## Gotchas
 
 - Bangumi API 受代理影响时 fallback 到 `curl`（`scrapers/bangumi.js` 中自动检测）
-- `anime-data.json` 和 `config.json` 在 `.gitignore` 中，不会提交
+- `config.json` 在 `.gitignore` 中，不会提交
 - 标题解析依赖 `anitomy`（TypeScript 移植版，纯 JS 无原生模块），pkg 打包无额外步骤
 - 视频缩略图依赖 `ffmpeg`（PATH 中可用），生成时缓存到 `thumbs/` 目录，首次请求可能延迟
 - 无认证/授权，局域网内 `/api/quit` 可关闭服务器
@@ -384,3 +393,18 @@ npm run build:nsis           # 仅 NSIS
 | Skill | Load with | Purpose |
 |-------|-----------|---------|
 | **data-flow** | `skill("data-flow")` | Complete data flow reference: 10 major flows (config, scan, import, metadata, play sessions, memories, covers/thumbnails, dual-write, startup, call chain) with file:line references. Load before making data path changes or debugging persistence issues. |
+| **agents-md-improver** | `skill("agents-md-improver")` | Audit, evaluate, and improve project-rules files (AGENTS.md, CLAUDE.md) |
+| **code-architect** | `skill("code-architect")` | Design feature architecture by analyzing existing codebase patterns, produce implementation blueprint |
+| **code-explorer** | `skill("code-explorer")` | Deeply analyze existing feature by tracing execution paths, mapping architecture layers |
+| **code-reviewer** | `skill("code-reviewer")` | Review code for bugs, logic errors, security vulnerabilities, code quality |
+| **feature-dev** | `skill("feature-dev")` | Guide a feature through a structured 7-phase workflow with codebase understanding, architecture, and review |
+| **frontend-design** | `skill("frontend-design")` | Create distinctive, production-grade frontend interfaces with high design quality |
+| **security-review** | `skill("security-review")` | Focused security review of pending git changes |
+| **gsap-core** | `skill("gsap-core")` | GSAP core API — gsap.to(), from(), fromTo(), easing, stagger, matchMedia |
+| **gsap-timeline** | `skill("gsap-timeline")` | Timeline sequencing, position parameter, nesting, playback |
+| **gsap-scrolltrigger** | `skill("gsap-scrolltrigger")` | Scroll-linked animations, pinning, scrub, triggers |
+| **gsap-plugins** | `skill("gsap-plugins")` | GSAP plugins: Flip, Draggable, ScrollTrigger, SplitText, ScrollSmoother |
+| **gsap-react** | `skill("gsap-react")` | GSAP with React/Next.js — useGSAP hook, refs, cleanup |
+| **gsap-frameworks** | `skill("gsap-frameworks")` | GSAP with Vue, Svelte, and other non-React frameworks |
+| **gsap-performance** | `skill("gsap-performance")` | Performance optimizations: transforms, will-change, layout avoidance |
+| **gsap-utils** | `skill("gsap-utils")` | gsap.utils utilities: clamp, mapRange, random, snap, wrap, toArray |

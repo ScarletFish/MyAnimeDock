@@ -8,9 +8,45 @@ let mmSelectedId = null;
 let mmSyncInProgress = false;
 let mmFixResults = [];
 let mmSelectedIds = new Set();
+let mmSelectionOrder = []; // tracks selection order for panel cycling
 let mmSyncCancelled = false;
 let mmSSESource = null;
 let mmUIThrottleTimer = null;
+let mmPanelOpen = false;
+
+// ─── Modal Open / Close ───
+
+function mmOpenModal() {
+  const modal = document.getElementById('metaMatchModal');
+  if (!modal) return;
+  modal.classList.add('show');
+  mmLoadModalData();
+  // Escape key to close
+  document.addEventListener('keydown', mmModalKeydown);
+}
+
+function mmModalKeydown(e) {
+  if (e.key === 'Escape') {
+    mmCloseModal();
+    document.removeEventListener('keydown', mmModalKeydown);
+  }
+}
+
+function mmCloseModal() {
+  const modal = document.getElementById('metaMatchModal');
+  if (!modal) return;
+  mmClosePanel();
+  modal.classList.remove('show');
+  document.removeEventListener('keydown', mmModalKeydown);
+  // Reset state for next open
+  mmSelectedId = null;
+  mmSelectedIds.clear();
+  mmSelectionOrder = [];
+  mmPanelOpen = false;
+  mmSyncInProgress = false;
+  mmSyncCancelled = true;
+  if (mmSSESource) { mmSSESource.close(); mmSSESource = null; }
+}
 
 // ─── Public API ───
 
@@ -29,13 +65,18 @@ function mmFilterSummary(text) {
   return text;
 }
 
-async function mmLoadData() {
+async function mmLoadModalData() {
   try {
     mmItems = [];
     mmFilter = 'all';
     mmSelectedId = null;
     mmSyncInProgress = false;
     mmSelectedIds.clear();
+    mmSelectionOrder = [];
+    mmPanelOpen = false;
+    document.getElementById('mmPanelEmpty').style.display = 'flex';
+    document.getElementById('mmPanelContent').style.display = 'none';
+    document.getElementById('mmPanel').classList.remove('open');
 
     const libData = await API.get('/api/library');
     if (!libData || libData.length === 0) {
@@ -83,23 +124,15 @@ async function mmLoadData() {
 function mmShowEmpty(msg) {
   const list = document.getElementById('mmGrid');
   const empty = document.getElementById('mmEmpty');
-  const stats = document.getElementById('mmStats');
-  const progress = document.getElementById('mmProgressWrap');
   const panelEmpty = document.getElementById('mmPanelEmpty');
   const panelContent = document.getElementById('mmPanelContent');
-  const startBtn = document.getElementById('mmStartBtn');
-  const retryBtn = document.getElementById('mmRetryBtn');
-  const batchBar = document.getElementById('mmBatchBar');
 
   if (list) { list.innerHTML = ''; list.style.display = 'none'; }
   if (empty) { empty.style.display = 'flex'; const p = empty.querySelector('p'); if (p) p.textContent = msg || '没有需要匹配的条目'; }
-  if (stats) stats.style.display = 'none';
-  if (progress) progress.style.display = 'none';
-  if (batchBar) batchBar.style.display = 'none';
-  if (startBtn) startBtn.style.display = 'none';
-  if (retryBtn) retryBtn.style.display = 'none';
   if (panelEmpty) panelEmpty.style.display = 'flex';
   if (panelContent) panelContent.style.display = 'none';
+  mmPanelOpen = false;
+  document.getElementById('mmPanel')?.classList.remove('open');
 }
 
 // ─── Filter & Search ───
@@ -151,10 +184,6 @@ function mmApplyFilters() {
 function mmRenderList() {
   const list = document.getElementById('mmGrid');
   const empty = document.getElementById('mmEmpty');
-  const stats = document.getElementById('mmStats');
-  const startBtn = document.getElementById('mmStartBtn');
-  const retryBtn = document.getElementById('mmRetryBtn');
-
   if (!list) return;
 
   if (mmFiltered.length === 0) {
@@ -169,17 +198,10 @@ function mmRenderList() {
             `没有 ${ { matched: '已匹配', failed: '失败', pending: '待处理' }[mmFilter] || '' } 的条目`);
       }
     }
-    if (stats) stats.style.display = 'none';
     return;
   }
   if (empty) empty.style.display = 'none';
   list.style.display = 'flex';
-  if (stats) stats.style.display = 'grid';
-
-  const hasPending = mmItems.some(i => i.status === 'pending');
-  const hasFailed = mmItems.some(i => i.status === 'failed');
-  startBtn.style.display = hasPending && !mmSyncInProgress ? '' : 'none';
-  retryBtn.style.display = hasFailed && !mmSyncInProgress ? '' : 'none';
 
   let html = '';
   mmFiltered.forEach((item, i) => {
@@ -190,9 +212,9 @@ function mmRenderList() {
     const rowClasses = ['mm-row'];
     if (isSelected) rowClasses.push('mm-row--selected');
     if (item.status === 'matching') rowClasses.push('mm-row--matching');
+    if (isBatchSelected) rowClasses.push('mm-row--batch');
 
     const dotClass = `mm-row-dot mm-row-dot--${item.status}`;
-    const checkClass = `mm-row-check${isBatchSelected ? ' mm-checked' : ''}`;
 
     const subParts = [];
     if (item.parsedSeason) subParts.push(`S${item.parsedSeason}`);
@@ -233,9 +255,6 @@ function mmRenderList() {
 
     html += `
       <div class="${rowClasses.join(' ')}" data-id="${item.animeId}" style="${animDelay}" onclick="mmRowClick(event, '${item.animeId}')">
-        <button class="${checkClass}" onclick="event.stopPropagation();mmToggleSelect('${item.animeId}')" title="选择">
-          <svg class="mm-check-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 8 7 12 13 4"/></svg>
-        </button>
         <div class="${dotClass}"></div>
         <div class="mm-row-info">
           <div class="mm-row-title">${escHtml(item.title)}</div>
@@ -276,20 +295,16 @@ function mmUpdateStats() {
 
 function mmUpdateProgress() {
   const wrap = document.getElementById('mmProgressWrap');
-  const fill = document.getElementById('mmProgressFill');
+  const fill = document.getElementById('mmProgressFill') || document.getElementById('mmModalProgress');
   const text = document.getElementById('mmProgressText');
-  if (!wrap || !fill || !text) return;
+  if (!fill) return;
 
   const total = mmItems.length;
   const done = mmItems.filter(i => i.status === 'matched' || i.status === 'failed').length;
   const pct = total > 0 ? Math.round(done / total * 100) : 0;
 
   fill.style.width = pct + '%';
-  text.textContent = `${done} / ${total}`;
-
-  if (done === total && total > 0) {
-    setTimeout(() => { wrap.style.display = 'none'; }, 800);
-  }
+  if (text) text.textContent = `${done} / ${total}`;
 }
 
 // ─── UI Refresh ───
@@ -348,11 +363,39 @@ function mmUpdateUI() {
 function mmToggleSelect(animeId) {
   if (mmSelectedIds.has(animeId)) {
     mmSelectedIds.delete(animeId);
+    const idx = mmSelectionOrder.indexOf(animeId);
+    if (idx !== -1) mmSelectionOrder.splice(idx, 1);
+    // If deselected item is shown in panel → switch to most recently selected or close
+    if (mmPanelOpen && animeId === mmSelectedId) {
+      if (mmSelectionOrder.length > 0) {
+        mmSelectForPanel(mmSelectionOrder[mmSelectionOrder.length - 1]);
+      } else {
+        mmDeselectPanel();
+      }
+    }
   } else {
     mmSelectedIds.add(animeId);
+    mmSelectionOrder.push(animeId);
   }
   mmUpdateBatchBar();
-  mmUpdateRowChecks();
+  mmUpdateRowSelection();
+}
+
+function mmSelectForPanel(animeId) {
+  mmSelectedId = animeId;
+  document.querySelectorAll('.mm-row').forEach(row => {
+    row.classList.toggle('mm-row--selected', row.dataset.id === animeId);
+  });
+  const row = document.querySelector(`.mm-row[data-id="${animeId}"]`);
+  if (row) row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  const item = mmItems.find(i => i.animeId === animeId);
+  if (item) mmRenderPanel(item);
+}
+
+function mmDeselectPanel() {
+  mmSelectedId = null;
+  document.querySelectorAll('.mm-row').forEach(row => row.classList.remove('mm-row--selected'));
+  mmShowPanelEmpty();
 }
 
 function mmToggleSelectAll() {
@@ -361,112 +404,192 @@ function mmToggleSelectAll() {
 
   if (allSelected) {
     allVisibleIds.forEach(id => mmSelectedIds.delete(id));
+    mmSelectionOrder = mmSelectionOrder.filter(id => !allVisibleIds.includes(id));
+    if (mmPanelOpen) mmDeselectPanel();
   } else {
-    allVisibleIds.forEach(id => mmSelectedIds.add(id));
+    allVisibleIds.forEach(id => {
+      if (!mmSelectedIds.has(id)) {
+        mmSelectedIds.add(id);
+        mmSelectionOrder.push(id);
+      }
+    });
   }
   mmUpdateBatchBar();
-  mmUpdateRowChecks();
+  mmUpdateRowSelection();
 }
 
 function mmClearSelection() {
   mmSelectedIds.clear();
+  mmSelectionOrder = [];
+  if (mmPanelOpen) mmDeselectPanel();
   mmUpdateBatchBar();
-  mmUpdateRowChecks();
+  mmUpdateRowSelection();
 }
 
 function mmUpdateBatchBar() {
-  const bar = document.getElementById('mmBatchBar');
   const count = document.getElementById('mmSelectedCount');
   const selectAllBtn = document.getElementById('mmSelectAllBtn');
 
-  if (!bar) return;
-
-  if (mmSelectedIds.size > 0) {
-    bar.style.display = 'flex';
-    if (count) count.textContent = mmSelectedIds.size;
-
-    const allVisibleIds = mmFiltered.map(i => i.animeId);
-    const allSelected = allVisibleIds.length > 0 && allVisibleIds.every(id => mmSelectedIds.has(id));
-    if (selectAllBtn) selectAllBtn.classList.toggle('mm-checked', allSelected);
-  } else {
-    bar.style.display = 'none';
-    if (selectAllBtn) selectAllBtn.classList.remove('mm-checked');
+  if (count) {
+    count.textContent = mmSelectedIds.size > 0 ? mmSelectedIds.size : '0';
   }
+
+  if (selectAllBtn) {
+    if (mmSelectedIds.size > 0) {
+      const allVisibleIds = mmFiltered.map(i => i.animeId);
+      const allSelected = allVisibleIds.length > 0 && allVisibleIds.every(id => mmSelectedIds.has(id));
+      selectAllBtn.classList.toggle('mm-checked', allSelected);
+    } else {
+      selectAllBtn.classList.remove('mm-checked');
+    }
+  }
+
+  mmUpdateMainAction();
 }
 
-function mmUpdateRowChecks() {
+function mmUpdateRowSelection() {
   document.querySelectorAll('.mm-row').forEach(row => {
     const id = row.dataset.id;
-    const check = row.querySelector('.mm-row-check');
-    if (check) {
-      check.classList.toggle('mm-checked', mmSelectedIds.has(id));
-    }
+    row.classList.toggle('mm-row--batch', mmSelectedIds.has(id));
   });
 }
 
-function mmBatchRetry() {
-  const ids = [...mmSelectedIds].filter(id => {
-    const item = mmItems.find(i => i.animeId === id);
-    return item && (item.status === 'failed' || item.status === 'pending');
-  });
-  if (ids.length === 0) {
-    showToast('选中条目无需重试');
+// ─── Smart Main Action Button ───
+
+function mmUpdateMainAction() {
+  const btn = document.getElementById('mmMainActionBtn');
+  const cancelBtn = document.getElementById('mmCancelBtn');
+  if (!btn) return;
+
+  if (mmSyncInProgress) {
+    btn.style.display = 'none';
+    if (cancelBtn) cancelBtn.style.display = '';
     return;
   }
-  ids.forEach(id => {
-    const item = mmItems.find(i => i.animeId === id);
-    if (item) { item.status = 'pending'; item.error = null; }
-  });
-  mmSelectedIds.clear();
-  mmUpdateUI();
-  mmUpdateBatchBar();
+  if (cancelBtn) cancelBtn.style.display = 'none';
+  btn.style.display = '';
+  btn.disabled = false;
+  btn.classList.remove('disabled');
+
+  const hasSelection = mmSelectedIds.size > 0;
+  const hasPending = mmItems.some(i => i.status === 'pending');
+  const hasFailed = mmItems.some(i => i.status === 'failed');
+
+  if (!hasPending && !hasFailed) {
+    btn.textContent = '全部已匹配';
+    btn.className = 'btn btn-sm';
+    btn.classList.add('disabled');
+    return;
+  }
+
+  if (hasSelection) {
+    btn.textContent = '同步选中 (' + mmSelectedIds.size + ')';
+    btn.className = 'btn btn-sm btn-primary';
+  } else if (hasFailed && !hasPending) {
+    const cnt = mmItems.filter(i => i.status === 'failed').length;
+    btn.textContent = '重试失败 (' + cnt + ')';
+    btn.className = 'btn btn-sm btn-outline';
+  } else {
+    btn.textContent = '自动匹配全部';
+    btn.className = 'btn btn-sm btn-primary';
+  }
+}
+
+function mmMainAction() {
+  if (mmSyncInProgress) return;
+
+  // Priority 1: sync selected items
+  if (mmSelectedIds.size > 0) {
+    const ids = [...mmSelectedIds];
+    mmSelectedIds.clear();
+    mmSelectionOrder = [];
+    ids.forEach(id => {
+      const item = mmItems.find(i => i.animeId === id);
+      if (item) { item.status = 'pending'; item.error = null; item.meta = null; }
+    });
+    mmUpdateUI();
+    mmUpdateMainAction();
+    mmStartSync(ids);
+    return;
+  }
+
+  // Priority 2: retry failed
+  const failedItems = mmItems.filter(i => i.status === 'failed');
+  if (failedItems.length > 0) {
+    const ids = failedItems.map(i => i.animeId);
+    failedItems.forEach(i => { i.status = 'pending'; i.error = null; });
+    mmUpdateUI();
+    mmUpdateMainAction();
+    mmStartSync(ids);
+    return;
+  }
+
+  // Priority 3: match all pending
   mmStartSync();
 }
 
-function mmBatchResync() {
-  const ids = [...mmSelectedIds];
-  if (ids.length === 0) return;
-  ids.forEach(id => {
-    const item = mmItems.find(i => i.animeId === id);
-    if (item) { item.status = 'pending'; item.error = null; item.meta = null; }
-  });
-  mmSelectedIds.clear();
-  mmUpdateUI();
-  mmUpdateBatchBar();
-  mmStartSync();
+// ─── Panel Slide Animation ───
+
+function mmOpenPanel() {
+  const panel = document.getElementById('mmPanel');
+  if (!panel || mmPanelOpen) return;
+  mmPanelOpen = true;
+  panel.classList.add('open');
 }
+
+function mmClosePanel(cb) {
+  const panel = document.getElementById('mmPanel');
+  if (!panel || !mmPanelOpen) {
+    if (cb) cb();
+    return;
+  }
+  mmPanelOpen = false;
+  panel.classList.remove('open');
+  if (cb) setTimeout(cb, 350);
+}
+
+// Click outside panel to close (inside modal)
+document.addEventListener('click', (e) => {
+  if (!mmPanelOpen) return;
+  if (e.target.closest('.mm-panel')) return;
+  if (e.target.closest('.mm-row')) return;
+  if (e.target.closest('.modal-m-filterbar')) return;
+  if (e.target.closest('.modal-m-topbar')) return;
+  mmDeselectPanel();
+});
 
 // ─── Row Selection ───
 
 function mmRowClick(event, animeId) {
   if (mmSyncInProgress) return;
 
-  // If clicking on the checkbox area, don't select the row
-  if (event.target.closest('.mm-row-check')) return;
+  const wasBatchSelected = mmSelectedIds.has(animeId);
+  const panelWasForThis = mmSelectedId === animeId && mmPanelOpen;
 
-  mmSelectedId = animeId;
+  mmToggleSelect(animeId);
 
-  document.querySelectorAll('.mm-row').forEach(row => {
-    row.classList.toggle('mm-row--selected', row.dataset.id === animeId);
-  });
-
-  const row = document.querySelector(`.mm-row[data-id="${animeId}"]`);
-  if (row) row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-
-  const item = mmItems.find(i => i.animeId === animeId);
-  if (item) mmRenderPanel(item);
+  if (wasBatchSelected && !panelWasForThis) {
+    // Was batch-selected but panel showed something else → just deselected, keep panel as-is
+  } else if (!wasBatchSelected) {
+    // New selection → open panel for this item
+    mmSelectForPanel(animeId);
+  }
+  // If wasBatchSelected && panelWasForThis → mmToggleSelect already cycled panel
 }
 
 function mmShowPanelEmpty() {
-  const empty = document.getElementById('mmPanelEmpty');
-  const content = document.getElementById('mmPanelContent');
-  if (empty) empty.style.display = 'flex';
-  if (content) content.style.display = 'none';
+  mmClosePanel(() => {
+    const empty = document.getElementById('mmPanelEmpty');
+    const content = document.getElementById('mmPanelContent');
+    if (empty) empty.style.display = 'flex';
+    if (content) content.style.display = 'none';
+  });
 }
 
 // ─── Panel Rendering ───
 
 function mmRenderPanel(item) {
+  mmOpenPanel();
   const empty = document.getElementById('mmPanelEmpty');
   const content = document.getElementById('mmPanelContent');
   if (empty) empty.style.display = 'none';
@@ -722,34 +845,35 @@ async function mmApplyFix(animeId, resultIndex) {
 
 // ─── Sync: Start / Retry ───
 
-async function mmStartSync() {
+async function mmStartSync(animeIds) {
   if (mmSyncInProgress) return;
 
-  const pendingItems = mmItems.filter(i => i.status === 'pending' || i.status === 'failed');
-  if (pendingItems.length === 0) {
+  let itemsToSync;
+  if (animeIds && animeIds.length > 0) {
+    itemsToSync = mmItems.filter(i => animeIds.includes(i.animeId) && ['pending', 'failed'].includes(i.status));
+  } else {
+    itemsToSync = mmItems.filter(i => i.status === 'pending' || i.status === 'failed');
+  }
+
+  if (itemsToSync.length === 0) {
     showToast('没有需要匹配的条目');
     return;
   }
 
   mmSyncInProgress = true;
   mmSyncCancelled = false;
-  document.getElementById('mmStartBtn').style.display = 'none';
-  document.getElementById('mmRetryBtn').style.display = 'none';
-  document.getElementById('mmCancelBtn').style.display = '';
+  mmUpdateMainAction();
 
-  const progressWrap = document.getElementById('mmProgressWrap');
-  progressWrap.style.display = 'flex';
-
-  pendingItems.forEach(i => { i.status = 'matching'; });
+  itemsToSync.forEach(i => { i.status = 'matching'; });
   mmUpdateUI();
 
-  const animeIds = pendingItems.map(i => i.animeId);
+  const syncIds = itemsToSync.map(i => i.animeId);
 
   try {
     if (typeof EventSource !== 'undefined' && await mmCanStream()) {
-      await mmSyncViaSSE(animeIds);
+      await mmSyncViaSSE(syncIds);
     } else {
-      await mmSyncViaBatch(animeIds);
+      await mmSyncViaBatch(syncIds);
     }
   } catch (e) {
     if (!mmSyncCancelled) {
@@ -761,15 +885,14 @@ async function mmStartSync() {
   }
 
   mmSyncInProgress = false;
-  document.getElementById('mmCancelBtn').style.display = 'none';
   mmUpdateUI();
+  mmUpdateMainAction();
 
   if (mmSyncCancelled) {
     showToast('匹配已取消');
   } else {
     const hasFailed = mmItems.some(i => i.status === 'failed');
     if (hasFailed) {
-      document.getElementById('mmRetryBtn').style.display = '';
       showToast('部分条目匹配失败，请手动修正');
     } else {
       showToast('全部匹配完成');
@@ -783,6 +906,7 @@ function mmCancelSync() {
     mmSSESource.close();
     mmSSESource = null;
   }
+  mmUpdateMainAction();
 }
 
 async function mmCanStream() {
@@ -901,21 +1025,6 @@ async function mmSyncViaBatch(animeIds) {
   }
 }
 
-async function mmRetryFailed() {
-  const failedItems = mmItems.filter(i => i.status === 'failed');
-  if (failedItems.length === 0) {
-    showToast('没有失败条目');
-    return;
-  }
-
-  failedItems.forEach(i => {
-    i.status = 'pending';
-    i.error = null;
-  });
-  mmUpdateUI();
-  mmStartSync();
-}
-
 // ─── Re-search single item ───
 
 async function mmStartResearch(animeId) {
@@ -928,8 +1037,7 @@ async function mmStartResearch(animeId) {
   mmUpdateUI();
 
   mmSyncInProgress = true;
-  document.getElementById('mmStartBtn').style.display = 'none';
-  document.getElementById('mmRetryBtn').style.display = 'none';
+  mmUpdateMainAction();
 
   try {
     const result = await API.post('/api/library/sync', { animeIds: [animeId] });
@@ -956,21 +1064,19 @@ async function mmStartResearch(animeId) {
 
   mmSyncInProgress = false;
   mmUpdateUI();
+  mmUpdateMainAction();
 }
 
 // ─── Expose globals ───
-window.mmLoadData = mmLoadData;
+window.mmOpenModal = mmOpenModal;
+window.mmCloseModal = mmCloseModal;
 window.mmSetFilter = mmSetFilter;
 window.mmFilterGrid = mmFilterGrid;
 window.mmRowClick = mmRowClick;
-window.mmStartSync = mmStartSync;
+window.mmMainAction = mmMainAction;
 window.mmCancelSync = mmCancelSync;
-window.mmRetryFailed = mmRetryFailed;
 window.mmSearchForFix = mmSearchForFix;
 window.mmApplyFix = mmApplyFix;
 window.mmStartResearch = mmStartResearch;
 window.mmToggleSelect = mmToggleSelect;
 window.mmToggleSelectAll = mmToggleSelectAll;
-window.mmClearSelection = mmClearSelection;
-window.mmBatchRetry = mmBatchRetry;
-window.mmBatchResync = mmBatchResync;

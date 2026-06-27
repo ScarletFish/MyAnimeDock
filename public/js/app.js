@@ -4,7 +4,7 @@ let configCache = null;
 let libraryScrollTop = 0;
 
 function showView(view) {
-  const views = ['discovery', 'metamatch', 'library', 'mylist', 'detail'];
+  const views = ['discovery', 'library', 'mylist', 'detail'];
   for (const v of views) {
     const el = document.getElementById(v + 'View');
     if (el) el.classList.toggle('hidden', v !== view);
@@ -12,7 +12,6 @@ function showView(view) {
 
   // Update sidebar active state
   document.getElementById('btnDiscovery').classList.toggle('active', view === 'discovery');
-  document.getElementById('btnMetaMatch').classList.toggle('active', view === 'metamatch');
   document.getElementById('btnLibrary').classList.toggle('active', view === 'library');
   document.getElementById('btnMyList').classList.toggle('active', view === 'mylist');
 
@@ -37,7 +36,6 @@ function showView(view) {
 
   // Load data for view
   if (view === 'discovery') loadDiscovery();
-  if (view === 'metamatch') mmLoadData();
   if (view === 'library') {
     loadLibrary();
     // Restore scroll after render
@@ -58,6 +56,60 @@ function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
 }
 
+function updateThemeToggleLabels() {
+  const isLight = document.getElementById('settingsTheme').checked;
+  document.getElementById('themeLabelDark').className = 'theme-toggle-label' + (isLight ? ' theme-toggle-label--inactive' : ' theme-toggle-label--active');
+  document.getElementById('themeLabelLight').className = 'theme-toggle-label' + (isLight ? ' theme-toggle-label--active' : ' theme-toggle-label--inactive');
+}
+
+function handleThemeToggle(toggle) {
+  const newTheme = toggle.checked ? 'light' : 'dark';
+  const oldTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+  if (newTheme === oldTheme) return;
+  updateThemeToggleLabels();
+  const rect = toggle.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  animateThemeTransition(newTheme, cx, cy);
+}
+
+function animateThemeTransition(newTheme, cx, cy) {
+  // CSS transitions on all themed properties — smooth, non-blocking
+  document.documentElement.classList.add('theme-transitioning');
+  applyTheme(newTheme);
+
+  // Faint accent-colored ripple from toggle — shows wave spreading direction
+  const maxDim = Math.max(window.innerWidth, window.innerHeight);
+  const size = maxDim * 3;
+  const ripple = document.createElement('div');
+  ripple.style.cssText = [
+    'position:fixed',
+    `left:${cx}px`, `top:${cy}px`,
+    `width:${size}px`, `height:${size}px`,
+    'margin-left:' + (-size / 2) + 'px',
+    'margin-top:' + (-size / 2) + 'px',
+    'border-radius:50%',
+    'background:' + (newTheme === 'dark' ? '#000' : '#fff'),
+    'opacity:0.16',
+    'pointer-events:none',
+    'z-index:99998',
+    'transform:scale(0)'
+  ].join(';');
+  document.body.appendChild(ripple);
+
+  gsap.to(ripple, {
+    scale: 1,
+    opacity: 0,
+    duration: 2.0,
+    ease: 'power2.out',
+    onComplete: () => ripple.remove()
+  });
+
+  setTimeout(() => {
+    document.documentElement.classList.remove('theme-transitioning');
+  }, 2100);
+}
+
 // Zoom via root rem scaling
 function applyZoom(scale) {
   document.documentElement.style.fontSize = (16 * (scale || 1)) + 'px';
@@ -69,7 +121,9 @@ async function openSettings() {
     const config = await API.get('/api/config');
     configCache = config;
     document.getElementById('settingsMediaDir').value = config.mediaDir || '';
-    document.getElementById('settingsTheme').value = localStorage.getItem('theme') || config.theme || 'dark';
+    const curTheme = localStorage.getItem('theme') || config.theme || 'dark';
+    document.getElementById('settingsTheme').checked = curTheme === 'light';
+    updateThemeToggleLabels();
     document.getElementById('settingsZoom').value = Math.round((config.uiScale || 1) * 100);
     document.getElementById('zoomLabel').textContent = document.getElementById('settingsZoom').value + '%';
     document.getElementById('settingsPlayerMode').value = config.playerMode || 'system';
@@ -99,17 +153,17 @@ function closeSettings() {
 
 async function saveSettings() {
   const mediaDir = document.getElementById('settingsMediaDir').value.trim();
-  const theme = document.getElementById('settingsTheme').value;
+  const newTheme = document.getElementById('settingsTheme').checked ? 'light' : 'dark';
   const playerMode = document.getElementById('settingsPlayerMode').value;
   const mpvPath = document.getElementById('settingsMpvPath').value.trim();
-
-  applyTheme(theme);
-  applyZoom(document.getElementById('settingsZoom').value / 100);
 
   if (!mediaDir) {
     document.getElementById('settingsError').textContent = '请输入媒体目录路径';
     return;
   }
+
+  const zoom = parseInt(document.getElementById('settingsZoom').value) / 100;
+  applyZoom(zoom);
 
   // Build apiSources from simple toggles
   const bangumiUrl = document.getElementById('bangumiUrl').value.trim() || 'https://api.bangumi.one';
@@ -127,13 +181,16 @@ async function saveSettings() {
       mediaDir,
       playerMode,
       mpvPath,
-      theme,
-      uiScale: parseInt(document.getElementById('settingsZoom').value) / 100,
+      theme: newTheme,
+      uiScale: zoom,
       autoMarkWatched: document.getElementById('settingsAutoMark').checked,
       apiSources,
     });
-    showToast('设置已保存');
+
     closeSettings();
+    applyTheme(newTheme);
+
+    showToast('设置已保存');
     refreshDiscovery();
   } catch (e) {
     document.getElementById('settingsError').textContent = '保存失败: ' + e.message;

@@ -46,39 +46,87 @@ function showView(view) {
 
 // Theme
 function loadTheme() {
-  const theme = localStorage.getItem('theme') || configCache?.theme || 'dark';
-  document.documentElement.setAttribute('data-theme', theme);
-  localStorage.setItem('theme', theme);
+  const theme = localStorage.getItem('theme') || configCache?.theme || 'default';
+  const themeMode = localStorage.getItem('themeMode') || configCache?.themeMode || 'dark';
+  // Backward compatibility: old format stored 'dark'/'light' as theme
+  const isOldFormat = theme === 'dark' || theme === 'light';
+  const resolvedTheme = isOldFormat ? 'default' : theme;
+  const resolvedMode = isOldFormat ? theme : themeMode;
+  setThemeAttributes(resolvedTheme, resolvedMode);
+  localStorage.setItem('theme', resolvedTheme);
+  localStorage.setItem('themeMode', resolvedMode);
+  // Sync theme picker UI
+  document.querySelectorAll('.theme-option').forEach(b => {
+    b.classList.toggle('theme-option--active', b.dataset.theme === resolvedTheme);
+  });
 }
 
-function applyTheme(theme) {
+function applyTheme(theme, themeMode) {
   localStorage.setItem('theme', theme);
-  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('themeMode', themeMode);
+  setThemeAttributes(theme, themeMode);
+}
+
+function setThemeAttributes(theme, themeMode) {
+  // For default theme, use backward-compatible data-theme="dark|light"
+  // so existing [data-theme="light"] selectors continue to work.
+  // For non-default themes, use data-theme="themeName" + data-theme-mode.
+  if (theme === 'default') {
+    document.documentElement.setAttribute('data-theme', themeMode);
+  } else {
+    document.documentElement.setAttribute('data-theme', theme);
+  }
+  document.documentElement.setAttribute('data-theme-mode', themeMode);
 }
 
 function updateThemeToggleLabels() {
-  const isLight = document.getElementById('settingsTheme').checked;
+  const isLight = document.getElementById('settingsThemeMode').checked;
   document.getElementById('themeLabelDark').className = 'theme-toggle-label' + (isLight ? ' theme-toggle-label--inactive' : ' theme-toggle-label--active');
   document.getElementById('themeLabelLight').className = 'theme-toggle-label' + (isLight ? ' theme-toggle-label--active' : ' theme-toggle-label--inactive');
 }
 
-function handleThemeToggle(toggle) {
-  const newTheme = toggle.checked ? 'light' : 'dark';
-  const oldTheme = document.documentElement.getAttribute('data-theme') || 'dark';
-  if (newTheme === oldTheme) return;
+function selectTheme(btn, theme) {
+  document.querySelectorAll('.theme-option').forEach(b => b.classList.remove('theme-option--active'));
+  btn.classList.add('theme-option--active');
+  const mode = document.getElementById('settingsThemeMode').checked ? 'light' : 'dark';
+  const rawTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+  const oldMode = document.documentElement.getAttribute('data-theme-mode') || 'dark';
+  // Resolve raw data-theme to theme name (default theme stores "dark"/"light")
+  const oldTheme = (rawTheme === 'dark' || rawTheme === 'light') ? 'default' : rawTheme;
+  if (theme === oldTheme && mode === oldMode) return;
+  animateThemeTransition(theme, mode, btn);
+}
+
+function handleThemeModeToggle(toggle) {
+  const newMode = toggle.checked ? 'light' : 'dark';
+  const theme = document.querySelector('.theme-option.theme-option--active')?.dataset?.theme || 'default';
+  const rawTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+  const oldMode = document.documentElement.getAttribute('data-theme-mode') || 'dark';
+  const oldTheme = (rawTheme === 'dark' || rawTheme === 'light') ? 'default' : rawTheme;
+  if (theme === oldTheme && newMode === oldMode) return;
   updateThemeToggleLabels();
   const rect = toggle.getBoundingClientRect();
   const cx = rect.left + rect.width / 2;
   const cy = rect.top + rect.height / 2;
-  animateThemeTransition(newTheme, cx, cy);
+  animateThemeTransition(theme, newMode, null, cx, cy);
 }
 
-function animateThemeTransition(newTheme, cx, cy) {
-  // CSS transitions on all themed properties — smooth, non-blocking
-  document.documentElement.classList.add('theme-transitioning');
-  applyTheme(newTheme);
+function animateThemeTransition(theme, mode, originBtn, cx, cy) {
+  // Compute ripple origin
+  if (!cx || !cy) {
+    if (originBtn) {
+      const rect = originBtn.getBoundingClientRect();
+      cx = rect.left + rect.width / 2;
+      cy = rect.top + rect.height / 2;
+    } else {
+      cx = window.innerWidth / 2;
+      cy = window.innerHeight / 2;
+    }
+  }
 
-  // Faint accent-colored ripple from toggle — shows wave spreading direction
+  // Apply theme instantly, then cover with a ripple overlay
+  applyTheme(theme, mode);
+
   const maxDim = Math.max(window.innerWidth, window.innerHeight);
   const size = maxDim * 3;
   const ripple = document.createElement('div');
@@ -89,8 +137,8 @@ function animateThemeTransition(newTheme, cx, cy) {
     'margin-left:' + (-size / 2) + 'px',
     'margin-top:' + (-size / 2) + 'px',
     'border-radius:50%',
-    'background:' + (newTheme === 'dark' ? '#000' : '#fff'),
-    'opacity:0.16',
+    'background:' + (mode === 'dark' ? '#fff' : '#000'),
+    'opacity:0.4',
     'pointer-events:none',
     'z-index:99998',
     'transform:scale(0)'
@@ -100,14 +148,10 @@ function animateThemeTransition(newTheme, cx, cy) {
   gsap.to(ripple, {
     scale: 1,
     opacity: 0,
-    duration: 2.0,
+    duration: 0.8,
     ease: 'power2.out',
     onComplete: () => ripple.remove()
   });
-
-  setTimeout(() => {
-    document.documentElement.classList.remove('theme-transitioning');
-  }, 2100);
 }
 
 // Zoom via root rem scaling
@@ -121,8 +165,15 @@ async function openSettings() {
     const config = await API.get('/api/config');
     configCache = config;
     document.getElementById('settingsMediaDir').value = config.mediaDir || '';
-    const curTheme = localStorage.getItem('theme') || config.theme || 'dark';
-    document.getElementById('settingsTheme').checked = curTheme === 'light';
+    const curTheme = localStorage.getItem('theme') || config.theme || 'default';
+    const curThemeMode = localStorage.getItem('themeMode') || config.themeMode || 'dark';
+    // Backward compatibility
+    const resolvedTheme = (curTheme === 'dark' || curTheme === 'light') ? 'default' : curTheme;
+    const resolvedMode = (curTheme === 'dark' || curTheme === 'light') ? curTheme : curThemeMode;
+    document.querySelectorAll('.theme-option').forEach(b => {
+      b.classList.toggle('theme-option--active', b.dataset.theme === resolvedTheme);
+    });
+    document.getElementById('settingsThemeMode').checked = resolvedMode === 'light';
     updateThemeToggleLabels();
     document.getElementById('settingsZoom').value = Math.round((config.uiScale || 1) * 100);
     document.getElementById('zoomLabel').textContent = document.getElementById('settingsZoom').value + '%';
@@ -153,7 +204,8 @@ function closeSettings() {
 
 async function saveSettings() {
   const mediaDir = document.getElementById('settingsMediaDir').value.trim();
-  const newTheme = document.getElementById('settingsTheme').checked ? 'light' : 'dark';
+  const newTheme = document.querySelector('.theme-option.theme-option--active')?.dataset?.theme || 'default';
+  const newThemeMode = document.getElementById('settingsThemeMode').checked ? 'light' : 'dark';
   const playerMode = document.getElementById('settingsPlayerMode').value;
   const mpvPath = document.getElementById('settingsMpvPath').value.trim();
 
@@ -182,13 +234,14 @@ async function saveSettings() {
       playerMode,
       mpvPath,
       theme: newTheme,
+      themeMode: newThemeMode,
       uiScale: zoom,
       autoMarkWatched: document.getElementById('settingsAutoMark').checked,
       apiSources,
     });
 
     closeSettings();
-    applyTheme(newTheme);
+    applyTheme(newTheme, newThemeMode);
 
     showToast('设置已保存');
     refreshDiscovery();

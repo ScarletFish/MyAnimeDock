@@ -755,7 +755,7 @@ function renderWatchStats(anime) {
   const module = document.getElementById('watchStats');
   const canvas = document.getElementById('watchStatsChart');
   const ctx = canvas.getContext('2d');
-  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  const isLight = document.documentElement.getAttribute('data-theme-mode') === 'light';
 
   API.get(`/api/anime/${encodeURIComponent(anime.id)}/sessions`).then(data => {
     if (version !== watchStatsVersion) return;

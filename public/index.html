@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=Noto+Sans+SC:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script>document.documentElement.setAttribute('data-theme',localStorage.getItem('theme')||'dark')</script>
+<script>(function(){var t=localStorage.getItem('theme')||'default',m=localStorage.getItem('themeMode');if(t==='dark'||t==='light'){m=t;t='default'}m=m||'dark';document.documentElement.setAttribute('data-theme',t==='default'?m:t);document.documentElement.setAttribute('data-theme-mode',m)})()</script>
 <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
@@ -451,14 +451,26 @@
           <p class="form-hint">动漫文件夹所在的根目录</p>
         </div>
         <div class="form-group">
-          <label>主题</label>
-          <div class="theme-toggle-wrapper">
-            <span class="theme-toggle-label theme-toggle-label--active" id="themeLabelDark"><span class="theme-toggle-swatch theme-toggle-swatch--dark"></span>深色</span>
+          <label>主题色系</label>
+          <div class="theme-picker" id="themePicker">
+            <button class="theme-option theme-option--default active" data-theme="default" onclick="selectTheme(this, 'default')" title="默认"></button>
+            <button class="theme-option theme-option--amber" data-theme="amber" onclick="selectTheme(this, 'amber')" title="琥珀"></button>
+            <button class="theme-option theme-option--ocean" data-theme="ocean" onclick="selectTheme(this, 'ocean')" title="海洋"></button>
+            <button class="theme-option theme-option--sakura" data-theme="sakura" onclick="selectTheme(this, 'sakura')" title="樱花"></button>
+            <button class="theme-option theme-option--emerald" data-theme="emerald" onclick="selectTheme(this, 'emerald')" title="翡翠"></button>
+            <button class="theme-option theme-option--neon" data-theme="neon" onclick="selectTheme(this, 'neon')" title="霓虹"></button>
+
+          </div>
+        </div>
+        <div class="form-group">
+          <label>深浅模式</label>
+          <div class="theme-mode-toggle">
+            <span class="theme-toggle-label theme-toggle-label--active" id="themeLabelDark">深色</span>
             <label class="toggle-switch">
-              <input type="checkbox" id="settingsTheme" onchange="handleThemeToggle(this)">
+              <input type="checkbox" id="settingsThemeMode" onchange="handleThemeModeToggle(this)">
               <span class="toggle-slider"></span>
             </label>
-            <span class="theme-toggle-label theme-toggle-label--inactive" id="themeLabelLight"><span class="theme-toggle-swatch theme-toggle-swatch--light"></span>浅色</span>
+            <span class="theme-toggle-label theme-toggle-label--inactive" id="themeLabelLight">浅色</span>
           </div>
         </div>
         <div class="form-group">

@@ -102,7 +102,8 @@ const DEFAULT_CONFIG = {
   mediaDir: '', 
   playerMode: 'system', 
   mpvPath: 'mpv', 
-  theme: 'dark',
+  theme: 'default',
+  themeMode: 'dark',
   autoMarkWatched: true,
   uiScale: 1.25,
   apiSources: [
@@ -347,6 +348,7 @@ const server = http.createServer((req, res) => {
       if (parsed.playerMode !== undefined) config.playerMode = parsed.playerMode;
       if (parsed.mpvPath !== undefined) config.mpvPath = parsed.mpvPath;
       if (parsed.theme !== undefined) config.theme = parsed.theme;
+      if (parsed.themeMode !== undefined) config.themeMode = parsed.themeMode;
       if (parsed.autoMarkWatched !== undefined) config.autoMarkWatched = !!parsed.autoMarkWatched;
       if (parsed.uiScale !== undefined) config.uiScale = Math.max(0.5, Math.min(2, parsed.uiScale));
       if (parsed.apiSources !== undefined) config.apiSources = parsed.apiSources;

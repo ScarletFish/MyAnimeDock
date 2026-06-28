@@ -123,6 +123,10 @@ function animateThemeTransition(theme, mode) {
 function openThemeDock() {
   const dock = document.getElementById('themeDock');
   const overlay = document.getElementById('themeDockOverlay');
+  // Reset folded state on open
+  dock.classList.remove('folded');
+  const foldBtn = dock.querySelector('.theme-dock-fold');
+  if (foldBtn) { foldBtn.textContent = '▾'; foldBtn.title = '折叠'; }
   // Sync dock controls with current state
   const mode = document.documentElement.getAttribute('data-theme-mode') || 'dark';
   const dockToggle = document.getElementById('dockThemeMode');
@@ -157,6 +161,15 @@ function handleDockZoom(input) {
   const scale = parseInt(input.value) / 100;
   applyZoom(scale);
   document.getElementById('dockZoomLabel').textContent = input.value + '%';
+}
+
+function toggleDockFold() {
+  const dock = document.getElementById('themeDock');
+  const inner = dock.querySelector('.theme-dock-inner');
+  const foldBtn = dock.querySelector('.theme-dock-fold');
+  const isFolded = dock.classList.toggle('folded');
+  foldBtn.textContent = isFolded ? '▸' : '▾';
+  foldBtn.title = isFolded ? '展开' : '折叠';
 }
 
 function openVisualDock() {

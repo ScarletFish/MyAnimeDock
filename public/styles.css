@@ -514,11 +514,14 @@ body::after {
 }
 
 /* ─── Light Theme Adjustments ─── */
-/* Background: warm soft gradient with subtle warm light */
+/* Hide ambient orbs in light mode — overall tint is enough */
+:is([data-theme="light"], [data-theme-mode="light"]) .ambient-orb {
+  display: none;
+}
+/* Background: overall tint with one large soft glow */
 :is([data-theme="light"], [data-theme-mode="light"]) body::before {
   background:
-    radial-gradient(ellipse 70% 55% at 0% 15%, rgba(var(--accent-rgb), 0.04) 0%, transparent 55%),
-    radial-gradient(ellipse 55% 45% at 100% 85%, rgba(var(--accent-secondary-rgb), 0.025) 0%, transparent 50%),
+    radial-gradient(ellipse 90% 70% at 50% 30%, rgba(var(--accent-rgb), 0.035) 0%, transparent 60%),
     var(--bg-deep);
 }
 
@@ -2434,8 +2437,7 @@ html {
 
 :is([data-theme="light"], [data-theme-mode="light"]) .discovery-hero-bg {
   background:
-    radial-gradient(ellipse 60% 80% at 80% 20%, rgba(var(--accent-rgb), 0.05) 0%, transparent 60%),
-    radial-gradient(ellipse 50% 60% at 20% 80%, rgba(var(--accent-secondary-rgb), 0.03) 0%, transparent 50%),
+    radial-gradient(ellipse 70% 80% at 50% 30%, rgba(var(--accent-rgb), 0.04) 0%, transparent 60%),
     var(--bg-elevated);
 }
 
@@ -3719,7 +3721,8 @@ html.theme-transitioning .theme-dock {
   text-align: right;
 }
 
-.theme-dock-close {
+.theme-dock-close,
+.theme-dock-fold {
   background: none;
   border: none;
   color: var(--fg-muted);
@@ -3729,11 +3732,50 @@ html.theme-transitioning .theme-dock {
   line-height: 1;
   border-radius: var(--radius-sm);
   transition: color var(--duration-fast) var(--ease-out), background var(--duration-fast) var(--ease-out);
-  margin-left: auto;
 }
-.theme-dock-close:hover {
+.theme-dock-fold {
+  display: none;
+}
+.theme-dock-close:hover,
+.theme-dock-fold:hover {
   color: var(--fg-primary);
   background: var(--hover-bg);
+}
+.theme-dock-close {
+  margin-left: auto;
+}
+
+/* ─── Theme Dock Folded State ─── */
+.theme-dock.folded {
+  transform: translateX(-50%) translateY(calc(100% - 36px));
+  padding: 0;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  overflow: hidden;
+}
+.theme-dock.folded .theme-dock-inner {
+  display: none;
+}
+.theme-dock.folded .theme-dock-fold {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 36px;
+  padding: 0;
+  font-size: 0.75rem;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  color: var(--fg-muted);
+  background: rgba(var(--bg-rgb), 0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-bottom: none;
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-out), background-color 0.4s ease, color 0.4s ease;
+}
+.theme-dock.folded .theme-dock-fold:hover {
+  color: var(--fg-primary);
+  background: rgba(var(--bg-rgb), 0.95);
 }
 
 :is([data-theme="light"], [data-theme-mode="light"]) .theme-dock {

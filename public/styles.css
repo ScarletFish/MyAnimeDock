@@ -3758,7 +3758,6 @@ html.theme-transitioning .theme-dock {
   transform: translateX(-50%) translateY(calc(100% - 36px));
   padding: 0;
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  overflow: hidden;
 }
 .theme-dock.folded .theme-dock-inner {
   display: none;

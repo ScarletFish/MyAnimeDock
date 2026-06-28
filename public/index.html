@@ -72,10 +72,14 @@
     </div>
     <div class="theme-dock-separator"></div>
     <div class="theme-dock-section">
-      <label class="toggle-switch">
-        <input type="checkbox" id="dockThemeMode" onchange="handleDockThemeModeToggle(this)">
-        <span class="toggle-slider"></span>
-      </label>
+      <div class="theme-mode-toggle" style="margin-top:0">
+        <span class="theme-toggle-label theme-toggle-label--active" id="dockLabelDark">深色</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="dockThemeMode" onchange="handleDockThemeModeToggle(this)">
+          <span class="toggle-slider"></span>
+        </label>
+        <span class="theme-toggle-label theme-toggle-label--inactive" id="dockLabelLight">浅色</span>
+      </div>
     </div>
     <div class="theme-dock-separator"></div>
     <div class="theme-dock-section theme-dock-section--zoom">
@@ -84,8 +88,8 @@
       <span class="theme-dock-zoom-value" id="dockZoomLabel">100%</span>
     </div>
     <button class="theme-dock-close" onclick="closeThemeDock()" title="关闭">✕</button>
-    <button class="theme-dock-fold" onclick="toggleDockFold()" title="折叠">▾</button>
   </div>
+  <button class="theme-dock-fold" onclick="toggleDockFold()" title="折叠">▾</button>
 </div>
 
 <!-- Main Content -->

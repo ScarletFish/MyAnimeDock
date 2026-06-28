@@ -3721,8 +3721,7 @@ html.theme-transitioning .theme-dock {
   text-align: right;
 }
 
-.theme-dock-close,
-.theme-dock-fold {
+.theme-dock-close {
   background: none;
   border: none;
   color: var(--fg-muted);
@@ -3732,57 +3731,75 @@ html.theme-transitioning .theme-dock {
   line-height: 1;
   border-radius: var(--radius-sm);
   transition: color var(--duration-fast) var(--ease-out), background var(--duration-fast) var(--ease-out);
+  margin-left: auto;
 }
+.theme-dock-close:hover {
+  color: var(--fg-primary);
+  background: var(--hover-bg);
+}
+
+/* Fold button: top-right corner of dock */
 .theme-dock-fold {
+  position: absolute;
+  top: 6px;
+  right: 6px;
   background: none;
   border: none;
   color: var(--fg-muted);
   cursor: pointer;
-  padding: 4px 8px;
-  font-size: 0.8125rem;
+  padding: 2px 6px;
+  font-size: 0.6875rem;
   line-height: 1;
   border-radius: var(--radius-sm);
   transition: color var(--duration-fast) var(--ease-out), background var(--duration-fast) var(--ease-out);
+  z-index: 1;
 }
-.theme-dock-close:hover,
 .theme-dock-fold:hover {
   color: var(--fg-primary);
   background: var(--hover-bg);
 }
-.theme-dock-close {
-  margin-left: auto;
-}
 
 /* ─── Theme Dock Folded State ─── */
 .theme-dock.folded {
-  transform: translateX(-50%) translateY(calc(100% - 36px));
+  transform: translateX(-50%) translateY(calc(100% - 8px));
   padding: 0;
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  overflow: visible;
+  min-height: 8px;
 }
 .theme-dock.folded .theme-dock-inner {
   display: none;
 }
 .theme-dock.folded .theme-dock-fold {
+  position: static;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 100%;
-  height: 36px;
+  height: 8px;
   padding: 0;
-  font-size: 0.75rem;
+  font-size: 0;
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  color: var(--fg-muted);
+  color: transparent;
   background: rgba(var(--bg-rgb), 0.88);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--border);
   border-bottom: none;
   cursor: pointer;
-  transition: color var(--duration-fast) var(--ease-out), background-color 0.4s ease, color 0.4s ease;
+  transition: background-color 0.4s ease;
 }
 .theme-dock.folded .theme-dock-fold:hover {
-  color: var(--fg-primary);
   background: rgba(var(--bg-rgb), 0.95);
+}
+/* Visible grab handle indicator */
+.theme-dock.folded .theme-dock-fold::after {
+  content: '';
+  width: 24px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--fg-muted);
+  opacity: 0.5;
 }
 
 :is([data-theme="light"], [data-theme-mode="light"]) .theme-dock {

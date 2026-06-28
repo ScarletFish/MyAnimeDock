@@ -567,21 +567,23 @@ body::after {
   background: rgba(var(--accent-rgb), 0.06);
 }
 :is([data-theme="light"], [data-theme-mode="light"]) .btn-primary {
+  background: var(--accent-gradient);
   box-shadow: 0 0 20px var(--accent-glow);
 }
 :is([data-theme="light"], [data-theme-mode="light"]) .btn-primary:hover {
+  background: var(--accent-gradient);
   box-shadow: 0 0 36px var(--accent-glow);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .btn-ghost:hover {
+  border-color: rgba(var(--accent-rgb), 0.25);
+  background: rgba(var(--accent-rgb), 0.05);
+  color: var(--accent);
 }
 :is([data-theme="light"], [data-theme-mode="light"]) .btn-danger {
   border-color: rgba(239, 68, 68, 0.20);
 }
 :is([data-theme="light"], [data-theme-mode="light"]) .btn-danger:hover {
   background: rgba(239, 68, 68, 0.06);
-}
-:is([data-theme="light"], [data-theme-mode="light"]) .btn-ghost:hover {
-  border-color: rgba(var(--accent-rgb), 0.25);
-  background: rgba(var(--accent-rgb), 0.05);
-  color: var(--accent);
 }
 
 /* Inputs: light surface + subtle warm accent focus */

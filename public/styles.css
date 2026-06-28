@@ -3110,7 +3110,19 @@ html {
   font-size: 1.3rem;
   font-weight: 700;
   margin-bottom: 1.5rem;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
+  position: relative;
+  padding-left: 14px;
+}
+.modal h2::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 2px;
+  bottom: 2px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--accent);
 }
 
 /* ─── Bangumi Search Modal ─── */
@@ -5167,6 +5179,18 @@ input[type="range"]::-webkit-slider-thumb {
   letter-spacing: -0.02em;
   color: var(--fg-primary);
   margin: 0;
+  position: relative;
+  padding-left: 14px;
+}
+.modal-m-topbar h2::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 2px;
+  bottom: 2px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--accent);
 }
 .modal-m-badges {
   display: flex;

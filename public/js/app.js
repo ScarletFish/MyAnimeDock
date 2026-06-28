@@ -79,6 +79,14 @@ function setThemeAttributes(theme, themeMode) {
   document.documentElement.setAttribute('data-theme-mode', themeMode);
 }
 
+function updateDockThemeToggleLabels() {
+  const dockToggle = document.getElementById('dockThemeMode');
+  if (!dockToggle) return;
+  const isLight = dockToggle.checked;
+  document.getElementById('dockLabelDark').className = 'theme-toggle-label' + (isLight ? ' theme-toggle-label--inactive' : ' theme-toggle-label--active');
+  document.getElementById('dockLabelLight').className = 'theme-toggle-label' + (isLight ? ' theme-toggle-label--active' : ' theme-toggle-label--inactive');
+}
+
 function selectTheme(btn, theme) {
   document.querySelectorAll('.theme-option').forEach(b => b.classList.remove('theme-option--active'));
   btn.classList.add('theme-option--active');
@@ -99,6 +107,7 @@ function handleDockThemeModeToggle(toggle) {
   const oldMode = document.documentElement.getAttribute('data-theme-mode') || 'dark';
   const oldTheme = (rawTheme === 'dark' || rawTheme === 'light') ? 'default' : rawTheme;
   if (theme === oldTheme && newMode === oldMode) return;
+  updateDockThemeToggleLabels();
   animateThemeTransition(theme, newMode);
 }
 
@@ -123,6 +132,7 @@ function openThemeDock() {
   const dockToggle = document.getElementById('dockThemeMode');
   if (dockToggle) {
     dockToggle.checked = mode === 'light';
+    updateDockThemeToggleLabels();
   }
   const zoomEl = document.getElementById('dockZoom');
   if (zoomEl) {
@@ -151,6 +161,13 @@ function handleDockZoom(input) {
   const scale = parseInt(input.value) / 100;
   applyZoom(scale);
   document.getElementById('dockZoomLabel').textContent = input.value + '%';
+}
+
+function handleDockOverlayClick() {
+  const dock = document.getElementById('themeDock');
+  // Folded: keep folded, don't close. Expanded: close.
+  if (dock.classList.contains('folded')) return;
+  closeThemeDock();
 }
 
 function toggleDockFold() {

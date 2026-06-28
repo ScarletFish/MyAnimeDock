@@ -49,12 +49,50 @@ function showZoomLevel() {
 gsap.registerPlugin(ScrollTrigger);
 
 function initSortSelect() {
-  const sel = document.getElementById('librarySort');
-  sel.value = localStorage.getItem('librarySort') || 'default';
-  sel.addEventListener('change', () => {
-    localStorage.setItem('librarySort', sel.value);
-    filterLibrary();
+  const dropdown = document.getElementById('librarySort');
+  const saved = localStorage.getItem('librarySort') || 'default';
+  const target = dropdown.querySelector(`.sort-dropdown-option[data-value="${saved}"]`);
+  if (target) {
+    dropdown.querySelectorAll('.sort-dropdown-option').forEach(o => o.classList.remove('selected'));
+    target.classList.add('selected');
+    dropdown.querySelector('.sort-dropdown-label').textContent = target.textContent;
+  }
+  Object.defineProperty(dropdown, 'value', {
+    get() {
+      const sel = dropdown.querySelector('.sort-dropdown-option.selected');
+      return sel ? sel.dataset.value : 'default';
+    }
   });
+  dropdown.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeSortDropdown();
+  });
+  document.addEventListener('click', (e) => {
+    if (!dropdown.contains(e.target)) closeSortDropdown();
+  });
+}
+
+function toggleSortDropdown() {
+  const dropdown = document.getElementById('librarySort');
+  const isOpen = dropdown.classList.contains('open');
+  if (isOpen) closeSortDropdown();
+  else {
+    dropdown.classList.add('open');
+    dropdown.focus();
+  }
+}
+
+function closeSortDropdown() {
+  document.getElementById('librarySort').classList.remove('open');
+}
+
+function selectSortOption(opt) {
+  const dropdown = document.getElementById('librarySort');
+  dropdown.querySelectorAll('.sort-dropdown-option').forEach(o => o.classList.remove('selected'));
+  opt.classList.add('selected');
+  dropdown.querySelector('.sort-dropdown-label').textContent = opt.textContent;
+  localStorage.setItem('librarySort', opt.dataset.value);
+  closeSortDropdown();
+  filterLibrary();
 }
 
 function killCardAnimations() {

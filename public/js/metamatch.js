@@ -139,8 +139,8 @@ function mmShowEmpty(msg) {
 
 function mmSetFilter(filter) {
   mmFilter = filter;
-  document.querySelectorAll('.mm-filter-btn').forEach(b => {
-    b.classList.toggle('mm-filter-btn--active', b.dataset.mmfilter === filter);
+  document.querySelectorAll('.mm-filter-dot').forEach(b => {
+    b.classList.toggle('mm-filter-dot--active', b.dataset.mmfilter === filter);
   });
   mmApplyFilters();
 }
@@ -398,26 +398,6 @@ function mmDeselectPanel() {
   mmShowPanelEmpty();
 }
 
-function mmToggleSelectAll() {
-  const allVisibleIds = mmFiltered.map(i => i.animeId);
-  const allSelected = allVisibleIds.every(id => mmSelectedIds.has(id));
-
-  if (allSelected) {
-    allVisibleIds.forEach(id => mmSelectedIds.delete(id));
-    mmSelectionOrder = mmSelectionOrder.filter(id => !allVisibleIds.includes(id));
-    if (mmPanelOpen) mmDeselectPanel();
-  } else {
-    allVisibleIds.forEach(id => {
-      if (!mmSelectedIds.has(id)) {
-        mmSelectedIds.add(id);
-        mmSelectionOrder.push(id);
-      }
-    });
-  }
-  mmUpdateBatchBar();
-  mmUpdateRowSelection();
-}
-
 function mmClearSelection() {
   mmSelectedIds.clear();
   mmSelectionOrder = [];
@@ -427,23 +407,8 @@ function mmClearSelection() {
 }
 
 function mmUpdateBatchBar() {
-  const count = document.getElementById('mmSelectedCount');
-  const selectAllBtn = document.getElementById('mmSelectAllBtn');
-
-  if (count) {
-    count.textContent = mmSelectedIds.size > 0 ? mmSelectedIds.size : '0';
-  }
-
-  if (selectAllBtn) {
-    if (mmSelectedIds.size > 0) {
-      const allVisibleIds = mmFiltered.map(i => i.animeId);
-      const allSelected = allVisibleIds.length > 0 && allVisibleIds.every(id => mmSelectedIds.has(id));
-      selectAllBtn.classList.toggle('mm-checked', allSelected);
-    } else {
-      selectAllBtn.classList.remove('mm-checked');
-    }
-  }
-
+  const shiftTip = document.getElementById('mmShiftTip');
+  if (shiftTip) shiftTip.style.display = mmSelectedIds.size === 1 ? '' : 'none';
   mmUpdateMainAction();
 }
 
@@ -477,21 +442,21 @@ function mmUpdateMainAction() {
 
   if (!hasPending && !hasFailed) {
     btn.textContent = '全部已匹配';
-    btn.className = 'btn btn-sm';
+    btn.className = 'btn';
     btn.classList.add('disabled');
     return;
   }
 
   if (hasSelection) {
     btn.textContent = '同步选中 (' + mmSelectedIds.size + ')';
-    btn.className = 'btn btn-sm btn-primary';
+    btn.className = 'btn btn-outline';
   } else if (hasFailed && !hasPending) {
     const cnt = mmItems.filter(i => i.status === 'failed').length;
     btn.textContent = '重试失败 (' + cnt + ')';
-    btn.className = 'btn btn-sm btn-outline';
+    btn.className = 'btn btn-outline';
   } else {
     btn.textContent = '自动匹配全部';
-    btn.className = 'btn btn-sm btn-primary';
+    btn.className = 'btn btn-outline';
   }
 }
 
@@ -548,14 +513,14 @@ function mmClosePanel(cb) {
   if (cb) setTimeout(cb, 350);
 }
 
-// Click outside panel to close (inside modal)
+// Click outside: close panel + deselect all
 document.addEventListener('click', (e) => {
-  if (!mmPanelOpen) return;
   if (e.target.closest('.mm-panel')) return;
   if (e.target.closest('.mm-row')) return;
   if (e.target.closest('.modal-m-filterbar')) return;
   if (e.target.closest('.modal-m-topbar')) return;
-  mmDeselectPanel();
+  if (mmPanelOpen) mmDeselectPanel();
+  if (mmSelectedIds.size > 0) mmClearSelection();
 });
 
 // ─── Row Selection ───
@@ -563,18 +528,26 @@ document.addEventListener('click', (e) => {
 function mmRowClick(event, animeId) {
   if (mmSyncInProgress) return;
 
-  const wasBatchSelected = mmSelectedIds.has(animeId);
-  const panelWasForThis = mmSelectedId === animeId && mmPanelOpen;
+  if (event.shiftKey) {
+    event.preventDefault();
+    mmToggleSelect(animeId);
+    return;
+  }
 
-  mmToggleSelect(animeId);
-
-  if (wasBatchSelected && !panelWasForThis) {
-    // Was batch-selected but panel showed something else → just deselected, keep panel as-is
-  } else if (!wasBatchSelected) {
-    // New selection → open panel for this item
+  // Single click: always select only this one
+  if (mmSelectedIds.has(animeId) && mmSelectedIds.size === 1) {
+    mmSelectedIds.clear();
+    mmSelectionOrder = [];
+    if (mmPanelOpen && mmSelectedId === animeId) mmDeselectPanel();
+  } else {
+    mmSelectedIds.clear();
+    mmSelectionOrder = [];
+    mmSelectedIds.add(animeId);
+    mmSelectionOrder.push(animeId);
     mmSelectForPanel(animeId);
   }
-  // If wasBatchSelected && panelWasForThis → mmToggleSelect already cycled panel
+  mmUpdateBatchBar();
+  mmUpdateRowSelection();
 }
 
 function mmShowPanelEmpty() {
@@ -1079,4 +1052,3 @@ window.mmSearchForFix = mmSearchForFix;
 window.mmApplyFix = mmApplyFix;
 window.mmStartResearch = mmStartResearch;
 window.mmToggleSelect = mmToggleSelect;
-window.mmToggleSelectAll = mmToggleSelectAll;

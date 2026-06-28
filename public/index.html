@@ -103,7 +103,7 @@
           <h2 class="discovery-hero-title">媒体目录</h2>
           <p class="discovery-hero-path" id="discoveryPath">未配置媒体目录</p>
         </div>
-        <button class="btn btn-primary discovery-scan-btn" id="discoveryScanBtn" onclick="startScan()">
+        <button class="btn btn-outline discovery-scan-btn" id="discoveryScanBtn" onclick="startScan()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"></path>
           </svg>
@@ -141,7 +141,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8Z"/><path d="M15 3v4a2 2 0 0 0 2 2h4"/></svg>
         全选
       </button>
-      <button class="btn btn-primary" onclick="importSelected()">
+      <button class="btn btn-outline" onclick="importSelected()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
         导入选中 (<span id="importCount">0</span>)
       </button>
@@ -163,16 +163,22 @@
     <div class="view-header">
       <h2>动漫库</h2>
       <div class="view-header-right">
-        <button class="btn btn-sm btn-outline" onclick="mmOpenModal()">
+        <button class="btn btn-outline" onclick="mmOpenModal()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
           批量匹配
         </button>
-        <select class="sort-select" id="librarySort" onchange="filterLibrary()">
-          <option value="default">默认排序</option>
-          <option value="pinyin">A-Z（拼音）</option>
-          <option value="importDate">导入日期</option>
-          <option value="rating">评分</option>
-        </select>
+        <div class="sort-dropdown" id="librarySort" tabindex="0">
+          <button class="sort-dropdown-trigger" onclick="toggleSortDropdown()">
+            <span class="sort-dropdown-label">默认排序</span>
+            <svg class="sort-dropdown-chevron" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          <div class="sort-dropdown-panel">
+            <div class="sort-dropdown-option" data-value="default" onclick="selectSortOption(this)">默认排序</div>
+            <div class="sort-dropdown-option" data-value="pinyin" onclick="selectSortOption(this)">拼音</div>
+            <div class="sort-dropdown-option" data-value="importDate" onclick="selectSortOption(this)">导入日期</div>
+            <div class="sort-dropdown-option" data-value="rating" onclick="selectSortOption(this)">评分</div>
+          </div>
+        </div>
         <input type="text" class="search-input" id="librarySearch" placeholder="搜索动漫..." oninput="filterLibrary()">
       </div>
     </div>
@@ -368,10 +374,10 @@
       <h2>批量元数据匹配</h2>
       <div class="modal-m-badges">
         <span class="stat-badge"><span class="num" id="mmStatTotal">0</span> 全部</span>
-        <span class="stat-badge matched"><span class="num" id="mmStatMatched">0</span> 已匹配</span>
         <span class="stat-badge pending"><span class="num" id="mmStatPending">0</span> 待处理</span>
-        <span class="stat-badge"><span class="num" id="mmStatMatching">0</span> 匹配中</span>
         <span class="stat-badge failed"><span class="num" id="mmStatFailed">0</span> 失败</span>
+        <span class="stat-badge matched"><span class="num" id="mmStatMatched">0</span> 已匹配</span>
+        <span class="stat-badge matching"><span class="num" id="mmStatMatching">0</span> 匹配中</span>
       </div>
       <div class="modal-close-btn" onclick="mmCloseModal()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -383,16 +389,21 @@
 
     <!-- Filter + Batch bar -->
     <div class="modal-m-filterbar">
-      <button class="mm-batch-check" id="mmSelectAllBtn" onclick="mmToggleSelectAll()" title="全选/取消全选" style="width:18px;height:18px">
-        <svg class="mm-check-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 8 7 12 13 4"/></svg>
-      </button>
-      <span class="mm-batch-count"><span id="mmSelectedCount">0</span> 已选择</span>
-      <button class="btn btn-sm btn-primary" id="mmMainActionBtn" onclick="mmMainAction()">自动匹配全部</button>
+      <button class="btn btn-outline" id="mmMainActionBtn" onclick="mmMainAction()">自动匹配全部</button>
+      <span class="mm-shift-tip" id="mmShiftTip" style="display:none">Shift+点击 多选</span>
       <div class="spacer"></div>
-      <button class="mm-filter-btn mm-filter-btn--active" data-mmfilter="all" onclick="mmSetFilter('all')">全部</button>
-      <button class="mm-filter-btn" data-mmfilter="pending" onclick="mmSetFilter('pending')">待处理</button>
-      <button class="mm-filter-btn" data-mmfilter="failed" onclick="mmSetFilter('failed')">失败</button>
-      <button class="mm-filter-btn" data-mmfilter="matched" onclick="mmSetFilter('matched')">已匹配</button>
+      <button class="mm-filter-dot mm-filter-dot--active" data-mmfilter="all" onclick="mmSetFilter('all')" title="全部">
+        <span class="dot dot-all"></span>
+      </button>
+      <button class="mm-filter-dot" data-mmfilter="pending" onclick="mmSetFilter('pending')" title="待处理">
+        <span class="dot dot-pending"></span>
+      </button>
+      <button class="mm-filter-dot" data-mmfilter="failed" onclick="mmSetFilter('failed')" title="失败">
+        <span class="dot dot-failed"></span>
+      </button>
+      <button class="mm-filter-dot" data-mmfilter="matched" onclick="mmSetFilter('matched')" title="已匹配">
+        <span class="dot dot-matched"></span>
+      </button>
       <div class="mm-list-search" style="width:160px;flex-shrink:0">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
         <input type="text" id="mmGridSearch" placeholder="搜索条目..." oninput="mmFilterGrid()" style="width:100px">

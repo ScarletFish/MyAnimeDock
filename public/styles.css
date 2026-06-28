@@ -3734,7 +3734,15 @@ html.theme-transitioning .theme-dock {
   transition: color var(--duration-fast) var(--ease-out), background var(--duration-fast) var(--ease-out);
 }
 .theme-dock-fold {
-  display: none;
+  background: none;
+  border: none;
+  color: var(--fg-muted);
+  cursor: pointer;
+  padding: 4px 8px;
+  font-size: 0.8125rem;
+  line-height: 1;
+  border-radius: var(--radius-sm);
+  transition: color var(--duration-fast) var(--ease-out), background var(--duration-fast) var(--ease-out);
 }
 .theme-dock-close:hover,
 .theme-dock-fold:hover {

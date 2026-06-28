@@ -165,9 +165,9 @@ function handleDockZoom(input) {
 
 function handleDockOverlayClick() {
   const dock = document.getElementById('themeDock');
-  // Folded: keep folded, don't close. Expanded: close.
+  // Folded: keep folded. Expanded: auto-fold.
   if (dock.classList.contains('folded')) return;
-  closeThemeDock();
+  toggleDockFold();
 }
 
 function toggleDockFold() {

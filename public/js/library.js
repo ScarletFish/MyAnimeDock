@@ -55,6 +55,12 @@ function initSortSelect() {
     localStorage.setItem('librarySort', sel.value);
     filterLibrary();
   });
+  const filterSel = document.getElementById('libraryFilter');
+  filterSel.value = localStorage.getItem('libraryFilter') || 'all';
+  filterSel.addEventListener('change', () => {
+    localStorage.setItem('libraryFilter', filterSel.value);
+    filterLibrary();
+  });
 }
 
 function killCardAnimations() {
@@ -79,9 +85,20 @@ function renderLibrary(filter = '') {
   const paragraphs = empty.querySelectorAll('p');
 
   let filtered = libraryData;
+
+  // Status filter
+  const statusFilter = document.getElementById('libraryFilter').value;
+  if (statusFilter !== 'all') {
+    if (statusFilter === 'none') {
+      filtered = filtered.filter(a => !a.myListStatus);
+    } else {
+      filtered = filtered.filter(a => a.myListStatus === statusFilter);
+    }
+  }
+
   if (filter) {
     const q = filter.toLowerCase();
-    filtered = libraryData.filter(a =>
+    filtered = filtered.filter(a =>
       a.title.toLowerCase().includes(q) ||
       (a.bangumiTitle && a.bangumiTitle.toLowerCase().includes(q)) ||
       (a.pinyinTitle && a.pinyinTitle.toLowerCase().includes(q))

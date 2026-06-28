@@ -168,6 +168,8 @@ opencode.json       → OpenCode 配置（插件声明）
 - **MyList 状态管理**: `mylist.js` 中 `toggleStatusPopover()`/`setMyListItemStatus()` 管理状态（watching/wish/completed/on_hold/dropped）；卡片左上角 `.mylist-badge` 显示当前状态；弹窗支持鼠标离开 >100px 自动关闭
 - **状态自动创建**: 导入时自动创建 MyList 条目（默认 `watching`），删除动画时自动标记 `completed`；`db.saveMyList()` 仅写入 mylist 表
 - **主题切换按钮**: 设置页 theme 从 `<select>` 改为 toggle switch（`<input type="checkbox">`），onchange 实时调用 `handleThemeToggle()` + GSAP 波纹动画（从 toggle 位置向外扩散） + 全页 CSS 过渡（bg 0.7s/其他 0.55s）
+- **多主题系统**: 6 种色彩主题（default/amber/ocean/sakura/emerald/neon）+ 独立 dark/light 模式，`data-theme` 存色彩名、`data-theme-mode` 存明暗；default 主题用 `data-theme="dark|light"` 兼容旧选择器；底部 dock 选择器切换即时生效
+- **底部视觉设置 Dock**: 主题选择、明暗切换、缩放滑块从设置模态框抽离到底部浮动 dock（`#themeDock`），支持折叠/展开（▾ 按钮），点击遮罩层折叠而非关闭；folded 状态显示 8px 手柄条
 
 ## Config
 
@@ -176,7 +178,8 @@ opencode.json       → OpenCode 配置（插件声明）
   "mediaDir": "",
   "playerMode": "system",
   "mpvPath": "mpv",
-  "theme": "dark",
+  "theme": "default",
+  "themeMode": "dark",
   "uiScale": 100,
   "scrapers": {
     "bangumi": { "enabled": true, "apiBase": "https://api.bgm.tv" },
@@ -193,7 +196,8 @@ opencode.json       → OpenCode 配置（插件声明）
 | `mediaDir` | string | `""` | 动漫文件夹根目录 |
 | `playerMode` | string | `"system"` | `"system"`（系统播放器）或 `"mpv"`（mpv + 进度追踪） |
 | `mpvPath` | string | `"mpv"` | mpv 可执行文件路径 |
-| `theme` | string | `"dark"` | `"dark"` 或 `"light"` |
+| `theme` | string | `"default"` | 色彩主题：`"default"`（粉紫）、`"amber"`（琥珀）、`"ocean"`（海洋）、`"sakura"`（樱花）、`"emerald"`（翡翠）、`"neon"`（霓虹） |
+| `themeMode` | string | `"dark"` | `"dark"` 或 `"light"`，与色彩主题独立 |
 | `uiScale` | number | `100` | UI 缩放百分比 75-150 |
 | `scrapers.bangumi.enabled` | bool | `true` | 启用 Bangumi |
 | `scrapers.bangumi.apiBase` | string | `"https://api.bgm.tv"` | 可换为镜像 `https://api.bangumi.one` |

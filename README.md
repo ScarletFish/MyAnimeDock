@@ -159,6 +159,14 @@
 | UI 缩放 | 75% – 150%，实时预览 |
 | 刮削源 | 启用/禁用 Bangumi、TMDB，配置 API Key |
 
+点击设置页的「视觉设置」按钮会弹出底部浮动 Dock，包含：
+
+- **主题色系** — 6 种色彩主题可选：默认（粉紫）、琥珀、海洋、樱花、翡翠、霓虹
+- **深色/浅色** — 独立切换明暗模式，与色彩主题互不干扰
+- **缩放滑块** — 实时预览 UI 缩放效果
+
+Dock 支持折叠/展开，点击遮罩层自动折叠，按 ✕ 或 Esc 关闭。
+
 ---
 
 ## 媒体文件夹结构
@@ -237,6 +245,8 @@ npm run build
 | POST | `/api/progress` | 更新播放进度 |
 | POST | `/api/bangumi/search` | 搜索所有启用的刮削源 |
 | POST | `/api/bangumi/fetch` | 为资料库项目获取元数据 |
+| GET | `/api/mylist` | 获取我的列表（资料库 + 愿望单合并） |
+| PUT | `/api/mylist/:id/status` | 更新列表项状态（watching/wish/completed/on_hold/dropped） |
 | GET | `/api/mpv-status` | 活跃 mpv 会话 |
 | POST | `/api/quit` | 关闭服务器 |
 | GET | `/api/health` | Tauri 就绪检测 |
@@ -273,7 +283,11 @@ npm run build
 ├── src-tauri/         → Tauri v2 桌面壳 (Rust)
 ├── prisma/            → SQLite schema + migrations
 ├── public/            → 前端静态文件
+│   ├── index.html
+│   ├── styles.css
+│   └── js/            → app.js, discovery.js, library.js, detail.js, metamatch.js, mylist.js, memory.js
 ├── scripts/           → 构建/迁移工具
+├── .agents/skills/    → Agent 专业技能（16 个）
 └── start.bat          → Windows 快捷菜单
 ```
 
@@ -282,11 +296,12 @@ npm run build
 | 层级 | 存储 | 说明 |
 |------|------|------|
 | 资料库 | SQLite (Anime + Episode) | 当前下载、正在观看 |
+| MyList | SQLite (MyList) | 观看状态管理（想看/在看/完成/搁置/抛弃） |
 | 归档 | SQLite (Memory) | 已看完纪念册 |
 | 配置 | JSON (config.json) | 通过设置页 UI 管理 |
-| 扫描树 | JSON (anime-data.json) | 运行时缓存 |
+| 扫描树 | JSON (scanned-tree.json) | 运行时缓存 |
 
-**持久化策略**：`saveData()` 同步写入 JSON（立即落盘），异步同步到 SQLite（副本保证）。
+**持久化策略**：每个 API 端点只写入实际修改的 SQLite 表，避免全量写入导致 nodemon 误重启。
 
 ## License
 

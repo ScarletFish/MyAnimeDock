@@ -2,7 +2,8 @@
   "mediaDir": "",
   "playerMode": "system",
   "mpvPath": "mpv",
-  "theme": "dark",
+  "theme": "default",
+  "themeMode": "dark",
   "autoMarkWatched": true,
   "apiSources": [
     { "type": "bangumi", "url": "https://api.bangumi.one", "key": "" }

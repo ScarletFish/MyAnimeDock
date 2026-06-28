@@ -55,12 +55,6 @@ function initSortSelect() {
     localStorage.setItem('librarySort', sel.value);
     filterLibrary();
   });
-  const filterSel = document.getElementById('libraryFilter');
-  filterSel.value = localStorage.getItem('libraryFilter') || 'all';
-  filterSel.addEventListener('change', () => {
-    localStorage.setItem('libraryFilter', filterSel.value);
-    filterLibrary();
-  });
 }
 
 function killCardAnimations() {
@@ -84,17 +78,7 @@ function renderLibrary(filter = '') {
   const empty = document.getElementById('libraryEmpty');
   const paragraphs = empty.querySelectorAll('p');
 
-  let filtered = libraryData;
-
-  // Status filter
-  const statusFilter = document.getElementById('libraryFilter').value;
-  if (statusFilter !== 'all') {
-    if (statusFilter === 'none') {
-      filtered = filtered.filter(a => !a.myListStatus);
-    } else {
-      filtered = filtered.filter(a => a.myListStatus === statusFilter);
-    }
-  }
+  let filtered = libraryData.filter(a => a.myListStatus === 'watching');
 
   if (filter) {
     const q = filter.toLowerCase();

@@ -578,6 +578,11 @@ body::after {
 :is([data-theme="light"], [data-theme-mode="light"]) .btn-danger:hover {
   background: rgba(239, 68, 68, 0.06);
 }
+:is([data-theme="light"], [data-theme-mode="light"]) .btn-ghost:hover {
+  border-color: rgba(var(--accent-rgb), 0.25);
+  background: rgba(var(--accent-rgb), 0.05);
+  color: var(--accent);
+}
 
 /* Inputs: light surface + subtle warm accent focus */
 :is([data-theme="light"], [data-theme-mode="light"]) .search-input {
@@ -786,7 +791,8 @@ body::after {
   border-color: rgba(44, 36, 24, 0.10);
 }
 :is([data-theme="light"], [data-theme-mode="light"]) .filter-btn:hover {
-  background: rgba(44, 36, 24, 0.04);
+  background: rgba(var(--accent-rgb), 0.05);
+  color: var(--accent);
 }
 :is([data-theme="light"], [data-theme-mode="light"]) .filter-btn--active {
   background: rgba(var(--accent-rgb), 0.06);
@@ -797,15 +803,15 @@ body::after {
   border-color: rgba(var(--accent-rgb), 0.15);
 }
 :is([data-theme="light"], [data-theme-mode="light"]) .discovery-card-toggle:hover {
-  background: rgba(44, 36, 24, 0.03);
+  background: rgba(var(--accent-rgb), 0.05);
 }
 :is([data-theme="light"], [data-theme-mode="light"]) .discovery-card-row:hover {
-  background: rgba(var(--accent-rgb), 0.02);
+  background: rgba(var(--accent-rgb), 0.04);
 }
 
 /* Additional light mode fixes */
 :is([data-theme="light"], [data-theme-mode="light"]) .discovery-card-file:hover {
-  background: rgba(44, 36, 24, 0.04);
+  background: rgba(var(--accent-rgb), 0.05);
 }
 :is([data-theme="light"], [data-theme-mode="light"]) .context-menu-item:hover {
   background: rgba(44, 36, 24, 0.06);

@@ -1576,6 +1576,18 @@ html {
   will-change: transform, opacity;
 }
 
+.detail-cover-wrap::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: radial-gradient(ellipse 80% 100% at 50% 100%, rgba(var(--accent-rgb), 0.10) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 1;
+}
+
 .detail-cover-wrap::after {
   content: '';
   position: absolute;
@@ -2410,6 +2422,7 @@ html {
   fill: none;
   stroke-width: 1.2;
   opacity: 0.4;
+  color: var(--accent);
 }
 
 .empty-state p {
@@ -4646,7 +4659,7 @@ input[type="range"]::-webkit-slider-thumb {
   color: var(--fg-muted);
   gap: var(--space-3);
 }
-.mm-list-empty svg { width: 40px; height: 40px; opacity: 0.15; }
+.mm-list-empty svg { width: 40px; height: 40px; opacity: 0.15; color: var(--accent); }
 .mm-list-empty p { font-size: 0.875rem; }
 
 /* ─── List Row ─── */
@@ -4828,7 +4841,7 @@ input[type="range"]::-webkit-slider-thumb {
   color: var(--fg-muted);
   gap: var(--space-3);
 }
-.mm-panel-empty svg { width: 48px; height: 48px; opacity: 0.15; }
+.mm-panel-empty svg { width: 48px; height: 48px; opacity: 0.15; color: var(--accent); }
 .mm-panel-empty p { font-size: 0.8125rem; }
 .mm-panel-content {
   display: flex;

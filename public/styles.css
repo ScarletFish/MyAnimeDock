@@ -1218,6 +1218,18 @@ html {
   will-change: transform;
 }
 
+.anime-card::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: var(--accent-gradient);
+  z-index: 1;
+  pointer-events: none;
+}
+
 .anime-card::after {
   content: '';
   position: absolute;
@@ -1961,7 +1973,7 @@ html {
 
 .episode-progress-bar {
   height: 100%;
-  background: var(--accent);
+  background: var(--accent-gradient);
   border-radius: 2px;
   transition: width var(--duration-fast) var(--ease-out);
 }
@@ -1971,8 +1983,7 @@ html {
 }
 
 .episode-progress-bar.wip {
-  background: var(--accent);
-  background-image: linear-gradient(90deg, var(--accent), var(--accent-light, var(--accent)));
+  background: var(--accent-gradient);
 }
 
 .btn-xs {

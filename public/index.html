@@ -53,6 +53,45 @@
   </div>
 </aside>
 
+<!-- Theme Dock Overlay -->
+<div class="theme-dock-overlay" id="themeDockOverlay" onclick="closeThemeDock()"></div>
+
+<!-- Theme Dock -->
+<div class="theme-dock" id="themeDock">
+  <div class="theme-dock-inner">
+    <div class="theme-dock-section">
+      <span class="theme-dock-label">主题色系</span>
+      <div class="theme-picker">
+        <button class="theme-option theme-option--default" data-theme="default" onclick="selectTheme(this, 'default')" title="默认"></button>
+        <button class="theme-option theme-option--amber" data-theme="amber" onclick="selectTheme(this, 'amber')" title="琥珀"></button>
+        <button class="theme-option theme-option--ocean" data-theme="ocean" onclick="selectTheme(this, 'ocean')" title="海洋"></button>
+        <button class="theme-option theme-option--sakura" data-theme="sakura" onclick="selectTheme(this, 'sakura')" title="樱花"></button>
+        <button class="theme-option theme-option--emerald" data-theme="emerald" onclick="selectTheme(this, 'emerald')" title="翡翠"></button>
+        <button class="theme-option theme-option--neon" data-theme="neon" onclick="selectTheme(this, 'neon')" title="霓虹"></button>
+      </div>
+    </div>
+    <div class="theme-dock-separator"></div>
+    <div class="theme-dock-section">
+      <span class="theme-dock-label">深浅</span>
+      <div class="theme-mode-toggle" style="margin-top:0">
+        <span class="theme-toggle-label theme-toggle-label--active" id="dockLabelDark">深色</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="dockThemeMode" onchange="handleDockThemeModeToggle(this)">
+          <span class="toggle-slider"></span>
+        </label>
+        <span class="theme-toggle-label theme-toggle-label--inactive" id="dockLabelLight">浅色</span>
+      </div>
+    </div>
+    <div class="theme-dock-separator"></div>
+    <div class="theme-dock-section theme-dock-section--zoom">
+      <span class="theme-dock-label">缩放</span>
+      <input type="range" id="dockZoom" min="75" max="150" step="5" value="100" oninput="handleDockZoom(this)">
+      <span class="theme-dock-zoom-value" id="dockZoomLabel">100%</span>
+    </div>
+    <button class="theme-dock-close" onclick="closeThemeDock()" title="关闭">✕</button>
+  </div>
+</div>
+
 <!-- Main Content -->
 <main class="main-content">
 
@@ -450,34 +489,11 @@
           </div>
           <p class="form-hint">动漫文件夹所在的根目录</p>
         </div>
-        <div class="form-group">
-          <label>主题色系</label>
-          <div class="theme-picker" id="themePicker">
-            <button class="theme-option theme-option--default active" data-theme="default" onclick="selectTheme(this, 'default')" title="默认"></button>
-            <button class="theme-option theme-option--amber" data-theme="amber" onclick="selectTheme(this, 'amber')" title="琥珀"></button>
-            <button class="theme-option theme-option--ocean" data-theme="ocean" onclick="selectTheme(this, 'ocean')" title="海洋"></button>
-            <button class="theme-option theme-option--sakura" data-theme="sakura" onclick="selectTheme(this, 'sakura')" title="樱花"></button>
-            <button class="theme-option theme-option--emerald" data-theme="emerald" onclick="selectTheme(this, 'emerald')" title="翡翠"></button>
-            <button class="theme-option theme-option--neon" data-theme="neon" onclick="selectTheme(this, 'neon')" title="霓虹"></button>
-
-          </div>
-        </div>
-        <div class="form-group">
-          <label>深浅模式</label>
-          <div class="theme-mode-toggle">
-            <span class="theme-toggle-label theme-toggle-label--active" id="themeLabelDark">深色</span>
-            <label class="toggle-switch">
-              <input type="checkbox" id="settingsThemeMode" onchange="handleThemeModeToggle(this)">
-              <span class="toggle-slider"></span>
-            </label>
-            <span class="theme-toggle-label theme-toggle-label--inactive" id="themeLabelLight">浅色</span>
-          </div>
-        </div>
-        <div class="form-group">
-          <label for="settingsZoom">界面缩放 <span id="zoomLabel">100%</span></label>
-          <input type="range" id="settingsZoom" min="75" max="150" step="5" value="100"
-                 oninput="document.getElementById('zoomLabel').textContent=this.value+'%';applyZoom(this.value/100)">
-          <p class="form-hint">调整界面的整体缩放比例（75% ~ 150%）</p>
+        <div class="settings-visual-trigger">
+          <button class="btn btn-outline" onclick="openVisualDock()" style="width:100%">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="2"/><path d="M8 2v1"/><path d="M8 13v1"/><path d="M2 8h1"/><path d="M13 8h1"/></svg>
+            视觉设置
+          </button>
         </div>
       </div>
 

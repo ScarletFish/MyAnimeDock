@@ -6,6 +6,7 @@
   --bg-elevated: #221b16;
   --bg-surface: #2a221c;
   --bg-card: #241d18;
+  --bg-rgb: 26, 20, 16;
 
   --fg-primary: #ede8e2;
   --fg-secondary: #9c9187;
@@ -77,6 +78,7 @@
   --bg-elevated: #faf6f0;
   --bg-surface: #ede5db;
   --bg-card: #faf6f0;
+  --bg-rgb: 247, 242, 234;
 
   --fg-primary: #2c2418;
   --fg-secondary: #6b5d4f;
@@ -107,6 +109,7 @@
   --bg-elevated: #221a12;
   --bg-surface: #2a2118;
   --bg-card: #241c14;
+  --bg-rgb: 26, 19, 12;
 
   --fg-primary: #ede4d8;
   --fg-secondary: #9c8a75;
@@ -147,6 +150,7 @@
   --bg-elevated: #fdf9f4;
   --bg-surface: #f0e8dd;
   --bg-card: #fdf9f4;
+  --bg-rgb: 250, 245, 239;
 
   --fg-primary: #2c2018;
   --fg-secondary: #6b5545;
@@ -177,6 +181,7 @@
   --bg-elevated: #121c24;
   --bg-surface: #18242e;
   --bg-card: #141e28;
+  --bg-rgb: 12, 20, 26;
 
   --fg-primary: #dce8f0;
   --fg-secondary: #8a9ca8;
@@ -216,6 +221,7 @@
   --bg-elevated: #f5fafd;
   --bg-surface: #e0ecf5;
   --bg-card: #f5fafd;
+  --bg-rgb: 240, 246, 250;
 
   --fg-primary: #182c38;
   --fg-secondary: #456575;
@@ -245,6 +251,7 @@
   --bg-elevated: #22181e;
   --bg-surface: #2a2026;
   --bg-card: #241a20;
+  --bg-rgb: 26, 16, 21;
 
   --fg-primary: #f0e2e8;
   --fg-secondary: #a08a94;
@@ -284,6 +291,7 @@
   --bg-elevated: #fdf4f8;
   --bg-surface: #f0e0ea;
   --bg-card: #fdf4f8;
+  --bg-rgb: 250, 238, 244;
 
   --fg-primary: #2c1824;
   --fg-secondary: #6b4560;
@@ -313,6 +321,7 @@
   --bg-elevated: #16221c;
   --bg-surface: #1d2a23;
   --bg-card: #18241e;
+  --bg-rgb: 15, 26, 20;
 
   --fg-primary: #e0f0e8;
   --fg-secondary: #8aa094;
@@ -352,6 +361,7 @@
   --bg-elevated: #f4fdf8;
   --bg-surface: #e0f0ea;
   --bg-card: #f4fdf8;
+  --bg-rgb: 238, 250, 244;
 
   --fg-primary: #182c24;
   --fg-secondary: #456b60;
@@ -381,6 +391,7 @@
   --bg-elevated: #1d1624;
   --bg-surface: #251e2e;
   --bg-card: #1f1828;
+  --bg-rgb: 21, 15, 26;
 
   --fg-primary: #e8e0f0;
   --fg-secondary: #948aa0;
@@ -420,6 +431,7 @@
   --bg-elevated: #faf4fd;
   --bg-surface: #eae0f0;
   --bg-card: #faf4fd;
+  --bg-rgb: 246, 238, 250;
 
   --fg-primary: #24182c;
   --fg-secondary: #60456b;
@@ -660,6 +672,11 @@ body::after {
   background: var(--bg-elevated);
   border-color: rgba(44, 36, 24, 0.08);
   box-shadow: 0 8px 48px rgba(44, 36, 24, 0.15);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .modal--settings {
+  background: rgba(var(--bg-rgb), 0.82);
+  border-color: rgba(var(--bg-rgb), 0.2);
+  box-shadow: 0 8px 48px rgba(44, 36, 24, 0.1);
 }
 
 /* Toast */
@@ -3116,7 +3133,7 @@ html {
 }
 
 /* ─── Settings Modal — Tabbed Layout ─── */
-.modal--settings {
+.modal.modal--settings {
   padding: 0;
   overflow: hidden;
   max-width: 520px;
@@ -3218,6 +3235,18 @@ html {
   .settings-panel {
     animation: none;
   }
+}
+
+/* ─── Visual Settings Trigger (in settings modal) ─── */
+.settings-visual-trigger {
+  margin-top: 0.25rem;
+}
+.settings-visual-trigger .btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.8125rem;
 }
 
 /* ─── Settings Form Elements ─── */
@@ -3522,6 +3551,26 @@ html {
   background: #fff;
 }
 
+/* ─── Theme Transition ─── */
+/* Main content transitions slower, following behind */
+html.theme-transitioning,
+html.theme-transitioning * {
+  transition: background-color 0.4s ease, color 0.4s ease !important;
+}
+
+/* Settings modal transitions faster — leads the color change */
+html.theme-transitioning .modal-overlay,
+html.theme-transitioning .modal,
+html.theme-transitioning .modal *,
+html.theme-transitioning .modal-overlay * {
+  transition: background-color 0.15s ease, color 0.15s ease !important;
+}
+
+/* Theme dock transitions at the same speed as main content */
+html.theme-transitioning .theme-dock {
+  transition: background-color 0.4s ease, color 0.4s ease, transform 0.35s cubic-bezier(0.22, 1, 0.36, 1) !important;
+}
+
 /* ─── Theme Picker ─── */
 .theme-picker {
   display: flex;
@@ -3592,9 +3641,104 @@ html {
 .theme-toggle-label--active { color: var(--fg-primary); font-weight: 600; }
 .theme-toggle-label--inactive { color: var(--fg-muted); font-weight: 400; }
 
-:is([data-theme="light"], [data-theme-mode="light"]) .api-source-badge--anilist {
-  background: rgba(53, 152, 219, 0.12);
-  color: #2980b9;
+/* ─── Theme Dock (Quick Visual Settings) ─── */
+.theme-dock-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+  background: transparent;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.theme-dock-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.theme-dock {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%) translateY(100%);
+  z-index: 100;
+  background: rgba(var(--bg-rgb), 0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-bottom: none;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  padding: var(--space-4) var(--space-6);
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.4s ease, color 0.4s ease;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
+}
+.theme-dock.open {
+  transform: translateX(-50%) translateY(0);
+}
+
+.theme-dock-inner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+.theme-dock-section {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-shrink: 0;
+}
+.theme-dock-section--zoom {
+  gap: var(--space-2);
+}
+.theme-dock-section--zoom input[type="range"] {
+  width: 80px;
+}
+
+.theme-dock-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.theme-dock-separator {
+  width: 1px;
+  height: 32px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+.theme-dock-zoom-value {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+  min-width: 36px;
+  text-align: right;
+}
+
+.theme-dock-close {
+  background: none;
+  border: none;
+  color: var(--fg-muted);
+  cursor: pointer;
+  padding: 4px 8px;
+  font-size: 1rem;
+  line-height: 1;
+  border-radius: var(--radius-sm);
+  transition: color var(--duration-fast) var(--ease-out), background var(--duration-fast) var(--ease-out);
+  margin-left: auto;
+}
+.theme-dock-close:hover {
+  color: var(--fg-primary);
+  background: var(--hover-bg);
+}
+
+:is([data-theme="light"], [data-theme-mode="light"]) .theme-dock {
+  background: rgba(var(--bg-rgb), 0.92);
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.08);
 }
 
 /* ─── Toast ─── */

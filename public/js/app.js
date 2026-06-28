@@ -79,79 +79,89 @@ function setThemeAttributes(theme, themeMode) {
   document.documentElement.setAttribute('data-theme-mode', themeMode);
 }
 
-function updateThemeToggleLabels() {
-  const isLight = document.getElementById('settingsThemeMode').checked;
-  document.getElementById('themeLabelDark').className = 'theme-toggle-label' + (isLight ? ' theme-toggle-label--inactive' : ' theme-toggle-label--active');
-  document.getElementById('themeLabelLight').className = 'theme-toggle-label' + (isLight ? ' theme-toggle-label--active' : ' theme-toggle-label--inactive');
+function updateDockThemeToggleLabels() {
+  const dockToggle = document.getElementById('dockThemeMode');
+  if (!dockToggle) return;
+  const isLight = dockToggle.checked;
+  document.getElementById('dockLabelDark').className = 'theme-toggle-label' + (isLight ? ' theme-toggle-label--inactive' : ' theme-toggle-label--active');
+  document.getElementById('dockLabelLight').className = 'theme-toggle-label' + (isLight ? ' theme-toggle-label--active' : ' theme-toggle-label--inactive');
 }
 
 function selectTheme(btn, theme) {
   document.querySelectorAll('.theme-option').forEach(b => b.classList.remove('theme-option--active'));
   btn.classList.add('theme-option--active');
-  const mode = document.getElementById('settingsThemeMode').checked ? 'light' : 'dark';
+  const dockToggle = document.getElementById('dockThemeMode');
+  const mode = dockToggle ? (dockToggle.checked ? 'light' : 'dark') : 'dark';
   const rawTheme = document.documentElement.getAttribute('data-theme') || 'dark';
   const oldMode = document.documentElement.getAttribute('data-theme-mode') || 'dark';
   // Resolve raw data-theme to theme name (default theme stores "dark"/"light")
   const oldTheme = (rawTheme === 'dark' || rawTheme === 'light') ? 'default' : rawTheme;
   if (theme === oldTheme && mode === oldMode) return;
-  animateThemeTransition(theme, mode, btn);
+  animateThemeTransition(theme, mode);
 }
 
-function handleThemeModeToggle(toggle) {
+function handleDockThemeModeToggle(toggle) {
   const newMode = toggle.checked ? 'light' : 'dark';
   const theme = document.querySelector('.theme-option.theme-option--active')?.dataset?.theme || 'default';
   const rawTheme = document.documentElement.getAttribute('data-theme') || 'dark';
   const oldMode = document.documentElement.getAttribute('data-theme-mode') || 'dark';
   const oldTheme = (rawTheme === 'dark' || rawTheme === 'light') ? 'default' : rawTheme;
   if (theme === oldTheme && newMode === oldMode) return;
-  updateThemeToggleLabels();
-  const rect = toggle.getBoundingClientRect();
-  const cx = rect.left + rect.width / 2;
-  const cy = rect.top + rect.height / 2;
-  animateThemeTransition(theme, newMode, null, cx, cy);
+  updateDockThemeToggleLabels();
+  animateThemeTransition(theme, newMode);
 }
 
-function animateThemeTransition(theme, mode, originBtn, cx, cy) {
-  // Compute ripple origin
-  if (!cx || !cy) {
-    if (originBtn) {
-      const rect = originBtn.getBoundingClientRect();
-      cx = rect.left + rect.width / 2;
-      cy = rect.top + rect.height / 2;
-    } else {
-      cx = window.innerWidth / 2;
-      cy = window.innerHeight / 2;
-    }
-  }
-
-  // Apply theme instantly, then cover with a ripple overlay
+function animateThemeTransition(theme, mode) {
+  document.documentElement.classList.add('theme-transitioning');
   applyTheme(theme, mode);
+  setTimeout(() => {
+    document.documentElement.classList.remove('theme-transitioning');
+  }, 500);
+}
 
-  const maxDim = Math.max(window.innerWidth, window.innerHeight);
-  const size = maxDim * 3;
-  const ripple = document.createElement('div');
-  ripple.style.cssText = [
-    'position:fixed',
-    `left:${cx}px`, `top:${cy}px`,
-    `width:${size}px`, `height:${size}px`,
-    'margin-left:' + (-size / 2) + 'px',
-    'margin-top:' + (-size / 2) + 'px',
-    'border-radius:50%',
-    'background:' + (mode === 'dark' ? '#fff' : '#000'),
-    'opacity:0.4',
-    'pointer-events:none',
-    'z-index:99998',
-    'transform:scale(0)'
-  ].join(';');
-  document.body.appendChild(ripple);
+// ─── Theme Dock ───
+function openThemeDock() {
+  const dock = document.getElementById('themeDock');
+  const overlay = document.getElementById('themeDockOverlay');
+  // Sync dock controls with current state
+  const mode = document.documentElement.getAttribute('data-theme-mode') || 'dark';
+  const dockToggle = document.getElementById('dockThemeMode');
+  if (dockToggle) {
+    dockToggle.checked = mode === 'light';
+    updateDockThemeToggleLabels();
+  }
+  const zoomEl = document.getElementById('dockZoom');
+  if (zoomEl) {
+    const currentZoom = Math.round((document.documentElement.style.fontSize ? parseFloat(document.documentElement.style.fontSize) / 16 : 1) * 100);
+    zoomEl.value = currentZoom;
+    document.getElementById('dockZoomLabel').textContent = currentZoom + '%';
+  }
+  dock.classList.add('open');
+  overlay.classList.add('open');
+  document.addEventListener('keydown', handleDockEsc);
+}
 
-  gsap.to(ripple, {
-    scale: 1,
-    opacity: 0,
-    duration: 0.8,
-    ease: 'power2.out',
-    onComplete: () => ripple.remove()
-  });
+function closeThemeDock() {
+  const dock = document.getElementById('themeDock');
+  const overlay = document.getElementById('themeDockOverlay');
+  dock.classList.remove('open');
+  overlay.classList.remove('open');
+  document.removeEventListener('keydown', handleDockEsc);
+}
+
+function handleDockEsc(e) {
+  if (e.key === 'Escape') closeThemeDock();
+}
+
+function handleDockZoom(input) {
+  const scale = parseInt(input.value) / 100;
+  applyZoom(scale);
+  document.getElementById('dockZoomLabel').textContent = input.value + '%';
+}
+
+function openVisualDock() {
+  closeSettings();
+  openThemeDock();
 }
 
 // Zoom via root rem scaling
@@ -161,22 +171,13 @@ function applyZoom(scale) {
 
 // Settings
 async function openSettings() {
+  // Close dock if open before showing modal
+  const dock = document.getElementById('themeDock');
+  if (dock?.classList.contains('open')) closeThemeDock();
   try {
     const config = await API.get('/api/config');
     configCache = config;
     document.getElementById('settingsMediaDir').value = config.mediaDir || '';
-    const curTheme = localStorage.getItem('theme') || config.theme || 'default';
-    const curThemeMode = localStorage.getItem('themeMode') || config.themeMode || 'dark';
-    // Backward compatibility
-    const resolvedTheme = (curTheme === 'dark' || curTheme === 'light') ? 'default' : curTheme;
-    const resolvedMode = (curTheme === 'dark' || curTheme === 'light') ? curTheme : curThemeMode;
-    document.querySelectorAll('.theme-option').forEach(b => {
-      b.classList.toggle('theme-option--active', b.dataset.theme === resolvedTheme);
-    });
-    document.getElementById('settingsThemeMode').checked = resolvedMode === 'light';
-    updateThemeToggleLabels();
-    document.getElementById('settingsZoom').value = Math.round((config.uiScale || 1) * 100);
-    document.getElementById('zoomLabel').textContent = document.getElementById('settingsZoom').value + '%';
     document.getElementById('settingsPlayerMode').value = config.playerMode || 'system';
     document.getElementById('settingsMpvPath').value = config.mpvPath || '';
     document.getElementById('mpvPathGroup').style.display =
@@ -204,8 +205,6 @@ function closeSettings() {
 
 async function saveSettings() {
   const mediaDir = document.getElementById('settingsMediaDir').value.trim();
-  const newTheme = document.querySelector('.theme-option.theme-option--active')?.dataset?.theme || 'default';
-  const newThemeMode = document.getElementById('settingsThemeMode').checked ? 'light' : 'dark';
   const playerMode = document.getElementById('settingsPlayerMode').value;
   const mpvPath = document.getElementById('settingsMpvPath').value.trim();
 
@@ -214,8 +213,11 @@ async function saveSettings() {
     return;
   }
 
-  const zoom = parseInt(document.getElementById('settingsZoom').value) / 100;
-  applyZoom(zoom);
+  // Read visual state from HTML attributes (always current — drawer applies changes immediately)
+  const rawTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+  const newTheme = (rawTheme === 'dark' || rawTheme === 'light') ? 'default' : rawTheme;
+  const newThemeMode = document.documentElement.getAttribute('data-theme-mode') || 'dark';
+  const currentZoom = parseFloat(document.documentElement.style.fontSize || '16') / 16;
 
   // Build apiSources from simple toggles
   const bangumiUrl = document.getElementById('bangumiUrl').value.trim() || 'https://api.bangumi.one';
@@ -235,13 +237,12 @@ async function saveSettings() {
       mpvPath,
       theme: newTheme,
       themeMode: newThemeMode,
-      uiScale: zoom,
+      uiScale: currentZoom,
       autoMarkWatched: document.getElementById('settingsAutoMark').checked,
       apiSources,
     });
 
     closeSettings();
-    applyTheme(newTheme, newThemeMode);
 
     showToast('设置已保存');
     refreshDiscovery();

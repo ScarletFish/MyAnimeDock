@@ -258,6 +258,7 @@ mpv 模式下自动记录播放进度到 SQLite。
 - **批量同步取消**：`/api/library/sync/stream` 支持客户端取消，`cancelledSyncSessions` Map 追踪取消状态
 - **Tauri sidecar 监控**：Rust 监控线程检测 sidecar 退出后自动关闭 Tauri 窗口；窗口关闭时 kill sidecar 进程
 - **nodemon data ignore**：`dev:server:watch` 忽略 `server/prisma/`、`server/covers/`、`server/thumbs/`、`server/scanned-tree.json`，防止数据写入触发重启
+- **详情页封面不能加 `decoding="async"` 或 `loading="lazy"`**：`renderDetail()` 中封面 `<img>` 必须 eager 加载，`animateHeroCoverFlip()` 的 `onComplete` 必须直接 reveal（不能用 `revealCover()` 检查 `img.complete`）。`decoding="async"` 会导致 GSAP Flip 动画完成时封面尚未解码，露出空白框架闪白。0.35s Flip 时长足够本地服务端图片完成加载+解码，不需要任何延迟/检查。
 
 ## 设计理念与用户工作流
 

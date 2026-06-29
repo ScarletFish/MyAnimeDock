@@ -1142,7 +1142,7 @@ html {
 }
 
 .mylist-badge.wish {
-  background: rgba(168, 85, 247, 0.12);
+  background: rgba(var(--accent-secondary-rgb), 0.12);
   color: var(--accent-secondary);
 }
 
@@ -1450,8 +1450,8 @@ html {
   border-radius: 100px;
   font-size: 0.688rem;
   font-weight: 500;
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--fg-secondary);
+  background: rgba(var(--accent-secondary-rgb), 0.1);
+  color: var(--accent-secondary);
   white-space: nowrap;
 }
 .detail-info-line .info-tag--warn {
@@ -1552,7 +1552,7 @@ html {
   gap: 0.75rem;
   margin-bottom: 1.25rem;
   padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid rgba(var(--accent-secondary-rgb), 0.15);
 }
 
 .detail-episodes-header h3 {
@@ -1826,7 +1826,18 @@ html {
   align-items: baseline;
   gap: 0.5rem;
   margin-bottom: 0.75rem;
-  padding: 0 0.25rem;
+  padding: 0.25rem 0.25rem 0.25rem 0.75rem;
+  position: relative;
+}
+.mylist-section-header::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--accent-secondary);
 }
 
 .mylist-section-title {
@@ -2776,7 +2787,7 @@ html {
 }
 
 .tag--meta {
-  background: rgba(74, 108, 247, 0.15);
+  background: rgba(var(--accent-secondary-rgb), 0.15);
   color: var(--accent-secondary);
 }
 
@@ -3695,6 +3706,8 @@ input[type="range"]::-webkit-slider-thumb {
 
 .episode-heatmap-header {
   margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(var(--accent-secondary-rgb), 0.1);
 }
 
 .episode-heatmap-header h3 {
@@ -5164,12 +5177,12 @@ input[type="range"]::-webkit-slider-thumb {
   border-color: rgba(44, 36, 24, 0.10);
 }
 :is([data-theme="light"], [data-theme-mode="light"]) .detail-info-line .info-tag {
-  background: rgba(44, 36, 24, 0.06);
-  color: var(--fg-secondary);
+  background: rgba(var(--accent-secondary-rgb), 0.08);
+  color: var(--accent-secondary);
 }
 :is([data-theme="light"], [data-theme-mode="light"]) .detail-tags .detail-tag { background: rgba(var(--accent-rgb), 0.08); }
 :is([data-theme="light"], [data-theme-mode="light"]) .detail-tags .detail-tag-toggle { background: transparent; }
-:is([data-theme="light"], [data-theme-mode="light"]) .detail-episodes-header { border-color: rgba(44, 36, 24, 0.08); }
+:is([data-theme="light"], [data-theme-mode="light"]) .detail-episodes-header { border-color: rgba(var(--accent-secondary-rgb), 0.12); }
 
 /* ─── Discovery ─── */
 :is([data-theme="light"], [data-theme-mode="light"]) .discovery-hero { border-color: rgba(44, 36, 24, 0.06); }

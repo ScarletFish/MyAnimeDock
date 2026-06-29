@@ -13,11 +13,10 @@
 - 将 `#a855f7` 等硬编码替换为 `--accent-secondary`
 - 涉及文件: `public/styles.css`
 
-### Phase 2 — 导航 & 滚动条强调色（P1）
-**投入**: 低 | **效果**: 导航反馈感 + 细节质感
+### Phase 2 — 导航强调色（P1）
+**投入**: 低 | **效果**: 导航反馈感
 
 - 侧边栏 nav-btn hover 时 SVG 图标颜色变为 `var(--accent)`
-- 滚动条 thumb 背景改为 `var(--accent)` 带透明度
 - 涉及文件: `public/styles.css`
 
 ### Phase 3 — 卡片 & 进度条增强（P2）

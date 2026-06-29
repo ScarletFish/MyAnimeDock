@@ -1012,18 +1012,6 @@ html {
   will-change: transform;
 }
 
-.anime-card::before {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background: var(--accent-gradient);
-  z-index: 1;
-  pointer-events: none;
-}
-
 .anime-card::after {
   content: '';
   position: absolute;

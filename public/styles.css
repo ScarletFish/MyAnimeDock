@@ -3778,7 +3778,7 @@ input[type="range"]::-webkit-slider-thumb {
   pointer-events: none;
 }
 
-.heatmap-cell.watching { background: rgba(var(--accent-rgb), 0.25); }
+.heatmap-cell.watching { background: rgba(var(--accent-rgb), 0.12); }
 .heatmap-cell.watched { background: var(--success); }
 
 .heatmap-cell:hover {
@@ -5274,6 +5274,7 @@ input[type="range"]::-webkit-slider-thumb {
 :is([data-theme="light"], [data-theme-mode="light"]) .heatmap-cell { border: 1px solid rgba(44, 36, 24, 0.08); }
 :is([data-theme="light"], [data-theme-mode="light"]) .heatmap-cell.unwatched { background: color-mix(in srgb, var(--heatmap-unwatched) 30%, transparent); }
 :is([data-theme="light"], [data-theme-mode="light"]) .heatmap-cell.unwatched::before { display: none; }
+:is([data-theme="light"], [data-theme-mode="light"]) .heatmap-cell.watching { background: rgba(var(--accent-rgb), 0.25); }
 
 /* ─── Theme Dock ─── */
 :is([data-theme="light"], [data-theme-mode="light"]) .theme-dock {

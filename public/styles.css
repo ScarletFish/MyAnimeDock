@@ -16,6 +16,7 @@
   --accent-soft: #ff6b8a;
   --accent-glow: rgba(var(--accent-rgb), 0.3);
   --accent-gradient: linear-gradient(135deg, #e13a5a, #ff2d55);
+  --accent-mixed-gradient: linear-gradient(135deg, var(--accent), var(--accent-secondary));
   --accent-secondary: #4a6cf7;
   --accent-secondary-glow: rgba(74, 108, 247, 0.2);
 
@@ -1109,7 +1110,7 @@ html {
   border-radius: 100px;
   font-size: 0.719rem;
   font-weight: 600;
-  background: var(--accent-gradient);
+  background: var(--accent-mixed-gradient);
   color: white;
   box-shadow: 0 0 12px rgba(var(--accent-rgb), 0.2);
 }
@@ -3740,7 +3741,7 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .heatmap-swatch.unwatched { background: var(--heatmap-unwatched); }
-.heatmap-swatch.watching { background: var(--accent-secondary); }
+.heatmap-swatch.watching { background: var(--accent-mixed-gradient); }
 .heatmap-swatch.watched { background: var(--success); }
 
 .episode-heatmap-grid {
@@ -3760,7 +3761,7 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .heatmap-cell.unwatched { background: var(--heatmap-unwatched); }
-.heatmap-cell.watching { background: var(--accent-secondary); }
+.heatmap-cell.watching { background: var(--accent-mixed-gradient); }
 .heatmap-cell.watched { background: var(--success); }
 
 .heatmap-cell:hover {

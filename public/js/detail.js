@@ -757,6 +757,9 @@ function renderWatchStats(anime) {
   const canvas = document.getElementById('watchStatsChart');
   const ctx = canvas.getContext('2d');
   const isLight = document.documentElement.getAttribute('data-theme-mode') === 'light';
+  const rootStyle = getComputedStyle(document.documentElement);
+  const accentRgb = rootStyle.getPropertyValue('--accent-rgb').trim() || '225,58,90';
+  const secondaryRgb = rootStyle.getPropertyValue('--accent-secondary-rgb').trim() || '74,108,247';
 
   API.get(`/api/anime/${encodeURIComponent(anime.id)}/sessions`).then(data => {
     if (version !== watchStatsVersion) return;
@@ -885,8 +888,8 @@ function renderWatchStats(anime) {
         ctx.lineTo(visPts[visPts.length - 1][0], PAD.top + ch);
         ctx.closePath();
         const grad = ctx.createLinearGradient(0, PAD.top, 0, PAD.top + ch);
-        grad.addColorStop(0, 'rgba(225,58,90,0.30)');
-        grad.addColorStop(1, 'rgba(225,58,90,0.02)');
+        grad.addColorStop(0, `rgba(${accentRgb},0.30)`);
+        grad.addColorStop(1, `rgba(${secondaryRgb},0.02)`);
         ctx.fillStyle = grad;
         ctx.fill();
       }
@@ -901,7 +904,7 @@ function renderWatchStats(anime) {
           const mx = (px + cx) / 2;
           ctx.bezierCurveTo(mx, py, mx, cy, cx, cy);
         }
-        ctx.strokeStyle = 'rgba(225,58,90,0.9)';
+        ctx.strokeStyle = `rgba(${accentRgb},0.9)`;
         ctx.lineWidth = 2;
         ctx.stroke();
       }
@@ -911,7 +914,7 @@ function renderWatchStats(anime) {
       visPts.forEach(([x, y], i) => {
         ctx.beginPath();
         ctx.arc(x, y, 3, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(225,58,90,0.9)';
+        ctx.fillStyle = `rgba(${accentRgb},0.9)`;
         ctx.fill();
 
         if (i % labelInterval === 0 || i === visPts.length - 1) {

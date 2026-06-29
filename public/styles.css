@@ -1111,7 +1111,7 @@ html {
   border-radius: 100px;
   font-size: 0.719rem;
   font-weight: 600;
-  background: linear-gradient(to right, var(--accent), var(--accent-secondary));
+  background: var(--accent);
   color: white;
   box-shadow: 0 0 12px rgba(var(--accent-rgb), 0.2);
 }
@@ -3745,7 +3745,7 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .heatmap-swatch.unwatched { background: var(--heatmap-unwatched); }
-.heatmap-swatch.watching { background: var(--accent-radial-gradient); }
+.heatmap-swatch.watching { background: rgba(var(--accent-rgb), 0.55); }
 .heatmap-swatch.watched { background: var(--success); }
 
 .episode-heatmap-grid {
@@ -3778,7 +3778,7 @@ input[type="range"]::-webkit-slider-thumb {
   pointer-events: none;
 }
 
-.heatmap-cell.watching { background: var(--accent-radial-gradient); }
+.heatmap-cell.watching { background: rgba(var(--accent-rgb), 0.25); }
 .heatmap-cell.watched { background: var(--success); }
 
 .heatmap-cell:hover {

@@ -65,6 +65,7 @@ function applyTheme(theme, themeMode) {
   localStorage.setItem('theme', theme);
   localStorage.setItem('themeMode', themeMode);
   setThemeAttributes(theme, themeMode);
+  document.dispatchEvent(new CustomEvent('themechanged'));
 }
 
 function setThemeAttributes(theme, themeMode) {

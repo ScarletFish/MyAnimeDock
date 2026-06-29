@@ -1325,6 +1325,14 @@ function spawnRipple(parent, x, y, size) {
   el.addEventListener('animationend', () => el.remove(), { once: true });
 }
 
+// Re-render canvas-based charts on theme change
+document.addEventListener('themechanged', () => {
+  const detailView = document.getElementById('detailView');
+  if (detailView && !detailView.classList.contains('hidden') && currentAnime) {
+    renderWatchStats(currentAnime);
+  }
+});
+
 // Init on DOMContentLoaded (safe to call multiple times)
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initDetailNav);

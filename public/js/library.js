@@ -166,7 +166,7 @@ function renderLibrary(filter = '') {
           <div class="meta">
             ${anime.rating ? `<span class="rating-badge">★ ${anime.rating}</span>` : ''}
             ${anime.season ? `<span class="season-badge">S${anime.season}</span>` : ''}
-            ${mylistLabel ? `<span class="mylist-badge ${anime.myListStatus}">${mylistLabel}</span>` : ''}
+            ${mylistLabel && anime.myListStatus !== 'watching' ? `<span class="mylist-badge ${anime.myListStatus}">${mylistLabel}</span>` : ''}
           </div>
         </div>
       </div>

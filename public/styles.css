@@ -1428,7 +1428,10 @@ html {
 .detail-info-line .info-rating-num {
   font-size: 1.125rem;
   font-weight: 700;
-  color: var(--accent);
+  background: var(--accent-mixed-gradient);
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
 }
 
 .detail-info-line .info-rating-sub {
@@ -3760,7 +3763,19 @@ input[type="range"]::-webkit-slider-thumb {
   transition: all 0.15s var(--ease-out);
 }
 
-.heatmap-cell.unwatched { background: var(--heatmap-unwatched); }
+.heatmap-cell.unwatched {
+  background: var(--heatmap-unwatched);
+  border: none;
+}
+.heatmap-cell.unwatched::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 4px;
+  background: var(--accent-mixed-gradient);
+  z-index: -1;
+  pointer-events: none;
+}
 .heatmap-cell.watching { background: var(--accent-mixed-gradient); }
 .heatmap-cell.watched { background: var(--success); }
 
@@ -5254,11 +5269,7 @@ input[type="range"]::-webkit-slider-thumb {
 
 /* ─── Watch Card / Heatmap ─── */
 :is([data-theme="light"], [data-theme-mode="light"]) .watch-card-progress { background: rgba(44, 36, 24, 0.10); }
-:is([data-theme="light"], [data-theme-mode="light"]) .heatmap-cell:not(.unwatched) { border: 1px solid rgba(44, 36, 24, 0.08); }
-:is([data-theme="light"], [data-theme-mode="light"]) .heatmap-cell.unwatched {
-  background: transparent;
-  border: 1px solid var(--accent-mixed-gradient);
-}
+:is([data-theme="light"], [data-theme-mode="light"]) .heatmap-cell { border: 1px solid rgba(44, 36, 24, 0.08); }
 
 /* ─── Theme Dock ─── */
 :is([data-theme="light"], [data-theme-mode="light"]) .theme-dock {

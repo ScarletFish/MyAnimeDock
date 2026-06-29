@@ -1085,7 +1085,7 @@ html {
   margin-bottom: 2rem;
 }
 
-.view-header h2 {
+.view-header h1 {
   font-family: var(--font-display);
   font-size: clamp(1.3rem, 2.2vw, 1.6rem);
   font-weight: 700;

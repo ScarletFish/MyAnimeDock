@@ -351,6 +351,7 @@ const server = http.createServer((req, res) => {
       if (parsed.themeMode !== undefined) config.themeMode = parsed.themeMode;
       if (parsed.autoMarkWatched !== undefined) config.autoMarkWatched = !!parsed.autoMarkWatched;
       if (parsed.uiScale !== undefined) config.uiScale = Math.max(0.5, Math.min(2, parsed.uiScale));
+      if (parsed.reduceMotion !== undefined) config.reduceMotion = !!parsed.reduceMotion;
       if (parsed.apiSources !== undefined) config.apiSources = parsed.apiSources;
       // Legacy fields — silently accept and convert
       if (parsed.apiSources === undefined && parsed.scrapers !== undefined) {

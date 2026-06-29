@@ -5419,3 +5419,30 @@ input[type="range"]::-webkit-slider-thumb {
   /* Decorative ambient orbs */
   .ambient-orb { display: none !important; }
 }
+
+/* ─── Manual reduced-motion toggle (mirrors @media block above) ─── */
+html[data-reduce-motion="true"] .mm-row,
+html[data-reduce-motion="true"] .mm-row--matching::before,
+html[data-reduce-motion="true"] .mm-row-dot--matching,
+html[data-reduce-motion="true"] .mm-bento-pulse,
+html[data-reduce-motion="true"] .mm-panel-status--matching .mm-panel-status-dot,
+html[data-reduce-motion="true"] .mm-batch-bar,
+html[data-reduce-motion="true"] .anime-card,
+html[data-reduce-motion="true"] #detailView.detail-enter-active,
+html[data-reduce-motion="true"] .view { animation: none !important; }
+
+html[data-reduce-motion="true"] .detail-enter-active .detail-info-panel,
+html[data-reduce-motion="true"] .detail-enter-active .detail-right,
+html[data-reduce-motion="true"] .detail-nav-arrow,
+html[data-reduce-motion="true"] .detail-nav-close,
+html[data-reduce-motion="true"] .anime-card .overlay,
+html[data-reduce-motion="true"] .anime-card::after,
+html[data-reduce-motion="true"] .heatmap-cell::after { transition-duration: 0.01ms !important; }
+
+html[data-reduce-motion="true"] .anime-card:hover,
+html[data-reduce-motion="true"] .anime-card:hover img,
+html[data-reduce-motion="true"] .heatmap-cell:hover { transform: none !important; }
+
+html[data-reduce-motion="true"] .anime-card:hover .overlay { transform: none !important; opacity: 1 !important; }
+
+html[data-reduce-motion="true"] .ambient-orb { display: none !important; }

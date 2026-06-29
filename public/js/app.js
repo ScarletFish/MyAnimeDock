@@ -136,6 +136,10 @@ function openThemeDock() {
     zoomEl.value = currentZoom;
     document.getElementById('dockZoomLabel').textContent = currentZoom + '%';
   }
+  const rmToggle = document.getElementById('dockReduceMotion');
+  if (rmToggle) {
+    rmToggle.checked = document.documentElement.getAttribute('data-reduce-motion') === 'true';
+  }
   dock.classList.add('open');
   overlay.classList.add('open');
   document.addEventListener('keydown', handleDockEsc);
@@ -167,6 +171,20 @@ function openVisualDock() {
 // Zoom via root rem scaling
 function applyZoom(scale) {
   document.documentElement.style.fontSize = (16 * (scale || 1)) + 'px';
+}
+
+// ─── Reduce Motion ───
+function handleReduceMotionToggle(input) {
+  const reduced = input.checked;
+  localStorage.setItem('reduceMotion', reduced ? '1' : '');
+  document.documentElement.setAttribute('data-reduce-motion', reduced ? 'true' : 'false');
+}
+
+function loadReduceMotion() {
+  const reduced = localStorage.getItem('reduceMotion') === '1' || configCache?.reduceMotion === true;
+  if (reduced) {
+    document.documentElement.setAttribute('data-reduce-motion', 'true');
+  }
 }
 
 // Settings
@@ -238,6 +256,7 @@ async function saveSettings() {
       theme: newTheme,
       themeMode: newThemeMode,
       uiScale: currentZoom,
+      reduceMotion: document.documentElement.getAttribute('data-reduce-motion') === 'true',
       autoMarkWatched: document.getElementById('settingsAutoMark').checked,
       apiSources,
     });
@@ -394,6 +413,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (_) {}
   }
   loadTheme();
+  loadReduceMotion();
   applyZoom(configCache?.uiScale || 1);
   initSortSelect();
   showView('library');

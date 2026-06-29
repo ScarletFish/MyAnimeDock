@@ -1842,7 +1842,7 @@ html {
   bottom: 4px;
   width: 3px;
   border-radius: 2px;
-  background: var(--accent-secondary);
+  background: var(--accent);
 }
 
 .mylist-section-title {

@@ -17,6 +17,7 @@
   --accent-glow: rgba(var(--accent-rgb), 0.3);
   --accent-gradient: linear-gradient(135deg, #e13a5a, #ff2d55);
   --accent-mixed-gradient: linear-gradient(135deg, var(--accent), var(--accent-secondary));
+  --accent-radial-gradient: radial-gradient(circle at 30% 30%, var(--accent), var(--accent-secondary));
   --accent-secondary: #4a6cf7;
   --accent-secondary-glow: rgba(74, 108, 247, 0.2);
 
@@ -3744,7 +3745,7 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .heatmap-swatch.unwatched { background: var(--heatmap-unwatched); }
-.heatmap-swatch.watching { background: var(--accent-mixed-gradient); }
+.heatmap-swatch.watching { background: var(--accent-radial-gradient); }
 .heatmap-swatch.watched { background: var(--success); }
 
 .episode-heatmap-grid {
@@ -3772,11 +3773,12 @@ input[type="range"]::-webkit-slider-thumb {
   position: absolute;
   inset: -1px;
   border-radius: 4px;
-  background: var(--accent-mixed-gradient);
+  background: var(--accent-radial-gradient);
   z-index: -1;
   pointer-events: none;
 }
-.heatmap-cell.watching { background: var(--accent-mixed-gradient); }
+
+.heatmap-cell.watching { background: var(--accent-radial-gradient); }
 .heatmap-cell.watched { background: var(--success); }
 
 .heatmap-cell:hover {
@@ -5270,7 +5272,7 @@ input[type="range"]::-webkit-slider-thumb {
 /* ─── Watch Card / Heatmap ─── */
 :is([data-theme="light"], [data-theme-mode="light"]) .watch-card-progress { background: rgba(44, 36, 24, 0.10); }
 :is([data-theme="light"], [data-theme-mode="light"]) .heatmap-cell { border: 1px solid rgba(44, 36, 24, 0.08); }
-:is([data-theme="light"], [data-theme-mode="light"]) .heatmap-cell.unwatched { background: transparent; }
+:is([data-theme="light"], [data-theme-mode="light"]) .heatmap-cell.unwatched { background: color-mix(in srgb, var(--heatmap-unwatched) 30%, transparent); }
 :is([data-theme="light"], [data-theme-mode="light"]) .heatmap-cell.unwatched::before { display: none; }
 
 /* ─── Theme Dock ─── */

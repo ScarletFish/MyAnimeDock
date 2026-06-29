@@ -100,7 +100,7 @@
   --shadow-lg: 0 8px 48px rgba(44, 36, 24, 0.12);
   --shadow-glow: 0 0 60px rgba(var(--accent-rgb), 0.05);
 
-  --heatmap-unwatched: #ddd6cb;
+  --heatmap-unwatched: rgba(44, 36, 24, 0.04);
 }
 
 /* ─── Amber Theme ─── */
@@ -172,7 +172,7 @@
   --shadow-lg: 0 8px 48px rgba(44, 32, 24, 0.12);
   --shadow-glow: 0 0 60px rgba(217, 119, 6, 0.05);
 
-  --heatmap-unwatched: #ddd6cb;
+  --heatmap-unwatched: rgba(44, 36, 24, 0.04);
 }
 
 /* ─── Ocean Theme ─── */
@@ -242,7 +242,7 @@
   --shadow-lg: 0 8px 48px rgba(24, 44, 56, 0.12);
   --shadow-glow: 0 0 60px rgba(14, 165, 233, 0.05);
 
-  --heatmap-unwatched: #ddd6cb;
+  --heatmap-unwatched: rgba(44, 36, 24, 0.04);
 }
 
 /* ─── Sakura Theme ─── */
@@ -312,7 +312,7 @@
   --shadow-lg: 0 8px 48px rgba(44, 24, 36, 0.12);
   --shadow-glow: 0 0 60px rgba(236, 72, 153, 0.05);
 
-  --heatmap-unwatched: #ddd6cb;
+  --heatmap-unwatched: rgba(44, 36, 24, 0.04);
 }
 
 /* ─── Emerald Theme ─── */
@@ -382,7 +382,7 @@
   --shadow-lg: 0 8px 48px rgba(24, 44, 36, 0.12);
   --shadow-glow: 0 0 60px rgba(5, 150, 105, 0.05);
 
-  --heatmap-unwatched: #ddd6cb;
+  --heatmap-unwatched: rgba(44, 36, 24, 0.04);
 }
 
 /* ─── Neon Theme ─── */
@@ -452,7 +452,7 @@
   --shadow-lg: 0 8px 48px rgba(36, 24, 44, 0.12);
   --shadow-glow: 0 0 60px rgba(124, 58, 237, 0.05);
 
-  --heatmap-unwatched: #ddd6cb;
+  --heatmap-unwatched: rgba(44, 36, 24, 0.04);
 }
 
 /* ─── Background Atmosphere ─── */

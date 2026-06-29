@@ -100,7 +100,7 @@
   --shadow-lg: 0 8px 48px rgba(44, 36, 24, 0.12);
   --shadow-glow: 0 0 60px rgba(var(--accent-rgb), 0.05);
 
-  --heatmap-unwatched: rgba(44, 36, 24, 0.04);
+  --heatmap-unwatched: #ddd6cb;
 }
 
 /* ─── Amber Theme ─── */
@@ -172,7 +172,7 @@
   --shadow-lg: 0 8px 48px rgba(44, 32, 24, 0.12);
   --shadow-glow: 0 0 60px rgba(217, 119, 6, 0.05);
 
-  --heatmap-unwatched: rgba(44, 36, 24, 0.04);
+  --heatmap-unwatched: #ddd6cb;
 }
 
 /* ─── Ocean Theme ─── */
@@ -242,7 +242,7 @@
   --shadow-lg: 0 8px 48px rgba(24, 44, 56, 0.12);
   --shadow-glow: 0 0 60px rgba(14, 165, 233, 0.05);
 
-  --heatmap-unwatched: rgba(44, 36, 24, 0.04);
+  --heatmap-unwatched: #ddd6cb;
 }
 
 /* ─── Sakura Theme ─── */
@@ -312,7 +312,7 @@
   --shadow-lg: 0 8px 48px rgba(44, 24, 36, 0.12);
   --shadow-glow: 0 0 60px rgba(236, 72, 153, 0.05);
 
-  --heatmap-unwatched: rgba(44, 36, 24, 0.04);
+  --heatmap-unwatched: #ddd6cb;
 }
 
 /* ─── Emerald Theme ─── */
@@ -382,7 +382,7 @@
   --shadow-lg: 0 8px 48px rgba(24, 44, 36, 0.12);
   --shadow-glow: 0 0 60px rgba(5, 150, 105, 0.05);
 
-  --heatmap-unwatched: rgba(44, 36, 24, 0.04);
+  --heatmap-unwatched: #ddd6cb;
 }
 
 /* ─── Neon Theme ─── */
@@ -452,7 +452,7 @@
   --shadow-lg: 0 8px 48px rgba(36, 24, 44, 0.12);
   --shadow-glow: 0 0 60px rgba(124, 58, 237, 0.05);
 
-  --heatmap-unwatched: rgba(44, 36, 24, 0.04);
+  --heatmap-unwatched: #ddd6cb;
 }
 
 /* ─── Background Atmosphere ─── */
@@ -1110,7 +1110,7 @@ html {
   border-radius: 100px;
   font-size: 0.719rem;
   font-weight: 600;
-  background: var(--accent-mixed-gradient);
+  background: linear-gradient(to right, var(--accent), var(--accent-secondary));
   color: white;
   box-shadow: 0 0 12px rgba(var(--accent-rgb), 0.2);
 }
@@ -5254,7 +5254,11 @@ input[type="range"]::-webkit-slider-thumb {
 
 /* ─── Watch Card / Heatmap ─── */
 :is([data-theme="light"], [data-theme-mode="light"]) .watch-card-progress { background: rgba(44, 36, 24, 0.10); }
-:is([data-theme="light"], [data-theme-mode="light"]) .heatmap-cell { border: 1px solid rgba(44, 36, 24, 0.08); }
+:is([data-theme="light"], [data-theme-mode="light"]) .heatmap-cell:not(.unwatched) { border: 1px solid rgba(44, 36, 24, 0.08); }
+:is([data-theme="light"], [data-theme-mode="light"]) .heatmap-cell.unwatched {
+  background: transparent;
+  border: 1px solid var(--accent-mixed-gradient);
+}
 
 /* ─── Theme Dock ─── */
 :is([data-theme="light"], [data-theme-mode="light"]) .theme-dock {

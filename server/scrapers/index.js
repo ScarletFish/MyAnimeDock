@@ -91,7 +91,7 @@ function isPrimarilyRomaji(title) {
  */
 function buildSearchTerms(folderParsed, keyword) {
   const terms = [];
-  const base = (folderParsed.cjkTitle || folderParsed.cleanTitle || keyword).replace(/[~～]/g, '').trim();
+  const base = (folderParsed.cleanTitle || folderParsed.cjkTitle || keyword).replace(/[~～]/g, '').trim();
   const season = folderParsed.season;
 
   // Priority 1: suffix content (e.g., "Dear My Sister") — more precise for OVA/movie
@@ -118,14 +118,23 @@ function buildSearchTerms(folderParsed, keyword) {
 }
 
 /**
- * Search Bangumi directly
+ * Search Bangumi directly (with 5-min TTL cache)
  */
+const _bangumiSearchCache = new Map();
+const _bangumiCacheTTL = 5 * 60 * 1000;
+
 async function searchBangumi(bangumi, keyword, config) {
   const source = config.apiSources?.find(s => s.type === 'bangumi');
   if (!source) return [];
+
+  const cached = _bangumiSearchCache.get(keyword);
+  if (cached && Date.now() - cached.ts < _bangumiCacheTTL) return cached.results;
+
   try {
     const results = await bangumi.search(keyword, source);
-    return results.filter(r => r.type === 2);
+    const filtered = results.filter(r => r.type === 2);
+    _bangumiSearchCache.set(keyword, { results: filtered, ts: Date.now() });
+    return filtered;
   } catch (e) {
     logger.error('Bangumi search failed:', e.message);
     return [];
@@ -237,6 +246,7 @@ async function matchSeason(registry, keyword, folderParsed, videoCount, config) 
     source: 'bangumi',
     matchedSeason: folderParsed.season || null,
     confidence,
+    _detail: detail,
   };
 }
 
@@ -325,12 +335,13 @@ class ScraperRegistry {
    */
   clearSearchCache() {
     this._searchCache.clear();
+    _bangumiSearchCache.clear();
   }
 
   /**
    * Find the first matching source for a scraper type and fetch metadata
    */
-  async fetchMetadata(scraperName, title, coverDir, subjectId, config) {
+  async fetchMetadata(scraperName, title, coverDir, subjectId, config, preDetail) {
     const scraper = this.get(scraperName);
     if (!scraper) throw new Error(`Scraper not found: ${scraperName}`);
 
@@ -339,7 +350,7 @@ class ScraperRegistry {
     if (!source) throw new Error(`No configured source for ${scraperName}`);
 
     if (typeof scraper.setSource === 'function') scraper.setSource(source);
-    return scraper.fetchMetadata(title, coverDir, subjectId);
+    return scraper.fetchMetadata(title, coverDir, subjectId, preDetail);
   }
 }
 

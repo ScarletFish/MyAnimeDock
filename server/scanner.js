@@ -69,7 +69,8 @@ function parseFolderName(name) {
 
   // 3. Extract CJK title from original name (Bangumi prefers Japanese/Chinese)
   let cjkTitle = null;
-  const cjkOnly = base.replace(/[^\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]/g, '').trim();
+  const cjkOnly = base.replace(/[^\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]/g, '')
+    .replace(/第\d*期/g, '').replace(/Season\d*/gi, '').replace(/S\d+/gi, '').trim();
   if (cjkOnly) cjkTitle = cjkOnly;
 
   // 4. If anitomy title has both CJK and Latin, use CJK part (Latin is usually truncated/wrong)

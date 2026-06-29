@@ -41,9 +41,9 @@ async function tryFetch(url, options = {}) {
       const res = await fetchWithTimeout(url, options);
       if (res.ok) return res;
       const text = await res.text();
-      if (text.includes('illegal base64 data') || text.includes('can\'t decode request body')) {
+      if (text.includes('illegal base64 data') || text.includes('can\'t decode request body') || (res.status === 403 && text.includes('<html'))) {
         useCurlFallback = true;
-        logger.info('Detected proxy interference, falling back to curl');
+        logger.info('Detected proxy/Cloudflare interference (HTTP ' + res.status + '), falling back to curl');
       } else {
         throw new Error(`Bangumi API error (${res.status}): ${text.substring(0, 200)}`);
       }
@@ -135,21 +135,22 @@ class BangumiScraper {
     return filepath;
   }
 
-  async fetchMetadata(title, coverDir, subjectId) {
-    const [detail, characters, persons] = await Promise.all([
-      this.getSubjectDetail(subjectId),
+  async fetchMetadata(title, coverDir, subjectId, preDetail) {
+    let detail = preDetail;
+    if (!detail) {
+      detail = await this.getSubjectDetail(subjectId);
+    }
+
+    const imageUrl = detail?.images?.large;
+    const coverPromise = imageUrl
+      ? this.downloadCover(imageUrl, coverDir, subjectId).catch(e => { logger.error('Cover download failed:', e.message); return null; })
+      : Promise.resolve(null);
+
+    const [characters, persons, localCover] = await Promise.all([
       this.getCharacters(subjectId).catch(e => { logger.error('getCharacters failed:', e.message); return []; }),
       this.getPersons(subjectId).catch(e => { logger.error('getPersons failed:', e.message); return []; }),
+      coverPromise,
     ]);
-
-    let localCover = null;
-    if (detail.images && detail.images.large) {
-      try {
-        localCover = await this.downloadCover(detail.images.large, coverDir, subjectId);
-      } catch (e) {
-        logger.error('Cover download failed:', e.message);
-      }
-    }
 
     return {
       source: 'bangumi',
@@ -219,25 +220,13 @@ class BangumiScraper {
   async getCharacters(subjectId) {
     const url = `${this.apiBase}/v0/subjects/${subjectId}/characters`;
     const res = await tryFetch(url, { headers: { 'User-Agent': USER_AGENT } });
-    const text = await res.text();
-    try {
-      return JSON.parse(text);
-    } catch (e) {
-      logger.error(`getCharacters JSON parse failed (${text.length} bytes): ${text.substring(0, 100)}`);
-      throw new Error('声优数据解析失败');
-    }
+    return res.json();
   }
 
   async getPersons(subjectId) {
     const url = `${this.apiBase}/v0/subjects/${subjectId}/persons`;
     const res = await tryFetch(url, { headers: { 'User-Agent': USER_AGENT } });
-    const text = await res.text();
-    try {
-      return JSON.parse(text);
-    } catch (e) {
-      logger.error(`getPersons JSON parse failed (${text.length} bytes): ${text.substring(0, 100)}`);
-      throw new Error('制作人员数据解析失败');
-    }
+    return res.json();
   }
 
   /**

@@ -189,12 +189,27 @@ function animateHeroCoverFlip(fromRect, fromSrc) {
     ease: 'power2.out',
     absolute: true,
     onComplete: () => {
+      revealCover();
+    }
+  });
+
+  function revealCover() {
+    // Wait for the detail cover image to finish loading before revealing,
+    // preventing a flash when the hero overlay disappears.
+    if (img.complete) {
       wrap.style.visibility = '';
       wrap.style.opacity = '1';
       wrap.style.transform = '';
       hero.remove();
+    } else {
+      img.onload = img.onerror = () => {
+        wrap.style.visibility = '';
+        wrap.style.opacity = '1';
+        wrap.style.transform = '';
+        hero.remove();
+      };
     }
-  });
+  }
 }
 
 function renderDetail() {
@@ -205,9 +220,9 @@ function renderDetail() {
   // ─── Cover ───
   const coverEl = document.getElementById('detailCover');
   if (anime.localCover) {
-    coverEl.innerHTML = `<img src="/covers/${path.basename(anime.localCover)}?w=540&q=80" alt="${escAttr(anime.title)}" loading="lazy" decoding="async">`;
+    coverEl.innerHTML = `<img src="/covers/${path.basename(anime.localCover)}?w=540&q=80" alt="${escAttr(anime.title)}" decoding="async">`;
   } else if (anime.coverUrl) {
-    coverEl.innerHTML = `<img src="${escAttr(anime.coverUrl)}" alt="${escAttr(anime.title)}" loading="lazy" decoding="async">`;
+    coverEl.innerHTML = `<img src="${escAttr(anime.coverUrl)}" alt="${escAttr(anime.title)}" decoding="async">`;
   } else {
     coverEl.innerHTML = `<div class="gray-cover"><svg viewBox="0 0 24 24" width="64" height="64" fill="#555"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8 12.5v-9l6 4.5-6 4.5z"/></svg></div>`;
   }

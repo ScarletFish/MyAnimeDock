@@ -205,9 +205,9 @@ function renderDetail() {
   // ─── Cover ───
   const coverEl = document.getElementById('detailCover');
   if (anime.localCover) {
-    coverEl.innerHTML = `<img src="/covers/${path.basename(anime.localCover)}?w=540&q=80" alt="${escAttr(anime.title)}">`;
+    coverEl.innerHTML = `<img src="/covers/${path.basename(anime.localCover)}?w=540&q=80" alt="${escAttr(anime.title)}" loading="lazy" decoding="async">`;
   } else if (anime.coverUrl) {
-    coverEl.innerHTML = `<img src="${escAttr(anime.coverUrl)}" alt="${escAttr(anime.title)}">`;
+    coverEl.innerHTML = `<img src="${escAttr(anime.coverUrl)}" alt="${escAttr(anime.title)}" loading="lazy" decoding="async">`;
   } else {
     coverEl.innerHTML = `<div class="gray-cover"><svg viewBox="0 0 24 24" width="64" height="64" fill="#555"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8 12.5v-9l6 4.5-6 4.5z"/></svg></div>`;
   }
@@ -687,7 +687,7 @@ function renderCharacters(anime) {
       ? escHtml(c.actors[0].nameCn || c.actors[0].name)
       : null;
     const img = c.image
-      ? `<img class="detail-char-avatar" src="${escAttr(c.image)}" alt="">`
+      ? `<img class="detail-char-avatar" src="${escAttr(c.image)}" alt="" loading="lazy" decoding="async">`
       : `<div class="detail-char-avatar-placeholder">${name.charAt(0)}</div>`;
     return `<div class="detail-char-card">
       ${img}
@@ -1025,7 +1025,7 @@ function showSearchResults(results, animeId) {
     results.map(r => `
       <div class="search-result-item" onclick="attachBangumiSubject('${animeId}', ${r.id})">
         <img class="search-result-cover" src="${r.images?.small || r.images?.grid || ''}" alt=""
-          onerror="this.style.display='none'">
+          loading="lazy" decoding="async" onerror="this.style.display='none'">
         <div class="search-result-info">
           <div class="search-result-title">${escHtml(r.name_cn || r.name)}</div>
           <div class="search-result-subtitle">${escHtml(r.name)}</div>

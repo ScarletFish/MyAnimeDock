@@ -174,7 +174,7 @@ function showWishlistDetail(id) {
   const coverSrc = item.coverUrl || '';
   overlay.innerHTML = `
     <div class="modal wishlist-detail-modal">
-      ${coverSrc ? `<div class="wishlist-detail-cover"><img src="${coverSrc}" alt="${escAttr(item.bangumiTitle || item.title)}"></div>` : ''}
+      ${coverSrc ? `<div class="wishlist-detail-cover"><img src="${coverSrc}" alt="${escAttr(item.bangumiTitle || item.title)}" loading="lazy" decoding="async"></div>` : ''}
       <h2>${escHtml(item.bangumiTitle || item.title)}</h2>
       ${item.rating ? `<div class="wishlist-detail-rating">★ ${item.rating}</div>` : ''}
       ${item.summary ? `<p class="wishlist-detail-summary">${escHtml(item.summary)}</p>` : ''}

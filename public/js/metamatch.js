@@ -575,7 +575,7 @@ function mmRenderPanel(item) {
   let coverHtml = '';
   if (item.meta?.coverUrl || item.coverUrl) {
     const src = escAttr(item.meta?.coverUrl || item.coverUrl);
-    coverHtml = `<img src="${src}" alt="" onerror="this.outerHTML='<div class=mm-panel-cover-sm-fallback>${escHtml((item.title||'?')[0].toUpperCase())}</div>'">`;
+    coverHtml = `<img src="${src}" alt="" loading="lazy" decoding="async" onerror="this.outerHTML='<div class=mm-panel-cover-sm-fallback>${escHtml((item.title||'?')[0].toUpperCase())}</div>'">`;
   } else {
     coverHtml = `<div class="mm-panel-cover-sm-fallback">${escHtml((item.title||'?')[0].toUpperCase())}</div>`;
   }
@@ -751,7 +751,7 @@ async function mmSearchForFix(animeId) {
       return `
         <div class="search-result-item" onclick="mmApplyFix('${animeId}', ${i})">
           <img class="search-result-cover" src="${escAttr(coverSrc)}" alt=""
-            onerror="this.style.display='none'">
+            loading="lazy" decoding="async" onerror="this.style.display='none'">
           <div class="search-result-info">
             <div class="search-result-title">${escHtml(title)}</div>
             ${subtitle ? `<div class="search-result-subtitle">${escHtml(subtitle)}</div>` : ''}

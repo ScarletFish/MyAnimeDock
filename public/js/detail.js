@@ -607,7 +607,7 @@ function renderWatchCard(anime) {
   btn.onclick = () => playEpisode(ep.filePath, ep.progress);
 }
 
-function renderEpisodeHeatmap(anime) {
+function renderEpisodeHeatmap(anime, animate) {
   const grid = document.getElementById('episodeHeatmapGrid');
   const header = document.querySelector('.episode-heatmap-header h3');
   if (!anime.episodes || anime.episodes.length === 0) {
@@ -626,7 +626,8 @@ function renderEpisodeHeatmap(anime) {
     let cls = 'unwatched', tip = `第${ep.number}集 · 未观看`;
     if (ep.watched) { cls = 'watched'; tip = `第${ep.number}集 · 已观看`; }
     else if (ep.progress > 0) { cls = 'watching'; tip = `第${ep.number}集 · 观看中 ${ep.duration > 0 ? Math.round(ep.progress / ep.duration * 100) + '%' : ''}`; }
-    return `<button class="heatmap-cell ${cls}" data-tip="${tip}" data-ep="${ep.number}" data-path="${escAttr(ep.filePath)}" data-pos="${ep.progress}" tabindex="0"></button>`;
+    const animAttr = animate !== false ? ` style="--i:${i}"` : '';
+    return `<button class="heatmap-cell ${cls}"${animAttr} data-tip="${tip}" data-ep="${ep.number}" data-path="${escAttr(ep.filePath)}" data-pos="${ep.progress}" tabindex="0"></button>`;
   }).join('');
 
   grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
@@ -656,7 +657,7 @@ window.addEventListener('resize', () => {
   clearTimeout(heatmapResizeTimer);
   heatmapResizeTimer = setTimeout(() => {
     if (currentAnime && !isArchiveMode && document.getElementById('detailView').classList.contains('hidden') === false) {
-      renderEpisodeHeatmap(currentAnime);
+      renderEpisodeHeatmap(currentAnime, false);
     }
   }, 200);
 });
@@ -961,7 +962,7 @@ async function toggleWatched(animeId, epNumber, watched) {
       const ep = currentAnime.episodes.find(e => e.number === epNumber);
       if (ep) { ep.watched = result.episode.watched; ep.progress = result.episode.progress; }
       renderWatchCard(currentAnime);
-      renderEpisodeHeatmap(currentAnime);
+      renderEpisodeHeatmap(currentAnime, false);
       renderWatchStats(currentAnime);
     }
   } catch (e) {

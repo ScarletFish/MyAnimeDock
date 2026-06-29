@@ -5264,7 +5264,7 @@ input[type="range"]::-webkit-slider-thumb {
 :is([data-theme="light"], [data-theme-mode="light"]) .watch-card-progress { background: rgba(44, 36, 24, 0.10); }
 :is([data-theme="light"], [data-theme-mode="light"]) .heatmap-cell { border: 1px solid rgba(44, 36, 24, 0.08); }
 :is([data-theme="light"], [data-theme-mode="light"]) .heatmap-cell.unwatched { background: color-mix(in srgb, var(--heatmap-unwatched) 30%, transparent); }
-:is([data-theme-mode="dark"], [data-theme="dark"]) .heatmap-cell { border: 1px solid rgba(255, 255, 255, 0.06); }
+:is([data-theme-mode="dark"], [data-theme="dark"]) .heatmap-cell { border: 1px solid rgba(255, 255, 255, 0.12); }
 
 /* ─── Theme Dock ─── */
 :is([data-theme="light"], [data-theme-mode="light"]) .theme-dock {

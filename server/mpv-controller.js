@@ -8,8 +8,7 @@ const logger = require('./logger').child('[MPV]');
 const WATCHED_RATIO = 0.9;
 let sessionIdCounter = 0;
 
-function startMpv(mpvPath, filePath, position, callbacks) {
-    const sessionId = ++sessionIdCounter;
+function startMpv(mpvPath, filePath, position, callbacks, sessionId) {
     let currentPos = position || 0;
     let peakPos = position || 0;
     let currentDuration = 0;
@@ -112,6 +111,7 @@ function startMpv(mpvPath, filePath, position, callbacks) {
     const progressInterval = setInterval(() => {
         if (!running) return;
         callbacks.onProgress({
+            sessionId,
             filePath,
             progress: currentPos,
             peakPos,
@@ -131,6 +131,7 @@ function startMpv(mpvPath, filePath, position, callbacks) {
             if (callbacks.onError) callbacks.onError(`mpv 退出 (code=${code})，请检查路径和依赖`);
         }
         callbacks.onProgress({
+            sessionId,
             filePath,
             progress: currentPos,
             peakPos,
@@ -164,9 +165,9 @@ function startMpv(mpvPath, filePath, position, callbacks) {
 
 let activeSession = null;
 
-function start(mpvPath, filePath, position, callbacks) {
+function start(mpvPath, filePath, position, callbacks, sessionId) {
     if (activeSession) { activeSession.kill(); activeSession = null; }
-    activeSession = startMpv(mpvPath, filePath, position, callbacks);
+    activeSession = startMpv(mpvPath, filePath, position, callbacks, sessionId);
     return activeSession;
 }
 

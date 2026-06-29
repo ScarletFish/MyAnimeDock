@@ -25,8 +25,10 @@ if (!fs.existsSync(DATA_DIR)) {
 const DB_PATH = process.pkg
   ? `file:${path.join(DATA_DIR, 'anime.db').replace(/\\/g, '/')}`
   : `file:${path.join(DATA_DIR, 'prisma', 'anime.db').replace(/\\/g, '/')}`;
-// 用于文件存在性检查
-const DB_FILE = path.join(DATA_DIR, 'prisma', 'anime.db');
+// 用于文件存在性检查（pkg 模式下 DB 直接在 DATA_DIR，dev 模式在 prisma/ 子目录）
+const DB_FILE = process.pkg
+  ? path.join(DATA_DIR, 'anime.db')
+  : path.join(DATA_DIR, 'prisma', 'anime.db');
 
 // ─── pkg 模式：原生模块路径修复 ───
 // pkg 无法打包 .node 原生模块，需要从外部 node_modules/ 加载。
@@ -128,9 +130,9 @@ function getPrisma() {
 }
 
 /**
- * 首次启动时自动创建表结构。
- * 使用临时 PrismaClient 连接执行 DDL，断开后主连接重新创建时
- * 会正确读取完整 schema。避免了同一连接中 DDL 后 schema 缓存未刷新的问题。
+ * 首次启动时自动创建表结构（CREATE TABLE IF NOT EXISTS）。
+ * 对已有表检查缺少的列（如通过 Prisma 迁移添加的列），自动 ALTER TABLE 补充。
+ * 不依赖 Prisma 迁移历史，适用于 pkg 生产环境。
  */
 async function ensureSchema() {
   if (!fs.existsSync(DB_FILE)) {
@@ -140,24 +142,66 @@ async function ensureSchema() {
 
   try {
     const p = getPrisma();
-    const rows = await p.$queryRawUnsafe(
-      `SELECT name FROM sqlite_master WHERE type='table' AND name='MyList'`
+
+    // 1. 获取已有表名
+    const existingTables = await p.$queryRawUnsafe(
+      `SELECT name FROM sqlite_master WHERE type='table'`
     );
-    if (rows.length > 0) {
-      // Migration already applied
-      return;
-    }
-    // Fallback: try old Anime table check
-    const animeExists = await p.$queryRawUnsafe(
-      `SELECT name FROM sqlite_master WHERE type='table' AND name='Anime'`
-    );
-    if (animeExists.length === 0) {
-      logger.info('Initializing database schema...');
+    const tableNames = new Set(existingTables.map(r => r.name));
+
+    if (tableNames.size === 0) {
+      // 全新数据库 — 全量建表
+      logger.info('Initializing database schema (fresh)...');
       for (const sql of INIT_SQL) {
         await p.$executeRawUnsafe(sql);
       }
       logger.info('Database schema initialized.');
+      return;
     }
+
+    // 2. 已有表：先 CREATE TABLE IF NOT EXISTS（新增表），再检查缺少的列
+    for (const sql of INIT_SQL) {
+      await p.$executeRawUnsafe(sql);
+    }
+
+    // 3. 对每个预定义表，检查并补充缺少的列
+    const tableDefs = INIT_SQL
+      .filter(sql => sql.startsWith('CREATE TABLE IF NOT EXISTS'))
+      .map(sql => {
+        const m = sql.match(/CREATE TABLE IF NOT EXISTS "(\w+)"\s*\(([\s\S]+)\)/);
+        if (!m) return null;
+        const tableName = m[1];
+        // 解析列定义：每列格式  "colName" TYPE ...
+        const colDefs = m[2].split(',').map(s => s.trim()).filter(Boolean);
+        const columns = colDefs.map(s => {
+          const cm = s.match(/^"(\w+)"/);
+          return cm ? { name: cm[1], def: s } : null;
+        }).filter(Boolean);
+        return { name: tableName, columns };
+      }).filter(Boolean);
+
+    for (const table of tableDefs) {
+      // 仅处理存在于 sqlite_master 中的表（跳过 CREATE TABLE IF NOT EXISTS 已处理的）
+      if (!tableNames.has(table.name)) continue;
+
+      // 获取已有列名
+      const colInfo = await p.$queryRawUnsafe(
+        `SELECT name FROM pragma_table_info('${table.name}')`
+      );
+      const existingCols = new Set(colInfo.map(c => c.name.toLowerCase()));
+
+      for (const col of table.columns) {
+        if (existingCols.has(col.name.toLowerCase())) continue;
+
+        // 列缺少 → ALTER TABLE ADD COLUMN
+        logger.info(`Adding missing column: ${table.name}.${col.name}`);
+        await p.$executeRawUnsafe(
+          `ALTER TABLE "${table.name}" ADD COLUMN ${col.def}`
+        );
+      }
+    }
+
+    logger.info('Database schema verified/updated.');
   } catch (e) {
     logger.warn('Schema init skipped:', e.message);
   }
@@ -173,6 +217,16 @@ async function shutdown() {
 // ─── Legacy format converters ───
 
 function animeToLegacy(a) {
+  // Restore extra fields from metadata JSON (characters, persons, tags, etc.)
+  let metadataExtra = {};
+  if (a.metadata) {
+    try {
+      metadataExtra = JSON.parse(a.metadata);
+    } catch (e) {
+      logger.warn('Failed to parse anime metadata JSON:', e.message);
+    }
+  }
+
   return {
     id: a.id,
     folderPath: a.folderPath,
@@ -190,6 +244,11 @@ function animeToLegacy(a) {
     rating: a.rating,
     source: a.source,
     pinyinTitle: a.pinyinTitle,
+    matchedSeason: a.matchedSeason,
+    totalSeasons: a.totalSeasons,
+    // Spread persisted extras (characters, persons, tags, date, platform,
+    // ratingRank, ratingTotal, infobox, collection, eps, totalEpisodes, specialSuffix)
+    ...metadataExtra,
     episodes: (a.episodes || []).map(e => ({
       number: e.number,
       filePath: e.filePath,
@@ -332,6 +391,21 @@ async function saveLibrary(data) {
           ratingVal = parseFloat(ratingVal);
           if (isNaN(ratingVal)) ratingVal = null;
         }
+
+        // Collect extra fields (no dedicated Prisma column) into metadata JSON
+        const EXTRA_FIELDS = [
+          'characters', 'persons', 'tags', 'date', 'platform',
+          'ratingRank', 'ratingTotal', 'infobox', 'collection',
+          'eps', 'totalEpisodes', 'specialSuffix',
+        ];
+        const extraFields = {};
+        for (const key of EXTRA_FIELDS) {
+          if (a[key] !== undefined) extraFields[key] = a[key];
+        }
+        const metadataStr = Object.keys(extraFields).length > 0
+          ? JSON.stringify(extraFields)
+          : a.metadata || null; // preserve existing metadata if no new extras
+
         const animeData = {
           folderPath: a.folderPath,
           folderName: a.folderName,
@@ -348,6 +422,9 @@ async function saveLibrary(data) {
           rating: ratingVal,
           source: a.source,
           pinyinTitle: a.pinyinTitle,
+          metadata: metadataStr,
+          matchedSeason: a.matchedSeason ?? null,
+          totalSeasons: a.totalSeasons ?? null,
         };
 
         await tx.anime.upsert({
@@ -587,4 +664,14 @@ async function updatePlaySession(sessionId, fields) {
   }
 }
 
-module.exports = { loadData, saveAll, saveLibrary, saveMyList, saveMemories, saveWishlist, updateMyItemStatus, savePlaySessions, updateEpisodeProgress, updatePlaySession, shutdown, getPrisma, ensureSchema };
+async function deletePlaySession(sessionId) {
+  try {
+    if (!sessionId) return;
+    const p = getPrisma();
+    await p.playSession.deleteMany({ where: { sessionId } });
+  } catch (e) {
+    logger.error('PlaySession delete error:', e.message);
+  }
+}
+
+module.exports = { loadData, saveAll, saveLibrary, saveMyList, saveMemories, saveWishlist, updateMyItemStatus, savePlaySessions, updateEpisodeProgress, updatePlaySession, deletePlaySession, shutdown, getPrisma, ensureSchema };

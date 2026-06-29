@@ -93,6 +93,7 @@ const PORT = 3456;
 
 // In-memory active mpv sessions: filePath -> { sessionId, episode, anime }
 const activePlays = new Map();
+const MAX_PLAY_SESSIONS = 5000;
 
 // Track active sync sessions for cancellation: sessionId -> boolean
 const cancelledSyncSessions = new Map();
@@ -208,6 +209,35 @@ const mime = {
   '.mov': 'video/quicktime',
   '.webm': 'video/webm',
 };
+
+// --- Pre-generate common cover sizes after download ---
+const COVER_PRE_SIZES = [
+  { w: 400, q: 75 },
+  { w: 540, q: 80 },
+];
+
+function preGenerateCovers(coverPath) {
+  if (!coverPath || !ffmpegPath || !fs.existsSync(ffmpegPath) || !fs.existsSync(coverPath)) return;
+  const cacheDir = path.join(path.dirname(coverPath), '.resized');
+  if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
+
+  for (const { w, q } of COVER_PRE_SIZES) {
+    const cacheName = `thumb_${w}_q${q}_${path.basename(coverPath)}`;
+    const cachePath = path.join(cacheDir, cacheName);
+    if (fs.existsSync(cachePath)) continue;
+    const ffq = Math.max(2, Math.min(31, Math.round(2 + (31 - 2) * (100 - q) / 100)));
+    try {
+      const ff = spawn(ffmpegPath, [
+        '-i', coverPath,
+        '-vf', `scale=${w}:-1`,
+        '-q:v', String(ffq),
+        '-y', cachePath,
+        '-loglevel', 'error',
+      ]);
+      ff.on('error', () => {});
+    } catch (_) {}
+  }
+}
 
 // --- Image serving (with ffmpeg resize when ?w= param present) ---
 function serveImage(filePath, url, res) {
@@ -737,6 +767,7 @@ const server = http.createServer((req, res) => {
         node.localCover = meta.localCover;
         node.rating = meta.rating;
         node.metadataSource = meta.source;
+        if (meta.localCover) preGenerateCovers(meta.localCover);
         saveScannedTree(data.scannedTree);
         jsonResp(res, 200, { ok: true, meta, node });
       } catch (e) {
@@ -1085,6 +1116,10 @@ const server = http.createServer((req, res) => {
             clockTime: 0,
             progressStart: position || 0,
           });
+          if (data.playSessions.length > MAX_PLAY_SESSIONS) {
+            data.playSessions.sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+            data.playSessions.splice(0, data.playSessions.length - MAX_PLAY_SESSIONS);
+          }
           activePlays.set(filePath, { sessionId, episode: targetEp, anime: targetAnime });
           db.savePlaySessions(data);
         }
@@ -1094,34 +1129,32 @@ const server = http.createServer((req, res) => {
           let spawnError = null;
           const spawnResult = await new Promise((resolve) => {
             startMpv(mpvPath, filePath, position || 0, {
-              onProgress: ({ filePath: fp, progress, peakPos, watched, duration, final }) => {
+              onProgress: ({ sessionId: cbSid, filePath: fp, progress, peakPos, watched, duration, final }) => {
+                if (cbSid !== sessionId) return;
                 const active = activePlays.get(fp);
-                if (active) {
-                  const ep = active.episode;
-                  ep.progress = progress;
-                  if (duration > 0) ep.duration = duration;
-                  if (watched) ep.watched = true;
-                  db.updateEpisodeProgress(active.anime.id, ep.number, { progress, duration: duration > 0 ? duration : undefined, watched });
-                  if (active.sessionId) {
-                    const session = data.playSessions.find(s => s.sessionId === active.sessionId);
-                    if (session) {
-                      session.duration = Math.max(0, (peakPos || progress) - (session.progressStart || 0));
-                      session.endTime = new Date().toISOString();
-                      if (final) {
-                        const startMs = new Date(session.startTime).getTime();
-                        session.clockTime = Math.round((Date.now() - startMs) / 1000);
-                      }
-                      db.updatePlaySession(active.sessionId, {
-                        endTime: session.endTime,
-                        duration: session.duration,
-                        clockTime: final ? session.clockTime : undefined,
-                      });
-                    }
+                if (!active) return;
+                const ep = active.episode;
+                ep.progress = progress;
+                if (duration > 0) ep.duration = duration;
+                if (watched) ep.watched = true;
+                db.updateEpisodeProgress(active.anime.id, ep.number, { progress, duration: duration > 0 ? duration : undefined, watched });
+                if (active.sessionId) {
+                  const session = data.playSessions.find(s => s.sessionId === active.sessionId);
+                  if (session) {
+                    session.duration = Math.max(0, (peakPos || progress) - (session.progressStart || 0));
+                    session.endTime = new Date().toISOString();
+                    const startMs = new Date(session.startTime).getTime();
+                    const endMs = new Date(session.endTime).getTime();
+                    session.clockTime = Math.round((endMs - startMs) / 1000);
+                    db.updatePlaySession(active.sessionId, {
+                      endTime: session.endTime,
+                      duration: session.duration,
+                      clockTime: session.clockTime,
+                    });
                   }
-                  if (final) {
-                    activePlays.delete(fp);
-                    db.savePlaySessions(data);
-                  }
+                }
+                if (final) {
+                  activePlays.delete(fp);
                 }
               },
               onError: (msg) => {
@@ -1130,13 +1163,13 @@ const server = http.createServer((req, res) => {
                   const idx = data.playSessions.findIndex(s => s.sessionId === active.sessionId);
                   if (idx !== -1) data.playSessions.splice(idx, 1);
                   activePlays.delete(filePath);
-                  db.savePlaySessions(data);
+                  db.deletePlaySession(active.sessionId);
                 }
                 spawnError = msg;
                 logger.error('mpv error:', msg);
                 if (!settled) { settled = true; resolve({ error: msg }); }
               },
-            });
+            }, sessionId);
             // Timeout: if no error within 2s, assume mpv launched successfully
             setTimeout(() => {
               if (!settled) { settled = true; resolve(null); }
@@ -1248,6 +1281,7 @@ const server = http.createServer((req, res) => {
         if (!meta) { jsonResp(res, 404, { error: '获取元数据失败' }); return; }
 
         Object.assign(anime, meta);
+        if (anime.localCover) preGenerateCovers(anime.localCover);
         if (matchInfo) {
           if (matchInfo.matchedSeason != null) anime.matchedSeason = matchInfo.matchedSeason;
           if (matchInfo.totalSeasons != null) anime.totalSeasons = matchInfo.totalSeasons;
@@ -1333,6 +1367,7 @@ const server = http.createServer((req, res) => {
             }
 
             Object.assign(anime, meta);
+            if (anime.localCover) preGenerateCovers(anime.localCover);
             if (match.matchedSeason != null) anime.matchedSeason = match.matchedSeason;
             if (match.totalSeasons != null) anime.totalSeasons = match.totalSeasons;
             return { animeId, success: true, meta, matchedSeason: match.matchedSeason, totalSeasons: match.totalSeasons };
@@ -1446,6 +1481,7 @@ const server = http.createServer((req, res) => {
             }
 
             Object.assign(anime, meta);
+            if (anime.localCover) preGenerateCovers(anime.localCover);
             if (match.matchedSeason != null) anime.matchedSeason = match.matchedSeason;
             if (match.totalSeasons != null) anime.totalSeasons = match.totalSeasons;
             send('progress', { animeId, success: true, meta, matchedSeason: match.matchedSeason, totalSeasons: match.totalSeasons });

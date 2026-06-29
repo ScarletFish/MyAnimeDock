@@ -1518,6 +1518,10 @@ html {
   color: var(--accent-soft);
   white-space: nowrap;
 }
+.detail-tags .detail-tag:nth-child(even) {
+  background: rgba(var(--accent-secondary-rgb), 0.1);
+  color: var(--accent-secondary);
+}
 
 .detail-summary {
   color: var(--fg-secondary);
@@ -1787,7 +1791,7 @@ html {
 }
 
 .btn-accent {
-  background: var(--accent);
+  background: var(--accent-gradient);
   color: #fff;
 }
 
@@ -2888,6 +2892,11 @@ html {
   width: 3px;
   border-radius: 2px;
   background: var(--accent);
+}
+/* Utility modals get secondary color to differentiate from content modals */
+#settingsModal h2::before,
+#memoryModal h2::before {
+  background: var(--accent-secondary);
 }
 
 /* ─── Bangumi Search Modal ─── */

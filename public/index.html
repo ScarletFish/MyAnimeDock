@@ -548,6 +548,28 @@
           </div>
         </div>
         <div class="form-group">
+          <label>Bangumi 个人绑定</label>
+          <div class="api-source-card api-source-card--fixed">
+            <div class="api-source-body">
+              <div class="api-source-type">
+                <span class="api-source-badge api-source-badge--bangumi">OAuth</span>
+              </div>
+              <div class="api-source-fields" style="gap:8px">
+                <input type="text" id="bangumiClientId" placeholder="Client ID" class="api-source-url" style="font-family:monospace;font-size:13px">
+                <input type="password" id="bangumiClientSecret" placeholder="Client Secret" class="api-source-url" style="font-family:monospace;font-size:13px">
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                  <button class="btn btn-sm" onclick="bangumiBind()" id="bangumiBindBtn">绑定 Bangumi</button>
+                  <button class="btn btn-sm btn-danger" onclick="bangumiUnbind()" id="bangumiUnbindBtn" style="display:none">解除绑定</button>
+                  <button class="btn btn-sm" onclick="bangumiSync()" id="bangumiSyncBtn" style="display:none">同步 MyList</button>
+                  <span id="bangumiAuthStatus" class="form-hint" style="margin:0;font-size:12px"></span>
+                  <span id="bangumiSyncStatus" class="form-hint" style="margin:0;font-size:12px;display:none"></span>
+                </div>
+                <p class="form-hint">需要先在 <a href="https://bgm.tv/dev" target="_blank" rel="noopener">bgm.tv/dev</a> 创建应用，填入 Client ID/Secret，点击绑定后浏览器会跳转到 Bangumi 授权页面</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
           <label>AniList（可选，罗马音标题搜索用）</label>
           <div class="api-source-card api-source-card--fixed">
             <div class="api-source-body">

@@ -5,6 +5,8 @@ const crypto = require('crypto');
 const { spawn } = require('child_process');
 let ffmpegPath = require('ffmpeg-static') || 'ffmpeg';
 const logger = require('./logger').child('[SERVER]');
+const BangumiPersonal = require('./scrapers/bangumi-personal');
+const BangumiSync = require('./bangumi-sync');
 
 // ── 启动引导日志（写入 %TEMP%，早于一切模块加载，崩溃也不丢）──
 const BOOT_LOG = path.join(process.env.TEMP || process.env.TMP || '.', 'myanimedocker-bootstrap.log');
@@ -149,6 +151,22 @@ function saveConfig(cfg) {
 }
 
 let config = loadConfig();
+
+// ─── Bangumi 个人 API（OAuth + scrobble）───
+// 从 apiSources 读取 bangumi API 基地址（支持镜像站），用于 OAuth 后的 API 调用
+const bgmApiUrl = (config.apiSources || []).find(s => s.type === 'bangumi')?.url || 'https://api.bgm.tv';
+const bangumiPersonal = new BangumiPersonal({ apiBase: bgmApiUrl });
+bangumiPersonal.loadFromConfig(config);
+bangumiPersonal.onTokenChange = (payload) => {
+  if (payload) {
+    Object.assign(config, payload);
+  } else {
+    config.bangumiAccessToken = undefined;
+    config.bangumiUsername = undefined;
+  }
+  saveConfig(config);
+};
+const bangumiSync = new BangumiSync(bangumiPersonal);
 
 // --- Data ---
 // SQLite 是 library / memories / playSessions 的主存储
@@ -383,6 +401,15 @@ const server = http.createServer((req, res) => {
       if (parsed.uiScale !== undefined) config.uiScale = Math.max(0.5, Math.min(2, parsed.uiScale));
       if (parsed.reduceMotion !== undefined) config.reduceMotion = !!parsed.reduceMotion;
       if (parsed.apiSources !== undefined) config.apiSources = parsed.apiSources;
+      // Bangumi OAuth 凭据
+      if (parsed.bangumiClientId !== undefined) {
+        config.bangumiClientId = parsed.bangumiClientId;
+        bangumiPersonal.clientId = parsed.bangumiClientId;
+      }
+      if (parsed.bangumiClientSecret !== undefined) {
+        config.bangumiClientSecret = parsed.bangumiClientSecret;
+        bangumiPersonal.clientSecret = parsed.bangumiClientSecret;
+      }
       // Legacy fields — silently accept and convert
       if (parsed.apiSources === undefined && parsed.scrapers !== undefined) {
         const sources = [];
@@ -959,6 +986,8 @@ const server = http.createServer((req, res) => {
       }
       db.updateMyItemStatus(animeId, status).then(() => {
         jsonResp(res, 200, { ok: true });
+        // 异步推送状态变更到 Bangumi（不阻塞响应）
+        bangumiSync.pushStatusChange(animeId, data);
       }).catch(e => {
         logger.error('MyList status save error:', e);
         jsonResp(res, 500, { error: 'Failed to save status' });
@@ -1172,6 +1201,10 @@ const server = http.createServer((req, res) => {
                 }
               }
               if (final) {
+                // Scrobble: 播放完成 → 推送 Bangumi 剧集进度
+                if (active.anime && active.episode) {
+                  bangumiSync.scrobble(active.anime, active.episode, { watched: active.episode.watched });
+                }
                 activePlays.delete(fp);
               }
             },
@@ -1589,6 +1622,81 @@ const server = http.createServer((req, res) => {
     } catch (e) {
       if (!responded) { responded = true; jsonResp(res, 500, { error: e.message }); }
     }
+    return;
+  }
+
+  // --- API: Bangumi MyList 同步 ---
+  if (urlPath === '/api/bangumi/sync' && req.method === 'POST') {
+    readBody(req).then(async body => {
+      const parsed = JSON.parse(body);
+      const result = await bangumiSync.syncMyList(data, { dryRun: parsed.dryRun });
+      if (result.lastSyncTime) {
+        config.bangumiLastSync = result.lastSyncTime;
+        saveConfig(config);
+      }
+      // 如有新建 MyList 或 Wishlist，落盘
+      if (result.created > 0) db.saveMyList(data);
+      if (result.wishlistAdded > 0) db.saveWishlist(data);
+      jsonResp(res, 200, result);
+    }).catch(e => jsonResp(res, 400, { error: e.message }));
+    return;
+  }
+
+  // --- API: Bangumi 个人 API OAuth / 状态 ---
+  if (urlPath === '/api/bangumi/auth/status' && req.method === 'GET') {
+    jsonResp(res, 200, { ...bangumiPersonal.getState(), lastSyncTime: config.bangumiLastSync || null });
+    return;
+  }
+  if (urlPath === '/api/bangumi/auth/url' && req.method === 'GET') {
+    const url = bangumiPersonal.generateAuthUrl();
+    jsonResp(res, 200, { url });
+    return;
+  }
+  if (urlPath === '/api/bangumi/auth/callback' && req.method === 'GET') {
+    const params = new URL(req.url, 'http://localhost').searchParams;
+    const code = params.get('code');
+    if (!code) {
+      // 用户拒绝授权或被重定向到错误页
+      res.writeHead(302, { 'Location': '/index.html?bangumi_auth=denied' });
+      res.end();
+      return;
+    }
+    bangumiPersonal.exchangeCode(code).then(state => {
+      saveConfig(config);
+      // 重定向回前端（通过 URL hash 传递状态）
+      res.writeHead(302, { 'Location': '/index.html?bangumi_auth=success' });
+      res.end();
+    }).catch(e => {
+      logger.error('Bangumi OAuth callback error:', e.message);
+      res.writeHead(302, { 'Location': '/index.html?bangumi_auth=error' });
+      res.end();
+    });
+    return;
+  }
+  if (urlPath === '/api/bangumi/auth/logout' && req.method === 'POST') {
+    bangumiPersonal.clearAuth();
+    jsonResp(res, 200, { ok: true });
+    return;
+  }
+  if (urlPath === '/api/bangumi/auth/creds' && req.method === 'POST') {
+    readBody(req).then(body => {
+      const parsed = JSON.parse(body);
+      if (parsed.clientId !== undefined && parsed.clientSecret !== undefined) {
+        bangumiPersonal.setCredentials(parsed.clientId, parsed.clientSecret);
+        config.bangumiClientId = parsed.clientId;
+        config.bangumiClientSecret = parsed.clientSecret;
+        saveConfig(config);
+      }
+      jsonResp(res, 200, bangumiPersonal.getState());
+    }).catch(e => jsonResp(res, 400, { error: e.message }));
+    return;
+  }
+  if (urlPath === '/api/bangumi/me' && req.method === 'GET') {
+    if (!bangumiPersonal.isAuthed()) {
+      jsonResp(res, 401, { error: 'Not authenticated' });
+      return;
+    }
+    bangumiPersonal.getMe().then(me => jsonResp(res, 200, me)).catch(e => jsonResp(res, 500, { error: e.message }));
     return;
   }
 

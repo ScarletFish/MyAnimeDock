@@ -216,11 +216,107 @@ async function openSettings() {
     document.getElementById('bangumiUrl').value = bangumiSrc?.url || 'https://api.bangumi.one';
     document.getElementById('anilistEnabled').checked = !!anilistSrc;
 
+    // Bangumi OAuth 凭据
+    if (config.bangumiClientId) document.getElementById('bangumiClientId').value = config.bangumiClientId;
+    if (config.bangumiClientSecret) document.getElementById('bangumiClientSecret').value = '••••••••';
+    refreshBangumiAuthStatus();
+
     document.getElementById('settingsModal').classList.add('show');
   } catch (e) {
     if (window.location.origin !== 'http://localhost:3456') return;
     showToast('加载设置失败: ' + e.message);
   }
+}
+
+async function refreshBangumiAuthStatus() {
+  try {
+    const state = await API.get('/api/bangumi/auth/status');
+    const statusEl = document.getElementById('bangumiAuthStatus');
+    const bindBtn = document.getElementById('bangumiBindBtn');
+    const unbindBtn = document.getElementById('bangumiUnbindBtn');
+    const syncBtn = document.getElementById('bangumiSyncBtn');
+    const syncStatus = document.getElementById('bangumiSyncStatus');
+    if (state.authed) {
+      statusEl.textContent = '✓ 已绑定 ' + (state.username || '');
+      statusEl.style.color = '#22c55e';
+      bindBtn.style.display = 'none';
+      unbindBtn.style.display = '';
+      syncBtn.style.display = '';
+      if (state.lastSyncTime) {
+        const t = new Date(state.lastSyncTime);
+        syncStatus.textContent = '上次同步: ' + t.toLocaleString('zh-CN');
+        syncStatus.style.display = '';
+      } else {
+        syncStatus.textContent = '';
+        syncStatus.style.display = 'none';
+      }
+    } else if (state.hasCredentials) {
+      statusEl.textContent = 'Client ID 已填入，可点击绑定';
+      statusEl.style.color = 'var(--text3)';
+      bindBtn.style.display = '';
+      unbindBtn.style.display = 'none';
+      syncBtn.style.display = 'none';
+    } else {
+      statusEl.textContent = '填入 Client ID / Secret 后可绑定';
+      statusEl.style.color = 'var(--text3)';
+      bindBtn.style.display = '';
+      unbindBtn.style.display = 'none';
+      syncBtn.style.display = 'none';
+    }
+  } catch {}
+}
+
+async function bangumiSync() {
+  const syncBtn = document.getElementById('bangumiSyncBtn');
+  const syncStatus = document.getElementById('bangumiSyncStatus');
+  syncBtn.disabled = true;
+  syncBtn.textContent = '同步中…';
+  syncStatus.textContent = '正在同步 MyList…';
+  syncStatus.style.display = '';
+  try {
+    const result = await API.post('/api/bangumi/sync', {});
+    if (result.errors && result.errors.length > 0) {
+      syncStatus.textContent = `同步完成: 创建 ${result.created}, 推送 ${result.pushed}, 错误 ${result.errors.length}`;
+      syncStatus.style.color = '#f59e0b';
+    } else {
+      syncStatus.textContent = `同步完成: 拉取 ${result.pulled} 条, 新增 ${result.created} 条, 推送 ${result.pushed} 条`;
+      syncStatus.style.color = '#22c55e';
+    }
+    if (result.lastSyncTime) {
+      refreshBangumiAuthStatus();
+    }
+  } catch (e) {
+    syncStatus.textContent = '同步失败: ' + e.message;
+    syncStatus.style.color = '#ef4444';
+  } finally {
+    syncBtn.disabled = false;
+    syncBtn.textContent = '同步 MyList';
+  }
+}
+
+async function bangumiBind() {
+  const clientId = document.getElementById('bangumiClientId').value.trim();
+  const clientSecret = document.getElementById('bangumiClientSecret').value.trim();
+  if (!clientId || !clientSecret) {
+    showToast('请先填入 Bangumi Client ID 和 Client Secret');
+    return;
+  }
+  // Save OAuth creds first (saveSettings may not be called)
+  await API.post('/api/bangumi/auth/creds', { clientId, clientSecret });
+  // Get OAuth URL and open browser
+  const { url } = await API.get('/api/bangumi/auth/url');
+  if (!url) {
+    showToast('无法生成授权链接');
+    return;
+  }
+  window.open(url, '_blank');
+  showToast('请在浏览器中完成 Bangumi 授权');
+}
+
+async function bangumiUnbind() {
+  await API.post('/api/bangumi/auth/logout');
+  refreshBangumiAuthStatus();
+  showToast('已解除 Bangumi 绑定');
 }
 
 function closeSettings() {
@@ -255,6 +351,11 @@ async function saveSettings() {
   }
 
   try {
+    const bangumiClientId = document.getElementById('bangumiClientId').value.trim();
+    const bangumiClientSecret = document.getElementById('bangumiClientSecret').value.trim();
+    // Only send secret if it's not the masked placeholder
+    const secretToSend = bangumiClientSecret === '••••••••' ? undefined : bangumiClientSecret;
+
     await API.post('/api/config', {
       mediaDir,
       playerMode: 'mpv',
@@ -265,6 +366,8 @@ async function saveSettings() {
       reduceMotion: document.documentElement.getAttribute('data-reduce-motion') === 'true',
       autoMarkWatched: document.getElementById('settingsAutoMark').checked,
       apiSources,
+      ...(bangumiClientId ? { bangumiClientId } : {}),
+      ...(secretToSend ? { bangumiClientSecret: secretToSend } : {}),
     });
 
     closeSettings();
@@ -277,10 +380,7 @@ async function saveSettings() {
 }
 
 // Player mode toggle
-document.getElementById('settingsPlayerMode').addEventListener('change', function() {
-  document.getElementById('mpvPathGroup').style.display =
-    this.value === 'mpv' ? '' : 'none';
-});
+// 播放器模式已固定 mpv，原切换逻辑已移除
 
 function goBack() {
   if (typeof stopDetailRefresh === 'function') stopDetailRefresh();
@@ -423,4 +523,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   applyZoom(configCache?.uiScale || 1);
   initSortSelect();
   showView('library');
+
+  // Handle Bangumi OAuth redirect result
+  const params = new URLSearchParams(window.location.search);
+  const authResult = params.get('bangumi_auth');
+  if (authResult === 'success') {
+    showToast('Bangumi 绑定成功！');
+    // Clean URL
+    window.history.replaceState({}, '', window.location.pathname);
+  } else if (authResult === 'denied') {
+    showToast('Bangumi 授权被拒绝');
+    window.history.replaceState({}, '', window.location.pathname);
+  } else if (authResult === 'error') {
+    showToast('Bangumi 绑定失败，请重试');
+    window.history.replaceState({}, '', window.location.pathname);
+  }
 });

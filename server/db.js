@@ -105,13 +105,12 @@ const INIT_SQL = [
   `CREATE INDEX IF NOT EXISTS "PlaySession_animeId_idx" ON "PlaySession"("animeId")`,
   `CREATE INDEX IF NOT EXISTS "PlaySession_sessionId_idx" ON "PlaySession"("sessionId")`,
   `CREATE INDEX IF NOT EXISTS "PlaySession_startTime_idx" ON "PlaySession"("startTime")`,
-  `CREATE TABLE IF NOT EXISTS "MyList" ("id" TEXT NOT NULL PRIMARY KEY, "animeId" TEXT NOT NULL REFERENCES "Anime"("id") ON DELETE CASCADE, "status" TEXT NOT NULL DEFAULT 'watching', "rating" REAL, "thoughts" TEXT, "notes" TEXT, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" DATETIME NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS "MyList" ("id" TEXT NOT NULL PRIMARY KEY, "animeId" TEXT REFERENCES "Anime"("id") ON DELETE CASCADE, "bangumiId" INTEGER, "title" TEXT NOT NULL DEFAULT '', "bangumiTitle" TEXT, "coverUrl" TEXT, "summary" TEXT, "status" TEXT NOT NULL DEFAULT 'watching', "rating" REAL, "thoughts" TEXT, "notes" TEXT, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" DATETIME NOT NULL)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "MyList_animeId_key" ON "MyList"("animeId")`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "MyList_bangumiId_key" ON "MyList"("bangumiId")`,
   `CREATE INDEX IF NOT EXISTS "MyList_animeId_idx" ON "MyList"("animeId")`,
+  `CREATE INDEX IF NOT EXISTS "MyList_bangumiId_idx" ON "MyList"("bangumiId")`,
   `CREATE INDEX IF NOT EXISTS "MyList_status_idx" ON "MyList"("status")`,
-  `CREATE TABLE IF NOT EXISTS "Wishlist" ("id" TEXT NOT NULL PRIMARY KEY, "bangumiId" INTEGER NOT NULL, "title" TEXT NOT NULL, "bangumiTitle" TEXT, "coverUrl" TEXT, "summary" TEXT, "rating" REAL, "addedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS "Wishlist_bangumiId_key" ON "Wishlist"("bangumiId")`,
-  `CREATE INDEX IF NOT EXISTS "Wishlist_bangumiId_idx" ON "Wishlist"("bangumiId")`,
   `CREATE TABLE IF NOT EXISTS "ScannedTree" ("id" TEXT NOT NULL PRIMARY KEY DEFAULT 'current', "data" TEXT NOT NULL, "updatedAt" DATETIME NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS "Config" ("id" TEXT NOT NULL PRIMARY KEY DEFAULT 'singleton', "data" TEXT NOT NULL, "updatedAt" DATETIME NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS "MigrationLog" ("id" TEXT NOT NULL PRIMARY KEY, "version" TEXT NOT NULL, "appliedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "description" TEXT)`,
@@ -201,6 +200,83 @@ async function ensureSchema() {
       }
     }
 
+    // ─── Migration v2: Merge Wishlist into MyList ───
+    // 使 animeId 可空，新增 bangumiId/标题/封面等字段，单表统一管理
+    const migExists = await p.migrationLog.findUnique({ where: { version: 'v2_merge_wishlist' } });
+    if (!migExists) {
+      // 检查旧表是否仍有 NOT NULL 约束
+      const colInfo = await p.$queryRawUnsafe(`SELECT name, "notnull" FROM pragma_table_info('MyList')`);
+      const animeIdCol = colInfo.find(c => c.name === 'animeId');
+      if (animeIdCol && animeIdCol.notnull === 1) {
+        logger.info('[Migration v2] Merging Wishlist into MyList — recreating table...');
+        await p.$executeRawUnsafe(`PRAGMA foreign_keys=OFF`);
+
+        // 删除旧索引
+        await p.$executeRawUnsafe(`DROP INDEX IF EXISTS "MyList_animeId_key"`);
+        await p.$executeRawUnsafe(`DROP INDEX IF EXISTS "MyList_animeId_idx"`);
+        await p.$executeRawUnsafe(`DROP INDEX IF EXISTS "MyList_status_idx"`);
+
+        // 创建新表（animeId 可空，含 bangumiId/元数据字段）
+        await p.$executeRawUnsafe(`
+          CREATE TABLE IF NOT EXISTS "MyList_v2" (
+            "id" TEXT NOT NULL PRIMARY KEY,
+            "animeId" TEXT REFERENCES "Anime"("id") ON DELETE CASCADE,
+            "bangumiId" INTEGER,
+            "title" TEXT NOT NULL DEFAULT '',
+            "bangumiTitle" TEXT,
+            "coverUrl" TEXT,
+            "summary" TEXT,
+            "status" TEXT NOT NULL DEFAULT 'watching',
+            "rating" REAL,
+            "thoughts" TEXT,
+            "notes" TEXT,
+            "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            "updatedAt" DATETIME NOT NULL
+          )
+        `);
+
+        // 复制旧 MyList 数据
+        await p.$executeRawUnsafe(`
+          INSERT INTO "MyList_v2" ("id", "animeId", "status", "rating", "thoughts", "notes", "createdAt", "updatedAt")
+          SELECT "id", "animeId", "status", "rating", "thoughts", "notes", "createdAt", "updatedAt" FROM "MyList"
+        `);
+
+        // 迁移 Wishlist 数据到 MyList
+        const hasWishlist = await p.$queryRawUnsafe(`SELECT name FROM sqlite_master WHERE type='table' AND name='Wishlist'`);
+        if (hasWishlist.length > 0) {
+          await p.$executeRawUnsafe(`
+            INSERT INTO "MyList_v2" ("id", "bangumiId", "title", "bangumiTitle", "coverUrl", "summary", "rating", "status", "createdAt", "updatedAt")
+            SELECT "id", "bangumiId", "title", "bangumiTitle", "coverUrl", "summary", "rating", 'wish', "addedAt", "addedAt" FROM "Wishlist"
+          `);
+          await p.$executeRawUnsafe(`DROP TABLE IF EXISTS "Wishlist"`);
+        }
+
+        // 切换表
+        await p.$executeRawUnsafe(`DROP TABLE IF EXISTS "MyList"`);
+        await p.$executeRawUnsafe(`ALTER TABLE "MyList_v2" RENAME TO "MyList"`);
+
+        // 重建索引
+        await p.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "MyList_animeId_key" ON "MyList"("animeId")`);
+        await p.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "MyList_bangumiId_key" ON "MyList"("bangumiId")`);
+        await p.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "MyList_animeId_idx" ON "MyList"("animeId")`);
+        await p.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "MyList_bangumiId_idx" ON "MyList"("bangumiId")`);
+        await p.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "MyList_status_idx" ON "MyList"("status")`);
+
+        await p.$executeRawUnsafe(`PRAGMA foreign_keys=ON`);
+        logger.info('[Migration v2] Wishlist merged into MyList');
+      } else {
+        // 表已使用新 schema，但可能仍有遗留 Wishlist 表
+        await p.$executeRawUnsafe(`DROP TABLE IF EXISTS "Wishlist"`);
+      }
+
+      await p.migrationLog.create({
+        data: { version: 'v2_merge_wishlist', description: 'Merge Wishlist into MyList — nullable animeId + bangumiId fields' },
+      });
+    } else {
+      // 迁移已完成，确保遗留 Wishlist 表被清理
+      await p.$executeRawUnsafe(`DROP TABLE IF EXISTS "Wishlist"`);
+    }
+
     logger.info('Database schema verified/updated.');
   } catch (e) {
     logger.warn('Schema init skipped:', e.message);
@@ -263,26 +339,19 @@ function animeToLegacy(a) {
 
 function myListToLegacy(m) {
   return {
+    id: m.id,
     animeId: m.animeId,
+    bangumiId: m.bangumiId,
+    title: m.title || '',
+    bangumiTitle: m.bangumiTitle,
+    coverUrl: m.coverUrl,
+    summary: m.summary,
     status: m.status,
     rating: m.rating,
     thoughts: m.thoughts || '',
     notes: m.notes || '',
     createdAt: m.createdAt.toISOString(),
     updatedAt: m.updatedAt.toISOString(),
-  };
-}
-
-function wishlistToLegacy(w) {
-  return {
-    id: w.id,
-    bangumiId: w.bangumiId,
-    title: w.title,
-    bangumiTitle: w.bangumiTitle,
-    coverUrl: w.coverUrl,
-    summary: w.summary,
-    rating: w.rating,
-    addedAt: w.addedAt.toISOString(),
   };
 }
 
@@ -324,10 +393,9 @@ async function loadData() {
     await ensureSchema();
     const p = getPrisma();
 
-    const [animeList, myList, wishlist, playSessions, scannedTreeRecord] = await Promise.all([
+    const [animeList, myList, playSessions, scannedTreeRecord] = await Promise.all([
       p.anime.findMany({ orderBy: { importedAt: 'asc' }, include: { episodes: { orderBy: { number: 'asc' } } } }),
       p.myList.findMany({ orderBy: { createdAt: 'desc' } }),
-      p.wishlist.findMany({ orderBy: { addedAt: 'desc' } }),
       p.playSession.findMany(),
       p.scannedTree.findUnique({ where: { id: 'current' } }),
     ]);
@@ -343,7 +411,6 @@ async function loadData() {
       discovered: [],
       library: animeList.map(animeToLegacy),
       myList: myList.map(myListToLegacy),
-      wishlist: wishlist.map(wishlistToLegacy),
       // Backward compat: memories computed from MyList
       memories: memoriesLegacy,
       playSessions: playSessions.map(sessionToLegacy),
@@ -364,7 +431,6 @@ async function saveAll(data) {
   await Promise.all([
     saveLibrary(data),
     saveMyList(data),
-    saveWishlist(data),
     savePlaySessions(data),
   ]);
 }
@@ -469,42 +535,71 @@ async function saveLibrary(data) {
   }
 }
 
-// ─── MyList (替代旧 Memories) ───
-// 使用 upsert 逐条写入，不做 deleteMany，不会丢弃无 Anime 记录的条目
+// ─── MyList (统一表：library 条目 + wish 条目) ───
+// animeId 有值 = 本地有文件的条目，bangumiId 有值 = 来自 Bangumi 的 wish 条目
 async function saveMyList(data) {
   if (!data) return;
   const p = getPrisma();
   try {
     await p.$transaction(async (tx) => {
-      const existing = await tx.myList.findMany({ select: { animeId: true } });
-      const existingSet = new Set(existing.map(x => x.animeId));
-      const incomingSet = new Set((data.myList || []).map(x => x.animeId));
+      const existing = await tx.myList.findMany({ select: { id: true, animeId: true, bangumiId: true } });
+      const existingByAnimeId = new Map(existing.filter(x => x.animeId).map(x => [x.animeId, x]));
+      const existingByBgmId = new Map(existing.filter(x => x.bangumiId && !x.animeId).map(x => [String(x.bangumiId), x]));
+      const existingById = new Map(existing.map(x => [x.id, x]));
 
-      // Delete removed items
-      for (const animeId of existingSet) {
-        if (!incomingSet.has(animeId)) {
-          await tx.myList.deleteMany({ where: { animeId } });
+      const incomingAnimeIds = new Set((data.myList || []).filter(x => x.animeId).map(x => x.animeId));
+      const incomingBgmIds = new Set((data.myList || []).filter(x => !x.animeId && x.bangumiId).map(x => String(x.bangumiId)));
+
+      // Delete removed animeId-based items
+      for (const [animeId, record] of existingByAnimeId) {
+        if (!incomingAnimeIds.has(animeId)) {
+          await tx.myList.delete({ where: { id: record.id } });
+        }
+      }
+
+      // Delete removed bangumiId-based items
+      for (const [bgmId, record] of existingByBgmId) {
+        if (!incomingBgmIds.has(bgmId)) {
+          await tx.myList.delete({ where: { id: record.id } });
         }
       }
 
       // Upsert incoming items
       for (const item of data.myList || []) {
-        await tx.myList.upsert({
-          where: { animeId: item.animeId },
-          create: {
-            animeId: item.animeId,
-            status: item.status || 'watching',
-            rating: item.rating,
-            thoughts: item.thoughts || '',
-            notes: item.notes || '',
-          },
-          update: {
-            status: item.status,
-            rating: item.rating,
-            thoughts: item.thoughts || '',
-            notes: item.notes || '',
-          },
-        });
+        const commonData = {
+          status: item.status || 'watching',
+          rating: item.rating,
+          thoughts: item.thoughts || '',
+          notes: item.notes || '',
+          title: item.title || '',
+          bangumiTitle: item.bangumiTitle || null,
+          coverUrl: item.coverUrl || null,
+          summary: item.summary || null,
+        };
+
+        if (item.animeId) {
+          // Library-linked item — upsert by animeId
+          await tx.myList.upsert({
+            where: { animeId: item.animeId },
+            create: { id: item.animeId, animeId: item.animeId, bangumiId: item.bangumiId || null, ...commonData },
+            update: { ...commonData, bangumiId: item.bangumiId || null },
+          });
+        } else if (item.bangumiId) {
+          // Wish-only item — lookup by bangumiId
+          const existing = await tx.myList.findFirst({
+            where: { bangumiId: item.bangumiId, animeId: null },
+          });
+          if (existing) {
+            await tx.myList.update({
+              where: { id: existing.id },
+              data: { ...commonData },
+            });
+          } else {
+            await tx.myList.create({
+              data: { id: item.id || ('wish-' + item.bangumiId), animeId: null, bangumiId: item.bangumiId, ...commonData },
+            });
+          }
+        }
       }
     }, { timeout: 15000 });
     logger.info(`Synced MyList: ${(data.myList || []).length} items`);
@@ -514,58 +609,13 @@ async function saveMyList(data) {
   }
 }
 
-// ─── Wishlist ───
-async function saveWishlist(data) {
-  if (!data) return;
-  const p = getPrisma();
-  try {
-    await p.$transaction(async (tx) => {
-      const existing = await tx.wishlist.findMany({ select: { id: true } });
-      const existingSet = new Set(existing.map(x => x.id));
-      const incomingSet = new Set((data.wishlist || []).map(x => x.id));
-
-      for (const id of existingSet) {
-        if (!incomingSet.has(id)) {
-          await tx.wishlist.delete({ where: { id } });
-        }
-      }
-
-      for (const item of data.wishlist || []) {
-        await tx.wishlist.upsert({
-          where: { id: item.id },
-          create: {
-            id: item.id,
-            bangumiId: item.bangumiId,
-            title: item.title,
-            bangumiTitle: item.bangumiTitle,
-            coverUrl: item.coverUrl,
-            summary: item.summary,
-            rating: item.rating,
-          },
-          update: {
-            title: item.title,
-            bangumiTitle: item.bangumiTitle,
-            coverUrl: item.coverUrl,
-            summary: item.summary,
-            rating: item.rating,
-          },
-        });
-      }
-    }, { timeout: 15000 });
-    logger.info(`Synced Wishlist: ${(data.wishlist || []).length} items`);
-  } catch (e) {
-    logger.error('SQLite wishlist save error:', e.message);
-    throw e;
-  }
-}
-
-// ─── 精细化更新：单条 MyList 状态 ───
+// ─── 精细化更新：单条 MyList 状态（仅限 library 条目） ───
 async function updateMyItemStatus(animeId, status) {
   try {
     const p = getPrisma();
     await p.myList.upsert({
       where: { animeId },
-      create: { animeId, status },
+      create: { id: animeId, animeId, status },
       update: { status },
     });
     logger.info(`Updated MyList status: ${animeId} → ${status}`);
@@ -686,4 +736,4 @@ async function deletePlaySession(sessionId) {
   }
 }
 
-module.exports = { loadData, saveAll, saveLibrary, saveMyList, saveMemories, saveWishlist, updateMyItemStatus, savePlaySessions, updateEpisodeProgress, updatePlaySession, deletePlaySession, shutdown, getPrisma, ensureSchema };
+module.exports = { loadData, saveAll, saveLibrary, saveMyList, saveMemories, updateMyItemStatus, savePlaySessions, updateEpisodeProgress, updatePlaySession, deletePlaySession, shutdown, getPrisma, ensureSchema };

@@ -77,32 +77,25 @@ model PlaySession {
 }
 
 model MyList {
-  id        String   @id @default(cuid())
-  animeId   String   @unique
-  status    String   @default("watching")  // watching | completed | on_hold | dropped
-  rating    Float?
-  thoughts  String?
-  notes     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  anime     Anime    @relation(fields: [animeId], references: [id], onDelete: Cascade)
-
-  @@index([animeId])
-  @@index([status])
-}
-
-model Wishlist {
   id           String   @id @default(cuid())
-  bangumiId    Int      @unique
-  title        String
+  animeId      String?  @unique
+  bangumiId    Int?
+  title        String   @default("")
   bangumiTitle String?
   coverUrl     String?
   summary      String?
+  status       String   @default("watching")  // watching | wish | completed | on_hold | dropped
   rating       Float?
-  addedAt      DateTime @default(now())
+  thoughts     String?
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
+  anime        Anime?   @relation(fields: [animeId], references: [id], onDelete: Cascade)
+
+  @@index([animeId])
   @@index([bangumiId])
+  @@index([status])
 }
 
 // ===== JSON 存储表（用 String 存储 JSON 字符串）=====

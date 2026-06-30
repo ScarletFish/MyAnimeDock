@@ -648,6 +648,13 @@ const server = http.createServer((req, res) => {
         if (!data.myList.find(m => m.animeId === anime.id)) {
           data.myList.push({ animeId: anime.id, status: 'watching', rating: null, thoughts: '', notes: '' });
         }
+        // 若有同 bangumiId 的 wish 条目，清理（已转为 watching）
+        if (anime.bangumiId) {
+          const wishIdx = data.myList.findIndex(m => !m.animeId && m.bangumiId === anime.bangumiId);
+          if (wishIdx !== -1) {
+            data.myList.splice(wishIdx, 1);
+          }
+        }
         // Clear excluded flag if it was excluded
         if (scannedNode) {
           scannedNode.excluded = false;
@@ -924,74 +931,78 @@ const server = http.createServer((req, res) => {
 
   // --- API: MyList (统一列表) ---
   if (urlPath === '/api/mylist' && req.method === 'GET') {
-    // Merge MyList items (with Anime data) + Wishlist items
+    // 统一 MyList（Library 条目 + Wish 条目合并）
     const merged = [];
     const animeMap = new Map(data.library.map(a => [a.id, a]));
     for (const item of data.myList || []) {
-      const anime = animeMap.get(item.animeId);
-      merged.push({
-        id: item.animeId,
-        title: anime ? anime.title : item.animeId,
-        bangumiTitle: anime ? anime.bangumiTitle : null,
-        coverUrl: anime ? anime.coverUrl : null,
-        localCover: anime ? anime.localCover : null,
-        season: anime ? anime.season : null,
-        rating: item.rating,
-        thoughts: item.thoughts,
-        status: item.status,
-        episodeCount: anime ? anime.episodes.length : 0,
-        episodesWatched: anime ? anime.episodes.filter(e => e.watched).length : 0,
-        hasLocalFiles: !!anime,
-        source: 'library',
-        summary: anime ? anime.summary : null,
-      });
-    }
-    for (const item of data.wishlist || []) {
-      merged.push({
-        id: 'wish-' + item.bangumiId,
-        bangumiId: item.bangumiId,
-        title: item.title,
-        bangumiTitle: item.bangumiTitle,
-        coverUrl: item.coverUrl,
-        rating: item.rating,
-        status: 'wish',
-        hasLocalFiles: false,
-        source: 'wishlist',
-        summary: item.summary,
-      });
+      if (item.animeId) {
+        const anime = animeMap.get(item.animeId);
+        merged.push({
+          id: item.id || item.animeId,
+          animeId: item.animeId,
+          bangumiId: anime ? anime.bangumiId : item.bangumiId,
+          title: anime ? anime.title : item.title,
+          bangumiTitle: anime ? anime.bangumiTitle : item.bangumiTitle,
+          coverUrl: anime ? anime.coverUrl : item.coverUrl,
+          localCover: anime ? anime.localCover : null,
+          season: anime ? anime.season : null,
+          rating: item.rating,
+          thoughts: item.thoughts,
+          status: item.status,
+          episodeCount: anime ? anime.episodes.length : 0,
+          episodesWatched: anime ? anime.episodes.filter(e => e.watched).length : 0,
+          hasLocalFiles: !!anime,
+          source: 'library',
+          summary: anime ? anime.summary : item.summary,
+        });
+      } else {
+        merged.push({
+          id: item.id,
+          bangumiId: item.bangumiId,
+          title: item.title,
+          bangumiTitle: item.bangumiTitle,
+          coverUrl: item.coverUrl,
+          rating: item.rating,
+          status: 'wish',
+          hasLocalFiles: false,
+          source: 'wishlist',
+          summary: item.summary,
+        });
+      }
     }
     jsonResp(res, 200, merged);
     return;
   }
 
-  // PUT /api/mylist/:animeId/status — manually set status
+  // PUT /api/mylist/:id/status — manually set status
   const mylistStatusMatch = urlPath.match(/^\/api\/mylist\/([^/]+)\/status$/);
   if (mylistStatusMatch && req.method === 'PUT') {
     readBody(req).then(body => {
       const { status } = JSON.parse(body);
-      const animeId = decodeURIComponent(mylistStatusMatch[1]);
+      const id = decodeURIComponent(mylistStatusMatch[1]);
       if (!status || !['watching', 'wish', 'completed', 'on_hold', 'dropped'].includes(status)) {
         jsonResp(res, 400, { error: 'Invalid status' });
         return;
       }
       // Update in-memory data
       if (!data.myList) data.myList = [];
-      let existing = data.myList.find(m => m.animeId === animeId);
+      let existing;
+      if (id.startsWith('wish-')) {
+        existing = data.myList.find(m => m.id === id);
+      } else {
+        existing = data.myList.find(m => m.animeId === id);
+      }
       if (existing) {
         existing.status = status;
+      } else if (id.startsWith('wish-')) {
+        data.myList.push({ id, bangumiId: parseInt(id.replace('wish-', '')), title: '', status, rating: null, thoughts: '', notes: '' });
       } else {
-        data.myList.push({
-          animeId,
-          status,
-          rating: null,
-          thoughts: '',
-          notes: '',
-        });
+        data.myList.push({ animeId: id, status, rating: null, thoughts: '', notes: '' });
       }
-      db.updateMyItemStatus(animeId, status).then(() => {
+      db.saveMyList(data).then(() => {
         jsonResp(res, 200, { ok: true });
         // 异步推送状态变更到 Bangumi（不阻塞响应）
-        bangumiSync.pushStatusChange(animeId, data);
+        if (existing && existing.animeId) bangumiSync.pushStatusChange(existing.animeId, data);
       }).catch(e => {
         logger.error('MyList status save error:', e);
         jsonResp(res, 500, { error: 'Failed to save status' });
@@ -1002,12 +1013,12 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // DELETE /api/mylist/:animeId — remove item from MyList
+  // DELETE /api/mylist/:id — remove item from MyList
   const mylistDeleteMatch = urlPath.match(/^\/api\/mylist\/([^/]+)$/);
   if (mylistDeleteMatch && req.method === 'DELETE') {
-    const animeId = decodeURIComponent(mylistDeleteMatch[1]);
+    const id = decodeURIComponent(mylistDeleteMatch[1]);
     if (data.myList) {
-      const idx = data.myList.findIndex(m => m.animeId === animeId);
+      const idx = data.myList.findIndex(m => m.id === id || m.animeId === id);
       if (idx !== -1) {
         data.myList.splice(idx, 1);
       }
@@ -1076,9 +1087,10 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // --- API: Wishlist ---
+  // --- API: Wishlist (兼容旧路由，统一使用 MyList) ---
   if (urlPath === '/api/wishlist' && req.method === 'GET') {
-    jsonResp(res, 200, data.wishlist || []);
+    const wishItems = (data.myList || []).filter(m => !m.animeId);
+    jsonResp(res, 200, wishItems);
     return;
   }
 
@@ -1089,42 +1101,42 @@ const server = http.createServer((req, res) => {
         jsonResp(res, 400, { error: 'bangumiId and title required' });
         return;
       }
-      if (!data.wishlist) data.wishlist = [];
-      const existing = data.wishlist.find(w => w.bangumiId === item.bangumiId);
+      if (!data.myList) data.myList = [];
+      const existing = data.myList.find(m => !m.animeId && m.bangumiId === item.bangumiId);
       if (existing) {
-        jsonResp(res, 200, { ok: true, wishlist: existing });
+        jsonResp(res, 200, { ok: true, myList: existing });
         return;
       }
       const entry = {
-        id: 'wish-' + Date.now(),
+        id: 'wish-' + item.bangumiId,
         bangumiId: item.bangumiId,
         title: item.title,
         bangumiTitle: item.bangumiTitle || null,
         coverUrl: item.coverUrl || null,
         summary: item.summary || null,
         rating: item.rating || null,
-        addedAt: new Date().toISOString(),
+        status: 'wish',
       };
-      data.wishlist.push(entry);
-      db.saveWishlist(data);
-      jsonResp(res, 200, { ok: true, wishlist: entry });
+      data.myList.push(entry);
+      db.saveMyList(data);
+      jsonResp(res, 200, { ok: true, myList: entry });
     }).catch(e => {
       jsonResp(res, 400, { error: 'Invalid request body' });
     });
     return;
   }
 
-  // DELETE /api/wishlist/:id
+  // DELETE /api/wishlist/:id (兼容旧路由)
   const wishlistDeleteMatch = urlPath.match(/^\/api\/wishlist\/([^/]+)$/);
   if (wishlistDeleteMatch && req.method === 'DELETE') {
     const id = decodeURIComponent(wishlistDeleteMatch[1]);
-    const idx = (data.wishlist || []).findIndex(w => w.id === id);
+    const idx = (data.myList || []).findIndex(m => m.id === id);
     if (idx === -1) {
       jsonResp(res, 404, { error: 'Wishlist item not found' });
       return;
     }
-    data.wishlist.splice(idx, 1);
-    db.saveWishlist(data).then(() => jsonResp(res, 200, { ok: true })).catch(e => {
+    data.myList.splice(idx, 1);
+    db.saveMyList(data).then(() => jsonResp(res, 200, { ok: true })).catch(e => {
       logger.error('Wishlist delete save error:', e);
       jsonResp(res, 500, { error: 'Failed to persist' });
     });
@@ -1647,9 +1659,8 @@ const server = http.createServer((req, res) => {
         config.bangumiLastSync = result.lastSyncTime;
         saveConfig(config);
       }
-      // 如有新建 MyList 或 Wishlist，落盘
-      if (result.created > 0) db.saveMyList(data);
-      if (result.wishlistAdded > 0) db.saveWishlist(data);
+      // 如有新建 MyList/Wishlist，落盘
+      if (result.created > 0 || result.wishlistAdded > 0) db.saveMyList(data);
       jsonResp(res, 200, result);
     }).catch(e => jsonResp(res, 400, { error: e.message }));
     return;
@@ -1778,8 +1789,8 @@ async function validateCovers(data) {
       if (!fs.existsSync(coverPath)) mem.coverLocal = undefined;
     }
   }
-  for (const item of data.wishlist || []) {
-    if (item.coverUrl && item.coverUrl.startsWith(DATA_DIR)) {
+  for (const item of data.myList || []) {
+    if (!item.animeId && item.coverUrl && item.coverUrl.startsWith(DATA_DIR)) {
       const coverPath = path.join(coverDir, path.basename(item.coverUrl));
       if (!fs.existsSync(coverPath)) item.coverUrl = null;
     }
@@ -1811,7 +1822,7 @@ async function init() {
   await db.ensureSchema().catch(e => logger.warn('Schema ensure skipped:', e.message));
 
   // Phase 2: Hydrate data — SQLite 主存储，scannedTree 从 JSON
-  data = (await db.loadData()) || { discovered: [], library: [], memories: [], myList: [], wishlist: [], playSessions: [] };
+  data = (await db.loadData()) || { discovered: [], library: [], memories: [], myList: [], playSessions: [] };
 
   // 迁移：从旧的 anime-data.json 提取 scannedTree（如存在）
   const OLD_DATA_PATH = path.join(DATA_DIR, 'anime-data.json');

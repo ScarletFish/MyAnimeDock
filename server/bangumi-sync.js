@@ -69,33 +69,31 @@ class BangumiSync {
 
       // ─── Merge ───
       //   - 远程有 & 本地有匹配 anime → 创建缺失的本地 MyList 条目
-      //   - 远程有 & 本地无匹配 anime → 创建 Wishlist 条目
+      //   - 远程有 & 本地无匹配 anime → 创建 MyList wish 条目
       if (!data.myList) data.myList = [];
-      if (!data.wishlist) data.wishlist = [];
 
       for (const remote of remoteItems) {
         const bgmId = String(remote.subject_id);
         const anime = animeByBgmId.get(bgmId);
 
         if (!anime) {
-          // 本地没有这个番的文件 → 存入 Wishlist
+          // 本地没有这个番的文件 → 存入 MyList (wish 状态)
           const subject = remote.subject || {};
-          const existingIdx = data.wishlist.findIndex(w => String(w.bangumiId) === bgmId);
+          const existingIdx = data.myList.findIndex(m => !m.animeId && String(m.bangumiId) === bgmId);
           const wishEntry = {
-            id: 'bgm-' + bgmId,
+            id: 'wish-' + bgmId,
             bangumiId: parseInt(bgmId),
             title: subject.name_cn || subject.name || `Subject #${bgmId}`,
             bangumiTitle: subject.name || null,
             coverUrl: subject.images?.common || null,
             summary: subject.summary || null,
             rating: subject.score || null,
-            addedAt: remote.updated_at || new Date().toISOString(),
-            bgmStatus: BGM_TYPE_TO_STATUS[remote.type] || null,
+            status: 'wish',
           };
           if (existingIdx >= 0) {
-            Object.assign(data.wishlist[existingIdx], wishEntry);
+            Object.assign(data.myList[existingIdx], wishEntry);
           } else {
-            data.wishlist.push(wishEntry);
+            data.myList.push(wishEntry);
             result.wishlistAdded = (result.wishlistAdded || 0) + 1;
           }
           logger.info(`MyList 同步：从 Bangumi 创建 Wishlist ${wishEntry.title}`);

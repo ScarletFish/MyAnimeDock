@@ -182,13 +182,26 @@ class BangumiSync {
 
     // 计算本地已看集数
     const watchedCount = (anime.episodes || []).filter(e => e.watched).length;
+    const bgmId = String(anime.bangumiId);
     const payload = { ...localItem, episodeProgress: watchedCount };
 
     try {
-      await this.api.pushCollectionStatus(String(anime.bangumiId), payload);
-      logger.info(`状态变更推送: ${anime.title} → ${localItem.status} ep=${watchedCount}`);
+      await this.api.pushCollectionStatus(bgmId, payload);
+      logger.info(`Bangumi 同步: ${anime.title} → ${localItem.status} ep=${watchedCount}`);
     } catch (e) {
-      logger.warn(`状态变更推送失败 ${anime.title}: ${e.message}`);
+      if (e.message.includes('404')) {
+        // 收藏不存在 → 先创建再同步
+        try {
+          const type = STATUS_TO_BGM_TYPE[localItem.status] || 3;
+          await this.api.createCollection(bgmId, { type });
+          await this.api.pushCollectionStatus(bgmId, payload);
+          logger.info(`Bangumi 创建+同步: ${anime.title}`);
+        } catch (e2) {
+          logger.warn(`Bangumi 创建/同步失败 ${anime.title}: ${e2.message}`);
+        }
+      } else {
+        logger.warn(`Bangumi 同步失败 ${anime.title}: ${e.message}`);
+      }
     }
   }
 }

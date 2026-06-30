@@ -152,7 +152,7 @@ function saveConfig(cfg) {
 
 let config = loadConfig();
 
-// ─── Bangumi 个人 API（OAuth + scrobble）───
+// ─── Bangumi 个人 API（OAuth + 终态推送）───
 // 从 apiSources 读取 bangumi API 基地址（支持镜像站），用于 OAuth 后的 API 调用
 const bgmApiUrl = (config.apiSources || []).find(s => s.type === 'bangumi')?.url || 'https://api.bgm.tv';
 const bangumiPersonal = new BangumiPersonal({ apiBase: bgmApiUrl });
@@ -1048,6 +1048,10 @@ const server = http.createServer((req, res) => {
         });
       }
       db.saveMyList(data);
+      // 异步推送终态（completed + 评分）到 Bangumi
+      if (rating !== undefined || status === 'completed') {
+        bangumiSync.pushStatusChange(animeId, data);
+      }
       // Build legacy response
       const anime = data.library.find(a => a.id === animeId);
       const legacy = {
@@ -1201,10 +1205,6 @@ const server = http.createServer((req, res) => {
                 }
               }
               if (final) {
-                // Scrobble: 播放完成 → 推送 Bangumi 剧集进度
-                if (active.anime && active.episode) {
-                  bangumiSync.scrobble(active.anime, active.episode, { watched: active.episode.watched });
-                }
                 activePlays.delete(fp);
               }
             },

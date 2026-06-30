@@ -1,6 +1,6 @@
-// server/scrapers/bangumi-personal.js — Bangumi 个人 API（OAuth + 播放进度同步）
-// Phase 1: 认证管理 + scrobble
-// Phase 2: MyList 双向同步
+// server/scrapers/bangumi-personal.js — Bangumi 个人 API（OAuth + Bangumi 收藏管理）
+// 能力：OAuth 认证、拉取收藏列表（→ Wishlist）、推送终态（看过/抛弃 + 评分）
+// 不涉及：单集 scrobble、感想同步
 
 const { nodeFetch } = require('./node-fetch');
 const logger = require('../logger').child('[BANGUMI-P]');
@@ -47,7 +47,6 @@ class BangumiPersonal {
     this.redirectUri = 'http://localhost:3456/api/bangumi/auth/callback';
     /** (tokenInfo) => void — 持久化回调，由 server.js 绑定 */
     this.onTokenChange = null;
-    this._episodeCache = new Map(); // bangumiId -> [{ sort, id, name_cn }]
   }
 
   // ─── 认证状态 ───
@@ -137,7 +136,6 @@ class BangumiPersonal {
     this.accessToken = null;
     this.username = null;
     if (this.onTokenChange) this.onTokenChange(this.toConfigPayload());
-    this._episodeCache.clear();
   }
 
   // ─── API 方法 ───
@@ -157,28 +155,6 @@ class BangumiPersonal {
     return this._get(`/v0/users/${this.username}/collections`, { subject_type: subjectType });
   }
 
-  /** GET /v0/subjects/{subjectId}/episodes — 获取 Bangumi 剧集列表 */
-  async getSubjectEpisodes(subjectId) {
-    const cacheKey = String(subjectId);
-    if (this._episodeCache.has(cacheKey)) {
-      return this._episodeCache.get(cacheKey);
-    }
-    const data = await this._get(`/v0/subjects/${subjectId}/episodes`);
-    const episodes = (data || []).map(ep => ({
-      bangumiEpId: ep.id,
-      sort: ep.sort || ep.ep,
-      name: ep.name_cn || ep.name,
-    }));
-    this._episodeCache.set(cacheKey, episodes);
-    return episodes;
-  }
-
-  /** PUT /v0/users/-/collections/-/episodes/{episodeId} — 标记单集状态 */
-  async markEpisode(episodeId, type) {
-    // type: 1=想看, 2=看过, 3=在看, 4=搁置, 5=抛弃
-    return this._put(`/v0/users/-/collections/-/episodes/${episodeId}`, { type });
-  }
-
   /** PATCH /v0/users/-/collections/{subjectId} — 更新条目收藏 */
   async updateCollection(subjectId, data) {
     return this._patch(`/v0/users/-/collections/${subjectId}`, data);
@@ -189,7 +165,7 @@ class BangumiPersonal {
     return this._post(`/v0/users/-/collections/${subjectId}`, data);
   }
 
-  // ─── MyList 双向同步相关方法 ───
+  // ─── MyList 同步相关方法 ───
 
   /**
    * GET /v0/users/{username}/collections?subject_type=2 — 拉取用户所有动漫收藏（分页自动处理）
@@ -223,60 +199,22 @@ class BangumiPersonal {
   }
 
   /**
-   * PATCH /v0/users/-/collections/{subjectId} — 将本地 MyList 状态推送到 Bangumi
+   * PATCH /v0/users/-/collections/{subjectId} — 将本地状态推送到 Bangumi
+   * 仅推送终态（看过/抛弃）和评分，不推送感想
    * @param {number} subjectId - Bangumi 条目 ID
    * @param {{ status?: string, rating?: number }} localItem - 本地 MyList 条目
    */
   async pushCollectionStatus(subjectId, localItem) {
     const body = {};
-    if (localItem.status && STATUS_TO_BGM_TYPE[localItem.status]) {
+    // 只推送终态：看过(2) 或 抛弃(5)
+    if (localItem.status && (localItem.status === 'completed' || localItem.status === 'dropped')) {
       body.type = STATUS_TO_BGM_TYPE[localItem.status];
     }
     if (localItem.rating != null) {
       body.rating = Math.round(localItem.rating);
     }
-    if (localItem.thoughts) {
-      body.comment = localItem.thoughts;
-    }
     if (Object.keys(body).length === 0) return null;
     return this._patch(`/v0/users/-/collections/${subjectId}`, body);
-  }
-
-  // ─── Scrobble 快捷方法 ───
-  // 根据已有的 bangumiId + 剧集号，标记对应 Bangumi 剧集为「看过」
-
-  async scrobbleEpisode(bangumiId, episodeNumber, watched = true) {
-    if (!this.isAuthed()) {
-      logger.info(`Scrobble 跳过（未认证）: subject=${bangumiId} ep=${episodeNumber}`);
-      return { skipped: true, reason: 'not_authed' };
-    }
-    try {
-      // 1) 确保条目在用户收藏中（POST 创建收藏，已存在则静默忽略错误）
-      //    这是 PUT episodes 的前置条件，即使之前没标记过也能工作
-      try {
-        await this.createCollection(bangumiId, { type: 3 });
-        logger.debug(`确保收藏: subject=${bangumiId} type=3`);
-      } catch (colErr) {
-        // 409/400 表示已收藏，可以继续
-        logger.debug(`收藏已存在或跳过: ${colErr.message}`);
-      }
-
-      // 2) 获取 Bangumi 剧集列表，匹配本地剧集号
-      const episodes = await this.getSubjectEpisodes(bangumiId);
-      const target = episodes.find(ep => ep.sort === episodeNumber);
-      if (!target) {
-        logger.warn(`Scrobble 失败：找不到 episode ${episodeNumber}（subject ${bangumiId}）`);
-        return { skipped: true, reason: 'episode_not_found' };
-      }
-
-      // 3) 标记为已看/想看
-      await this.markEpisode(target.bangumiEpId, watched ? 2 : 1);
-      logger.info(`Scrobble OK: subject=${bangumiId} ep=${episodeNumber} → ${watched ? '看过' : '想看'}`);
-      return { ok: true, bangumiEpId: target.bangumiEpId };
-    } catch (e) {
-      logger.error(`Scrobble 失败: subject=${bangumiId} ep=${episodeNumber}`, e.message);
-      return { skipped: true, reason: e.message };
-    }
   }
 
   // ─── 内部 HTTP 方法 ───
@@ -308,10 +246,6 @@ class BangumiPersonal {
       throw new Error(`Bangumi GET ${path} 失败 (${res.status}): ${txt}`);
     }
     return res.json();
-  }
-
-  async _put(path, body) {
-    return this._mutate('PUT', path, body);
   }
 
   async _patch(path, body) {

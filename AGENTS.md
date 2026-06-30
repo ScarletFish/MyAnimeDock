@@ -54,6 +54,13 @@ POST /api/library/sync        # Batch metadata sync (JSON)
 GET  /api/library/sync/stream # SSE batch sync (流式，支持取消)
 GET  /api/memories            # List memories
 POST /api/memories            # Create/update memory
+GET  /api/bangumi/auth/status # Bangumi OAuth 状态
+GET  /api/bangumi/auth/url    # 获取 Bangumi OAuth 授权 URL
+GET  /api/bangumi/auth/callback?code=xxx  # OAuth 回调（自动处理）
+POST /api/bangumi/auth/logout # 清除 Bangumi 令牌
+POST /api/bangumi/auth/creds  # 保存 Bangumi Client ID/Secret
+GET  /api/bangumi/me          # 当前 Bangumi 用户信息
+POST /api/bangumi/sync        # MyList 全量同步（Pull→Merge→Push）
 ```
 
 ## Architecture
@@ -69,14 +76,16 @@ server/            → Tauri sidecar (Node.js backend)
 │   ├── scanMediaDirFlat() → 返回扁平 leaf 数组（含 parentChain）
 │   ├── buildLeaf()        → 单条目构造（parentChain 回溯处理 Season 文件夹）
 │   └── parseFolderName()  → 使用 anitomy 提取标题和季号，回退到正则清洗
+├── mpv-controller.js → mpv 进度追踪（spawn + --term-status-msg，final 标记）
+├── logger.js      → 结构化日志（debug/info/warn/error + [TAG] 前缀，LOG_LEVEL 环境变量控制）
+├── bangumi-sync.js→ Bangumi 同步编排（Pull→Merge→Push，OAuth 终态推送）
 ├── scrapers/      → 多源刮削架构
 │   ├── index.js   → ScraperRegistry（统一注册、优先级、批量搜索 + Sorensen-Dice 模糊匹配 + 搜索结果缓存 5min TTL）
 │   ├── node-fetch.js → pkg 兼容的 fetch polyfill（http/https 原生模块）
 │   ├── bangumi.js → Bangumi API（curl fallback）
+│   ├── bangumi-personal.js → Bangumi 个人 OAuth + 收藏管理 API
 │   ├── anilist.js → AniList GraphQL API（免费无需 Key，含 seasonChain 提取）
 │   └── tmdb.js    → TMDB API（需配置 API Key）
-├── mpv-controller.js → mpv 进度追踪（spawn + --term-status-msg，final 标记）
-├── logger.js      → 结构化日志（debug/info/warn/error + [TAG] 前缀，LOG_LEVEL 环境变量控制）
 └── package.json   → Sidecar dependencies (pkg target)
 src-tauri/         → Tauri v2 desktop shell (Rust)
 ├── src/main.rs    → Sidecar spawning + window management

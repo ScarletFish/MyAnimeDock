@@ -1,6 +1,6 @@
 // server/scrapers/bangumi-personal.js — Bangumi 个人 API（OAuth + Bangumi 收藏管理）
 // 能力：OAuth 认证、拉取收藏列表（→ Wishlist）、推送终态（看过/抛弃 + 评分）
-// 不涉及：单集 scrobble、感想同步
+// 推送：状态（全部类型）+ 已看集数 + 评分，不包含感想
 
 const { nodeFetch } = require('./node-fetch');
 const logger = require('../logger').child('[BANGUMI-P]');
@@ -200,18 +200,20 @@ class BangumiPersonal {
 
   /**
    * PATCH /v0/users/-/collections/{subjectId} — 将本地状态推送到 Bangumi
-   * 仅推送终态（看过/抛弃）和评分，不推送感想
+   * 推送所有状态 + 评分 + 已看集数，不推送感想
    * @param {number} subjectId - Bangumi 条目 ID
-   * @param {{ status?: string, rating?: number }} localItem - 本地 MyList 条目
+   * @param {{ status?: string, rating?: number, episodeProgress?: number }} localItem - 本地 MyList 条目
    */
   async pushCollectionStatus(subjectId, localItem) {
     const body = {};
-    // 只推送终态：看过(2) 或 抛弃(5)
-    if (localItem.status && (localItem.status === 'completed' || localItem.status === 'dropped')) {
+    if (localItem.status && STATUS_TO_BGM_TYPE[localItem.status]) {
       body.type = STATUS_TO_BGM_TYPE[localItem.status];
     }
     if (localItem.rating != null) {
       body.rating = Math.round(localItem.rating);
+    }
+    if (localItem.episodeProgress != null) {
+      body.ep_status = localItem.episodeProgress;
     }
     if (Object.keys(body).length === 0) return null;
     return this._patch(`/v0/users/-/collections/${subjectId}`, body);

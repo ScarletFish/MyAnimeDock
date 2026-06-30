@@ -1,6 +1,6 @@
 // server/bangumi-sync.js — Bangumi 同步编排层
 // 能力：从 Bangumi 拉取收藏（→ Wishlist）、推送终态（看过/抛弃 + 评分）
-// 不涉及：单集 scrobble、感想同步、状态变更自动推送
+// 推送：状态（全部类型）+ 已看集数 + 评分，不包含感想
 
 const logger = require('./logger').child('[BGM-SYNC]');
 const { BGM_TYPE_TO_STATUS, STATUS_TO_BGM_TYPE } = require('./scrapers/bangumi-personal');
@@ -23,7 +23,7 @@ class BangumiSync {
    * 流程：
    *   Pull: 从 Bangumi 拉取所有动漫收藏
    *   Merge: 匹配本地 anime（by bangumiId），缺失→创建本地 MyList / Wishlist
-   *   Push: 本地终态（completed/dropped + 评分）不一致 → 推送到 Bangumi
+   *   Push: 本地状态（全部类型）+ 已看集数 + 评分不一致 → 推送到 Bangumi
    *
    * @param {object} data - 全局 data 对象（包含 library, myList）
    * @param {object} [opts]
@@ -119,8 +119,8 @@ class BangumiSync {
         // 如果本地已有条目不覆盖（本地优先）
       }
 
-      // ─── Push: 推送本地终态（completed/dropped + 评分）到 Bangumi ───
-      // 不推送其他状态（watching/wish/on_hold），不推送感想
+      // ─── Push: 推送本地状态 + 已看集数 + 评分到 Bangumi ───
+      // 不推送感想
       const remoteByBgmId = new Map();
       for (const r of remoteItems) {
         remoteByBgmId.set(String(r.subject_id), r);
@@ -133,22 +133,21 @@ class BangumiSync {
         const bgmId = String(anime.bangumiId);
         const remote = remoteByBgmId.get(bgmId);
 
-        const shouldPush = localItem.status === 'completed' || localItem.status === 'dropped';
-        if (!shouldPush) continue;
-
         const remoteType = remote?.type;
         const localType = STATUS_TO_BGM_TYPE[localItem.status];
         const remoteRate = remote?.rate || 0;
         const localRate = localItem.rating || 0;
-        const differs = localType !== remoteType || localRate !== remoteRate;
+        const remoteEp = remote?.ep_status || 0;
+        const watchedCount = (anime.episodes || []).filter(e => e.watched).length;
+        const differs = localType !== remoteType || localRate !== remoteRate || watchedCount !== remoteEp;
 
         if (!differs) continue;
 
         if (!opts.dryRun) {
           try {
-            await this.api.pushCollectionStatus(bgmId, localItem);
+            await this.api.pushCollectionStatus(bgmId, { ...localItem, episodeProgress: watchedCount });
             result.pushed++;
-            logger.info(`MyList 同步：推送 ${anime.title} → type=${localType} rating=${localRate}`);
+            logger.info(`MyList 同步：推送 ${anime.title} → type=${localType} rating=${localRate} ep=${watchedCount}`);
           } catch (e) {
             logger.error(`MyList 同步推送失败 ${anime.title}:`, e.message);
             result.errors.push(`推送 ${anime.title} 失败: ${e.message}`);
@@ -170,8 +169,8 @@ class BangumiSync {
   }
 
   /**
-   * 推送单条 MyList 终态到 Bangumi（轻量，不触发全量同步）
-   * 由 server.js 在状态变为 completed/dropped 时调用
+   * 推送单条 MyList 状态到 Bangumi（轻量，不触发全量同步）
+   * 由 server.js 在状态/评分改变时调用，推送状态 + 已看集数 + 评分
    */
   async pushStatusChange(animeId, data) {
     if (!this.api.isAuthed()) return;
@@ -181,12 +180,13 @@ class BangumiSync {
     const localItem = (data.myList || []).find(m => m.animeId === animeId);
     if (!localItem) return;
 
-    // 只推送终态（看过/抛弃），且与远程不一致才推
-    if (localItem.status !== 'completed' && localItem.status !== 'dropped') return;
+    // 计算本地已看集数
+    const watchedCount = (anime.episodes || []).filter(e => e.watched).length;
+    const payload = { ...localItem, episodeProgress: watchedCount };
 
     try {
-      await this.api.pushCollectionStatus(String(anime.bangumiId), localItem);
-      logger.info(`状态变更推送: ${anime.title} → ${localItem.status}`);
+      await this.api.pushCollectionStatus(String(anime.bangumiId), payload);
+      logger.info(`状态变更推送: ${anime.title} → ${localItem.status} ep=${watchedCount}`);
     } catch (e) {
       logger.warn(`状态变更推送失败 ${anime.title}: ${e.message}`);
     }

@@ -1,6 +1,6 @@
 {
   "mediaDir": "",
-  "playerMode": "system",
+  "playerMode": "mpv",
   "mpvPath": "mpv",
   "theme": "default",
   "themeMode": "dark",

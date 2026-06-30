@@ -10,6 +10,8 @@ npm run dev:server:watch  # Nodemon 自动重启（监听 server/ + public/ 变�
 npm run dev:tauri    # Start Tauri dev window (requires server running first)
 npm run dev          # Start both server (nodemon) + Tauri concurrently (single terminal)
 npm run build        # Build pkg sidecar + Tauri MSI/NSIS installer
+npm run build:msi    # Build MSI installer only
+npm run build:nsis   # Build NSIS installer only
 npm run build:server # Build standalone pkg sidecar executable
 npm run build:exe    # Build Tauri release EXE only (no MSI/NSIS, ~1min)
 npm run check:rust   # Fast Rust type-check (cargo check, ~20s)
@@ -176,16 +178,15 @@ opencode.json       → OpenCode 配置（插件声明）
 ```json
 {
   "mediaDir": "",
-  "playerMode": "system",
+  "playerMode": "mpv",
   "mpvPath": "mpv",
   "theme": "default",
   "themeMode": "dark",
-  "uiScale": 100,
-  "scrapers": {
-    "bangumi": { "enabled": true, "apiBase": "https://api.bgm.tv" },
-    "tmdb": { "enabled": false }
-  },
-  "tmdbApiKey": ""
+  "autoMarkWatched": true,
+  "uiScale": 1.25,
+  "apiSources": [
+    { "type": "bangumi", "url": "https://api.bangumi.one", "key": "" }
+  ]
 }
 ```
 
@@ -194,15 +195,13 @@ opencode.json       → OpenCode 配置（插件声明）
 | 字段 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
 | `mediaDir` | string | `""` | 动漫文件夹根目录 |
-| `playerMode` | string | `"system"` | `"system"`（系统播放器）或 `"mpv"`（mpv + 进度追踪） |
+| `playerMode` | string | `"mpv"` | 播放器模式，固定为 `"mpv"`（mpv + IPC 进度追踪） |
 | `mpvPath` | string | `"mpv"` | mpv 可执行文件路径 |
 | `theme` | string | `"default"` | 色彩主题：`"default"`（粉紫）、`"amber"`（琥珀）、`"ocean"`（海洋）、`"sakura"`（樱花）、`"emerald"`（翡翠）、`"neon"`（霓虹） |
 | `themeMode` | string | `"dark"` | `"dark"` 或 `"light"`，与色彩主题独立 |
-| `uiScale` | number | `100` | UI 缩放百分比 75-150 |
-| `scrapers.bangumi.enabled` | bool | `true` | 启用 Bangumi |
-| `scrapers.bangumi.apiBase` | string | `"https://api.bgm.tv"` | 可换为镜像 `https://api.bangumi.one` |
-| `scrapers.tmdb.enabled` | bool | `false` | 启用 TMDB（需 API Key） |
-| `tmdbApiKey` | string | `""` | TMDB API Key |
+| `autoMarkWatched` | bool | `true` | 播放完成后自动标记为已看 |
+| `uiScale` | number | `1.25` | UI 缩放倍数（前端以 % 显示，范围 75-150，前端除 100 后存储） |
+| `apiSources` | array | `[{type:"bangumi",...}]` | 元数据源列表，每项含 `type`/`url`/`key` |
 
 **注意**: Discovery（发现）视图执行扫描后显示候选列表供用户勾选导入，支持排除/取消关联/获取元数据等管理操作。
 
@@ -239,7 +238,7 @@ mpv 模式下自动记录播放进度到 SQLite。
 - mpv 通过 `spawn` + IPC pipe（`--input-ipc-server`）启动，实时追踪播放进度；spawn 错误通过 Promise 2s 超时窗口捕获并返回前端
 - `activePlays` Map（`filePath → {sessionId, episode, anime}`）仅存内存，服务器重启后丢失；持久化的 `playSessions` 保存在 SQLite
 - 动漫 ID 由 `parsedTitle + (parsedSeason ? '-Season ' + parsedSeason : '')` 生成，重命名文件夹会导致 ID 变化
-- 系统播放器模式不追踪播放时长（无可编程回调），只有 mpv 模式会写入 `playSessions`
+- **只支持 mpv 播放器**（`--input-ipc-server` IPC 管道实时追踪进度）。系统播放器模式已移除。
 - pkg 打包用 `process.pkg ? path.dirname(process.execPath) : __dirname` 处理路径
 - TMDB API 需要配置 API Key 才能启用（设置页填入）
 - 旧格式 `branch` 节点在 `/api/browse` 时自动递归展平为 leaf，无需手动重扫描
@@ -406,6 +405,7 @@ npm run build:nsis           # 仅 NSIS
 | **frontend-design** | `skill("frontend-design")` | Create distinctive, production-grade frontend interfaces with high design quality |
 | **security-review** | `skill("security-review")` | Focused security review of pending git changes |
 | **gsap-core** | `skill("gsap-core")` | GSAP core API — gsap.to(), from(), fromTo(), easing, stagger, matchMedia |
+| **web-design-guidelines** | `skill("web-design-guidelines")` | Review UI code for Web Interface Guidelines compliance |
 | **gsap-timeline** | `skill("gsap-timeline")` | Timeline sequencing, position parameter, nesting, playback |
 | **gsap-scrolltrigger** | `skill("gsap-scrolltrigger")` | Scroll-linked animations, pinning, scrub, triggers |
 | **gsap-plugins** | `skill("gsap-plugins")` | GSAP plugins: Flip, Draggable, ScrollTrigger, SplitText, ScrollSmoother |

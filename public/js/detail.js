@@ -797,7 +797,7 @@ function renderWatchStats(anime) {
     const H = 300;
     canvas.width = W * dpr;
     canvas.height = H * dpr;
-    canvas.style.width = W + 'px';
+    canvas.style.width = '';
     canvas.style.height = H + 'px';
     ctx.scale(dpr, dpr);
 
@@ -1064,6 +1064,8 @@ async function deleteAnime() {
     showToast('已删除');
     goBack();
     loadLibrary();
+    loadDiscovery();
+    loadMemories();
   } catch (e) {
     showToast('删除失败: ' + e.message);
   }

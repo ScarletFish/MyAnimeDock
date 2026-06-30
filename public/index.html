@@ -95,8 +95,8 @@
         <span class="toggle-slider"></span>
       </label>
     </div>
-    <button class="theme-dock-close" onclick="closeThemeDock()" title="关闭">✕</button>
   </div>
+  <button class="theme-dock-close" onclick="closeThemeDock()" title="关闭">✕</button>
 </div>
 
 <!-- Main Content -->
@@ -372,8 +372,6 @@
     </div>
   </section>
 
-</main>
-
 <!-- MetaMatch Modal -->
 <div class="modal-overlay modal-overlay--metamatch" id="metaMatchModal" onclick="if(event.target===this)mmCloseModal()">
   <div class="modal modal--metamatch">
@@ -517,14 +515,7 @@
 
       <!-- Tab: 播放 -->
       <div class="settings-panel" id="tab-playback">
-        <div class="form-group">
-          <label for="settingsPlayerMode">播放器模式</label>
-          <select id="settingsPlayerMode">
-            <option value="system">系统默认播放器</option>
-            <option value="mpv">mpv 播放器</option>
-          </select>
-        </div>
-        <div class="form-group" id="mpvPathGroup" style="display:none">
+        <div class="form-group" id="mpvPathGroup">
           <label for="settingsMpvPath">mpv 可执行文件路径</label>
           <div class="input-with-btn">
             <input type="text" id="settingsMpvPath" placeholder="mpv">
@@ -596,6 +587,8 @@ function switchSettingsTab(btn, tab) {
   document.getElementById('tab-' + tab).classList.add('active');
 }
 </script>
+
+</main>
 
 <!-- Context Menu -->
 <div class="context-menu" id="contextMenu">

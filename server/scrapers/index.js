@@ -122,6 +122,7 @@ function buildSearchTerms(folderParsed, keyword) {
  */
 const _bangumiSearchCache = new Map();
 const _bangumiCacheTTL = 5 * 60 * 1000;
+let _bangumiSearchFailLogged = false;
 
 async function searchBangumi(bangumi, keyword, config) {
   const source = config.apiSources?.find(s => s.type === 'bangumi');
@@ -134,9 +135,13 @@ async function searchBangumi(bangumi, keyword, config) {
     const results = await bangumi.search(keyword, source);
     const filtered = results.filter(r => r.type === 2);
     _bangumiSearchCache.set(keyword, { results: filtered, ts: Date.now() });
+    _bangumiSearchFailLogged = false;
     return filtered;
   } catch (e) {
-    logger.error('Bangumi search failed:', e.message);
+    if (!_bangumiSearchFailLogged) {
+      logger.error('Bangumi search failed:', e.message);
+      _bangumiSearchFailLogged = true;
+    }
     return [];
   }
 }
@@ -157,14 +162,14 @@ async function searchViaAniList(registry, bangumi, searchTerm, config) {
       return searchBangumi(bangumi, searchTerm, config);
     }
 
-    // Use Japanese title to search Bangumi
+    // AniList 只用于获取日文标题，搜索结果不直接使用
     const jpTitle = anilistResults[0].title_native || anilistResults[0].name;
     if (jpTitle) {
       const bangumiResults = await searchBangumi(bangumi, jpTitle, config);
       if (bangumiResults.length > 0) return bangumiResults;
     }
 
-    return anilistResults;
+    return [];
   } catch (e) {
     logger.error('AniList search failed, fallback to Bangumi:', e.message);
     return searchBangumi(bangumi, searchTerm, config);
@@ -336,6 +341,7 @@ class ScraperRegistry {
   clearSearchCache() {
     this._searchCache.clear();
     _bangumiSearchCache.clear();
+    _bangumiSearchFailLogged = false;
   }
 
   /**

@@ -93,7 +93,7 @@ server.js:handleRequest()
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `mediaDir` | string | `""` | Anime folder root path |
-| `playerMode` | string | `"system"` | `"system"` or `"mpv"` |
+| `playerMode` | string | `"mpv"` | `"mpv"` only (system player removed) |
 | `mpvPath` | string | `"mpv"` | MPV executable path |
 | `theme` | string | `"dark"` | `"dark"` or `"light"` |
 | `uiScale` | number | `100` | 75–150, applied as CSS rem font-size |
@@ -251,10 +251,7 @@ POST /api/play
   → server.js (line ~831)
   → Body: { filePath, position }
   → Validate filePath exists (fs.existsSync)
-  → If mode === 'system':
-      ├─ exec(`start "" "${filePath}"`)
-      └─ (no progress tracking possible)
-  → If mode === 'mpv':
+  → Always mpv (system player removed):
       ├─ Find targetAnime/targetEp from data.library
       ├─ Create playSession record in data.playSessions
       ├─ activePlays.set(filePath, { sessionId, episode, anime })

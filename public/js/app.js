@@ -133,7 +133,8 @@ function openThemeDock() {
   }
   const zoomEl = document.getElementById('dockZoom');
   if (zoomEl) {
-    const currentZoom = Math.round((document.documentElement.style.fontSize ? parseFloat(document.documentElement.style.fontSize) / 16 : 1) * 100);
+    const main = document.querySelector('.main-content');
+    const currentZoom = Math.round((parseFloat(main?.style.zoom) || 1) * 100);
     zoomEl.value = currentZoom;
     document.getElementById('dockZoomLabel').textContent = currentZoom + '%';
   }
@@ -169,9 +170,16 @@ function openVisualDock() {
   openThemeDock();
 }
 
-// Zoom via root rem scaling
+// Zoom via content-area scaling
 function applyZoom(scale) {
-  document.documentElement.style.fontSize = (16 * (scale || 1)) + 'px';
+  const s = String(scale || 1);
+  const main = document.querySelector('.main-content');
+  const sidebar = document.querySelector('.sidebar');
+  if (main) {
+    main.style.zoom = s;
+    main.style.height = (100 / parseFloat(s)) + 'vh';
+  }
+  if (sidebar) sidebar.style.zoom = s;
 }
 
 // ─── Reduce Motion ───
@@ -197,10 +205,7 @@ async function openSettings() {
     const config = await API.get('/api/config');
     configCache = config;
     document.getElementById('settingsMediaDir').value = config.mediaDir || '';
-    document.getElementById('settingsPlayerMode').value = config.playerMode || 'system';
     document.getElementById('settingsMpvPath').value = config.mpvPath || '';
-    document.getElementById('mpvPathGroup').style.display =
-      config.playerMode === 'mpv' ? '' : 'none';
     document.getElementById('settingsAutoMark').checked = config.autoMarkWatched !== false;
     document.getElementById('settingsError').textContent = '';
 
@@ -224,7 +229,6 @@ function closeSettings() {
 
 async function saveSettings() {
   const mediaDir = document.getElementById('settingsMediaDir').value.trim();
-  const playerMode = document.getElementById('settingsPlayerMode').value;
   const mpvPath = document.getElementById('settingsMpvPath').value.trim();
 
   if (!mediaDir) {
@@ -236,7 +240,8 @@ async function saveSettings() {
   const rawTheme = document.documentElement.getAttribute('data-theme') || 'dark';
   const newTheme = (rawTheme === 'dark' || rawTheme === 'light') ? 'default' : rawTheme;
   const newThemeMode = document.documentElement.getAttribute('data-theme-mode') || 'dark';
-  const currentZoom = parseFloat(document.documentElement.style.fontSize || '16') / 16;
+  const main = document.querySelector('.main-content');
+  const currentZoom = parseFloat(main?.style.zoom) || 1;
 
   // Build apiSources from simple toggles
   const bangumiUrl = document.getElementById('bangumiUrl').value.trim() || 'https://api.bangumi.one';
@@ -252,7 +257,7 @@ async function saveSettings() {
   try {
     await API.post('/api/config', {
       mediaDir,
-      playerMode,
+      playerMode: 'mpv',
       mpvPath,
       theme: newTheme,
       themeMode: newThemeMode,
@@ -357,16 +362,16 @@ const path = {
 // ─── Native file/directory dialogs (Tauri) ───
 
 async function openDialog(options) {
-  // Tauri v2 withGlobalTauri: plugin API 直接挂载在 __TAURI__.dialog
+  // Tauri v2 withGlobalTauri: plugin API 挂载在 __TAURI__.dialog
   if (window.__TAURI__?.dialog?.open) {
     return await window.__TAURI__.dialog.open(options);
   }
-  // 回退：raw invoke
-  if (window.__TAURI__?.invoke) {
-    return await window.__TAURI__.invoke('plugin:dialog:open', { options });
-  }
+  // 回退：core.invoke（Tauri v2 plugin 命名规则用下划线）
   if (window.__TAURI__?.core?.invoke) {
-    return await window.__TAURI__.core.invoke('plugin:dialog:open', { options });
+    return await window.__TAURI__.core.invoke('plugin:dialog_open', options);
+  }
+  if (window.__TAURI__?.invoke) {
+    return await window.__TAURI__.invoke('plugin:dialog_open', options);
   }
   return null;
 }

@@ -427,6 +427,18 @@ async function saveLibrary(data) {
           totalSeasons: a.totalSeasons ?? null,
         };
 
+        // Check bangumiId uniqueness — skip if another anime already owns it
+        if (a.bangumiId) {
+          const existing = await tx.anime.findFirst({
+            where: { bangumiId: a.bangumiId, NOT: { id: a.id } },
+            select: { id: true },
+          });
+          if (existing) {
+            logger.warn(`bangumiId ${a.bangumiId} already owned by ${existing.id}, skipping ${a.id}`);
+            continue;
+          }
+        }
+
         await tx.anime.upsert({
           where: { id: a.id },
           create: { id: a.id, ...animeData },
@@ -449,7 +461,7 @@ async function saveLibrary(data) {
           });
         }
       }
-    });
+    }, { timeout: 15000 });
     logger.info(`Synced library: ${data.library.length} anime`);
   } catch (e) {
     logger.error('SQLite library save error:', e.message);
@@ -494,7 +506,7 @@ async function saveMyList(data) {
           },
         });
       }
-    });
+    }, { timeout: 15000 });
     logger.info(`Synced MyList: ${(data.myList || []).length} items`);
   } catch (e) {
     logger.error('SQLite myList save error:', e.message);
@@ -539,7 +551,7 @@ async function saveWishlist(data) {
           },
         });
       }
-    });
+    }, { timeout: 15000 });
     logger.info(`Synced Wishlist: ${(data.wishlist || []).length} items`);
   } catch (e) {
     logger.error('SQLite wishlist save error:', e.message);
@@ -620,7 +632,7 @@ async function savePlaySessions(data) {
           },
         });
       }
-    });
+    }, { timeout: 15000 });
   } catch (e) {
     logger.error('SQLite playSessions save error:', e.message);
     throw e;

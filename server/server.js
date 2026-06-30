@@ -2,7 +2,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { exec, spawn } = require('child_process');
+const { spawn } = require('child_process');
 let ffmpegPath = require('ffmpeg-static') || 'ffmpeg';
 const logger = require('./logger').child('[SERVER]');
 
@@ -101,7 +101,7 @@ const cancelledSyncSessions = new Map();
 // --- Config ---
 const DEFAULT_CONFIG = { 
   mediaDir: '', 
-  playerMode: 'system', 
+  playerMode: 'mpv', 
   mpvPath: 'mpv', 
   theme: 'default',
   themeMode: 'dark',
@@ -375,7 +375,7 @@ const server = http.createServer((req, res) => {
         }
         config.mediaDir = resolved;
       }
-      if (parsed.playerMode !== undefined) config.playerMode = parsed.playerMode;
+      config.playerMode = 'mpv'; // 系统播放器模式已移除，固定 mpv
       if (parsed.mpvPath !== undefined) config.mpvPath = parsed.mpvPath;
       if (parsed.theme !== undefined) config.theme = parsed.theme;
       if (parsed.themeMode !== undefined) config.themeMode = parsed.themeMode;
@@ -969,6 +969,25 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // DELETE /api/mylist/:animeId — remove item from MyList
+  const mylistDeleteMatch = urlPath.match(/^\/api\/mylist\/([^/]+)$/);
+  if (mylistDeleteMatch && req.method === 'DELETE') {
+    const animeId = decodeURIComponent(mylistDeleteMatch[1]);
+    if (data.myList) {
+      const idx = data.myList.findIndex(m => m.animeId === animeId);
+      if (idx !== -1) {
+        data.myList.splice(idx, 1);
+      }
+    }
+    db.saveMyList(data).then(() => {
+      jsonResp(res, 200, { ok: true });
+    }).catch(e => {
+      logger.error('MyList delete save error:', e);
+      jsonResp(res, 500, { error: 'Failed to persist' });
+    });
+    return;
+  }
+
   // --- API: memories (backward compat, read from myList) ---
   if (urlPath === '/api/memories' && req.method === 'GET') {
     jsonResp(res, 200, data.memories);
@@ -1087,113 +1106,100 @@ const server = http.createServer((req, res) => {
         jsonResp(res, 404, { error: 'File not found' });
         return;
       }
-      if (config.playerMode === 'mpv') {
-        const mpvPath = config.mpvPath || 'mpv';
-        // Find anime/episode for session tracking
-        let targetAnime, targetEp;
-        for (const a of data.library) {
-          const ep = a.episodes.find(e => e.filePath === filePath);
-          if (ep) { targetAnime = a; targetEp = ep; break; }
-        }
-        let sessionId = null;
-        if (targetAnime && targetEp) {
-          // Auto-mark all previous episodes as watched when starting a new episode
-          if (config.autoMarkWatched && targetEp.number >= 2) {
-            for (const ep of targetAnime.episodes) {
-              if (ep.number < targetEp.number && !ep.watched) {
-                ep.watched = true;
-              }
+      const mpvPath = config.mpvPath || 'mpv';
+      // Find anime/episode for session tracking
+      let targetAnime, targetEp;
+      for (const a of data.library) {
+        const ep = a.episodes.find(e => e.filePath === filePath);
+        if (ep) { targetAnime = a; targetEp = ep; break; }
+      }
+      let sessionId = null;
+      if (targetAnime && targetEp) {
+        // Auto-mark all previous episodes as watched when starting a new episode
+        if (config.autoMarkWatched && targetEp.number >= 2) {
+          for (const ep of targetAnime.episodes) {
+            if (ep.number < targetEp.number && !ep.watched) {
+              ep.watched = true;
             }
           }
-          sessionId = Date.now() + '-' + Math.random().toString(36).slice(2, 8);
-          data.playSessions.push({
-            animeId: targetAnime.id,
-            episodeNumber: targetEp.number,
-            sessionId,
-            startTime: new Date().toISOString(),
-            endTime: null,
-            duration: 0,
-            clockTime: 0,
-            progressStart: position || 0,
-          });
-          if (data.playSessions.length > MAX_PLAY_SESSIONS) {
-            data.playSessions.sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
-            data.playSessions.splice(0, data.playSessions.length - MAX_PLAY_SESSIONS);
-          }
-          activePlays.set(filePath, { sessionId, episode: targetEp, anime: targetAnime });
-          db.savePlaySessions(data);
         }
-        const { startMpv } = require('./mpv-controller');
-        try {
-          let settled = false;
-          let spawnError = null;
-          const spawnResult = await new Promise((resolve) => {
-            startMpv(mpvPath, filePath, position || 0, {
-              onProgress: ({ sessionId: cbSid, filePath: fp, progress, peakPos, watched, duration, final }) => {
-                if (cbSid !== sessionId) return;
-                const active = activePlays.get(fp);
-                if (!active) return;
-                const ep = active.episode;
-                ep.progress = progress;
-                if (duration > 0) ep.duration = duration;
-                if (watched) ep.watched = true;
-                db.updateEpisodeProgress(active.anime.id, ep.number, { progress, duration: duration > 0 ? duration : undefined, watched });
-                if (active.sessionId) {
-                  const session = data.playSessions.find(s => s.sessionId === active.sessionId);
-                  if (session) {
-                    session.duration = Math.max(0, (peakPos || progress) - (session.progressStart || 0));
-                    session.endTime = new Date().toISOString();
-                    const startMs = new Date(session.startTime).getTime();
-                    const endMs = new Date(session.endTime).getTime();
-                    session.clockTime = Math.round((endMs - startMs) / 1000);
-                    db.updatePlaySession(active.sessionId, {
-                      endTime: session.endTime,
-                      duration: session.duration,
-                      clockTime: session.clockTime,
-                    });
-                  }
-                }
-                if (final) {
-                  activePlays.delete(fp);
-                }
-              },
-              onError: (msg) => {
-                const active = activePlays.get(filePath);
-                if (active && active.sessionId) {
-                  const idx = data.playSessions.findIndex(s => s.sessionId === active.sessionId);
-                  if (idx !== -1) data.playSessions.splice(idx, 1);
-                  activePlays.delete(filePath);
-                  db.deletePlaySession(active.sessionId);
-                }
-                spawnError = msg;
-                logger.error('mpv error:', msg);
-                if (!settled) { settled = true; resolve({ error: msg }); }
-              },
-            }, sessionId);
-            // Timeout: if no error within 2s, assume mpv launched successfully
-            setTimeout(() => {
-              if (!settled) { settled = true; resolve(null); }
-            }, 2000);
-          });
-          if (spawnResult?.error) {
-            jsonResp(res, 500, { error: spawnResult.error });
-          } else {
-            jsonResp(res, 200, { ok: true });
-          }
-        } catch (e) {
-          jsonResp(res, 500, { error: e.message });
-        }
-      } else {
-        const cmd = process.platform === 'win32' ? `start "" "${filePath}"`
-          : process.platform === 'darwin' ? `open "${filePath}"`
-          : `xdg-open "${filePath}"`;
-        exec(cmd, (err) => {
-          if (err) {
-            jsonResp(res, 500, { error: err.message });
-          } else {
-            jsonResp(res, 200, { ok: true });
-          }
+        sessionId = Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+        data.playSessions.push({
+          animeId: targetAnime.id,
+          episodeNumber: targetEp.number,
+          sessionId,
+          startTime: new Date().toISOString(),
+          endTime: null,
+          duration: 0,
+          clockTime: 0,
+          progressStart: position || 0,
         });
+        if (data.playSessions.length > MAX_PLAY_SESSIONS) {
+          data.playSessions.sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+          data.playSessions.splice(0, data.playSessions.length - MAX_PLAY_SESSIONS);
+        }
+        activePlays.set(filePath, { sessionId, episode: targetEp, anime: targetAnime });
+        db.savePlaySessions(data);
+      }
+      const { startMpv } = require('./mpv-controller');
+      try {
+        let settled = false;
+        let spawnError = null;
+        const spawnResult = await new Promise((resolve) => {
+          startMpv(mpvPath, filePath, position || 0, {
+            onProgress: ({ sessionId: cbSid, filePath: fp, progress, peakPos, watched, duration, final }) => {
+              if (cbSid !== sessionId) return;
+              const active = activePlays.get(fp);
+              if (!active) return;
+              const ep = active.episode;
+              ep.progress = progress;
+              if (duration > 0) ep.duration = duration;
+              if (watched) ep.watched = true;
+              db.updateEpisodeProgress(active.anime.id, ep.number, { progress, duration: duration > 0 ? duration : undefined, watched });
+              if (active.sessionId) {
+                const session = data.playSessions.find(s => s.sessionId === active.sessionId);
+                if (session) {
+                  session.duration = Math.max(0, (peakPos || progress) - (session.progressStart || 0));
+                  session.endTime = new Date().toISOString();
+                  const startMs = new Date(session.startTime).getTime();
+                  const endMs = new Date(session.endTime).getTime();
+                  session.clockTime = Math.round((endMs - startMs) / 1000);
+                  db.updatePlaySession(active.sessionId, {
+                    endTime: session.endTime,
+                    duration: session.duration,
+                    clockTime: session.clockTime,
+                  });
+                }
+              }
+              if (final) {
+                activePlays.delete(fp);
+              }
+            },
+            onError: (msg) => {
+              const active = activePlays.get(filePath);
+              if (active && active.sessionId) {
+                const idx = data.playSessions.findIndex(s => s.sessionId === active.sessionId);
+                if (idx !== -1) data.playSessions.splice(idx, 1);
+                activePlays.delete(filePath);
+                db.deletePlaySession(active.sessionId);
+              }
+              spawnError = msg;
+              logger.error('mpv error:', msg);
+              if (!settled) { settled = true; resolve({ error: msg }); }
+            },
+          }, sessionId);
+          // Timeout: if no error within 2s, assume mpv launched successfully
+          setTimeout(() => {
+            if (!settled) { settled = true; resolve(null); }
+          }, 2000);
+        });
+        if (spawnResult?.error) {
+          jsonResp(res, 500, { error: spawnResult.error });
+        } else {
+          jsonResp(res, 200, { ok: true });
+        }
+      } catch (e) {
+        jsonResp(res, 500, { error: e.message });
       }
     }).catch(e => {
       jsonResp(res, 400, { error: 'Invalid request body' });
@@ -1374,7 +1380,7 @@ const server = http.createServer((req, res) => {
           } catch (e) {
             return { animeId, success: false, error: e.message };
           }
-        }, 6);
+        }, 3);
 
         results.push(...syncResults);
         Promise.all([db.saveLibrary(data), saveScannedTree(data.scannedTree)]);
@@ -1499,7 +1505,7 @@ const server = http.createServer((req, res) => {
 
         processed++;
         if (processed % 5 === 0) Promise.all([db.saveLibrary(data), saveScannedTree(data.scannedTree)]);
-      }, 6);
+      }, 3);
 
       Promise.all([db.saveLibrary(data), saveScannedTree(data.scannedTree)]);
       registry.clearSearchCache();

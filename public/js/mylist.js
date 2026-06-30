@@ -239,12 +239,22 @@ function toggleStatusPopover(e, id) {
     return `
       <div class="status-popover-item${active ? ' status-popover-item--active' : ''}"
            data-status="${s.value}">${s.label}</div>`;
-  }).join('');
+  }).join('') + `
+      <div class="status-popover-separator"></div>
+      <div class="status-popover-item status-popover-item--danger"
+           data-action="remove">移除</div>`;
 
   popover.addEventListener('click', (ev) => {
     const itemEl = ev.target.closest('.status-popover-item');
     if (!itemEl) return;
+    if (itemEl.dataset.action === 'remove') {
+      popover.remove();
+      activeStatusPopover = null;
+      removeMyListItem(id);
+      return;
+    }
     const status = itemEl.dataset.status;
+    if (!status) return;
     popover.remove();
     activeStatusPopover = null;
     setMyListItemStatus(id, status);
@@ -332,7 +342,9 @@ function showMyListContextMenu(e, id) {
           ${active ? '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" style="vertical-align:middle;margin-right:4px"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
           ${s.label}
         </div>`;
-    }).join('');
+    }).join('') + `
+      <div class="context-menu-divider"></div>
+      <div class="context-menu-item context-menu-danger" onclick="event.stopPropagation();removeMyListItem('${id}')">移除</div>`;
   }
 
   // Position
@@ -363,6 +375,20 @@ async function deleteWishlistItem(id) {
   if (!(await showConfirm('从愿望单移除？'))) return;
   try {
     await API.del(`/api/wishlist/${encodeURIComponent(id)}`);
+    showToast('已移除');
+    loadMyList();
+  } catch (e) {
+    showToast('移除失败: ' + e.message);
+  }
+}
+
+async function removeMyListItem(id) {
+  hideContextMenu();
+  const item = mylistData.find(i => i.id === id);
+  const name = item ? (item.bangumiTitle || item.title || id) : id;
+  if (!(await showConfirm(`将「${name}」从列表中移除？<br><small style="color:var(--text2)">资料库中的条目不受影响</small>`))) return;
+  try {
+    await API.del(`/api/mylist/${encodeURIComponent(id)}`);
     showToast('已移除');
     loadMyList();
   } catch (e) {

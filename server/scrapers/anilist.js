@@ -6,19 +6,22 @@ const logger = require('../logger').child('[ANILIST]');
 
 const ANILIST_API = 'https://graphql.anilist.co';
 const ANILIST_IMAGE_BASE = 'https://s4.anilist.co/file';
-const TIMEOUT = 15000;
+const TIMEOUT = 3000;
 
 let useCurlFallback = false;
+let curlFallbackUntil = 0;
+const CURL_COOLDOWN = 60000;
 
 function curlFetch(url, body) {
-  const args = ['-s', '--max-time', String(TIMEOUT / 1000), '-X', 'POST',
+  const args = ['-s', '--max-time', '5', '-X', 'POST',
     '-H', 'Content-Type: application/json',
     '-d', body,
     '-H', 'Accept: application/json',
     url];
-  const result = spawnSync('curl', args, { timeout: TIMEOUT, encoding: 'utf-8' });
+  const result = spawnSync('curl', args, { timeout: 4000, encoding: 'utf-8' });
   if (result.error) throw new Error(`curl 调用失败: ${result.error.message}`);
   if (result.stderr) logger.error('curl stderr:', result.stderr);
+  if (!result.stdout || !result.stdout.trim()) throw new Error('curl 返回空响应');
   return JSON.parse(result.stdout);
 }
 
@@ -39,20 +42,23 @@ async function fetchWithTimeout(url, options = {}) {
 }
 
 async function tryFetch(url, options = {}) {
-  if (!useCurlFallback) {
+  if (!useCurlFallback || Date.now() > curlFallbackUntil) {
+    useCurlFallback = false;
     try {
       const res = await fetchWithTimeout(url, options);
       if (res.ok) return res;
       const text = await res.text();
       if (text.includes('fetch failed') || text.includes('ECONNREFUSED')) {
         useCurlFallback = true;
+        curlFallbackUntil = Date.now() + CURL_COOLDOWN;
         logger.info('Network fetch failed, falling back to curl');
       } else {
         throw new Error(`AniList API error (${res.status}): ${text.substring(0, 200)}`);
       }
     } catch (e) {
-      if (e.message.includes('fetch failed') || e.message.includes('ECONNREFUSED') || e.message.includes('ENOTFOUND')) {
+      if (e.message.includes('fetch failed') || e.message.includes('ECONNREFUSED') || e.message.includes('ENOTFOUND') || e.message.includes('请求超时')) {
         useCurlFallback = true;
+        curlFallbackUntil = Date.now() + CURL_COOLDOWN;
         logger.info('Network fetch failed, falling back to curl');
       } else {
         throw e;
@@ -61,7 +67,12 @@ async function tryFetch(url, options = {}) {
   }
 
   const body = options.body || null;
-  return { json: () => Promise.resolve(curlFetch(url, body)) };
+  try {
+    return { json: () => Promise.resolve(curlFetch(url, body)) };
+  } catch (e) {
+    useCurlFallback = false;
+    throw e;
+  }
 }
 
 // GraphQL Queries

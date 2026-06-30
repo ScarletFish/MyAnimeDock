@@ -5,17 +5,20 @@ const { nodeFetch } = require('./node-fetch');
 const logger = require('../logger').child('[BANGUMI]');
 
 const USER_AGENT = 'anime-manager (https://github.com/ScarletFish/Gallery)';
-const TIMEOUT = 15000;
+const TIMEOUT = 3000;
 
 let useCurlFallback = false;
+let curlFallbackUntil = 0;
+const CURL_COOLDOWN = 60000;
 
 function curlFetch(method, url, body) {
-  const args = ['-s', '--max-time', String(TIMEOUT / 1000), '-X', method];
+  const args = ['-s', '--max-time', '5', '-X', method];
   if (body) args.push('-H', 'Content-Type: application/json', '-d', body);
   args.push('-H', `User-Agent: ${USER_AGENT}`, url);
-  const result = spawnSync('curl', args, { timeout: TIMEOUT, encoding: 'utf-8' });
+  const result = spawnSync('curl', args, { timeout: 4000, encoding: 'utf-8' });
   if (result.error) throw new Error(`curl 调用失败: ${result.error.message}`);
   if (result.stderr) logger.error('curl stderr:', result.stderr);
+  if (!result.stdout || !result.stdout.trim()) throw new Error('curl 返回空响应');
   return JSON.parse(result.stdout);
 }
 
@@ -36,20 +39,23 @@ async function fetchWithTimeout(url, options = {}) {
 }
 
 async function tryFetch(url, options = {}) {
-  if (!useCurlFallback) {
+  if (!useCurlFallback || Date.now() > curlFallbackUntil) {
+    useCurlFallback = false;
     try {
       const res = await fetchWithTimeout(url, options);
       if (res.ok) return res;
       const text = await res.text();
       if (text.includes('illegal base64 data') || text.includes('can\'t decode request body') || (res.status === 403 && text.includes('<html'))) {
         useCurlFallback = true;
+        curlFallbackUntil = Date.now() + CURL_COOLDOWN;
         logger.info('Detected proxy/Cloudflare interference (HTTP ' + res.status + '), falling back to curl');
       } else {
         throw new Error(`Bangumi API error (${res.status}): ${text.substring(0, 200)}`);
       }
     } catch (e) {
-      if (e.message.includes('fetch failed') || e.message.includes('ECONNREFUSED') || e.message.includes('ENOTFOUND')) {
+      if (e.message.includes('fetch failed') || e.message.includes('ECONNREFUSED') || e.message.includes('ENOTFOUND') || e.message.includes('请求超时')) {
         useCurlFallback = true;
+        curlFallbackUntil = Date.now() + CURL_COOLDOWN;
         logger.info('Network fetch failed, falling back to curl');
       } else {
         throw e;
@@ -59,7 +65,12 @@ async function tryFetch(url, options = {}) {
 
   const method = (options.method || 'GET').toUpperCase();
   const body = options.body || null;
-  return { json: () => Promise.resolve(curlFetch(method, url, body)) };
+  try {
+    return { json: () => Promise.resolve(curlFetch(method, url, body)) };
+  } catch (e) {
+    useCurlFallback = false;
+    throw e;
+  }
 }
 
 class BangumiScraper {

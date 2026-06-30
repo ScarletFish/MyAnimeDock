@@ -1172,9 +1172,11 @@ html {
 /* Two-column layout */
 .detail-layout {
   display: grid;
-  grid-template-columns: clamp(14rem, 21vw, 19.5rem) 1fr;
-  gap: clamp(1.5rem, 2.5vw, 2.5rem);
+  grid-template-columns: clamp(14rem, 22vw, 24rem) 1fr;
+  gap: clamp(1.5rem, 3vw, 3rem);
   align-items: start;
+  max-width: min(1400px, 85vw);
+  margin: 0 auto;
 }
 
 .detail-left {
@@ -1524,8 +1526,8 @@ html {
   white-space: nowrap;
 }
 .detail-tags .detail-tag:nth-child(even) {
-  background: rgba(var(--accent-secondary-rgb), 0.1);
-  color: var(--accent-secondary);
+  background: rgba(var(--accent-rgb), 0.1);
+  color: var(--accent-soft);
 }
 
 .detail-summary {
@@ -2050,6 +2052,21 @@ html {
 .status-popover-item--active {
   color: var(--accent) !important;
   font-weight: 600;
+}
+
+.status-popover-separator {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 8px;
+}
+
+.status-popover-item--danger {
+  color: var(--error);
+}
+
+.status-popover-item--danger:hover {
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--error);
 }
 
 /* Responsive */
@@ -3459,6 +3476,7 @@ html.theme-transitioning .theme-dock {
   display: flex;
   align-items: center;
   gap: var(--space-5);
+  padding-right: 32px;
 }
 
 .theme-dock-section {
@@ -3499,6 +3517,9 @@ html.theme-transitioning .theme-dock {
 }
 
 .theme-dock-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
   background: none;
   border: none;
   color: var(--fg-muted);
@@ -3508,7 +3529,6 @@ html.theme-transitioning .theme-dock {
   line-height: 1;
   border-radius: var(--radius-sm);
   transition: color var(--duration-fast) var(--ease-out), background var(--duration-fast) var(--ease-out);
-  margin-left: auto;
 }
 .theme-dock-close:hover {
   color: var(--fg-primary);

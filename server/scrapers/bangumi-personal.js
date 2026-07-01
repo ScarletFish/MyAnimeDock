@@ -104,7 +104,7 @@ class BangumiPersonal {
     if (!this.clientId || !this.clientSecret) {
       throw new Error('请先填入 Bangumi Client ID 和 Client Secret');
     }
-    const body = JSON.stringify({
+    const params = new URLSearchParams({
       client_id: this.clientId,
       client_secret: this.clientSecret,
       code,
@@ -113,8 +113,8 @@ class BangumiPersonal {
     });
     const res = await bgmFetch(TOKEN_ENDPOINT, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'User-Agent': UA },
-      body,
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': UA },
+      body: params.toString(),
     }, 10000);
     if (!res.ok) {
       const txt = await res.text().catch(() => '');

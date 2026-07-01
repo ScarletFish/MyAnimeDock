@@ -342,6 +342,42 @@ Tauri (窗口壳)
 - 搜索无结果时显示「未检索到结果 · 没有匹配"xxx"的动漫」（`library.js` 中动态切换 empty state 文案）
 - **Modal 弹窗模式**：`.modal-overlay` 包裹 `.modal`，overlay 设 `onclick="if(event.target===this)closeFn()"` 支持点击遮罩层关闭；右上角加 `.modal-close-btn`（✕ SVG 图标）作为显式关闭入口；底部 `.modal-actions` 不设「取消」文字按钮。参见 `#syncModal` 和 `#memoryModal`。
 
+### CSS 缩放标准（`--scale` 变量）
+
+UI 缩放使用 CSS 自定义属性 `--scale` 实现，**禁止使用 CSS `zoom`**（导致 GSAP Flip 断裂、fixed 元素错位）。
+
+**机制**：
+- `:root { --scale: 1 }` 定义基准值（`styles.css:43`）
+- `applyZoom(scale)`（`app.js:173`）设置 `document.documentElement.style.setProperty('--scale', s)`
+- 所有可缩放尺寸通过 `calc(X * var(--scale))` 级联计算
+
+**硬性规则**：
+
+| 场景 | 做法 | 示例 |
+|------|------|------|
+| 间距/内边距 | 使用 `--space-*` 变量 | `padding: var(--space-4)` |
+| 圆角 | 使用 `--radius-*` 变量 | `border-radius: var(--radius-md)` |
+| font-size | 必须用 `calc(Xrem * var(--scale))` | `font-size: calc(0.8125rem * var(--scale))` |
+| 容器 max-width | 乘以 `--scale` | `max-width: calc(75rem * var(--scale))` |
+| grid gap/clamp 值 | 乘以 `--scale` | `gap: calc(clamp(1.5rem, 3vw, 3rem) * var(--scale))` |
+| 网格卡片尺寸 | `applyGridZoom()` 已自动处理 | 通过 `library.js:22` 乘入 `--scale` |
+| 固定覆盖层（dock/toast/context-menu） | 禁用缩放：`--scale: 1` | `.theme-dock { --scale: 1; }` |
+| JS inline style 尺寸 | 读取 `getComputedStyle` 的 `--scale` 乘算 | `parseFloat(getComputedStyle(docEl).getPropertyValue('--scale'))` |
+
+**可用的 CSS 变量**（`:root`，均自动缩放）：
+```
+--space-1/2/3/4/5/6/8/10/12/16  → 间距、内边距、外边距、gap
+--radius-sm/md/lg/xl             → 圆角
+```
+
+**例外**（不缩放的值）：
+- `z-index`、`opacity`、`flex`（无单位值）
+- `vw`/`vh`/`%` 值（视口/容器相对）
+- `s`/`ms`（动画时长）
+- `deg`（角度）
+- `line-height`（无单位时）
+- `box-shadow` 偏移（不缩放更自然）
+
 ## Development Workflow — 四层验证
 
 **目标**：避免每次修改都打包 MSI/NSIS，根据改动类型选择最快的验证方式。

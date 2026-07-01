@@ -1681,19 +1681,32 @@ const server = http.createServer((req, res) => {
     const code = params.get('code');
     if (!code) {
       // 用户拒绝授权或被重定向到错误页
-      res.writeHead(302, { 'Location': '/index.html?bangumi_auth=denied' });
-      res.end();
+      const deniedHtml = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>\u6388\u6743\u5df2\u62d2\u7edd</title><style>body{font-family:-apple-system,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#1a1a2e;color:#e0e0e0;text-align:center}.msg{max-width:400px;padding:2rem}h2{margin:0 0 .5rem;color:#f59e0b}p{margin:0;color:#a0a0a0;font-size:.9rem}</style></head><body><div class=\"msg\"><h2>\u2717 \u6388\u6743\u5df2\u62d2\u7edd</h2><p>\u6b64\u9875\u9762\u53ef\u4ee5\u5173\u95ed\uff0c\u8bf7\u8fd4\u56de\u5e94\u7528\u3002</p></div><script>window.close()</script></body></html>';
+      res.writeHead(200, {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Content-Length': Buffer.byteLength(deniedHtml)
+      });
+      res.end(deniedHtml);
       return;
     }
     bangumiPersonal.exchangeCode(code).then(state => {
       saveConfig(config);
-      // 重定向回前端（通过 URL hash 传递状态）
-      res.writeHead(302, { 'Location': '/index.html?bangumi_auth=success' });
-      res.end();
+      // 返回自动关闭页：浏览器标签页会尝试关闭，失败则显示提示
+      const closeHtml = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>\u6388\u6743\u5b8c\u6210</title><style>body{font-family:-apple-system,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#1a1a2e;color:#e0e0e0;text-align:center}.msg{max-width:400px;padding:2rem}h2{margin:0 0 .5rem;color:#22c55e}p{margin:0;color:#a0a0a0;font-size:.9rem}</style></head><body><div class=\"msg\"><h2>\u2713 \u6388\u6743\u5b8c\u6210</h2><p>\u6b64\u9875\u9762\u53ef\u4ee5\u5173\u95ed\uff0c\u8bf7\u8fd4\u56de\u5e94\u7528\u7ee7\u7eed\u64cd\u4f5c\u3002</p></div><script>window.close()</script></body></html>';
+      res.writeHead(200, {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Content-Length': Buffer.byteLength(closeHtml)
+      });
+      res.end(closeHtml);
     }).catch(e => {
       logger.error('Bangumi OAuth callback error:', e.message);
-      res.writeHead(302, { 'Location': '/index.html?bangumi_auth=error' });
-      res.end();
+      const errMsg = (e.message || '\u67e5\u770b\u63a7\u5236\u53f0\u8f93\u51fa').replace(/[<>&"']/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'})[c]);
+      const closeHtml = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>\u6388\u6743\u5931\u8d25</title><style>body{font-family:-apple-system,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#1a1a2e;color:#e0e0e0;text-align:center}.msg{max-width:400px;padding:2rem}h2{margin:0 0 .5rem;color:#ef4444}p{margin:0;color:#a0a0a0;font-size:.9rem}</style></head><body><div class=\"msg\"><h2>\u2717 \u6388\u6743\u5931\u8d25</h2><p>' + errMsg + '</p></div><script>window.close()</script></body></html>';
+      res.writeHead(200, {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Content-Length': Buffer.byteLength(closeHtml)
+      });
+      res.end(closeHtml);
     });
     return;
   }

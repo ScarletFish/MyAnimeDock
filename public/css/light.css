@@ -1,0 +1,320 @@
+/* ─── Light Theme Modal ─── */
+/* ─── Light Theme ─── */
+
+/* ═══════════════════════════════════════
+   Light Mode Overrides
+   All :is([data-theme="light"], ...) rules consolidated here.
+   ═══════════════════════════════════════ */
+
+/* ─── Atmosphere & Layout ─── */
+:is([data-theme="light"], [data-theme-mode="light"]) .ambient-orb { display: none; }
+:is([data-theme="light"], [data-theme-mode="light"]) body::before {
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 30%, rgba(var(--accent-rgb), 0.035) 0%, transparent 60%),
+    var(--bg-deep);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .sidebar { border-right-color: var(--border); }
+:is([data-theme="light"], [data-theme-mode="light"]) .sidebar-brand { border-bottom-color: var(--border); }
+:is([data-theme="light"], [data-theme-mode="light"]) .sidebar-bottom { border-top-color: var(--border); }
+:is([data-theme="light"], [data-theme-mode="light"]) html { scrollbar-color: var(--bg-surface) transparent; }
+:is([data-theme="light"], [data-theme-mode="light"]) ::-webkit-scrollbar-thumb { background: var(--bg-surface); }
+:is([data-theme="light"], [data-theme-mode="light"]) ::-webkit-scrollbar-thumb:hover { background: var(--fg-muted); }
+
+/* ─── Nav ─── */
+:is([data-theme="light"], [data-theme-mode="light"]) .nav-btn:hover {
+  background: rgba(44, 36, 24, 0.05);
+  color: var(--accent);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .nav-btn.active { background: rgba(var(--accent-rgb), 0.07); }
+:is([data-theme="light"], [data-theme-mode="light"]) .nav-btn-danger:hover { background: rgba(239, 68, 68, 0.05) !important; }
+:is([data-theme="light"], [data-theme-mode="light"]) .nav-btn::after {
+  background: var(--bg-elevated);
+  border-color: var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ─── Buttons ─── */
+:is([data-theme="light"], [data-theme-mode="light"]) .btn { border-color: rgba(44, 36, 24, 0.10); }
+:is([data-theme="light"], [data-theme-mode="light"]) .btn:hover:not(.btn-primary):not(.btn-outline):not(.btn-ghost):not(.btn-danger):not(.btn-accent) {
+  border-color: rgba(44, 36, 24, 0.20);
+  background: rgba(44, 36, 24, 0.03);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .btn-outline:hover { background: rgba(var(--accent-rgb), 0.06); }
+:is([data-theme="light"], [data-theme-mode="light"]) .btn-primary { box-shadow: 0 0 20px rgba(var(--accent-rgb), 0.12); }
+:is([data-theme="light"], [data-theme-mode="light"]) .btn-primary:hover { box-shadow: 0 0 36px rgba(var(--accent-rgb), 0.22); }
+:is([data-theme="light"], [data-theme-mode="light"]) .btn-danger { border-color: rgba(239, 68, 68, 0.20); }
+:is([data-theme="light"], [data-theme-mode="light"]) .btn-danger:hover { background: rgba(239, 68, 68, 0.06); }
+:is([data-theme="light"], [data-theme-mode="light"]) .btn-accent { box-shadow: none; }
+:is([data-theme="light"], [data-theme-mode="light"]) .btn-ghost {
+  border-color: rgba(44, 36, 24, 0.12);
+  color: var(--fg-secondary);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .btn-ghost:hover {
+  background: rgba(44, 36, 24, 0.04);
+  border-color: rgba(44, 36, 24, 0.22);
+  color: var(--fg-primary);
+}
+
+/* ─── Search ─── */
+:is([data-theme="light"], [data-theme-mode="light"]) .search-input {
+  background: var(--bg-card);
+  border-color: rgba(44, 36, 24, 0.10);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .search-input:focus {
+  border-color: rgba(var(--accent-rgb), 0.35);
+  box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.06);
+}
+
+/* ─── Form Group ─── */
+:is([data-theme="light"], [data-theme-mode="light"]) .form-group input,
+:is([data-theme="light"], [data-theme-mode="light"]) .form-group select,
+:is([data-theme="light"], [data-theme-mode="light"]) .form-group textarea {
+  background: var(--bg-card);
+  border-color: rgba(44, 36, 24, 0.10);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .form-group input:focus,
+:is([data-theme="light"], [data-theme-mode="light"]) .form-group select:focus,
+:is([data-theme="light"], [data-theme-mode="light"]) .form-group textarea:focus {
+  border-color: rgba(var(--accent-rgb), 0.30);
+  box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.04);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .form-group input:hover,
+:is([data-theme="light"], [data-theme-mode="light"]) .form-group select:hover,
+:is([data-theme="light"], [data-theme-mode="light"]) .form-group textarea:hover {
+  border-color: rgba(var(--accent-rgb), 0.22);
+  background: var(--bg-elevated);
+  box-shadow: 0 2px 8px rgba(44, 36, 24, 0.06);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .form-group input[type="text"],
+:is([data-theme="light"], [data-theme-mode="light"]) .form-group input[type="password"],
+:is([data-theme="light"], [data-theme-mode="light"]) .form-group select {
+  background: var(--bg-card);
+  border-color: rgba(44, 36, 24, 0.10);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .form-group input:focus,
+:is([data-theme="light"], [data-theme-mode="light"]) .form-group select:focus {
+  border-color: rgba(var(--accent-rgb), 0.30);
+  box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.04);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .form-group input:hover,
+:is([data-theme="light"], [data-theme-mode="light"]) .form-group select:hover {
+  border-color: rgba(var(--accent-rgb), 0.22);
+  background: var(--bg-elevated);
+  box-shadow: 0 2px 8px rgba(44, 36, 24, 0.06);
+}
+
+/* ─── Checkbox / Toggle ─── */
+:is([data-theme="light"], [data-theme-mode="light"]) .checkbox-visual {
+  background: var(--bg-card);
+  border-color: rgba(44, 36, 24, 0.15);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .toggle-slider {
+  background: var(--bg-card);
+  border-color: rgba(44, 36, 24, 0.15);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .toggle-slider::before { background: rgba(44, 36, 24, 0.4); }
+:is([data-theme="light"], [data-theme-mode="light"]) .toggle-switch input:checked + .toggle-slider::before { background: #fff; }
+
+/* ─── Range ─── */
+:is([data-theme="light"], [data-theme-mode="light"]) input[type="range"] { background: rgba(44, 36, 24, 0.10); }
+:is([data-theme="light"], [data-theme-mode="light"]) input[type="range"]::-webkit-slider-thumb { border-color: #fff; }
+
+/* ─── Anime Card ─── */
+:is([data-theme="light"], [data-theme-mode="light"]) .anime-card {
+  box-shadow: 0 2px 12px rgba(44, 36, 24, 0.06);
+  border-color: rgba(44, 36, 24, 0.06);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .anime-card:hover {
+  transform: translateY(-6px) scale(1.02);
+  box-shadow:
+    0 16px 48px rgba(44, 36, 24, 0.12),
+    0 0 60px rgba(var(--accent-rgb), 0.06);
+  border-color: rgba(var(--accent-rgb), 0.15);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .anime-card .overlay {
+  background: linear-gradient(transparent 20%, rgba(44, 36, 24, 0.88) 80%);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .anime-card .overlay h3 { color: #fff; }
+:is([data-theme="light"], [data-theme-mode="light"]) .season-badge { background: rgba(44, 36, 24, 0.06); }
+
+/* ─── Episodes ─── */
+:is([data-theme="light"], [data-theme-mode="light"]) .episode-item {
+  background: var(--bg-card);
+  border-color: rgba(44, 36, 24, 0.06);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .episode-item:hover {
+  background: var(--bg-elevated);
+  border-color: rgba(44, 36, 24, 0.12);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .episode-status.unwatched { background: rgba(44, 36, 24, 0.04); }
+:is([data-theme="light"], [data-theme-mode="light"]) .episode-status.watching { background: rgba(255, 170, 0, 0.1); }
+:is([data-theme="light"], [data-theme-mode="light"]) .episode-progress-wrap { background: rgba(44, 36, 24, 0.08); }
+
+/* ─── Memory Card ─── */
+:is([data-theme="light"], [data-theme-mode="light"]) .memory-card:hover {
+  box-shadow: 0 8px 32px rgba(44,36,24,0.15), 0 0 40px rgba(var(--accent-rgb),0.05);
+}
+
+/* ─── Modal ─── */
+:is([data-theme="light"], [data-theme-mode="light"]) .modal-overlay { background: rgba(44, 36, 24, 0.45); }
+:is([data-theme="light"], [data-theme-mode="light"]) .modal {
+  background: var(--bg-elevated);
+  border-color: rgba(44, 36, 24, 0.08);
+  box-shadow: 0 8px 48px rgba(44, 36, 24, 0.15);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .modal--settings {
+  background: rgba(var(--bg-rgb), 0.82);
+  border-color: rgba(var(--bg-rgb), 0.2);
+  box-shadow: 0 8px 48px rgba(44, 36, 24, 0.1);
+}
+
+/* ─── Toast ─── */
+:is([data-theme="light"], [data-theme-mode="light"]) .toast {
+  background: var(--bg-card);
+  border-color: rgba(44, 36, 24, 0.08);
+  box-shadow: 0 4px 24px rgba(44, 36, 24, 0.12);
+}
+
+/* ─── Search Results ─── */
+:is([data-theme="light"], [data-theme-mode="light"]) .search-result-item { background: var(--bg-surface); }
+:is([data-theme="light"], [data-theme-mode="light"]) .search-result-item:hover { border-color: var(--accent); }
+
+/* ─── Detail View ─── */
+:is([data-theme="light"], [data-theme-mode="light"]) .detail-nav-arrow {
+  filter: drop-shadow(0 2px 8px rgba(44, 36, 24, 0.15));
+  stroke: var(--fg-secondary);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .detail-nav-close {
+  filter: drop-shadow(0 2px 8px rgba(44, 36, 24, 0.15));
+  stroke: var(--fg-secondary);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) #detailCover .gray-cover { background: var(--bg-surface); }
+:is([data-theme="light"], [data-theme-mode="light"]) .detail-cover-wrap {
+  box-shadow:
+    0 8px 32px rgba(44, 36, 24, 0.10),
+    0 0 40px rgba(var(--accent-rgb), 0.03);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .detail-info-line {
+  background: rgba(44, 36, 24, 0.04);
+  border-color: rgba(44, 36, 24, 0.10);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .detail-info-line .info-tag {
+  background: rgba(var(--accent-secondary-rgb), 0.08);
+  color: var(--accent-secondary);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .detail-tags .detail-tag { background: rgba(var(--accent-rgb), 0.08); }
+:is([data-theme="light"], [data-theme-mode="light"]) .detail-tags .detail-tag-toggle { background: transparent; }
+:is([data-theme="light"], [data-theme-mode="light"]) .detail-episodes-header { border-color: rgba(var(--accent-secondary-rgb), 0.12); }
+
+/* ─── Discovery ─── */
+:is([data-theme="light"], [data-theme-mode="light"]) .discovery-hero { border-color: rgba(44, 36, 24, 0.06); }
+:is([data-theme="light"], [data-theme-mode="light"]) .discovery-hero-bg {
+  background:
+    radial-gradient(ellipse 70% 80% at 50% 30%, rgba(var(--accent-rgb), 0.04) 0%, transparent 60%),
+    var(--bg-elevated);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .discovery-hero-path { color: var(--fg-muted); }
+:is([data-theme="light"], [data-theme-mode="light"]) .discovery-stat {
+  background: var(--bg-card);
+  border-color: rgba(44, 36, 24, 0.06);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .discovery-actions {
+  background: var(--bg-card);
+  border-color: rgba(44, 36, 24, 0.06);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .discovery-badge--imported { background: rgba(44, 36, 24, 0.06); }
+:is([data-theme="light"], [data-theme-mode="light"]) .discovery-sibling-group::before { opacity: 0.5; }
+:is([data-theme="light"], [data-theme-mode="light"]) .discovery-card:hover { border-color: rgba(var(--accent-rgb), 0.15); }
+:is([data-theme="light"], [data-theme-mode="light"]) .discovery-card-toggle:hover { background: rgba(44, 36, 24, 0.03); }
+:is([data-theme="light"], [data-theme-mode="light"]) .discovery-card-row:hover { background: rgba(var(--accent-rgb), 0.02); }
+:is([data-theme="light"], [data-theme-mode="light"]) .discovery-card-file:hover { background: rgba(44, 36, 24, 0.04); }
+:is([data-theme="light"], [data-theme-mode="light"]) .discovery-card-action { border-color: rgba(44, 36, 24, 0.10); }
+:is([data-theme="light"], [data-theme-mode="light"]) .discovery-card-unlink:hover {
+  color: var(--error);
+  border-color: rgba(239, 68, 68, 0.25);
+  background: rgba(239, 68, 68, 0.05);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .discovery-card-exclude:hover {
+  color: var(--warning);
+  border-color: rgba(245, 158, 11, 0.25);
+  background: rgba(245, 158, 11, 0.05);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .discovery-card-unexclude:hover {
+  color: var(--success);
+  border-color: rgba(34, 197, 94, 0.25);
+  background: rgba(34, 197, 94, 0.05);
+}
+
+/* ─── Filters ─── */
+:is([data-theme="light"], [data-theme-mode="light"]) .filter-group { border-color: rgba(44, 36, 24, 0.10); }
+:is([data-theme="light"], [data-theme-mode="light"]) .filter-btn {
+  border-color: rgba(44, 36, 24, 0.08);
+  color: var(--fg-secondary);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .filter-btn:hover {
+  background: rgba(44, 36, 24, 0.05);
+  color: var(--fg-primary);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .filter-btn--active {
+  background: rgba(var(--accent-rgb), 0.08);
+  color: var(--accent);
+}
+
+/* ─── Context Menu ─── */
+:is([data-theme="light"], [data-theme-mode="light"]) .context-menu {
+  background: rgba(255, 255, 255, 0.94);
+  border-color: rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.04),
+    0 8px 24px rgba(0, 0, 0, 0.08),
+    0 16px 48px rgba(0, 0, 0, 0.06);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .context-menu-item:hover { background: rgba(0, 0, 0, 0.05); }
+:is([data-theme="light"], [data-theme-mode="light"]) .context-menu-divider { background: rgba(0, 0, 0, 0.08); }
+:is([data-theme="light"], [data-theme-mode="light"]) .context-menu-danger:hover { background: rgba(239, 68, 68, 0.08); }
+
+/* ─── Watch Card / Heatmap ─── */
+:is([data-theme="light"], [data-theme-mode="light"]) .watch-card-progress { background: rgba(44, 36, 24, 0.10); }
+:is([data-theme="light"], [data-theme-mode="light"]) .heatmap-cell { border: 1px solid rgba(44, 36, 24, 0.08); }
+:is([data-theme="light"], [data-theme-mode="light"]) .heatmap-cell.unwatched { background: color-mix(in srgb, var(--heatmap-unwatched) 30%, transparent); }
+:is([data-theme-mode="dark"], [data-theme="dark"]) .heatmap-cell { border: 1px solid rgba(255, 255, 255, 0.12); }
+
+/* ─── Theme Dock ─── */
+:is([data-theme="light"], [data-theme-mode="light"]) .theme-dock {
+  background: rgba(var(--bg-rgb), 0.92);
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.08);
+}
+
+/* ─── Metamatch (mm-*) ─── */
+:is([data-theme="light"], [data-theme-mode="light"]) .modal-m-filterbar { background: var(--bg-elevated); }
+:is([data-theme="light"], [data-theme-mode="light"]) .modal-m-topbar { background: var(--bg-card); }
+:is([data-theme="light"], [data-theme-mode="light"]) .modal-m-progress { background: var(--bg-elevated); }
+:is([data-theme="light"], [data-theme-mode="light"]) .mm-hero-title { color: var(--fg-primary); }
+:is([data-theme="light"], [data-theme-mode="light"]) .mm-bento-tile { background: var(--bg-elevated); }
+:is([data-theme="light"], [data-theme-mode="light"]) .mm-batch-bar {
+  background: var(--bg-elevated);
+  border-color: rgba(200, 48, 80, 0.15);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .mm-row:hover { background: var(--bg-elevated); }
+:is([data-theme="light"], [data-theme-mode="light"]) .mm-row--selected {
+  background: rgba(200, 48, 80, 0.06) !important;
+  box-shadow: inset 3px 0 0 #c43050;
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .mm-row--batch {
+  background: rgba(200, 48, 80, 0.06) !important;
+  box-shadow: inset 3px 0 0 #c43050;
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .mm-panel { background: var(--bg-elevated); }
+:is([data-theme="light"], [data-theme-mode="light"]) .mm-panel-header-area { background: var(--bg-card); }
+:is([data-theme="light"], [data-theme-mode="light"]) .mm-panel-cover-sm { background: var(--bg-card); }
+:is([data-theme="light"], [data-theme-mode="light"]) .mm-compare-side { background: var(--bg-card); }
+:is([data-theme="light"], [data-theme-mode="light"]) .mm-panel-summary { background: var(--bg-card); }
+:is([data-theme="light"], [data-theme-mode="light"]) .mm-fix-search input { background: var(--bg-card); }
+:is([data-theme="light"], [data-theme-mode="light"]) .mm-list-search { background: var(--bg-elevated); }
+:is([data-theme="light"], [data-theme-mode="light"]) .mm-filter-dot--active { background: rgba(var(--accent-rgb), 0.1); }
+:is([data-theme="light"], [data-theme-mode="light"]) .mm-progress-fill {
+  background: linear-gradient(90deg, #c43050, #ff6b8a);
+  box-shadow: 0 0 8px rgba(200, 48, 80, 0.3);
+}
+
+/* ─── Reduced Motion ─── */

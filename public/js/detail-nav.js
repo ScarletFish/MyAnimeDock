@@ -1,0 +1,266 @@
+// ─── Detail Navigation (invisible edge hot zones) ───
+
+let detailNavReady = false;
+
+function initDetailNav() {
+  if (detailNavReady) return;
+  detailNavReady = true;
+
+  const navOverlay = document.getElementById('detailNavOverlay');
+  document.getElementById('navBack')?.addEventListener('click', (e) => {
+    createRipple(e, e.currentTarget);
+    goBack();
+  });
+  document.getElementById('navTop')?.addEventListener('click', (e) => {
+    createRipple(e, e.currentTarget);
+    goBack();
+  });
+  document.getElementById('navLeft')?.addEventListener('click', (e) => {
+    createRipple(e, e.currentTarget);
+    goPrev();
+  });
+  document.getElementById('navRight')?.addEventListener('click', (e) => {
+    createRipple(e, e.currentTarget);
+    goNext();
+  });
+
+  // Mouse side button (XButton1 / browser back)
+  document.addEventListener('mouseup', (e) => {
+    if (currentView !== 'detail') return;
+    if (e.button === 3) {
+      e.preventDefault();
+      createRippleAt(e.clientX, e.clientY, navOverlay);
+      goBack();
+    }
+  });
+
+  // Keyboard: ArrowLeft / ArrowRight, Escape
+  document.addEventListener('keydown', (e) => {
+    if (currentView !== 'detail') return;
+    if (e.key === 'ArrowLeft')  { e.preventDefault(); goPrev(); }
+    if (e.key === 'ArrowRight') { e.preventDefault(); goNext(); }
+    if (e.key === 'Escape')     { goBack(); }
+  });
+}
+
+function findCurrentLibraryIndex() {
+  if (!currentAnime) return -1;
+  if (typeof libraryData === 'undefined' || !libraryData.length) return -1;
+  return libraryData.findIndex(a => a.id === currentAnime.id);
+}
+
+function findCurrentMemoryIndex() {
+  if (!currentAnime) return -1;
+  if (typeof memoriesData === 'undefined' || !memoriesData.length) return -1;
+  return memoriesData.findIndex(m => m.animeId === currentAnime.id);
+}
+
+let isSliding = false;
+
+function goPrev() {
+  if (isSliding) return;
+  if (detailSourceView === 'mylist' && typeof mylistData !== 'undefined' && mylistData.length > 0) {
+    const idx = mylistData.findIndex(i => i.id === currentAnime.id);
+    if (idx === -1) return;
+    const prevIdx = idx === 0 ? mylistData.length - 1 : idx - 1;
+    const prev = mylistData[prevIdx];
+    if (prev) {
+      showToast(`← ${prev.bangumiTitle || prev.title}`);
+      slideToAnime(prev.id, 'prev');
+    }
+    return;
+  }
+  if (isArchiveMode) {
+    const idx = findCurrentMemoryIndex();
+    if (idx === -1) return;
+    const prevIdx = idx === 0 ? memoriesData.length - 1 : idx - 1;
+    const prev = memoriesData[prevIdx];
+    if (prev) {
+      showToast(`← ${prev.bangumiTitle || prev.title}`);
+      slideToAnime(prev.animeId, 'prev');
+    }
+    return;
+  }
+  const idx = findCurrentLibraryIndex();
+  if (idx === -1) return;
+  const prevIdx = idx === 0 ? libraryData.length - 1 : idx - 1;
+  const prev = libraryData[prevIdx];
+  if (prev) {
+    showToast(`← ${prev.bangumiTitle || prev.title}`);
+    slideToAnime(prev.id, 'prev');
+  }
+}
+
+function goNext() {
+  if (isSliding) return;
+  if (detailSourceView === 'mylist' && typeof mylistData !== 'undefined' && mylistData.length > 0) {
+    const idx = mylistData.findIndex(i => i.id === currentAnime.id);
+    if (idx === -1) return;
+    const nextIdx = idx === mylistData.length - 1 ? 0 : idx + 1;
+    const next = mylistData[nextIdx];
+    if (next) {
+      showToast(`${next.bangumiTitle || next.title} →`);
+      slideToAnime(next.id, 'next');
+    }
+    return;
+  }
+  if (isArchiveMode) {
+    const idx = findCurrentMemoryIndex();
+    if (idx === -1) return;
+    const nextIdx = idx === memoriesData.length - 1 ? 0 : idx + 1;
+    const next = memoriesData[nextIdx];
+    if (next) {
+      showToast(`${next.bangumiTitle || next.title} →`);
+      slideToAnime(next.animeId, 'next');
+    }
+    return;
+  }
+  const idx = findCurrentLibraryIndex();
+  if (idx === -1) return;
+  const nextIdx = idx === libraryData.length - 1 ? 0 : idx + 1;
+  const next = libraryData[nextIdx];
+  if (next) {
+    showToast(`${next.bangumiTitle || next.title} →`);
+    slideToAnime(next.id, 'next');
+  }
+}
+
+async function slideToAnime(id, direction) {
+  if (isSliding) return;
+  isSliding = true;
+  document.body.style.pointerEvents = 'none';
+
+  const layout = document.querySelector('.detail-layout');
+
+  // 1. Exit animation: slide + fade out
+  if (layout) {
+    await new Promise(resolve => {
+      gsap.to(layout, {
+        x: direction === 'prev' ? 60 : -60,
+        opacity: 0,
+        duration: 0.15,
+        ease: 'power2.in',
+        onComplete: resolve
+      });
+    });
+  }
+
+  // 2. Load new data and re-render
+  resetDetailEnter();
+  stopDetailRefresh();
+  try {
+    if (detailSourceView === 'mylist' && typeof mylistData !== 'undefined') {
+      const item = mylistData.find(i => i.id === id);
+      if (!item) throw new Error('条目不存在');
+      if (item.source === 'wishlist') {
+        isWishlistMode = true;
+        isArchiveMode = false; AppState.set('isArchiveMode', false);
+        currentAnime = {
+          id: item.id,
+          title: item.title,
+          bangumiTitle: item.bangumiTitle || item.title,
+          localCover: null,
+          coverUrl: item.coverUrl || '',
+          rating: item.rating || null,
+          summary: item.summary || '',
+          bangumiId: item.bangumiId,
+          season: null,
+          episodes: [],
+          downloaded: false,
+        };
+        AppState.set('currentAnime', currentAnime);
+      } else {
+        isWishlistMode = false;
+        isArchiveMode = false; AppState.set('isArchiveMode', false);
+        currentAnime = await API.get(`/api/anime/${encodeURIComponent(id)}`);
+        AppState.set('currentAnime', currentAnime);
+      }
+    } else if (isArchiveMode) {
+      const memory = memoriesData.find(m => m.animeId === id);
+      if (!memory) throw new Error('归档记录不存在');
+      archiveMemoryData = memory; AppState.set('archiveMemoryData', memory);
+      currentAnime = {
+        id: memory.animeId,
+        title: memory.title,
+        bangumiTitle: memory.bangumiTitle || memory.title,
+        localCover: memory.coverLocal,
+        rating: memory.rating || null,
+        summary: memory.thoughts || '暂无简介',
+        season: null,
+        episodes: [],
+        downloaded: false,
+      };
+      AppState.set('currentAnime', currentAnime);
+    } else {
+      currentAnime = await API.get(`/api/anime/${encodeURIComponent(id)}`);
+      AppState.set('currentAnime', currentAnime);
+    }
+    renderDetail();
+    showView('detail');
+    const wrap = document.getElementById('detailCover');
+    if (wrap) {
+      wrap.style.opacity = '1';
+      wrap.style.transform = 'scale(1)';
+    }
+    document.getElementById('headerTitle').textContent = currentAnime.bangumiTitle || currentAnime.title;
+    if (!isArchiveMode && !isWishlistMode) startDetailRefresh();
+  } catch (e) {
+    showToast('加载详情失败: ' + e.message);
+    isSliding = false;
+    document.body.style.pointerEvents = '';
+    return;
+  }
+
+  // 3. Enter animation: slide + fade in from opposite direction
+  if (layout) {
+    gsap.set(layout, {
+      x: direction === 'prev' ? -50 : 50,
+      opacity: 0
+    });
+    gsap.to(layout, {
+      x: 0,
+      opacity: 1,
+      duration: 0.2,
+      ease: 'power2.out',
+      onComplete: () => {
+        isSliding = false;
+        document.body.style.pointerEvents = '';
+      }
+    });
+  } else {
+    isSliding = false;
+    document.body.style.pointerEvents = '';
+  }
+}
+
+function createRipple(e, zone) {
+  const rect = zone.getBoundingClientRect();
+  const size = Math.max(rect.width, rect.height) * 1.8;
+  const x = (e.clientX || rect.left + rect.width / 2) - rect.left;
+  const y = (e.clientY || rect.top + rect.height / 2) - rect.top;
+  spawnRipple(zone, x, y, size);
+}
+
+function createRippleAt(cx, cy, container) {
+  if (!container) return;
+  const rect = container.getBoundingClientRect();
+  const size = 120;
+  const x = cx - rect.left - size / 2;
+  const y = cy - rect.top - size / 2;
+  spawnRipple(container, x + size / 2, y + size / 2, size * 2);
+}
+
+function spawnRipple(parent, x, y, size) {
+  const el = document.createElement('div');
+  el.className = 'detail-ripple';
+  el.style.cssText = `width:${size}px;height:${size}px;left:${x - size/2}px;top:${y - size/2}px;`;
+  parent.appendChild(el);
+  el.addEventListener('animationend', () => el.remove(), { once: true });
+}
+
+// Init on DOMContentLoaded (safe to call multiple times)
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initDetailNav);
+} else {
+  initDetailNav();
+}

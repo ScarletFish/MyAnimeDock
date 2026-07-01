@@ -19,33 +19,19 @@ let mmPanelOpen = false;
 function mmOpenModal() {
   const modal = document.getElementById('metaMatchModal');
   if (!modal) return;
-  modal.classList.add('show');
+  openModal(modal, {
+    onClose: function() {
+      mmClosePanel();
+      mmSelectedId = null;
+      mmSelectedIds.clear();
+      mmSelectionOrder = [];
+      mmPanelOpen = false;
+      mmSyncInProgress = false;
+      mmSyncCancelled = true;
+      if (mmSSESource) { mmSSESource.close(); mmSSESource = null; }
+    }
+  });
   mmLoadModalData();
-  // Escape key to close
-  document.addEventListener('keydown', mmModalKeydown);
-}
-
-function mmModalKeydown(e) {
-  if (e.key === 'Escape') {
-    mmCloseModal();
-    document.removeEventListener('keydown', mmModalKeydown);
-  }
-}
-
-function mmCloseModal() {
-  const modal = document.getElementById('metaMatchModal');
-  if (!modal) return;
-  mmClosePanel();
-  modal.classList.remove('show');
-  document.removeEventListener('keydown', mmModalKeydown);
-  // Reset state for next open
-  mmSelectedId = null;
-  mmSelectedIds.clear();
-  mmSelectionOrder = [];
-  mmPanelOpen = false;
-  mmSyncInProgress = false;
-  mmSyncCancelled = true;
-  if (mmSSESource) { mmSSESource.close(); mmSSESource = null; }
 }
 
 // ─── Public API ───
@@ -1042,7 +1028,6 @@ async function mmStartResearch(animeId) {
 
 // ─── Expose globals ───
 window.mmOpenModal = mmOpenModal;
-window.mmCloseModal = mmCloseModal;
 window.mmSetFilter = mmSetFilter;
 window.mmFilterGrid = mmFilterGrid;
 window.mmRowClick = mmRowClick;

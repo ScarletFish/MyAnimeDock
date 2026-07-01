@@ -9,6 +9,10 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=Noto+Sans+SC:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script>(function(){var t=localStorage.getItem('theme')||'default',m=localStorage.getItem('themeMode');if(t==='dark'||t==='light'){m=t;t='default'}m=m||'dark';document.documentElement.setAttribute('data-theme',t==='default'?m:t);document.documentElement.setAttribute('data-theme-mode',m)})()</script>
 <link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/css/components.css">
+<link rel="stylesheet" href="/css/detail.css">
+<link rel="stylesheet" href="/css/views.css">
+<link rel="stylesheet" href="/css/light.css">
 </head>
 <body>
 
@@ -373,7 +377,7 @@
   </section>
 
 <!-- MetaMatch Modal -->
-<div class="modal-overlay modal-overlay--metamatch" id="metaMatchModal" onclick="if(event.target===this)mmCloseModal()">
+<div class="modal-overlay modal-overlay--metamatch" id="metaMatchModal">
   <div class="modal modal--metamatch">
     <!-- Top bar -->
     <div class="modal-m-topbar">
@@ -385,9 +389,9 @@
         <span class="stat-badge matched"><span class="num" id="mmStatMatched">0</span> 已匹配</span>
         <span class="stat-badge matching"><span class="num" id="mmStatMatching">0</span> 匹配中</span>
       </div>
-      <div class="modal-close-btn" onclick="mmCloseModal()">
+       <button class="modal-close-btn" onclick="closeModal('metaMatchModal')" aria-label="关闭">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </div>
+      </button>
     </div>
 
     <!-- Progress bar -->
@@ -439,7 +443,7 @@
 </div>
 
 <!-- Memory Editor Modal -->
-<div class="modal-overlay" id="memoryModal" onclick="if(event.target===this)closeMemoryEditor()">
+<div class="modal-overlay" id="memoryModal">
   <div class="modal">
     <h2>写感想</h2>
     <div class="form-group">
@@ -458,7 +462,7 @@
     <div class="modal-actions">
       <button class="btn btn-primary" onclick="saveMemory()">保存</button>
     </div>
-    <button class="modal-close-btn" onclick="closeMemoryEditor()">
+    <button class="modal-close-btn" onclick="closeModal('memoryModal')" aria-label="关闭">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
@@ -476,7 +480,7 @@
       </div>
     </div>
     <div class="bangumi-search-results" id="syncSearchResults"></div>
-    <button class="modal-close-btn" onclick="closeSyncModal()">
+    <button class="modal-close-btn" onclick="closeModal('syncModal')" aria-label="关闭">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
@@ -591,7 +595,7 @@
 
     <div id="settingsError" class="error-msg"></div>
     <div class="modal-actions">
-      <button class="btn" onclick="closeSettings()">取消</button>
+      <button class="btn" onclick="closeModal('settingsModal')">取消</button>
       <button class="btn btn-primary" onclick="saveSettings()">保存</button>
     </div>
   </div>
@@ -634,14 +638,18 @@ function switchSettingsTab(btn, tab) {
 </div>
 
 <!-- Toast -->
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" role="alert" aria-live="polite"></div>
 
 <script src="/vendor/gsap/gsap.min.js"></script>
 <script src="/vendor/gsap/Flip.min.js"></script>
 <script src="/vendor/gsap/ScrollTrigger.min.js"></script>
+<script src="/js/state.js"></script>
+<script src="/js/ui.js"></script>
 <script src="/js/api.js"></script>
 <script src="/js/discovery.js"></script>
 <script src="/js/library.js"></script>
+<script src="/js/detail-stats.js"></script>
+<script src="/js/detail-nav.js"></script>
 <script src="/js/detail.js"></script>
 <script src="/js/mylist.js"></script>
 <script src="/js/metamatch.js"></script>

@@ -4,15 +4,6 @@ let contextMenuAnimeId = null;
 let cardScrollTrigger = null;
 let cardTween = null;
 
-// MyList status labels
-const MYLIST_STATUS_LABELS = {
-  watching: '当前观看',
-  wish: '计划中',
-  completed: '已完成',
-  on_hold: '搁置',
-  dropped: '抛弃'
-};
-
 // Grid zoom
 const GRID_ZOOM_MIN = 0.5;
 const GRID_ZOOM_MAX = 2.0;
@@ -22,7 +13,8 @@ let gridZoom = parseFloat(localStorage.getItem('gridZoom') || '1');
 function applyGridZoom() {
   const grid = document.getElementById('libraryGrid');
   if (!grid) return;
-  const size = Math.round(GRID_BASE_SIZE * gridZoom);
+  const scale = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--scale')) || 1;
+  const size = Math.round(GRID_BASE_SIZE * gridZoom * scale);
   grid.style.setProperty('--grid-min', size + 'px');
   grid.style.gridTemplateColumns = `repeat(auto-fill, minmax(${size}px, 1fr))`;
   // Also apply to mylist grids
@@ -145,33 +137,7 @@ function renderLibrary(filter = '') {
   }
 
   empty.style.display = 'none';
-  grid.innerHTML = filtered.map((anime) => {
-    const coverSrc = anime.localCover ? `/covers/${path.basename(anime.localCover)}?w=400&q=75` : '';
-    const id = escAttr(anime.id);
-    const mylistLabel = anime.myListStatus ? MYLIST_STATUS_LABELS[anime.myListStatus] : null;
-    const moreBtn = `<div class="card-more-btn" onclick="event.stopPropagation();toggleStatusPopover(event, '${id}')" title="设置状态">
-      <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-        <circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/>
-      </svg>
-    </div>`;
-    return `
-      <div class="anime-card" onclick="navigateToDetail('${id}', this)" oncontextmenu="showContextMenu(event, '${id}')">
-        ${coverSrc
-          ? `<img src="${coverSrc}" decoding="async" alt="${escAttr(anime.title)}">`
-          : `<div class="gray-cover"><svg viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8 12.5v-9l6 4.5-6 4.5z"/></svg></div>`
-        }
-        ${moreBtn}
-        <div class="overlay">
-          <h3>${escHtml(anime.bangumiTitle || anime.title)}</h3>
-          <div class="meta">
-            ${anime.rating ? `<span class="rating-badge">★ ${anime.rating}</span>` : ''}
-            ${anime.season ? `<span class="season-badge">S${anime.season}</span>` : ''}
-            ${mylistLabel && anime.myListStatus !== 'watching' ? `<span class="mylist-badge ${anime.myListStatus}">${mylistLabel}</span>` : ''}
-          </div>
-        </div>
-      </div>
-    `;
-  }).join('');
+  grid.innerHTML = filtered.map(anime => renderAnimeCard(anime)).join('');
 
   const cards = grid.querySelectorAll('.anime-card');
   if (cards.length === 0) return;

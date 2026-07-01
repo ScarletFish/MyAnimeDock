@@ -2,13 +2,8 @@
 let mylistData = [];
 let mylistFilter = 'all';
 
-const MYLIST_LABELS = {
-  watching: '当前观看',
-  wish: '计划中',
-  completed: '已完成',
-  on_hold: '搁置',
-  dropped: '抛弃'
-};
+// 引用自 ui.js 的 STATUS_LABELS
+const MYLIST_LABELS = STATUS_LABELS;
 
 async function loadMyList() {
   try {
@@ -102,41 +97,23 @@ function renderFilteredTab(items) {
 
 function renderMyListCard(item) {
   const isWish = item.source === 'wishlist';
-  const id = escAttr(item.id);
-  const title = escHtml(item.bangumiTitle || item.title);
-  const coverSrc = item.localCover
-    ? `/covers/${path.basename(item.localCover)}?w=400&q=75`
-    : (item.coverUrl || '');
-  const cardClass = isWish ? 'anime-card anime-card--wish' : 'anime-card';
-  const coverStyle = isWish ? 'opacity:0.45;filter:grayscale(0.6)' : '';
+  const extraAttrs = 'data-source="' + escAttr(item.source) + '" data-anime-id="' + escAttr(item.id) + '"';
 
-  const onClick = isWish
-    ? `showWishlistDetail('${id}')`
-    : `navigateToMyListDetail('${id}', this)`;
+  if (isWish) {
+    return renderAnimeCard(item, {
+      onClick: 'showWishlistDetail',
+      onContextMenu: 'showMyListContextMenu',
+      showMoreBtn: false,
+      isWish: true,
+      extraAttrs: extraAttrs
+    });
+  }
 
-  // "..." more button — always slightly visible, full on hover
-  const moreBtn = isWish ? '' :
-    `<div class="card-more-btn" onclick="event.stopPropagation();toggleStatusPopover(event, '${id}')" title="设置状态">
-      <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-        <circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/>
-      </svg>
-    </div>`;
-
-  return `
-    <div class="${cardClass}" onclick="${onClick}" oncontextmenu="showMyListContextMenu(event, '${id}')" data-source="${item.source}" data-anime-id="${id}">
-      ${coverSrc
-        ? `<img src="${coverSrc}" loading="lazy" decoding="async" alt="${title}" style="${coverStyle}">`
-        : `<div class="gray-cover"><svg viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8 12.5v-9l6 4.5-6 4.5z"/></svg></div>`
-      }
-      ${moreBtn}
-      <div class="overlay">
-        <h3>${title}</h3>
-        <div class="meta">
-          ${item.rating ? `<span class="rating-badge">★ ${item.rating}</span>` : ''}
-          ${isWish ? '<span class="wishlist-badge">愿望</span>' : ''}
-        </div>
-      </div>
-    </div>`;
+  return renderAnimeCard(item, {
+    onClick: 'navigateToMyListDetail',
+    onContextMenu: 'showMyListContextMenu',
+    extraAttrs: extraAttrs
+  });
 }
 
 // ─── Tab switching ───
@@ -159,7 +136,7 @@ function navigateToMyListDetail(id, cardEl) {
     rect = img.getBoundingClientRect();
     if (rect.width && rect.height) imgSrc = img.currentSrc || img.src;
   }
-  detailSourceView = 'mylist';
+  AppState.set('detailSourceView', 'mylist');
   showDetail(id, rect, imgSrc);
 }
 

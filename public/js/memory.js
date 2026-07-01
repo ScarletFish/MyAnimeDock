@@ -79,9 +79,9 @@ function showMemoryDetail(animeId) {
     return;
   }
 
-  // Set archive mode flags (used by detail.js)
-  if (typeof isArchiveMode !== 'undefined') isArchiveMode = true;
-  archiveMemoryData = memory;
+  // Set archive mode flags via AppState (synced to detail.js via subscriptions)
+  AppState.set('isArchiveMode', true);
+  AppState.set('archiveMemoryData', memory);
 
   // Build a pseudo-anime from memory data for the detail view
   const pseudoAnime = {
@@ -100,10 +100,10 @@ function showMemoryDetail(animeId) {
   resetDetailEnter();
   stopDetailRefresh();
 
-  currentAnime = pseudoAnime;
+  AppState.set('currentAnime', pseudoAnime);
   renderDetail();
   showView('detail');
-  detailSourceView = 'memories';
+  AppState.set('detailSourceView', 'memories');
 
   // Override header to note it's in archive mode
   document.getElementById('headerTitle').textContent = pseudoAnime.bangumiTitle || pseudoAnime.title;
@@ -112,21 +112,19 @@ function showMemoryDetail(animeId) {
 // ─── Memory Editor ───
 
 function openMemoryEditor() {
-  if (!currentAnime) return;
-  currentMemoryAnimeId = currentAnime.id;
+  const ca = AppState.get('currentAnime');
+  if (!ca) return;
+  currentMemoryAnimeId = ca.id;
 
-  const existing = memoriesData.find(m => m.animeId === currentAnime.id);
+  const existing = memoriesData.find(m => m.animeId === ca.id);
   document.getElementById('memoryRating').value = existing ? existing.rating || 7 : 7;
   document.getElementById('memoryRatingValue').textContent = existing ? existing.rating || 7 : 7;
   document.getElementById('memoryThoughts').value = existing ? existing.thoughts || '' : '';
   document.getElementById('memoryNotes').value = existing ? existing.notes || '' : '';
 
-  document.getElementById('memoryModal').classList.add('show');
-}
-
-function closeMemoryEditor() {
-  document.getElementById('memoryModal').classList.remove('show');
-  currentMemoryAnimeId = null;
+  openModal('memoryModal', {
+    onClose: function() { currentMemoryAnimeId = null; }
+  });
 }
 
 async function saveMemory() {
@@ -144,18 +142,19 @@ async function saveMemory() {
       notes,
     });
     showToast('感想已保存');
-    closeMemoryEditor();
+    closeModal('memoryModal');
 
     // Reload memory data and re-render
     memoriesData = await API.get('/api/memories');
 
     // If currently in archive detail view, update it
-    if (typeof isArchiveMode !== 'undefined' && isArchiveMode && currentAnime && currentAnime.id === currentMemoryAnimeId) {
+    const ca = AppState.get('currentAnime');
+    if (AppState.get('isArchiveMode') && ca && ca.id === currentMemoryAnimeId) {
       const updated = memoriesData.find(m => m.animeId === currentMemoryAnimeId);
       if (updated) {
-        archiveMemoryData = updated;
-        currentAnime.rating = updated.rating;
-        currentAnime.summary = updated.thoughts || '暂无简介';
+        AppState.set('archiveMemoryData', updated);
+        ca.rating = updated.rating;
+        ca.summary = updated.thoughts || '暂无简介';
         renderDetail();
       }
     }

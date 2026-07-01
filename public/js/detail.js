@@ -2,7 +2,6 @@ gsap.registerPlugin(Flip);
 
 let currentAnime = null;
 let watchCardVersion = 0;
-let watchStatsVersion = 0;
 let detailRefreshTimer = null;
 let wasMpvActive = false;
 
@@ -68,6 +67,12 @@ function toggleExpand(wrapId) {
 let archiveMemoryData = null;
 let detailSourceView = 'library';
 
+// Sync from AppState for cross-module state
+AppState.on('currentAnime', v => { currentAnime = v; });
+AppState.on('isArchiveMode', v => { isArchiveMode = v; });
+AppState.on('archiveMemoryData', v => { archiveMemoryData = v; });
+AppState.on('detailSourceView', v => { detailSourceView = v; });
+
 function resetDetailEnter() {
   clearTimeout(charResizeTimer);
   const viewEl = document.getElementById('detailView');
@@ -95,6 +100,7 @@ function startDetailRefresh() {
       const st = await API.get('/api/mpv-status');
       if (wasMpvActive && !st.active) {
         currentAnime = await API.get(`/api/anime/${encodeURIComponent(currentAnime.id)}`);
+        AppState.set('currentAnime', currentAnime);
         renderDetail();
         showToast('播放已结束，进度已更新');
       }
@@ -109,10 +115,10 @@ function stopDetailRefresh() {
 
 async function showDetail(id, fromRect, fromSrc) {
   // Reset archive mode when viewing library items
-  isArchiveMode = false;
+  isArchiveMode = false; AppState.set('isArchiveMode', false);
   isWishlistMode = false;
-  archiveMemoryData = null;
-  detailSourceView = 'library';
+  archiveMemoryData = null; AppState.set('archiveMemoryData', null);
+  detailSourceView = 'library'; AppState.set('detailSourceView', 'library');
   // Remove archive magazine layout class if present
   const layoutEl = document.querySelector('.detail-layout');
   if (layoutEl) layoutEl.classList.remove('detail-layout--archive');
@@ -607,61 +613,6 @@ function renderWatchCard(anime) {
   btn.onclick = () => playEpisode(ep.filePath, ep.progress);
 }
 
-function renderEpisodeHeatmap(anime, animate) {
-  const grid = document.getElementById('episodeHeatmapGrid');
-  const header = document.querySelector('.episode-heatmap-header h3');
-  if (!anime.episodes || anime.episodes.length === 0) {
-    grid.innerHTML = '<p class="heatmap-empty">暂无剧集信息</p>';
-    header.textContent = '剧集列表';
-    return;
-  }
-  const localCount = anime.episodes.length;
-  const totalCount = anime.totalEpisodes || anime.eps;
-  header.innerHTML = totalCount
-    ? `剧集列表 · <span class="ep-count">${localCount} /${totalCount}集</span>`
-    : `剧集列表 · <span class="ep-count">${localCount} 集</span>`;
-
-  const cols = window.innerWidth < 768 ? 5 : 10;
-  grid.innerHTML = anime.episodes.map((ep, i) => {
-    let cls = 'unwatched', tip = `第${ep.number}集 · 未观看`;
-    if (ep.watched) { cls = 'watched'; tip = `第${ep.number}集 · 已观看`; }
-    else if (ep.progress > 0) { cls = 'watching'; tip = `第${ep.number}集 · 观看中 ${ep.duration > 0 ? Math.round(ep.progress / ep.duration * 100) + '%' : ''}`; }
-    const animAttr = animate !== false ? ` style="--i:${i}"` : '';
-    return `<button class="heatmap-cell ${cls}"${animAttr} data-tip="${tip}" data-ep="${ep.number}" data-path="${escAttr(ep.filePath)}" data-pos="${ep.progress}" tabindex="0"></button>`;
-  }).join('');
-
-  grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
-
-  grid.querySelectorAll('.heatmap-cell').forEach(el => {
-    el.addEventListener('click', () => {
-      const path = el.dataset.path;
-      const pos = parseFloat(el.dataset.pos) || 0;
-      playEpisode(path, pos);
-    });
-    // Right-click to toggle watched status
-    el.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (!currentAnime) return;
-      const epNumber = parseInt(el.dataset.ep);
-      const ep = currentAnime.episodes.find(e => e.number === epNumber);
-      if (!ep) return;
-      toggleWatched(currentAnime.id, epNumber, !ep.watched);
-    });
-  });
-}
-
-// ─── Window resize → reflow heatmap ───
-let heatmapResizeTimer = null;
-window.addEventListener('resize', () => {
-  clearTimeout(heatmapResizeTimer);
-  heatmapResizeTimer = setTimeout(() => {
-    if (currentAnime && !isArchiveMode && document.getElementById('detailView').classList.contains('hidden') === false) {
-      renderEpisodeHeatmap(currentAnime, false);
-    }
-  }, 200);
-});
-
 // ─── Key staff roles to display (filtered) ───
 const KEY_STAFF_ROLES = ['原作', '监督', '导演', '系列构成', '脚本', '音乐', '动画制作', '角色设计', '人物设定', '制作', '製作'];
 
@@ -751,203 +702,7 @@ function renderCharacters(anime) {
   }).join('');
 }
 
-function renderWatchStats(anime) {
-  const version = ++watchStatsVersion;
-  const module = document.getElementById('watchStats');
-  const canvas = document.getElementById('watchStatsChart');
-  const ctx = canvas.getContext('2d');
-  const isLight = document.documentElement.getAttribute('data-theme-mode') === 'light';
-  const rootStyle = getComputedStyle(document.documentElement);
-  const accentRgb = rootStyle.getPropertyValue('--accent-rgb').trim() || '225,58,90';
-  const secondaryRgb = rootStyle.getPropertyValue('--accent-secondary-rgb').trim() || '74,108,247';
 
-  API.get(`/api/anime/${encodeURIComponent(anime.id)}/sessions`).then(data => {
-    if (version !== watchStatsVersion) return;
-
-    const dailyEntries = Object.entries(data);
-    const totalMinutes = dailyEntries.reduce((s, [, v]) => s + v, 0);
-
-    if (totalMinutes === 0) {
-      module.style.display = 'none';
-      return;
-    }
-
-    module.style.display = '';
-    canvas.style.display = 'block';
-
-    // Aggregate into weeks (Mon-Sun)
-    const weeks = [];
-    const weekMap = new Map();
-    for (const [dateStr, mins] of dailyEntries) {
-      const d = new Date(dateStr + 'T00:00:00');
-      const day = d.getDay();
-      const mon = new Date(d);
-      mon.setDate(d.getDate() - ((day + 6) % 7));
-      const key = mon.toISOString().slice(0, 10);
-      if (!weekMap.has(key)) {
-        weekMap.set(key, { start: mon, minutes: 0 });
-      }
-      weekMap.get(key).minutes += mins;
-    }
-    const sortedWeeks = [...weekMap.values()].sort((a, b) => a.start - b.start);
-
-    const dpr = window.devicePixelRatio || 1;
-    const rect = canvas.parentElement.getBoundingClientRect();
-    const W = rect.width - 2;
-    const H = 300;
-    canvas.width = W * dpr;
-    canvas.height = H * dpr;
-    canvas.style.width = '';
-    canvas.style.height = H + 'px';
-    ctx.scale(dpr, dpr);
-
-    const PAD = { top: 24, right: 24, bottom: 44, left: 56 };
-    const cw = W - PAD.left - PAD.right;
-    const ch = H - PAD.top - PAD.bottom;
-
-    const maxVal = Math.max(1, ...sortedWeeks.map(w => w.minutes));
-    const n = sortedWeeks.length;
-    const stepX = n > 1 ? cw / (n - 1) : cw;
-
-    ctx.clearRect(0, 0, W, H);
-
-    // Grid lines
-    const gridLines = 4;
-    ctx.strokeStyle = isLight ? 'rgba(44,36,24,0.08)' : 'rgba(237,232,226,0.06)';
-    ctx.lineWidth = 1;
-    for (let i = 0; i <= gridLines; i++) {
-      const y = PAD.top + (ch / gridLines) * i;
-      ctx.beginPath();
-      ctx.moveTo(PAD.left, y);
-      ctx.lineTo(W - PAD.right, y);
-      ctx.stroke();
-    }
-
-    // Y-axis labels
-    ctx.fillStyle = isLight ? 'rgba(44,36,24,0.4)' : 'rgba(237,232,226,0.4)';
-    ctx.font = '11px DM Sans, Noto Sans SC, sans-serif';
-    ctx.textAlign = 'right';
-    ctx.textBaseline = 'middle';
-    for (let i = 0; i <= gridLines; i++) {
-      const y = PAD.top + (ch / gridLines) * i;
-      const val = Math.round(maxVal - (maxVal / gridLines) * i);
-      ctx.fillText(val + '分钟', PAD.left - 8, y);
-    }
-
-    // Compute points
-    function getXY(w, i) {
-      const x = n > 1 ? PAD.left + i * stepX : PAD.left + cw / 2;
-      const y = PAD.top + ch - (w.minutes / maxVal) * ch;
-      return [x, y];
-    }
-
-    // Animate
-    const animDuration = 600;
-    const startTime = performance.now();
-
-    function drawChart(progress) {
-      ctx.clearRect(0, 0, W, H);
-
-      // Grid
-      ctx.strokeStyle = isLight ? 'rgba(44,36,24,0.08)' : 'rgba(237,232,226,0.06)';
-      ctx.lineWidth = 1;
-      for (let i = 0; i <= gridLines; i++) {
-        const y = PAD.top + (ch / gridLines) * i;
-        ctx.beginPath();
-        ctx.moveTo(PAD.left, y);
-        ctx.lineTo(W - PAD.right, y);
-        ctx.stroke();
-      }
-
-      // Y labels
-      ctx.fillStyle = isLight ? 'rgba(44,36,24,0.4)' : 'rgba(237,232,226,0.4)';
-      ctx.font = '11px DM Sans, Noto Sans SC, sans-serif';
-      ctx.textAlign = 'right';
-      ctx.textBaseline = 'middle';
-      for (let i = 0; i <= gridLines; i++) {
-        const y = PAD.top + (ch / gridLines) * i;
-        const val = Math.round(maxVal - (maxVal / gridLines) * i);
-        ctx.fillText(val + '分钟', PAD.left - 8, y);
-      }
-
-      const pts = sortedWeeks.map((w, i) => getXY(w, i));
-      const visibleCount = Math.max(1, Math.ceil(pts.length * progress));
-      const visPts = pts.slice(0, visibleCount);
-
-      // Area fill
-      if (visPts.length > 1) {
-        ctx.beginPath();
-        ctx.moveTo(visPts[0][0], PAD.top + ch);
-        ctx.lineTo(visPts[0][0], visPts[0][1]);
-        for (let i = 1; i < visPts.length; i++) {
-          const [px, py] = visPts[i - 1];
-          const [cx, cy] = visPts[i];
-          const mx = (px + cx) / 2;
-          ctx.bezierCurveTo(mx, py, mx, cy, cx, cy);
-        }
-        ctx.lineTo(visPts[visPts.length - 1][0], PAD.top + ch);
-        ctx.closePath();
-        const grad = ctx.createLinearGradient(0, PAD.top, 0, PAD.top + ch);
-        grad.addColorStop(0, `rgba(${accentRgb},0.30)`);
-        grad.addColorStop(1, `rgba(${secondaryRgb},0.02)`);
-        ctx.fillStyle = grad;
-        ctx.fill();
-      }
-
-      // Line
-      if (visPts.length > 1) {
-        ctx.beginPath();
-        ctx.moveTo(visPts[0][0], visPts[0][1]);
-        for (let i = 1; i < visPts.length; i++) {
-          const [px, py] = visPts[i - 1];
-          const [cx, cy] = visPts[i];
-          const mx = (px + cx) / 2;
-          ctx.bezierCurveTo(mx, py, mx, cy, cx, cy);
-        }
-        ctx.strokeStyle = `rgba(${accentRgb},0.9)`;
-        ctx.lineWidth = 2;
-        ctx.stroke();
-      }
-
-      // Dots + x-axis labels
-      const labelInterval = n > 8 ? Math.ceil(n / 6) : 1;
-      visPts.forEach(([x, y], i) => {
-        ctx.beginPath();
-        ctx.arc(x, y, 3, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(${accentRgb},0.9)`;
-        ctx.fill();
-
-        if (i % labelInterval === 0 || i === visPts.length - 1) {
-          const d = sortedWeeks[i].start;
-          const label = (d.getMonth() + 1) + '/' + d.getDate();
-          ctx.fillStyle = isLight ? 'rgba(44,36,24,0.35)' : 'rgba(237,232,226,0.35)';
-          ctx.font = '10px DM Sans, Noto Sans SC, sans-serif';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'top';
-          ctx.fillText(label, x, H - PAD.bottom + 8);
-        }
-      });
-    }
-
-    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (prefersReduced) {
-      drawChart(1);
-    } else {
-      function animate(now) {
-        if (version !== watchStatsVersion) return;
-        const t = Math.min(1, (now - startTime) / animDuration);
-        const ease = 1 - Math.pow(1 - t, 3);
-        drawChart(ease);
-        if (t < 1) requestAnimationFrame(animate);
-      }
-      requestAnimationFrame(animate);
-    }
-
-  }).catch(() => {
-    if (version !== watchStatsVersion) return;
-    module.style.display = 'none';
-  });
-}
 
 async function playEpisode(filePath, position = 0) {
   try {
@@ -981,17 +736,8 @@ function syncBangumiMetadata() {
   if (!modal || !input) return;
   input.value = (currentAnime.specialSuffix || currentAnime.bangumiTitle || currentAnime.title).replace(/[~～]/g, '').trim();
   results.innerHTML = '';
-  modal.classList.add('show');
+  openModal('syncModal');
   input.focus();
-  // Click overlay (outside modal content) to close
-  modal.onclick = function(e) {
-    if (e.target === this) closeSyncModal();
-  };
-}
-
-function closeSyncModal() {
-  const modal = document.getElementById('syncModal');
-  if (modal) modal.classList.remove('show');
 }
 
 async function searchBangumiWithKeyword() {
@@ -1046,8 +792,9 @@ async function attachBangumiSubject(animeId, subjectId) {
   try {
     const result = await API.post('/api/bangumi/fetch', { animeId, subjectId });
     currentAnime = result.anime;
+    AppState.set('currentAnime', currentAnime);
     renderDetail();
-    closeSyncModal();
+    closeModal('syncModal');
     showToast('Bangumi 元数据获取成功');
   } catch (e) {
     showToast('获取失败: ' + e.message);
@@ -1071,273 +818,5 @@ async function deleteAnime() {
   }
 }
 
-// ─── Detail Navigation (invisible edge hot zones) ───
 
-let detailNavReady = false;
 
-function initDetailNav() {
-  if (detailNavReady) return;
-  detailNavReady = true;
-
-  const navOverlay = document.getElementById('detailNavOverlay');
-  document.getElementById('navBack')?.addEventListener('click', (e) => {
-    createRipple(e, e.currentTarget);
-    goBack();
-  });
-  document.getElementById('navTop')?.addEventListener('click', (e) => {
-    createRipple(e, e.currentTarget);
-    goBack();
-  });
-  document.getElementById('navLeft')?.addEventListener('click', (e) => {
-    createRipple(e, e.currentTarget);
-    goPrev();
-  });
-  document.getElementById('navRight')?.addEventListener('click', (e) => {
-    createRipple(e, e.currentTarget);
-    goNext();
-  });
-
-  // Mouse side button (XButton1 / browser back)
-  document.addEventListener('mouseup', (e) => {
-    if (currentView !== 'detail') return;
-    if (e.button === 3) {
-      e.preventDefault();
-      createRippleAt(e.clientX, e.clientY, navOverlay);
-      goBack();
-    }
-  });
-
-  // Keyboard: ArrowLeft / ArrowRight, Escape
-  document.addEventListener('keydown', (e) => {
-    if (currentView !== 'detail') return;
-    if (e.key === 'ArrowLeft')  { e.preventDefault(); goPrev(); }
-    if (e.key === 'ArrowRight') { e.preventDefault(); goNext(); }
-    if (e.key === 'Escape')     { goBack(); }
-  });
-}
-
-function findCurrentLibraryIndex() {
-  if (!currentAnime) return -1;
-  if (typeof libraryData === 'undefined' || !libraryData.length) return -1;
-  return libraryData.findIndex(a => a.id === currentAnime.id);
-}
-
-function findCurrentMemoryIndex() {
-  if (!currentAnime) return -1;
-  if (typeof memoriesData === 'undefined' || !memoriesData.length) return -1;
-  return memoriesData.findIndex(m => m.animeId === currentAnime.id);
-}
-
-let isSliding = false;
-
-function goPrev() {
-  if (isSliding) return;
-  if (detailSourceView === 'mylist' && typeof mylistData !== 'undefined' && mylistData.length > 0) {
-    const idx = mylistData.findIndex(i => i.id === currentAnime.id);
-    if (idx === -1) return;
-    const prevIdx = idx === 0 ? mylistData.length - 1 : idx - 1;
-    const prev = mylistData[prevIdx];
-    if (prev) {
-      showToast(`← ${prev.bangumiTitle || prev.title}`);
-      slideToAnime(prev.id, 'prev');
-    }
-    return;
-  }
-  if (isArchiveMode) {
-    const idx = findCurrentMemoryIndex();
-    if (idx === -1) return;
-    const prevIdx = idx === 0 ? memoriesData.length - 1 : idx - 1;
-    const prev = memoriesData[prevIdx];
-    if (prev) {
-      showToast(`← ${prev.bangumiTitle || prev.title}`);
-      slideToAnime(prev.animeId, 'prev');
-    }
-    return;
-  }
-  const idx = findCurrentLibraryIndex();
-  if (idx === -1) return;
-  const prevIdx = idx === 0 ? libraryData.length - 1 : idx - 1;
-  const prev = libraryData[prevIdx];
-  if (prev) {
-    showToast(`← ${prev.bangumiTitle || prev.title}`);
-    slideToAnime(prev.id, 'prev');
-  }
-}
-
-function goNext() {
-  if (isSliding) return;
-  if (detailSourceView === 'mylist' && typeof mylistData !== 'undefined' && mylistData.length > 0) {
-    const idx = mylistData.findIndex(i => i.id === currentAnime.id);
-    if (idx === -1) return;
-    const nextIdx = idx === mylistData.length - 1 ? 0 : idx + 1;
-    const next = mylistData[nextIdx];
-    if (next) {
-      showToast(`${next.bangumiTitle || next.title} →`);
-      slideToAnime(next.id, 'next');
-    }
-    return;
-  }
-  if (isArchiveMode) {
-    const idx = findCurrentMemoryIndex();
-    if (idx === -1) return;
-    const nextIdx = idx === memoriesData.length - 1 ? 0 : idx + 1;
-    const next = memoriesData[nextIdx];
-    if (next) {
-      showToast(`${next.bangumiTitle || next.title} →`);
-      slideToAnime(next.animeId, 'next');
-    }
-    return;
-  }
-  const idx = findCurrentLibraryIndex();
-  if (idx === -1) return;
-  const nextIdx = idx === libraryData.length - 1 ? 0 : idx + 1;
-  const next = libraryData[nextIdx];
-  if (next) {
-    showToast(`${next.bangumiTitle || next.title} →`);
-    slideToAnime(next.id, 'next');
-  }
-}
-
-async function slideToAnime(id, direction) {
-  if (isSliding) return;
-  isSliding = true;
-  document.body.style.pointerEvents = 'none';
-
-  const layout = document.querySelector('.detail-layout');
-
-  // 1. Exit animation: slide + fade out
-  if (layout) {
-    await new Promise(resolve => {
-      gsap.to(layout, {
-        x: direction === 'prev' ? 60 : -60,
-        opacity: 0,
-        duration: 0.15,
-        ease: 'power2.in',
-        onComplete: resolve
-      });
-    });
-  }
-
-  // 2. Load new data and re-render
-  resetDetailEnter();
-  stopDetailRefresh();
-  try {
-    if (detailSourceView === 'mylist' && typeof mylistData !== 'undefined') {
-      const item = mylistData.find(i => i.id === id);
-      if (!item) throw new Error('条目不存在');
-      if (item.source === 'wishlist') {
-        isWishlistMode = true;
-        isArchiveMode = false;
-        currentAnime = {
-          id: item.id,
-          title: item.title,
-          bangumiTitle: item.bangumiTitle || item.title,
-          localCover: null,
-          coverUrl: item.coverUrl || '',
-          rating: item.rating || null,
-          summary: item.summary || '',
-          bangumiId: item.bangumiId,
-          season: null,
-          episodes: [],
-          downloaded: false,
-        };
-      } else {
-        isWishlistMode = false;
-        isArchiveMode = false;
-        currentAnime = await API.get(`/api/anime/${encodeURIComponent(id)}`);
-      }
-    } else if (isArchiveMode) {
-      const memory = memoriesData.find(m => m.animeId === id);
-      if (!memory) throw new Error('归档记录不存在');
-      archiveMemoryData = memory;
-      currentAnime = {
-        id: memory.animeId,
-        title: memory.title,
-        bangumiTitle: memory.bangumiTitle || memory.title,
-        localCover: memory.coverLocal,
-        rating: memory.rating || null,
-        summary: memory.thoughts || '暂无简介',
-        season: null,
-        episodes: [],
-        downloaded: false,
-      };
-    } else {
-      currentAnime = await API.get(`/api/anime/${encodeURIComponent(id)}`);
-    }
-    renderDetail();
-    showView('detail');
-    const wrap = document.getElementById('detailCover');
-    if (wrap) {
-      wrap.style.opacity = '1';
-      wrap.style.transform = 'scale(1)';
-    }
-    document.getElementById('headerTitle').textContent = currentAnime.bangumiTitle || currentAnime.title;
-    if (!isArchiveMode && !isWishlistMode) startDetailRefresh();
-  } catch (e) {
-    showToast('加载详情失败: ' + e.message);
-    isSliding = false;
-    document.body.style.pointerEvents = '';
-    return;
-  }
-
-  // 3. Enter animation: slide + fade in from opposite direction
-  if (layout) {
-    gsap.set(layout, {
-      x: direction === 'prev' ? -50 : 50,
-      opacity: 0
-    });
-    gsap.to(layout, {
-      x: 0,
-      opacity: 1,
-      duration: 0.2,
-      ease: 'power2.out',
-      onComplete: () => {
-        isSliding = false;
-        document.body.style.pointerEvents = '';
-      }
-    });
-  } else {
-    isSliding = false;
-    document.body.style.pointerEvents = '';
-  }
-}
-
-function createRipple(e, zone) {
-  const rect = zone.getBoundingClientRect();
-  const size = Math.max(rect.width, rect.height) * 1.8;
-  const x = (e.clientX || rect.left + rect.width / 2) - rect.left;
-  const y = (e.clientY || rect.top + rect.height / 2) - rect.top;
-  spawnRipple(zone, x, y, size);
-}
-
-function createRippleAt(cx, cy, container) {
-  if (!container) return;
-  const rect = container.getBoundingClientRect();
-  const size = 120;
-  const x = cx - rect.left - size / 2;
-  const y = cy - rect.top - size / 2;
-  spawnRipple(container, x + size / 2, y + size / 2, size * 2);
-}
-
-function spawnRipple(parent, x, y, size) {
-  const el = document.createElement('div');
-  el.className = 'detail-ripple';
-  el.style.cssText = `width:${size}px;height:${size}px;left:${x - size/2}px;top:${y - size/2}px;`;
-  parent.appendChild(el);
-  el.addEventListener('animationend', () => el.remove(), { once: true });
-}
-
-// Re-render canvas-based charts on theme change
-document.addEventListener('themechanged', () => {
-  const detailView = document.getElementById('detailView');
-  if (detailView && !detailView.classList.contains('hidden') && currentAnime) {
-    renderWatchStats(currentAnime);
-  }
-});
-
-// Init on DOMContentLoaded (safe to call multiple times)
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initDetailNav);
-} else {
-  initDetailNav();
-}

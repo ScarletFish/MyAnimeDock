@@ -133,8 +133,7 @@ function openThemeDock() {
   }
   const zoomEl = document.getElementById('dockZoom');
   if (zoomEl) {
-    const main = document.querySelector('.main-content');
-    const currentZoom = Math.round((parseFloat(main?.style.zoom) || 1) * 100);
+    const currentZoom = Math.round((parseFloat(document.documentElement.style.getPropertyValue('--scale')) || 1) * 100);
     zoomEl.value = currentZoom;
     document.getElementById('dockZoomLabel').textContent = currentZoom + '%';
   }
@@ -166,20 +165,15 @@ function handleDockZoom(input) {
 }
 
 function openVisualDock() {
-  closeSettings();
+  closeModal('settingsModal');
   openThemeDock();
 }
 
-// Zoom via content-area scaling
+// Zoom via CSS --scale variable (GSAP-safe, fixed-position-friendly)
 function applyZoom(scale) {
-  const s = String(scale || 1);
-  const main = document.querySelector('.main-content');
-  const sidebar = document.querySelector('.sidebar');
-  if (main) {
-    main.style.zoom = s;
-    main.style.height = (100 / parseFloat(s)) + 'vh';
-  }
-  if (sidebar) sidebar.style.zoom = s;
+  const s = parseFloat(scale) || 1;
+  document.documentElement.style.setProperty('--scale', s);
+  if (typeof applyGridZoom === 'function') applyGridZoom();
 }
 
 // ─── Reduce Motion ───
@@ -221,7 +215,7 @@ async function openSettings() {
     if (config.bangumiClientSecret) document.getElementById('bangumiClientSecret').value = '••••••••';
     refreshBangumiAuthStatus();
 
-    document.getElementById('settingsModal').classList.add('show');
+    openModal('settingsModal');
   } catch (e) {
     if (window.location.origin !== 'http://localhost:3456') return;
     showToast('加载设置失败: ' + e.message);
@@ -296,9 +290,17 @@ async function bangumiSync() {
 
 async function bangumiBind() {
   const clientId = document.getElementById('bangumiClientId').value.trim();
-  const clientSecret = document.getElementById('bangumiClientSecret').value.trim();
-  if (!clientId || !clientSecret) {
-    showToast('请先填入 Bangumi Client ID 和 Client Secret');
+  let clientSecret = document.getElementById('bangumiClientSecret').value.trim();
+  if (!clientId) {
+    showToast('请先填入 Bangumi Client ID');
+    return;
+  }
+  // 如果 secret 仍是占位符掩码，则沿用已保存的值
+  if (clientSecret === '••••••••') {
+    clientSecret = configCache?.bangumiClientSecret || '';
+  }
+  if (!clientSecret) {
+    showToast('请先填入 Bangumi Client Secret');
     return;
   }
   // Save OAuth creds first (saveSettings may not be called)
@@ -309,18 +311,51 @@ async function bangumiBind() {
     showToast('无法生成授权链接');
     return;
   }
-  window.open(url, '_blank');
+  // Tauri 中用 shell.open 打开系统默认浏览器，浏览器环境用 window.open
+  if (window.__TAURI__?.shell?.open) {
+    try {
+      await window.__TAURI__.shell.open(url);
+    } catch (e) {
+      showToast('打开浏览器失败: ' + e.message);
+      return;
+    }
+  } else {
+    window.open(url, '_blank');
+  }
   showToast('请在浏览器中完成 Bangumi 授权');
+  // 启动轮询检测授权完成
+  startAuthPolling();
+}
+
+/** 轮询 /api/bangumi/auth/status 直到授权完成或超时 */
+let authPollTimer = null;
+function startAuthPolling() {
+  if (authPollTimer) clearInterval(authPollTimer);
+  let attempts = 0;
+  const maxAttempts = 90; // ~3 分钟 (2s 间隔)
+  authPollTimer = setInterval(async () => {
+    attempts++;
+    try {
+      const state = await API.get('/api/bangumi/auth/status');
+      if (state.authed) {
+        clearInterval(authPollTimer);
+        authPollTimer = null;
+        showToast('Bangumi 绑定成功！');
+        refreshBangumiAuthStatus();
+      }
+    } catch {}
+    if (attempts >= maxAttempts) {
+      clearInterval(authPollTimer);
+      authPollTimer = null;
+      showToast('绑定超时，请检查 Bangumi 授权页面');
+    }
+  }, 2000);
 }
 
 async function bangumiUnbind() {
   await API.post('/api/bangumi/auth/logout');
   refreshBangumiAuthStatus();
   showToast('已解除 Bangumi 绑定');
-}
-
-function closeSettings() {
-  document.getElementById('settingsModal').classList.remove('show');
 }
 
 async function saveSettings() {
@@ -336,8 +371,7 @@ async function saveSettings() {
   const rawTheme = document.documentElement.getAttribute('data-theme') || 'dark';
   const newTheme = (rawTheme === 'dark' || rawTheme === 'light') ? 'default' : rawTheme;
   const newThemeMode = document.documentElement.getAttribute('data-theme-mode') || 'dark';
-  const main = document.querySelector('.main-content');
-  const currentZoom = parseFloat(main?.style.zoom) || 1;
+  const currentZoom = parseFloat(document.documentElement.style.getPropertyValue('--scale')) || 1;
 
   // Build apiSources from simple toggles
   const bangumiUrl = document.getElementById('bangumiUrl').value.trim() || 'https://api.bangumi.one';
@@ -370,7 +404,7 @@ async function saveSettings() {
       ...(secretToSend ? { bangumiClientSecret: secretToSend } : {}),
     });
 
-    closeSettings();
+    closeModal('settingsModal');
 
     showToast('设置已保存');
     refreshDiscovery();
@@ -384,10 +418,10 @@ async function saveSettings() {
 
 function goBack() {
   if (typeof stopDetailRefresh === 'function') stopDetailRefresh();
-  isArchiveMode = false;
+  AppState.set('isArchiveMode', false);
   const layoutEl = document.querySelector('.detail-layout');
   if (layoutEl) layoutEl.classList.remove('detail-layout--archive');
-  const target = typeof detailSourceView !== 'undefined' ? detailSourceView : 'library';
+  const target = AppState.get('detailSourceView') || 'library';
   showView(target);
 }
 
@@ -434,15 +468,6 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 2500);
 }
 
-// Utility
-function escHtml(s) {
-  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
-function escAttr(s) {
-  return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
 function formatSize(bytes) {
   if (!bytes) return '';
   if (bytes < 1024) return bytes + ' B';
@@ -450,14 +475,6 @@ function formatSize(bytes) {
   if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
 }
-
-// path helper for cover URLs
-const path = {
-  basename(p) {
-    if (!p) return '';
-    return p.split(/[\\/]/).pop();
-  }
-};
 
 // ─── Native file/directory dialogs (Tauri) ───
 
@@ -529,13 +546,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   const authResult = params.get('bangumi_auth');
   if (authResult === 'success') {
     showToast('Bangumi 绑定成功！');
-    // Clean URL
+    refreshBangumiAuthStatus();
     window.history.replaceState({}, '', window.location.pathname);
   } else if (authResult === 'denied') {
     showToast('Bangumi 授权被拒绝');
     window.history.replaceState({}, '', window.location.pathname);
   } else if (authResult === 'error') {
-    showToast('Bangumi 绑定失败，请重试');
+    const errMsg = params.get('bangumi_auth_msg') || '请检查回调 URL 是否与 bgm.tv 注册的地址一致';
+    showToast('Bangumi 绑定失败: ' + errMsg);
     window.history.replaceState({}, '', window.location.pathname);
   }
 });

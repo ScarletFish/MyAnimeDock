@@ -164,30 +164,39 @@ P3     Phase 4        ~8 小时      ✅ 是（本质只是文件拆分）
 
 ## 执行记录
 
-### Phase 0
-- [ ] 创建 `public/js/ui.js`
-- [ ] 更新 `index.html` 加载 ui.js
-- [ ] library.js → 使用 `renderAnimeCard()`
-- [ ] discovery.js → 使用 `renderAnimeCard()`
-- [ ] mylist.js → 使用 `renderAnimeCard()`
+### Phase 0 ✅
+- [x] 创建 `public/js/ui.js` (renderAnimeCard, escHtml/escAttr, renderGrayCover, STATUS_LABELS, openModal/closeModal)
+- [x] 更新 `index.html` 加载 ui.js
+- [x] library.js → 使用 `renderAnimeCard()`
+- [x] discovery.js → 跳过（列表布局不适用）
+- [x] mylist.js → 使用 `renderAnimeCard()`
+- [x] app.js 清理重复 escHtml/escAttr/path
 
-### Phase 1
-- [ ] 创建 `public/css/components/` 和 `public/css/views/`
-- [ ] 抽出 card.css
-- [ ] 抽出 modal.css
-- [ ] 抽出 detail.css
-- [ ] 抽出 toast.css
-- [ ] 抽出 nav.css
-- [ ] 抽出各视图 CSS
-- [ ] 清理未使用的 token
+### Phase 1 ✅
+- [x] 创建 `public/css/` — components.css, detail.css, views.css, light.css
+- [x] styles.css 浓缩为 881 行（token + 全局基础 + 主题）
+- [x] components.css (1,282 行)：按钮/卡片/模态框/设置/etc
+- [x] detail.css (1,046 行)：导航/封底/信息面板/热力图/统计
+- [x] views.css (1,821 行)：各视图独立样式
+- [x] light.css (320 行)：浅色模式覆写
+- [x] 清理 8 个未使用 token
 
-### Phase 2
-- [ ] app.js 中建立完整 AppState
-- [ ] 迁移各文件使用 AppState
+### Phase 2 ✅
+- [x] 创建 `public/js/state.js` — AppState 类 (get/set/on + CustomEvent)
+- [x] memory.js 消除 4 个隐式全局变量
+- [x] app.js goBack() 迁移到 AppState
+- [x] mylist.js detailSourceView → AppState
+- [x] detail.js 添加 AppState.on() 订阅同步
+- [x] index.html 添加 state.js 加载
 
-### Phase 3
-- [ ] ui.js 中抽取 renderModal()
-- [ ] 改造各弹窗为统一模板
+### Phase 3 ✅
+- [x] ui.js 中实现 openModal()/closeModal() + 事件委派初始化
+- [x] 改造 4 个弹窗：memory editor, sync modal, settings, metamatch
+- [x] 移除 inline overlay onclick
+- [x] 统一关闭行为：遮罩层 + ✕ + Escape
 
-### Phase 4
-- [ ] 拆分 detail.js（按需）
+### Phase 4 ✅
+- [x] 创建 detail-stats.js (renderEpisodeHeatmap, renderWatchStats)
+- [x] 创建 detail-nav.js (initDetailNav, goPrev/goNext, slideToAnime)
+- [x] detail.js 从 1,346 → 822 行
+- [x] index.html 添加新 script 标签

@@ -1292,7 +1292,8 @@ const server = http.createServer((req, res) => {
 
         const { registry } = require('./scrapers');
         const results = await registry.searchAll(keyword, config);
-        jsonResp(res, 200, { results });
+        // AniList 只用于获取日文原名和季度链数据，不参与搜索结果
+        jsonResp(res, 200, { results: results.filter(r => r.source !== 'anilist') });
       } catch (e) {
         jsonResp(res, 500, { error: e.message });
       }
@@ -1322,7 +1323,8 @@ const server = http.createServer((req, res) => {
 
           const match = await matchSeason(registry, folderParsed.cleanTitle, folderParsed, videoCount, config);
           if (!match) {
-            const results = await registry.searchAll(anime.title, config);
+            const results = (await registry.searchAll(anime.title, config))
+              .filter(r => r.source !== 'anilist');
             if (results.length === 0) {
               jsonResp(res, 404, { error: '未找到匹配结果' });
               return;

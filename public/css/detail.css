@@ -303,14 +303,14 @@
 
 .detail-tags {
   position: relative;
-  margin-bottom: 0.5rem;
+  margin-bottom: calc(0.5rem * var(--scale));
 }
 
 .detail-tags-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-  max-height: 2.8rem;
+  gap: calc(0.25rem * var(--scale));
+  max-height: calc(2.8rem * var(--scale));
   overflow: hidden;
 }
 
@@ -320,13 +320,13 @@
 
 .detail-tags .detail-tag-toggle {
   position: absolute;
-  bottom: -12px;
+  bottom: calc(-0.75rem * var(--scale));
   right: 0;
   display: none;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 20px;
+  width: calc(1.5rem * var(--scale));
+  height: calc(1.25rem * var(--scale));
   border-radius: 4px;
   background: transparent;
   color: var(--fg-secondary);
@@ -336,8 +336,8 @@
 }
 
 .detail-tags .detail-tag-toggle svg {
-  width: 14px;
-  height: 14px;
+  width: calc(0.875rem * var(--scale));
+  height: calc(0.875rem * var(--scale));
   transition: transform var(--duration-fast) var(--ease-out);
 }
 

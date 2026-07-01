@@ -532,30 +532,23 @@ function renderSummary(anime) {
         text = dashed[0].trim();
       } else {
         // Step 3: split paragraphs, keep only Chinese paragraphs
+        // A 型：纯中文段 → 保留
+        // B 型：纯日文段（平假名主导，汉字占比 ≤30%）→ 过滤
+        // C 型：中日混合段（汉字占比 >30%，如「中文（日本語）──署名」）→ 全文保留
         const paragraphs = text.split(/\n+/).filter(p => p.trim());
         const cn = [];
         for (let p of paragraphs) {
-          // 平假名是日文最可靠的特征 —— 中文文本几乎不含平假名
           const hiragana = (p.match(/[\u3040-\u309f]/g) || []).length;
           const katakana = (p.match(/[\u30a0-\u30ff]/g) || []).length;
           const hanCount = (p.match(/[\u4e00-\u9fff]/g) || []).length;
-          // 没有汉字也没有假名 → 非中文段落（可能是英文）
+          const meaningful = p.replace(/\s/g, '').length;
+          // 没有汉字也没有假名 → 非中文（可能是英文）
           if (hanCount === 0 && hiragana === 0 && katakana === 0) continue;
-          // 有大量片假名但很少汉字 → 日文
+          // 片假名主导且汉字很少 → 日文
           if (katakana >= 8 && hanCount < 3) continue;
-          // 中日混合段落：截取到第一个平假名之前的中文部分
-          if (hiragana >= 3) {
-            // 汉字太少 → 纯日文
-            if (hanCount < 3) continue;
-            const firstHiragana = p.search(/[\u3040-\u309f]/);
-            if (firstHiragana > 0) {
-              const cnPart = p.substring(0, firstHiragana).replace(/[（(【\[《\s]+$/, '').trim();
-              const cnCount = (cnPart.match(/[\u4e00-\u9fff]/g) || []).length;
-              if (cnCount >= 3) { cn.push(cnPart); }
-            }
-            continue;
-          }
-          // 纯中文段落
+          // 有平假名且汉字占比 ≤30% → 纯日文原文，过滤
+          if (hiragana >= 3 && hiragana / meaningful > 0.4) continue;
+          // 其余（纯中文 / 中日混合）→ 保留
           cn.push(p.trim());
         }
         if (cn.length > 0) text = cn.join('\n');

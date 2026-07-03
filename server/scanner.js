@@ -165,6 +165,9 @@ function parseFolderName(name) {
   // Season 1 is implicit default; only S2+ worth annotating
   if (result.season === 1) result.season = null;
 
+  // 14. Extract bangumiId from path: [bgmN]
+  result.bangumiId = extractBgmId(name);
+
   return result;
 }
 
@@ -191,9 +194,12 @@ function buildAnimeEntry(fullPath, folderName) {
     cjkTitle: parsed.cjkTitle || null,
     parsedSeason: parsed.season,
     specialSuffix: parsed.specialSuffix || null,
+    bangumiId: parsed.bangumiId || null,
     videoCount,
     totalVideoFiles: allVideos.length,
     totalSize: allVideos.reduce((sum, v) => sum + v.size, 0),
+    // Include raw video list for auto-import episode creation
+    videos: allVideos.map(v => ({ path: v.path, name: v.name, size: v.size })),
   };
 }
 
@@ -290,6 +296,7 @@ function buildLeaf(dirPath, name, parentName, parentChain) {
     cjkTitle: parsed.cjkTitle || null,
     parsedSeason: parsed.season,
     specialSuffix: parsed.specialSuffix || null,
+    bangumiId: parsed.bangumiId || null,
     videoCount,
     totalVideoFiles: allVideos.length,
     totalSize: allVideos.reduce((sum, v) => sum + v.size, 0),
@@ -384,4 +391,14 @@ function scanMediaDirFlat(mediaDir) {
   return results;
 }
 
-module.exports = { scanMediaDir, scanMediaDirTree, scanMediaDirFlat, scanTopDir, parseFolderName, findVideos, hasDirectVideos, isExtraVideo, VIDEO_EXTS };
+/**
+ * Extract Bangumi ID from folder name or path.
+ * Matches [bgm525565], [bgm12345] at any position.
+ */
+function extractBgmId(name) {
+  if (!name) return null;
+  const m = name.match(/\[bgm(\d+)\]/i);
+  return m ? parseInt(m[1]) : null;
+}
+
+module.exports = { scanMediaDir, scanMediaDirTree, scanMediaDirFlat, scanTopDir, parseFolderName, findVideos, hasDirectVideos, isExtraVideo, extractBgmId, VIDEO_EXTS };

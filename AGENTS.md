@@ -75,7 +75,8 @@ server/            → Tauri sidecar (Node.js backend)
 ├── scanner.js     → 扫描媒体目录，解析文件夹名（anitomy 增强）
 │   ├── scanMediaDirFlat() → 返回扁平 leaf 数组（含 parentChain）
 │   ├── buildLeaf()        → 单条目构造（parentChain 回溯处理 Season 文件夹）
-│   └── parseFolderName()  → 使用 anitomy 提取标题和季号，回退到正则清洗
+│   ├── parseFolderName()  → 使用 anitomy 提取标题和季号，回退到正则清洗
+│   └── extractBgmId()     → 从文件夹名提取 [bgmN] 数字 ID
 ├── mpv-controller.js → mpv 进度追踪（spawn + --term-status-msg，final 标记）
 ├── logger.js      → 结构化日志（debug/info/warn/error + [TAG] 前缀，LOG_LEVEL 环境变量控制）
 ├── bangumi-sync.js→ Bangumi 同步编排（Pull→Merge→Push，OAuth 终态推送）
@@ -181,6 +182,9 @@ opencode.json       → OpenCode 配置（插件声明）
 - **主题切换按钮**: 设置页 theme 从 `<select>` 改为 toggle switch（`<input type="checkbox">`），onchange 实时调用 `handleThemeToggle()` + GSAP 波纹动画（从 toggle 位置向外扩散） + 全页 CSS 过渡（bg 0.7s/其他 0.55s）
 - **多主题系统**: 6 种色彩主题（default/amber/ocean/sakura/emerald/neon）+ 独立 dark/light 模式，`data-theme` 存色彩名、`data-theme-mode` 存明暗；default 主题用 `data-theme="dark|light"` 兼容旧选择器；底部 dock 选择器切换即时生效
 - **底部视觉设置 Dock**: 主题选择、明暗切换、缩放滑块从设置模态框抽离到底部浮动 dock（`#themeDock`），支持折叠/展开（▾ 按钮），点击遮罩层折叠而非关闭；folded 状态显示 8px 手柄条
+- **启动自动导入**: `autoImportNewFolders()`（`server.js:2006`）在服务器启动后异步执行，扫描 mediaDir 下所有子文件夹，对有 `[bgmN]` 标识且尚未导入的文件夹自动执行全流程导入（metadata fetch + 回写入库 + MyList watching + Bangumi sync），无需用户干预
+- **bangumiId 精准匹配**: `extractBgmId(name)`（`scanner.js:398`）从文件夹名提取 `[bgmN]` 数字 ID，作为 anime 主键（`id: String(bgmId)`），匹配精度 100%；手动导入项（无 `[bgmN]`）仍使用 `parsedTitle + Season` 方案
+- **自动导入 Toast**: 首次页面加载时 `GET /api/config` 返回 `autoImport` 字段（一次性消费），前端检查 >0 则 `showToast('自动导入了 N 部新番')`
 
 ## Config
 
@@ -246,7 +250,7 @@ mpv 模式下自动记录播放进度到 SQLite。
 - 无认证/授权，局域网内 `/api/quit` 可关闭服务器
 - mpv 通过 `spawn` + IPC pipe（`--input-ipc-server`）启动，实时追踪播放进度；spawn 错误通过 Promise 2s 超时窗口捕获并返回前端
 - `activePlays` Map（`filePath → {sessionId, episode, anime}`）仅存内存，服务器重启后丢失；持久化的 `playSessions` 保存在 SQLite
-- 动漫 ID 由 `parsedTitle + (parsedSeason ? '-Season ' + parsedSeason : '')` 生成，重命名文件夹会导致 ID 变化
+- **动漫 ID 使用 bangumiId 作为主键**（`String(bangumiId)`），不怕改名，数据可重建。手动导入项（无 `[bgmN]` 标识）仍使用 `parsedTitle + Season` 方案。
 - **只支持 mpv 播放器**（`--input-ipc-server` IPC 管道实时追踪进度）。系统播放器模式已移除。
 - pkg 打包用 `process.pkg ? path.dirname(process.execPath) : __dirname` 处理路径
 - TMDB API 需要配置 API Key 才能启用（设置页填入）
@@ -273,7 +277,7 @@ mpv 模式下自动记录播放进度到 SQLite。
 本软件以「个人本地动漫库管理」为核心理念。用户的典型工作流如下：
 
 ```
-发现好番 → 下载到本地 → 导入软件观看管理 → 看完归档
+下载好番（[bgmN] 命名规范） → 启动软件 → 自动扫描导入 → 观看管理 → 看完归档
 ```
 
 ### 用户期望的完整能力链
@@ -302,9 +306,7 @@ mpv 模式下自动记录播放进度到 SQLite。
 ### 外部集成
 
 - **[ani-rss](https://github.com/wushuo894/ani-rss)** — 主要本地动漫下载来源（自动 RSS 订阅下载）
-- ani-rss 提供 **Webhook 通知**（`下载完成`/`开始下载`等事件），Payload 包含 `downloadPath`、`title`、`season`、`episode`、`tmdbid`、`bgmUrl`、`image` 等字段——是集成的主要接入点
 - ani-rss v3.0.1+ 内置 **Swagger REST API**（需鉴权），可用于查询订阅列表、下载状态
-- 未来计划：Webhook 接收 → 自动添加到 scannedTree/自动导入 → 双向联动（追番列表点订阅 → ani-rss 添加 RSS）
 
 ### 设计原则
 

@@ -533,6 +533,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (onServerOrigin) {
     try {
       configCache = await API.get('/api/config');
+      if (configCache?.autoImport?.count > 0) {
+        showToast(configCache.autoImport.message);
+      }
     } catch (_) {}
   }
   loadTheme();

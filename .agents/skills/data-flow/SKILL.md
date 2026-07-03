@@ -62,7 +62,25 @@ server.js ⇒ init()
   │
   ├─ 6. Initialize mpv-controller (activePlays Map)
   │
-  └─ 7. Start HTTP server (http.createServer, listen :3456)
+  ├─ 7. Start HTTP server (http.createServer, listen :3456)
+  │
+  └─ 8. Phase 5: Auto-import new folders (async, non-blocking)
+        autoImportNewFolders(data, config)  (server.js:2006)
+        ├─ Scan mediaDir via scanMediaDir() → flat leaf array
+        ├─ For each leaf with [bgmN] in folder name:
+        │   ├─ Skip if already in data.library (by folderPath)
+        │   ├─ Extract bangumiId via extractBgmId() → numeric ID
+        │   ├─ Fetch metadata from Bangumi using bangumiId (registry.fetchMetadata)
+        │   ├─ Build anime record with bangumiId as primary key (id = String(bgmId))
+        │   ├─ Generate episode list from folder's video files
+        │   ├─ Push to data.library
+        │   ├─ Create MyList entry (status: 'watching')
+        │   ├─ db.saveLibrary(data) → SQLite anime + episode tables
+        │   ├─ db.saveMyList(data) → SQLite mylist table
+        │   ├─ Bangumi sync (async, fire-and-forget)
+        │   └─ autoImportResult.count++
+        └─ If imported > 0, set autoImportResult = { count, message }
+             → consumed by frontend first /api/config GET as `autoImport` field
 ```
 
 ## 2. Config Flow
@@ -95,12 +113,14 @@ server.js:handleRequest()
 | `mediaDir` | string | `""` | Anime folder root path |
 | `playerMode` | string | `"mpv"` | `"mpv"` only (system player removed) |
 | `mpvPath` | string | `"mpv"` | MPV executable path |
-| `theme` | string | `"dark"` | `"dark"` or `"light"` |
-| `uiScale` | number | `100` | 75–150, applied as CSS rem font-size |
-| `scrapers.bangumi.enabled` | bool | `true` | Enable Bangumi metadata |
-| `scrapers.bangumi.apiBase` | string | `"https://api.bgm.tv"` | Bangumi API mirror |
-| `scrapers.tmdb.enabled` | bool | `false` | Enable TMDB (needs API Key) |
-| `tmdbApiKey` | string | `""` | TMDB API Key |
+| `theme` | string | `"default"` | Color theme: default/amber/ocean/sakura/emerald/neon |
+| `themeMode` | string | `"dark"` | `"dark"` or `"light"` |
+| `autoMarkWatched` | bool | `true` | Auto-mark episode watched on completion |
+| `uiScale` | number | `1.25` | 0.75–1.50, applied as CSS `--scale` variable |
+| `reduceMotion` | bool | `false` | Reduced motion preference |
+| `apiSources` | array | `[{type:"bangumi",...}]` | Metadata source list (type/url/key) |
+| `bangumiClientId` | string | `""` | Bangumi OAuth Client ID |
+| `bangumiClientSecret` | string | `""` | Bangumi OAuth Client Secret |
 
 ## 3. Scan / Discovery Flow
 
@@ -139,6 +159,8 @@ GET /api/scan
 
 ## 4. Import Flow
 
+### Manual Import (via Discovery UI)
+
 ```
 POST /api/import
   → server.js (line ~310)
@@ -151,6 +173,25 @@ POST /api/import
       ├─ Mark node.alreadyImported = true in scannedTree
       └─ db.saveLibrary(data) + saveScannedTree(scannedTree)
   → jsonResp(res, 200, { count: N })
+```
+
+### Auto-Import (at startup, for [bgmN] folders)
+
+```
+init() → autoImportNewFolders(data, config)  (server.js:2006)
+  ├─ Called async after server starts listening
+  ├─ scanMediaDir(config.mediaDir) → flat leaves
+  ├─ For each leaf not already in library:
+  │   ├─ extractBgmId(folderName) → numeric bangumiId
+  │   ├─ registry.fetchMetadata('bangumi', title, coverDir, bangumiId, config)
+  │   ├─ Build anime record with id = String(bangumiId) (NOT parsedTitle)
+  │   ├─ Assign episodes from folder's video files
+  │   ├─ Push to data.library
+  │   ├─ Create MyList entry (status: 'watching')
+  │   ├─ db.saveLibrary(data) + db.saveMyList(data) (sequential, FK safety)
+  │   └─ Bangumi sync (async fire-and-forget)
+  ├─ Set autoImportResult = { count, message }
+  └─ Frontend consumes via first GET /api/config → showToast()
 ```
 
 ## 5. Metadata Fetch Flow
@@ -309,7 +350,8 @@ POST /api/memories
 
 | Function | Writes | When to use |
 |----------|--------|-------------|
-| `db.saveLibrary(data)` | anime + episode tables | Import, delete, metadata fetch |
+| `db.saveLibrary(data)` | anime + episode tables | Import, delete, metadata fetch, auto-import |
+| `db.saveMyList(data)` | mylist table | Import, auto-import, status change |
 | `db.saveMemories(data)` | memory table | Archive create/update |
 | `db.savePlaySessions(data)` | playSession table | Play start, mpv final/error |
 | `db.updateEpisodeProgress(id, n, fields)` | single episode row | mpv progress (every 10s), manual update |
@@ -323,6 +365,8 @@ POST /api/memories
 |----------|-------------------|
 | Scan/browse/exclude/unlink/fetch-meta | `saveScannedTree()` |
 | Import, delete anime, bangumi fetch | `db.saveLibrary()` + `saveScannedTree()` |
+| Auto-import new folder (startup) | `db.saveLibrary()` + `db.saveMyList()` (sequential) |
+| MyList status change | `db.saveMyList()` |
 | Memory create/update | `db.saveMemories()` |
 | Play start, mpv final/error cleanup | `db.savePlaySessions()` |
 | Episode progress (manual/mpv) | `db.updateEpisodeProgress()` |
@@ -388,9 +432,9 @@ http.createServer((req, res) => {
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| `server/server.js` | ~1499 | HTTP server, routes, fine-grained saves, init, play sessions, cover serving |
-| `server/db.js` | ~465 | Prisma wrapper: saveLibrary, saveMemories, savePlaySessions, loadData, updateEpisodeProgress, updatePlaySession |
-| `server/scanner.js` | ~372 | Media directory scanner, folder name parsing (anitomy) with extra video filtering |
+| `server/server.js` | ~2176 | HTTP server, routes, fine-grained saves, init, play sessions, cover serving, auto-import |
+| `server/db.js` | ~465 | Prisma wrapper: saveLibrary, saveMemories, savePlaySessions, saveMyList, loadData, updateEpisodeProgress, updatePlaySession |
+| `server/scanner.js` | ~404 | Media directory scanner, folder name parsing (anitomy) with extra video filtering, [bgmN] ID extraction |
 | `server/mpv-controller.js` | ~177 | mpv process spawn, IPC progress tracking, error/crash reporting |
 | `server/scrapers/index.js` | ~557 | ScraperRegistry: multi-source metadata aggregation |
 | `server/scrapers/bangumi.js` | — | Bangumi API client + cover download |
@@ -408,12 +452,16 @@ http.createServer((req, res) => {
 ## Key Gotchas
 
 1. **Fine-grained saves**: Each API endpoint only writes the SQLite table(s) it actually modifies. `saveScannedTree()` writes `scanned-tree.json` (sync). Never use `db.saveAll()` unless you're changing data in multiple tables simultaneously.
-2. **Fetch in pkg**: Global `fetch()` is unavailable in pkg-bundled Node.js. `node-fetch.js` polyfill with http/https native modules replaces it in scrapers.
-3. **ffmpeg path**: Dev mode uses `require('ffmpeg-static')` from server/node_modules. pkg mode sets `FFMPEG_BIN` env var → `sidecar-modules/ffmpeg.exe` (copied during build by copy-sidecar-deps.js).
-4. **DATA_DIR differs**: Dev = `server/`, pkg/MSI = `%APPDATA%/com.myanimedocker.app`. File paths (config.json, scanned-tree.json, covers/, thumbs/) all resolve through DATA_DIR.
-5. **covers/ migration**: Covers downloaded in dev mode go to `server/covers/`. After MSI install, covers must be re-fetched (new AppData path). `init()` validates localCover existence and clears missing ones → gray placeholder shown.
-6. **Play sessions**: `activePlays` Map is in-memory only (lost on server restart). Persisted playSessions survive in SQLite.
-7. **CSS zoom** (`uiScale`): Applied via `document.documentElement.style.fontSize = (16 * scale/100) + 'px'`. All font sizes use rem units. Card grid min widths also in rem.
-8. **mpv error propagation**: `/api/play` uses Promise with 2s timeout to capture spawn errors. `mpv-controller.js` reports ENOENT/early crashes via `onError` callback. Frontend sees "播放失败: ..." toast.
-9. **nodemon data ignore**: `dev:server:watch` must ignore `server/prisma/`, `server/covers/`, `server/thumbs/`, `server/scanned-tree.json` to prevent data writes from triggering server restarts.
-10. **DB path in dev mode**: `server/db.js` uses `path.join(__dirname, '..', 'prisma', 'anime.db')` — i.e. project root → `prisma/anime.db`. The SQLite database is at project root `prisma/` directory, not inside `server/`.
+2. **Save order matters**: Auto-import always calls `db.saveLibrary()` before `db.saveMyList()` — MyList has a foreign key constraint on animeId, so the anime record must exist first.
+3. **bangumiId as primary key**: Anime records use `String(bangumiId)` as their `id` field. This means anime identity is stable across folder renames. Manual imports (no `[bgmN]`) still use `parsedTitle + Season` scheme for backward compatibility.
+4. **Fetch in pkg**: Global `fetch()` is unavailable in pkg-bundled Node.js. `node-fetch.js` polyfill with http/https native modules replaces it in scrapers.
+5. **ffmpeg path**: Dev mode uses `require('ffmpeg-static')` from server/node_modules. pkg mode sets `FFMPEG_BIN` env var → `sidecar-modules/ffmpeg.exe` (copied during build by copy-sidecar-deps.js).
+6. **DATA_DIR differs**: Dev = `server/`, pkg/MSI = `%APPDATA%/com.myanimedocker.app`. File paths (config.json, scanned-tree.json, covers/, thumbs/) all resolve through DATA_DIR.
+7. **covers/ migration**: Covers downloaded in dev mode go to `server/covers/`. After MSI install, covers must be re-fetched (new AppData path). `init()` validates localCover existence and clears missing ones → gray placeholder shown.
+8. **Play sessions**: `activePlays` Map is in-memory only (lost on server restart). Persisted playSessions survive in SQLite.
+9. **CSS zoom** (`uiScale`): Applied via `document.documentElement.style.fontSize = (16 * scale/100) + 'px'`. All font sizes use rem units. Card grid min widths also in rem.
+10. **mpv error propagation**: `/api/play` uses Promise with 2s timeout to capture spawn errors. `mpv-controller.js` reports ENOENT/early crashes via `onError` callback. Frontend sees "播放失败: ..." toast.
+11. **nodemon data ignore**: `dev:server:watch` must ignore `server/prisma/`, `server/covers/`, `server/thumbs/`, `server/scanned-tree.json` to prevent data writes from triggering server restarts.
+12. **DB path in dev mode**: `server/db.js` uses `path.join(__dirname, '..', 'prisma', 'anime.db')` — i.e. project root → `prisma/anime.db`. The SQLite database is at project root `prisma/` directory, not inside `server/`.
+13. **Auto-import is async**: `autoImportNewFolders()` runs after the server starts listening, not blocking startup. The `autoImportResult` is consumed by the frontend's first `/api/config` GET request (one-shot).
+14. **[bgmN] extraction**: `extractBgmId()` (`scanner.js:398`) uses regex `/\[bgm(\d+)\]/i` — case-insensitive, supports `[bgm123]` and `[BGM123]`. Only the first match is returned. Must match the Bangumi subject ID exactly.

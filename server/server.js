@@ -8,6 +8,9 @@ const logger = require('./logger').child('[SERVER]');
 const BangumiPersonal = require('./scrapers/bangumi-personal');
 const BangumiSync = require('./bangumi-sync');
 
+// ── 启动时自动导入计数（前端 toast 用）──
+let autoImportResult = { count: 0, message: '' };
+
 // ── 启动引导日志（写入 %TEMP%，早于一切模块加载，崩溃也不丢）──
 const BOOT_LOG = path.join(process.env.TEMP || process.env.TMP || '.', 'myanimedocker-bootstrap.log');
 const bootLog = (msg) => { try { fs.appendFileSync(BOOT_LOG, `[${new Date().toISOString()}] ${msg}\n`); } catch (e) {} };
@@ -368,7 +371,9 @@ const server = http.createServer((req, res) => {
     const dirValid = config.mediaDir
       ? fs.existsSync(config.mediaDir) && fs.statSync(config.mediaDir).isDirectory()
       : false;
-    jsonResp(res, 200, { ...config, dirValid });
+    const importInfo = { ...autoImportResult };
+    autoImportResult = { count: 0, message: '' }; // 一次性消费
+    jsonResp(res, 200, { ...config, dirValid, ...(importInfo.count > 0 ? { autoImport: importInfo } : {}) });
     return;
   }
 
@@ -1812,6 +1817,94 @@ async function validateCovers(data) {
   }
 }
 
+// ── 启动自动导入：扫描 mediaDir，对有 [bgmN] 的新文件夹直接导入 ──
+async function autoImportNewFolders(data, config) {
+  if (!config.mediaDir || !fs.existsSync(config.mediaDir)) return;
+  const aiLog = logger.child('[AUTOIMPORT]');
+  const { scanMediaDir, extractBgmId } = require('./scanner');
+  const { registry } = require('./scrapers');
+  const coverDir = path.join(DATA_DIR, 'covers');
+
+  // Build set of already-imported folderPaths
+  const importedPaths = new Set(data.library.map(a => a.folderPath));
+
+  const candidates = scanMediaDir(config.mediaDir);
+  let imported = 0;
+
+  for (const item of candidates) {
+    if (importedPaths.has(item.folderPath)) continue;
+
+    // Try to extract bangumiId from folder path
+    const bgmId = item.bangumiId || extractBgmId(item.folderName) || extractBgmId(item.folderPath);
+    if (!bgmId) continue; // No bangumiId → skip (user handles via Discovery)
+
+    aiLog.info(`Auto-importing: ${item.folderName} (bgmId=${bgmId})`);
+
+    try {
+      // Fetch metadata from Bangumi
+      const meta = await registry.fetchMetadata('bangumi', item.parsedTitle, coverDir, bgmId, config);
+
+      // Build anime record
+      const anime = {
+        id: String(bgmId),
+        folderPath: item.folderPath,
+        folderName: item.folderName,
+        title: meta?.bangumiTitle || item.parsedTitle,
+        season: item.parsedSeason || null,
+        specialSuffix: item.specialSuffix || null,
+        importedAt: new Date().toISOString(),
+        downloaded: true,
+        bangumiId: bgmId,
+        bangumiTitle: meta?.bangumiTitle || item.parsedTitle,
+        bangumiTitleJp: meta?.bangumiTitleJp || null,
+        bangumiTitleEn: null,
+        summary: meta?.summary || null,
+        coverUrl: meta?.coverUrl || null,
+        localCover: meta?.localCover || null,
+        rating: meta?.rating || null,
+        metadataSource: meta?.source || 'bangumi',
+        matchedSeason: item.parsedSeason || null,
+        totalSeasons: null,
+        episodes: item.videos.map((v, i) => ({
+          number: i + 1,
+          filePath: path.join(item.folderPath, v.name) || v.path,
+          fileName: v.name,
+          fileSize: v.size || 0,
+          duration: null,
+          watched: false,
+          progress: 0,
+        })),
+      };
+
+      // Pre-generate cover thumbnails
+      if (meta?.localCover) preGenerateCovers(meta.localCover);
+
+      data.library.push(anime);
+      if (!data.myList) data.myList = [];
+      if (!data.myList.find(m => m.animeId === anime.id)) {
+        data.myList.push({ animeId: anime.id, status: 'watching', rating: null, thoughts: '', notes: '' });
+      }
+
+      await db.saveLibrary(data);
+      await db.saveMyList(data);
+      imported++;
+
+      // Push to Bangumi (async)
+      try {
+        const BangumiSync = require('./bangumi-sync');
+        BangumiSync.pushStatusChange(anime.id, data);
+      } catch (_) {}
+    } catch (e) {
+      aiLog.warn(`Failed to import ${item.folderName}: ${e.message}`);
+    }
+  }
+
+  if (imported > 0) {
+    aiLog.info(`Auto-imported ${imported} new anime`);
+    autoImportResult = { count: imported, message: `自动导入了 ${imported} 部新番` };
+  }
+}
+
 async function init() {
   // ── 端口清理：如果有旧进程占着 3456，强制关闭（sidecar 重启时旧进程未完全退出）──
   try {
@@ -1882,6 +1975,13 @@ async function init() {
   logger.info(`Ready in ${elapsed}ms — ${data.library.length} anime, port ${PORT}`);
   if (config.mediaDir) {
     logger.info(`Media directory: ${config.mediaDir}`);
+  }
+
+  // Phase 5: Auto-import new folders (async, non-blocking)
+  if (config.mediaDir) {
+    autoImportNewFolders(data, config).catch(e =>
+      logger.warn('[AUTOIMPORT] Error:', e.message)
+    );
   }
 }
 

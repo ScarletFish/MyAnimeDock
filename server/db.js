@@ -135,8 +135,11 @@ function getPrisma() {
  */
 async function ensureSchema() {
   if (!fs.existsSync(DB_FILE)) {
-    logger.info('Database file not found, will be created on first connect');
-    return;
+    logger.info('Database file not found, creating new database...');
+    const dir = path.dirname(DB_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(DB_FILE, '');
+    logger.info('Database file created, initializing schema...');
   }
 
   try {

@@ -64,31 +64,31 @@ function goPrev() {
     if (idx === -1) return;
     const prevIdx = idx === 0 ? mylistData.length - 1 : idx - 1;
     const prev = mylistData[prevIdx];
+if (prev) {
+        showToast(`← ${prev.bangumiTitle || prev.title}`, 'info');
+        slideToAnime(prev.id, 'prev');
+      }
+      return;
+    }
+    if (isArchiveMode) {
+      const idx = findCurrentMemoryIndex();
+      if (idx === -1) return;
+      const prevIdx = idx === 0 ? memoriesData.length - 1 : idx - 1;
+      const prev = memoriesData[prevIdx];
+      if (prev) {
+        showToast(`← ${prev.bangumiTitle || prev.title}`, 'info');
+        slideToAnime(prev.animeId, 'prev');
+      }
+      return;
+    }
+    const idx = findCurrentLibraryIndex();
+    if (idx === -1) return;
+    const prevIdx = idx === 0 ? libraryData.length - 1 : idx - 1;
+    const prev = libraryData[prevIdx];
     if (prev) {
-      showToast(`← ${prev.bangumiTitle || prev.title}`);
+      showToast(`← ${prev.bangumiTitle || prev.title}`, 'info');
       slideToAnime(prev.id, 'prev');
     }
-    return;
-  }
-  if (isArchiveMode) {
-    const idx = findCurrentMemoryIndex();
-    if (idx === -1) return;
-    const prevIdx = idx === 0 ? memoriesData.length - 1 : idx - 1;
-    const prev = memoriesData[prevIdx];
-    if (prev) {
-      showToast(`← ${prev.bangumiTitle || prev.title}`);
-      slideToAnime(prev.animeId, 'prev');
-    }
-    return;
-  }
-  const idx = findCurrentLibraryIndex();
-  if (idx === -1) return;
-  const prevIdx = idx === 0 ? libraryData.length - 1 : idx - 1;
-  const prev = libraryData[prevIdx];
-  if (prev) {
-    showToast(`← ${prev.bangumiTitle || prev.title}`);
-    slideToAnime(prev.id, 'prev');
-  }
 }
 
 function goNext() {
@@ -98,31 +98,31 @@ function goNext() {
     if (idx === -1) return;
     const nextIdx = idx === mylistData.length - 1 ? 0 : idx + 1;
     const next = mylistData[nextIdx];
+if (next) {
+        showToast(`${next.bangumiTitle || next.title} →`, 'info');
+        slideToAnime(next.id, 'next');
+      }
+      return;
+    }
+    if (isArchiveMode) {
+      const idx = findCurrentMemoryIndex();
+      if (idx === -1) return;
+      const nextIdx = idx === memoriesData.length - 1 ? 0 : idx + 1;
+      const next = memoriesData[nextIdx];
+      if (next) {
+        showToast(`${next.bangumiTitle || next.title} →`, 'info');
+        slideToAnime(next.animeId, 'next');
+      }
+      return;
+    }
+    const idx = findCurrentLibraryIndex();
+    if (idx === -1) return;
+    const nextIdx = idx === libraryData.length - 1 ? 0 : idx + 1;
+    const next = libraryData[nextIdx];
     if (next) {
-      showToast(`${next.bangumiTitle || next.title} →`);
+      showToast(`${next.bangumiTitle || next.title} →`, 'info');
       slideToAnime(next.id, 'next');
     }
-    return;
-  }
-  if (isArchiveMode) {
-    const idx = findCurrentMemoryIndex();
-    if (idx === -1) return;
-    const nextIdx = idx === memoriesData.length - 1 ? 0 : idx + 1;
-    const next = memoriesData[nextIdx];
-    if (next) {
-      showToast(`${next.bangumiTitle || next.title} →`);
-      slideToAnime(next.animeId, 'next');
-    }
-    return;
-  }
-  const idx = findCurrentLibraryIndex();
-  if (idx === -1) return;
-  const nextIdx = idx === libraryData.length - 1 ? 0 : idx + 1;
-  const next = libraryData[nextIdx];
-  if (next) {
-    showToast(`${next.bangumiTitle || next.title} →`);
-    slideToAnime(next.id, 'next');
-  }
 }
 
 async function slideToAnime(id, direction) {
@@ -205,7 +205,7 @@ async function slideToAnime(id, direction) {
     document.getElementById('headerTitle').textContent = currentAnime.bangumiTitle || currentAnime.title;
     if (!isArchiveMode && !isWishlistMode) startDetailRefresh();
   } catch (e) {
-    showToast('加载详情失败: ' + e.message);
+    showToast('加载详情失败: ' + e.message, 'error');
     isSliding = false;
     document.body.style.pointerEvents = '';
     return;

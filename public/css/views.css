@@ -1260,19 +1260,6 @@
 .mm-row--matching {
   background: rgba(var(--accent-rgb), 0.05);
 }
-.mm-row--matching::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: var(--radius-sm);
-  background: linear-gradient(90deg, transparent, rgba(var(--accent-rgb), 0.06), transparent);
-  animation: mmRowShimmer 2s ease-in-out infinite;
-  pointer-events: none;
-}
-@keyframes mmRowShimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
-}
 /* ─── Batch selection background ─── */
 .mm-row--batch {
   background: rgba(var(--accent-rgb), 0.08) !important;
@@ -1288,11 +1275,7 @@
 .mm-row-dot--failed { background: var(--error); box-shadow: 0 0 6px rgba(239, 68, 68, 0.4); }
 .mm-row-dot--matching {
   background: var(--accent);
-  animation: mmDotPulse 1.2s ease-in-out infinite;
-}
-@keyframes mmDotPulse {
-  0%, 100% { opacity: 0.4; transform: scale(0.8); }
-  50% { opacity: 1; transform: scale(1.2); }
+  opacity: 0.7;
 }
 .mm-row-dot--pending { background: var(--fg-muted); opacity: 0.4; }
 .mm-row-info { flex: 1; min-width: 0; }
@@ -1631,7 +1614,7 @@
   background: currentColor;
 }
 .mm-panel-status--matching .mm-panel-status-dot {
-  animation: mmDotPulse 1.2s ease-in-out infinite;
+  opacity: 0.7;
 }
 
 /* ─── Fix Search ─── */
@@ -1817,5 +1800,112 @@
 }
 .modal-m-body .mm-panel-content {
   height: 100%;
+}
+
+/* ─── Sync Log Panel ─── */
+.mm-panel-synclog {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+.mm-panel-synclog-header {
+  padding: var(--space-3) var(--space-4) 0;
+  font-size: calc(0.6875rem * var(--scale));
+  color: var(--fg-muted);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  letter-spacing: 0.03em;
+}
+.mm-panel-synclog-entries {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-1) 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.mm-panel-synclog-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 4px var(--space-4);
+  font-size: calc(0.75rem * var(--scale));
+  line-height: 1.4;
+  opacity: 0;
+  animation: mmLogIn 0.25s var(--ease-out) forwards;
+}
+@keyframes mmLogIn {
+  from { opacity: 0; transform: translateX(-6px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.mm-panel-synclog-icon {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mm-panel-synclog-icon svg {
+  width: 14px;
+  height: 14px;
+}
+.mm-panel-synclog-icon--searching svg { color: var(--accent-soft); }
+.mm-panel-synclog-icon--matched svg { color: var(--success); }
+.mm-panel-synclog-icon--failed svg { color: var(--error); }
+.mm-panel-synclog-body {
+  flex: 1;
+  min-width: 0;
+}
+.mm-panel-synclog-title {
+  font-weight: 500;
+  color: var(--fg-primary);
+}
+.mm-panel-synclog-title--searching { color: var(--accent-soft); }
+.mm-panel-synclog-title--matched { color: var(--success); }
+.mm-panel-synclog-title--failed { color: var(--error); }
+.mm-panel-synclog-detail {
+  font-size: calc(0.6875rem * var(--scale));
+  color: var(--fg-muted);
+  margin-top: 1px;
+}
+.mm-panel-synclog-detail--matched {
+  color: var(--success);
+}
+.mm-panel-synclog-detail--failed {
+  color: var(--error);
+}
+.mm-panel-synclog-summary {
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  background: var(--bg-surface);
+}
+.mm-panel-synclog-summary-stats {
+  display: flex;
+  gap: var(--space-4);
+  font-size: calc(0.8125rem * var(--scale));
+}
+.mm-panel-synclog-summary-stat {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--fg-muted);
+}
+.mm-panel-synclog-summary-stat .num {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.mm-panel-synclog-summary-stat--matched { color: var(--success); }
+.mm-panel-synclog-summary-stat--failed { color: var(--error); }
+.mm-panel-synclog-summary-stat--total { color: var(--fg-secondary); }
+.mm-panel-synclog-summary-msg {
+  font-size: calc(0.75rem * var(--scale));
+  color: var(--fg-muted);
 }
 

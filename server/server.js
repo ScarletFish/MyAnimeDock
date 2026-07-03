@@ -11,6 +11,9 @@ const BangumiSync = require('./bangumi-sync');
 // ── 启动时自动导入计数（前端 toast 用）──
 let autoImportResult = { count: 0, message: '' };
 
+// ── 后台操作通知队列（silent toast 用）──
+let pendingNotifications = [];
+
 // ── 启动引导日志（写入 %TEMP%，早于一切模块加载，崩溃也不丢）──
 const BOOT_LOG = path.join(process.env.TEMP || process.env.TMP || '.', 'myanimedocker-bootstrap.log');
 const bootLog = (msg) => { try { fs.appendFileSync(BOOT_LOG, `[${new Date().toISOString()}] ${msg}\n`); } catch (e) {} };
@@ -373,7 +376,14 @@ const server = http.createServer((req, res) => {
       : false;
     const importInfo = { ...autoImportResult };
     autoImportResult = { count: 0, message: '' }; // 一次性消费
-    jsonResp(res, 200, { ...config, dirValid, ...(importInfo.count > 0 ? { autoImport: importInfo } : {}) });
+    jsonResp(res, 200, { ...config, dirValid, autoImport: importInfo });
+    return;
+  }
+
+  // --- API: pending notifications (一次性消费) ---
+  if (urlPath === '/api/notifications' && req.method === 'GET') {
+    const notifs = pendingNotifications.splice(0);
+    jsonResp(res, 200, { notifications: notifs });
     return;
   }
 
@@ -569,8 +579,14 @@ const server = http.createServer((req, res) => {
             .slice(0, 20); // Limit to 20 to avoid rate limits
 
           if (romajiKeywords.length > 0) {
-            // Don't await - run in background
-            anilist.prefetch(romajiKeywords, registry, config).catch(() => {});
+            // Don't await - run in background, capture result for notification
+            anilist.prefetch(romajiKeywords, registry, config)
+              .then(results => {
+                if (results && results.length > 0) {
+                  pendingNotifications.push({ type: 'anilist_prefetch', count: results.length });
+                }
+              })
+              .catch(() => {});
           }
         }
       }
@@ -1537,6 +1553,8 @@ const server = http.createServer((req, res) => {
 
           let timedOut = false;
           const itemPromise = (async () => {
+            const searchTerm = folderParsed.cleanTitle || folderParsed.cjkTitle || anime.folderName || anime.title || '未知';
+            send('matching', { animeId, searchTerm });
             const match = await matchSeason(registry, folderParsed.cleanTitle, folderParsed, videoCount, config);
             if (timedOut) return;
             if (!match) {
@@ -1876,6 +1894,21 @@ async function autoImportNewFolders(data, config) {
         })),
       };
 
+      // Spread rich metadata from Bangumi (persisted via metadata JSON column in db.js)
+      if (meta) {
+        anime.characters = meta.characters || [];
+        anime.persons = meta.persons || [];
+        anime.tags = meta.tags || [];
+        anime.date = meta.date || null;
+        anime.platform = meta.platform || null;
+        anime.ratingRank = meta.ratingRank || null;
+        anime.ratingTotal = meta.ratingTotal || null;
+        anime.infobox = meta.infobox || [];
+        anime.collection = meta.collection || null;
+        anime.eps = meta.eps || null;
+        anime.totalEpisodes = meta.totalEpisodes || null;
+      }
+
       // Pre-generate cover thumbnails
       if (meta?.localCover) preGenerateCovers(meta.localCover);
 
@@ -1899,9 +1932,10 @@ async function autoImportNewFolders(data, config) {
     }
   }
 
+  aiLog.info(`Auto-imported ${imported} new anime`);
+  autoImportResult = { count: imported, message: imported > 0 ? `自动导入了 ${imported} 部新番` : '', done: true };
   if (imported > 0) {
-    aiLog.info(`Auto-imported ${imported} new anime`);
-    autoImportResult = { count: imported, message: `自动导入了 ${imported} 部新番` };
+    pendingNotifications.push({ type: 'auto_import', count: imported, message: autoImportResult.message });
   }
 }
 

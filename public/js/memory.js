@@ -9,7 +9,7 @@ async function loadMemories() {
   } catch (e) {
     // Tauri 初始加载时静默失败
     if (window.location.origin !== 'http://localhost:3456') return;
-    showToast('加载归档失败: ' + e.message);
+    showToast('加载归档失败: ' + e.message, 'error');
   }
 }
 
@@ -75,7 +75,7 @@ function renderMemories() {
 function showMemoryDetail(animeId) {
   const memory = memoriesData.find(m => m.animeId === animeId);
   if (!memory) {
-    showToast('未找到归档记录');
+    showToast('未找到归档记录', 'info');
     return;
   }
 
@@ -141,7 +141,7 @@ async function saveMemory() {
       thoughts,
       notes,
     });
-    showToast('感想已保存');
+    showToast('感想已保存', 'success');
     closeModal('memoryModal');
 
     // Reload memory data and re-render
@@ -159,7 +159,7 @@ async function saveMemory() {
       }
     }
   } catch (e) {
-    showToast('保存失败: ' + e.message);
+    showToast('保存失败: ' + e.message, 'error');
   }
 }
 

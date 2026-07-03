@@ -99,7 +99,7 @@ async function loadLibrary() {
   } catch (e) {
     // Tauri 初始加载时（frontendDist，非 server 源）静默失败
     if (window.location.origin !== 'http://localhost:3456') return;
-    showToast('加载资料库失败: ' + e.message);
+    showToast('加载资料库失败: ' + e.message, 'error');
   }
 }
 
@@ -285,10 +285,10 @@ async function contextDeleteAnime() {
   if (!(await showConfirm(`确定要彻底删除「${title}」吗？<br>数据将被清除，不可恢复。`))) return;
   try {
     await API.del(`/api/anime/${encodeURIComponent(animeId)}`);
-    showToast('已删除');
+    showToast('已删除，已归档到追番列表', 'success');
     loadLibrary();
   } catch (e) {
-    showToast('删除失败: ' + e.message);
+    showToast('删除失败: ' + e.message, 'error');
   }
 }
 
@@ -316,11 +316,11 @@ async function contextArchiveAnime() {
       notes: '',
     });
     await API.del(`/api/anime/${encodeURIComponent(animeId)}`);
-    showToast('已归档');
+    showToast('已归档', 'success');
     loadLibrary();
     if (typeof loadMyList === 'function') loadMyList();
   } catch (e) {
-    showToast('归档失败: ' + e.message);
+    showToast('归档失败: ' + e.message, 'error');
   }
 }
 

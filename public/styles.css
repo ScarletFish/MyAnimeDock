@@ -26,6 +26,8 @@
   --success: #22c55e;
   --warning: #f59e0b;
   --error: #ef4444;
+  --info: #a78bfa;
+  --info-rgb: 167, 139, 250;
 
   --border: rgba(237, 232, 226, 0.06);
   --border-hover: rgba(237, 232, 226, 0.12);
@@ -121,6 +123,8 @@
   --success: #22c55e;
   --warning: #f59e0b;
   --error: #ef4444;
+  --info: #a78bfa;
+  --info-rgb: 167, 139, 250;
 
   --border: rgba(237, 228, 216, 0.06);
   --border-hover: rgba(237, 228, 216, 0.12);
@@ -186,6 +190,8 @@
   --success: #22c55e;
   --warning: #f59e0b;
   --error: #ef4444;
+  --info: #a78bfa;
+  --info-rgb: 167, 139, 250;
 
   --border: rgba(220, 232, 240, 0.06);
   --border-hover: rgba(220, 232, 240, 0.12);
@@ -250,6 +256,8 @@
   --success: #22c55e;
   --warning: #f59e0b;
   --error: #ef4444;
+  --info: #a78bfa;
+  --info-rgb: 167, 139, 250;
 
   --border: rgba(240, 226, 232, 0.06);
   --border-hover: rgba(240, 226, 232, 0.12);
@@ -314,6 +322,8 @@
   --success: #22c55e;
   --warning: #f59e0b;
   --error: #ef4444;
+  --info: #a78bfa;
+  --info-rgb: 167, 139, 250;
 
   --border: rgba(224, 240, 232, 0.06);
   --border-hover: rgba(224, 240, 232, 0.12);
@@ -378,6 +388,8 @@
   --success: #22c55e;
   --warning: #f59e0b;
   --error: #ef4444;
+  --info: #a78bfa;
+  --info-rgb: 167, 139, 250;
 
   --border: rgba(232, 224, 240, 0.06);
   --border-hover: rgba(232, 224, 240, 0.12);
@@ -821,8 +833,6 @@ html.theme-transitioning .theme-dock {
 /* ─── Reduced Motion ─── */
 @media (prefers-reduced-motion: reduce) {
   .mm-row { animation: none !important; }
-  .mm-row--matching::before { animation: none !important; }
-  .mm-row-dot--matching { animation: none !important; }
   .mm-bento-pulse { animation: none !important; }
   .mm-panel-status--matching .mm-panel-status-dot { animation: none !important; }
   .mm-batch-bar { animation: none !important; }
@@ -852,8 +862,6 @@ html.theme-transitioning .theme-dock {
 
 /* ─── Manual reduced-motion toggle (mirrors @media block above) ─── */
 html[data-reduce-motion="true"] .mm-row,
-html[data-reduce-motion="true"] .mm-row--matching::before,
-html[data-reduce-motion="true"] .mm-row-dot--matching,
 html[data-reduce-motion="true"] .mm-bento-pulse,
 html[data-reduce-motion="true"] .mm-panel-status--matching .mm-panel-status-dot,
 html[data-reduce-motion="true"] .mm-batch-bar,

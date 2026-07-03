@@ -48,7 +48,7 @@ async function loadDiscovery() {
   } catch (e) {
     // Tauri 初始加载时静默失败
     if (window.location.origin !== 'http://localhost:3456') return;
-    showToast('加载失败: ' + e.message);
+    showToast('加载失败: ' + e.message, 'error');
   }
 }
 
@@ -89,13 +89,14 @@ async function startScan() {
           scanBtnText.textContent = `扫描 ${msg.current}/${msg.total}`;
         } else if (msg.type === 'done') {
           loadDiscovery();
+          pollNotifications();
         } else if (msg.type === 'error') {
-          showToast('扫描失败: ' + msg.message);
+          showToast('扫描失败: ' + msg.message, 'error');
         }
       }
     }
   } catch (e) {
-    showToast('扫描失败: ' + e.message);
+    showToast('扫描失败: ' + e.message, 'error');
   }
 
   scanBtn.disabled = false;
@@ -339,16 +340,17 @@ async function importSelected() {
     specialSuffix: n.specialSuffix,
   }));
   if (items.length === 0) {
-    showToast('请先选择要导入的动漫');
+    showToast('请先选择要导入的动漫', 'warning');
     return;
   }
   try {
     const result = await API.post('/api/import', { items });
-    showToast(`已导入 ${result.imported.length} 部动漫`);
+    showToast(`已导入 ${result.imported.length} 部动漫`, 'success');
+    showToast('已自动添加到追番列表', 'silent');
     loadDiscovery();
     loadLibrary();
   } catch (e) {
-    showToast('导入失败: ' + e.message);
+    showToast('导入失败: ' + e.message, 'error');
   }
 }
 
@@ -360,32 +362,52 @@ function refreshDiscovery() {
 async function unlinkSingle(path) {
   try {
     await API.post('/api/discovery/unlink', { path });
-    showToast('已取消导入');
+    showToast('已取消导入', 'info');
     checkedPaths.delete(path);
     loadDiscovery();
     loadLibrary();
     loadMemories();
   } catch (e) {
-    showToast('取消导入失败: ' + e.message);
+    showToast('取消导入失败: ' + e.message, 'error');
   }
 }
 
 async function excludeSingle(path) {
   try {
     await API.post('/api/discovery/exclude', { path });
-    showToast('已排除扫描');
+    showToast('已排除扫描', 'info');
     loadDiscovery();
   } catch (e) {
-    showToast('排除失败: ' + e.message);
+    showToast('排除失败: ' + e.message, 'error');
   }
 }
 
 async function includeSingle(path) {
   try {
     await API.post('/api/discovery/include', { path });
-    showToast('已取消排除');
+    showToast('已取消排除', 'info');
     loadDiscovery();
   } catch (e) {
-    showToast('取消排除失败: ' + e.message);
+    showToast('取消排除失败: ' + e.message, 'error');
+  }
+}
+
+// ─── Background notification polling ───
+async function pollNotifications() {
+  for (let i = 0; i < 5; i++) {
+    await new Promise(r => setTimeout(r, 2000));
+    try {
+      const resp = await API.get('/api/notifications');
+      if (resp.notifications?.length > 0) {
+        for (const n of resp.notifications) {
+          if (n.type === 'anilist_prefetch') {
+            showToast(`已后台预取 ${n.count} 部 AniList 元数据`, 'silent');
+          }
+        }
+        return;
+      }
+    } catch (e) {
+      return;
+    }
   }
 }

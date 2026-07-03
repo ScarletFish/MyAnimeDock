@@ -218,7 +218,7 @@ async function openSettings() {
     openModal('settingsModal');
   } catch (e) {
     if (window.location.origin !== 'http://localhost:3456') return;
-    showToast('加载设置失败: ' + e.message);
+    showToast('加载设置失败: ' + e.message, 'error');
   }
 }
 
@@ -292,7 +292,7 @@ async function bangumiBind() {
   const clientId = document.getElementById('bangumiClientId').value.trim();
   let clientSecret = document.getElementById('bangumiClientSecret').value.trim();
   if (!clientId) {
-    showToast('请先填入 Bangumi Client ID');
+    showToast('请先填入 Bangumi Client ID', 'warning');
     return;
   }
   // 如果 secret 仍是占位符掩码，则沿用已保存的值
@@ -300,7 +300,7 @@ async function bangumiBind() {
     clientSecret = configCache?.bangumiClientSecret || '';
   }
   if (!clientSecret) {
-    showToast('请先填入 Bangumi Client Secret');
+    showToast('请先填入 Bangumi Client Secret', 'warning');
     return;
   }
   // Save OAuth creds first (saveSettings may not be called)
@@ -308,7 +308,7 @@ async function bangumiBind() {
   // Get OAuth URL and open browser
   const { url } = await API.get('/api/bangumi/auth/url');
   if (!url) {
-    showToast('无法生成授权链接');
+    showToast('无法生成授权链接', 'error');
     return;
   }
   // Tauri 中用 shell.open 打开系统默认浏览器，浏览器环境用 window.open
@@ -316,13 +316,13 @@ async function bangumiBind() {
     try {
       await window.__TAURI__.shell.open(url);
     } catch (e) {
-      showToast('打开浏览器失败: ' + e.message);
+      showToast('打开浏览器失败: ' + e.message, 'error');
       return;
     }
   } else {
     window.open(url, '_blank');
   }
-  showToast('请在浏览器中完成 Bangumi 授权');
+  showToast('请在浏览器中完成 Bangumi 授权', 'info');
   // 启动轮询检测授权完成
   startAuthPolling();
 }
@@ -340,14 +340,14 @@ function startAuthPolling() {
       if (state.authed) {
         clearInterval(authPollTimer);
         authPollTimer = null;
-        showToast('Bangumi 绑定成功！');
+        showToast('Bangumi 绑定成功！', 'success');
         refreshBangumiAuthStatus();
       }
     } catch {}
     if (attempts >= maxAttempts) {
       clearInterval(authPollTimer);
       authPollTimer = null;
-      showToast('绑定超时，请检查 Bangumi 授权页面');
+      showToast('绑定超时，请检查 Bangumi 授权页面', 'warning');
     }
   }, 2000);
 }
@@ -355,7 +355,7 @@ function startAuthPolling() {
 async function bangumiUnbind() {
   await API.post('/api/bangumi/auth/logout');
   refreshBangumiAuthStatus();
-  showToast('已解除 Bangumi 绑定');
+  showToast('已解除 Bangumi 绑定', 'info');
 }
 
 async function saveSettings() {
@@ -406,7 +406,7 @@ async function saveSettings() {
 
     closeModal('settingsModal');
 
-    showToast('设置已保存');
+    showToast('设置已保存', 'success');
     refreshDiscovery();
   } catch (e) {
     document.getElementById('settingsError').textContent = '保存失败: ' + e.message;
@@ -460,12 +460,62 @@ function showConfirm(message) {
   });
 }
 
-// Toast
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2500);
+// ─── Toast: SVG Icons ───
+const TOAST_ICONS = {
+  success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>',
+  error:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+  warning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+  info:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+  silent:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
+};
+const TOAST_DURATION = { success: 4000, error: 6000, warning: 5000, info: 3500, silent: 2500 };
+const TOAST_MAX = 5;
+
+// Toast: dismiss helper
+function dismissToast(el) {
+  if (el.classList.contains('dismissing')) return;
+  el.classList.add('dismissing');
+  el.addEventListener('animationend', () => el.remove(), { once: true });
+  setTimeout(() => { if (el.parentNode) el.remove(); }, 600);
+}
+
+// Toast: show
+//   msg  – string, or { title, desc? }
+//   type – 'success' | 'error' | 'warning' | 'info' (default) | 'silent'
+//   opts – { duration? } override auto-dismiss ms
+function showToast(msg, type, opts) {
+  type = type || 'info';
+  opts = opts || {};
+  const container = document.getElementById('toastContainer');
+  if (!container) return;
+
+  // Normalize msg
+  const title = typeof msg === 'string' ? msg : (msg.title || '');
+  const desc  = typeof msg === 'object' && msg.desc ? msg.desc : '';
+
+  // Create element
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.setAttribute('data-type', type);
+  const duration = opts.duration || TOAST_DURATION[type] || 3500;
+  el.innerHTML = `
+    <div class="toast-icon">${TOAST_ICONS[type] || TOAST_ICONS.info}</div>
+    <div class="toast-text">
+      <div class="toast-title">${escHtml(title)}</div>
+      ${desc ? '<div class="toast-desc">' + escHtml(desc) + '</div>' : ''}
+    </div>
+    <div class="toast-progress" style="animation-duration:${duration}ms"></div>
+  `;
+  el.addEventListener('click', () => dismissToast(el));
+  container.prepend(el);
+
+  // Cap max visible
+  while (container.children.length > TOAST_MAX) {
+    dismissToast(container.lastChild);
+  }
+
+  // Auto dismiss
+  setTimeout(() => dismissToast(el), duration);
 }
 
 function formatSize(bytes) {
@@ -503,10 +553,10 @@ async function browseFolder(inputId) {
     if (selected) {
       document.getElementById(inputId).value = selected;
     } else if (!window.__TAURI__) {
-      showToast('浏览器模式下请在输入框中手动输入路径');
+      showToast('浏览器模式下请在输入框中手动输入路径', 'info');
     }
   } catch (e) {
-    showToast('选择目录失败: ' + e.message);
+    showToast('选择目录失败: ' + e.message, 'error');
   }
 }
 
@@ -520,10 +570,10 @@ async function browseFile(inputId) {
     if (selected) {
       document.getElementById(inputId).value = selected;
     } else if (!window.__TAURI__) {
-      showToast('浏览器模式下请在输入框中手动输入路径');
+      showToast('浏览器模式下请在输入框中手动输入路径', 'info');
     }
   } catch (e) {
-    showToast('选择文件失败: ' + e.message);
+    showToast('选择文件失败: ' + e.message, 'error');
   }
 }
 
@@ -533,8 +583,26 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (onServerOrigin) {
     try {
       configCache = await API.get('/api/config');
-      if (configCache?.autoImport?.count > 0) {
-        showToast(configCache.autoImport.message);
+      const ai = configCache?.autoImport || {};
+      if (ai.count > 0) {
+        showToast(ai.message, 'success');
+      } else if (!ai.done && onServerOrigin) {
+        // 自动导入还没完成 → 延迟轮询通知（兜底竞态条件）
+        (async function pollStartupNotifs() {
+          for (let i = 0; i < 8; i++) {
+            await new Promise(r => setTimeout(r, 1500));
+            try {
+              const resp = await API.get('/api/notifications');
+              const notifs = resp.notifications || [];
+              for (const n of notifs) {
+                if (n.type === 'auto_import') {
+                  showToast(n.message, 'success');
+                  return;
+                }
+              }
+            } catch (_) { return; }
+          }
+        })();
       }
     } catch (_) {}
   }
@@ -548,15 +616,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   const params = new URLSearchParams(window.location.search);
   const authResult = params.get('bangumi_auth');
   if (authResult === 'success') {
-    showToast('Bangumi 绑定成功！');
+    showToast('Bangumi 绑定成功！', 'success');
     refreshBangumiAuthStatus();
     window.history.replaceState({}, '', window.location.pathname);
   } else if (authResult === 'denied') {
-    showToast('Bangumi 授权被拒绝');
+    showToast('Bangumi 授权被拒绝', 'error');
     window.history.replaceState({}, '', window.location.pathname);
   } else if (authResult === 'error') {
     const errMsg = params.get('bangumi_auth_msg') || '请检查回调 URL 是否与 bgm.tv 注册的地址一致';
-    showToast('Bangumi 绑定失败: ' + errMsg);
+    showToast('Bangumi 绑定失败: ' + errMsg, 'error');
     window.history.replaceState({}, '', window.location.pathname);
   }
 });

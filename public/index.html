@@ -437,6 +437,14 @@
           <p>选择一个条目查看详情</p>
         </div>
         <div class="mm-panel-content" id="mmPanelContent" style="display:none"></div>
+        <div class="mm-panel-synclog" id="mmPanelSyncLog" style="display:none">
+          <div class="mm-panel-synclog-header">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            实时匹配日志
+          </div>
+          <div class="mm-panel-synclog-entries" id="mmSyncLogEntries"></div>
+          <div class="mm-panel-synclog-summary" id="mmSyncLogSummary" style="display:none"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -638,7 +646,8 @@ function switchSettingsTab(btn, tab) {
 </div>
 
 <!-- Toast -->
-<div class="toast" id="toast" role="alert" aria-live="polite"></div>
+<!-- Toast -->
+<div class="toast-container" id="toastContainer" role="alert" aria-live="polite"></div>
 
 <script src="/vendor/gsap/gsap.min.js"></script>
 <script src="/vendor/gsap/Flip.min.js"></script>

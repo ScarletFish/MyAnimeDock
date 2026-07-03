@@ -102,7 +102,7 @@ function startDetailRefresh() {
         currentAnime = await API.get(`/api/anime/${encodeURIComponent(currentAnime.id)}`);
         AppState.set('currentAnime', currentAnime);
         renderDetail();
-        showToast('播放已结束，进度已更新');
+        showToast('播放已结束，进度已更新', 'success');
       }
       wasMpvActive = st.active;
     } catch (e) {}
@@ -144,7 +144,7 @@ async function showDetail(id, fromRect, fromSrc) {
     document.getElementById('headerTitle').textContent = currentAnime.bangumiTitle || currentAnime.title;
     startDetailRefresh();
   } catch (e) {
-    showToast('加载详情失败: ' + e.message);
+    showToast('加载详情失败: ' + e.message, 'error');
   }
 }
 
@@ -711,9 +711,9 @@ function renderCharacters(anime) {
 async function playEpisode(filePath, position = 0) {
   try {
     await API.post('/api/play', { filePath, position });
-    showToast('正在播放...');
+    showToast('正在播放...', 'info');
   } catch (e) {
-    showToast('播放失败: ' + e.message);
+    showToast('播放失败: ' + e.message, 'error');
   }
 }
 
@@ -728,7 +728,7 @@ async function toggleWatched(animeId, epNumber, watched) {
       renderWatchStats(currentAnime);
     }
   } catch (e) {
-    showToast('操作失败: ' + e.message);
+    showToast('操作失败: ' + e.message, 'error');
   }
 }
 
@@ -750,7 +750,7 @@ async function searchBangumiWithKeyword() {
   const resultsEl = document.getElementById('syncSearchResults');
   
   if (!keyword) {
-    showToast('请输入搜索关键词');
+    showToast('请输入搜索关键词', 'warning');
     return;
   }
   
@@ -764,7 +764,7 @@ async function searchBangumiWithKeyword() {
       resultsEl.innerHTML = '<p class="search-result-empty">未找到匹配结果</p>';
     }
   } catch (e) {
-    showToast('搜索失败: ' + e.message);
+    showToast('搜索失败: ' + e.message, 'error');
     resultsEl.innerHTML = '<p class="search-result-empty">搜索失败</p>';
   }
 }
@@ -799,9 +799,9 @@ async function attachBangumiSubject(animeId, subjectId) {
     AppState.set('currentAnime', currentAnime);
     renderDetail();
     closeModal('syncModal');
-    showToast('Bangumi 元数据获取成功');
+    showToast('Bangumi 元数据获取成功', 'success');
   } catch (e) {
-    showToast('获取失败: ' + e.message);
+    showToast('获取失败: ' + e.message, 'error');
     resultsEl.innerHTML = '';
   }
 }
@@ -812,13 +812,13 @@ async function deleteAnime() {
 
   try {
     await API.del(`/api/anime/${encodeURIComponent(currentAnime.id)}`);
-    showToast('已删除');
+    showToast('已删除', 'success');
     goBack();
     loadLibrary();
     loadDiscovery();
     loadMemories();
   } catch (e) {
-    showToast('删除失败: ' + e.message);
+    showToast('删除失败: ' + e.message, 'error');
   }
 }
 

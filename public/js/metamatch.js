@@ -13,6 +13,7 @@ let mmSyncCancelled = false;
 let mmSSESource = null;
 let mmUIThrottleTimer = null;
 let mmPanelOpen = false;
+let mmSyncLog = [];
 
 // ─── Modal Open / Close ───
 
@@ -28,6 +29,7 @@ function mmOpenModal() {
       mmPanelOpen = false;
       mmSyncInProgress = false;
       mmSyncCancelled = true;
+      mmSyncLog = [];
       if (mmSSESource) { mmSSESource.close(); mmSSESource = null; }
     }
   });
@@ -100,11 +102,11 @@ async function mmLoadModalData() {
 
     mmUpdateUI();
     mmUpdateBatchBar();
-  } catch (e) {
-    if (window.location.origin !== 'http://localhost:3456') return;
-    showToast('加载资料库失败: ' + e.message);
-    mmShowEmpty('加载资料库失败: ' + e.message + ' · 请检查服务器是否运行');
-  }
+} catch (e) {
+      if (window.location.origin !== 'http://localhost:3456') return;
+      showToast('加载资料库失败: ' + e.message, 'error');
+      mmShowEmpty('加载资料库失败: ' + e.message + ' · 请检查服务器是否运行');
+    }
 }
 
 function mmShowEmpty(msg) {
@@ -375,12 +377,20 @@ function mmSelectForPanel(animeId) {
   const row = document.querySelector(`.mm-row[data-id="${animeId}"]`);
   if (row) row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   const item = mmItems.find(i => i.animeId === animeId);
-  if (item) mmRenderPanel(item);
+  if (item) {
+    mmHideSyncLog();
+    const panelContent = document.getElementById('mmPanelContent');
+    const empty = document.getElementById('mmPanelEmpty');
+    if (empty) empty.style.display = 'none';
+    if (panelContent) panelContent.style.display = 'block';
+    mmRenderPanel(item);
+  }
 }
 
 function mmDeselectPanel() {
   mmSelectedId = null;
   document.querySelectorAll('.mm-row').forEach(row => row.classList.remove('mm-row--selected'));
+  mmHideSyncLog();
   mmShowPanelEmpty();
 }
 
@@ -537,6 +547,7 @@ function mmRowClick(event, animeId) {
 }
 
 function mmShowPanelEmpty() {
+  mmHideSyncLog();
   mmClosePanel(() => {
     const empty = document.getElementById('mmPanelEmpty');
     const content = document.getElementById('mmPanelContent');
@@ -710,7 +721,7 @@ async function mmSearchForFix(animeId) {
 
   const keyword = input.value.trim();
   if (!keyword) {
-    showToast('请输入搜索关键词');
+    showToast('请输入搜索关键词', 'warning');
     return;
   }
 
@@ -792,7 +803,7 @@ async function mmApplyFix(animeId, resultIndex) {
   } catch (e) {
     item.status = 'failed';
     item.error = e.message;
-    showToast('应用匹配失败: ' + e.message);
+    showToast('应用匹配失败: ' + e.message, 'error');
   }
 
   mmFixResults = [];
@@ -815,13 +826,15 @@ async function mmStartSync(animeIds) {
   }
 
   if (itemsToSync.length === 0) {
-    showToast('没有需要匹配的条目');
+    showToast('没有需要匹配的条目', 'info');
     return;
   }
 
   mmSyncInProgress = true;
   mmSyncCancelled = false;
+  mmSyncLog = [];
   mmUpdateMainAction();
+  mmShowSyncLog();
 
   itemsToSync.forEach(i => { i.status = 'matching'; });
   mmUpdateUI();
@@ -836,7 +849,7 @@ async function mmStartSync(animeIds) {
     }
   } catch (e) {
     if (!mmSyncCancelled) {
-      showToast('同步失败: ' + e.message);
+      showToast('同步失败: ' + e.message, 'error');
     }
     mmItems.forEach(i => {
       if (i.status === 'matching') i.status = 'pending';
@@ -847,15 +860,24 @@ async function mmStartSync(animeIds) {
   mmUpdateUI();
   mmUpdateMainAction();
 
+  // Show sync summary
+  const matched = mmSyncLog.filter(e => e.status === 'matched').length;
+  const failed = mmSyncLog.filter(e => e.status === 'failed').length;
+  if (mmSyncLog.length > 0) {
+    mmRenderSyncSummary(matched, failed, mmSyncLog.length);
+  }
+
   if (mmSyncCancelled) {
-    showToast('匹配已取消');
+    showToast('匹配已取消', 'info');
   } else {
-    const hasFailed = mmItems.some(i => i.status === 'failed');
+    const hasFailed = failed > 0;
     if (hasFailed) {
-      showToast('部分条目匹配失败，请手动修正');
+      showToast('部分条目匹配失败，请手动修正', 'warning');
     } else {
-      showToast('全部匹配完成');
+      showToast('全部匹配完成', 'success');
     }
+    // Refresh library view with new metadata
+    if (matched > 0 && typeof loadLibrary === 'function') loadLibrary();
   }
 }
 
@@ -877,11 +899,89 @@ async function mmCanStream() {
   }
 }
 
+// ─── Sync Log Functions ───
+
+function mmAddSyncLogEntry(animeId, searchTerm, status, detail) {
+  const existing = mmSyncLog.find(e => e.animeId === animeId);
+  if (existing) {
+    existing.status = status;
+    existing.detail = detail;
+  } else {
+    mmSyncLog.push({ animeId, searchTerm, status, detail });
+  }
+  mmRenderSyncLog();
+}
+
+function mmRenderSyncLog() {
+  const container = document.getElementById('mmSyncLogEntries');
+  if (!container) return;
+  container.innerHTML = mmSyncLog.map(e => {
+    let iconHtml, titleCls, detailCls;
+    if (e.status === 'searching') {
+      iconHtml = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>';
+      titleCls = 'mm-panel-synclog-title--searching';
+      detailCls = '';
+    } else if (e.status === 'matched') {
+      iconHtml = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+      titleCls = 'mm-panel-synclog-title--matched';
+      detailCls = 'mm-panel-synclog-detail--matched';
+    } else {
+      iconHtml = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+      titleCls = 'mm-panel-synclog-title--failed';
+      detailCls = 'mm-panel-synclog-detail--failed';
+    }
+    const iconCls = 'mm-panel-synclog-icon mm-panel-synclog-icon--' + e.status;
+    return '<div class="mm-panel-synclog-entry">' +
+      '<div class="' + iconCls + '">' + iconHtml + '</div>' +
+      '<div class="mm-panel-synclog-body">' +
+        '<div class="mm-panel-synclog-title ' + titleCls + '">' + escHtml(e.searchTerm) + '</div>' +
+        (e.detail ? '<div class="mm-panel-synclog-detail ' + detailCls + '">' + escHtml(e.detail) + '</div>' : '') +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function mmShowSyncLog() {
+  const panelContent = document.getElementById('mmPanelContent');
+  const panelSyncLog = document.getElementById('mmPanelSyncLog');
+  const empty = document.getElementById('mmPanelEmpty');
+  if (empty) empty.style.display = 'none';
+  if (panelContent) panelContent.style.display = 'none';
+  if (panelSyncLog) panelSyncLog.style.display = 'flex';
+  mmOpenPanel();
+}
+
+function mmHideSyncLog() {
+  const panelSyncLog = document.getElementById('mmPanelSyncLog');
+  if (panelSyncLog) panelSyncLog.style.display = 'none';
+}
+
+function mmRenderSyncSummary(matched, failed, total) {
+  const summary = document.getElementById('mmSyncLogSummary');
+  if (!summary) return;
+  summary.style.display = 'block';
+  summary.innerHTML =
+    '<div class="mm-panel-synclog-summary-stats">' +
+      (matched > 0 ? '<div class="mm-panel-synclog-summary-stat mm-panel-synclog-summary-stat--matched"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>匹配 <span class="num">' + matched + '</span></div>' : '') +
+      (failed > 0 ? '<div class="mm-panel-synclog-summary-stat mm-panel-synclog-summary-stat--failed"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>失败 <span class="num">' + failed + '</span></div>' : '') +
+      '<div class="mm-panel-synclog-summary-stat mm-panel-synclog-summary-stat--total">总计 <span class="num">' + total + '</span></div>' +
+    '</div>' +
+    (failed === 0 ? '<div class="mm-panel-synclog-summary-msg">所有条目均已成功匹配</div>' : '<div class="mm-panel-synclog-summary-msg">失败的条目可点击下方「仅重试失败项」重新匹配</div>');
+}
+
 async function mmSyncViaSSE(animeIds) {
   return new Promise((resolve) => {
     const url = '/api/library/sync/stream?ids=' + encodeURIComponent(JSON.stringify(animeIds));
     const es = new EventSource(url);
     mmSSESource = es;
+
+    es.addEventListener('matching', (e) => {
+      if (mmSyncCancelled) return;
+      try {
+        const data = JSON.parse(e.data);
+        mmAddSyncLogEntry(data.animeId, data.searchTerm, 'searching', null);
+      } catch (_) {}
+    });
 
     es.addEventListener('progress', (e) => {
       if (mmSyncCancelled) return;
@@ -897,9 +997,11 @@ async function mmSyncViaSSE(animeIds) {
           item.error = null;
           if (data.matchedSeason != null) item.matchedSeason = data.matchedSeason;
           if (data.totalSeasons != null) item.totalSeasons = data.totalSeasons;
+          mmAddSyncLogEntry(data.animeId, null, 'matched', (data.meta?.bangumiTitle || data.meta?.title || '匹配成功'));
         } else {
           item.status = 'failed';
           item.error = data.error || '未知错误';
+          mmAddSyncLogEntry(data.animeId, null, 'failed', data.error || '未知错误');
         }
         mmUpdateUI();
       } catch (_) {}
@@ -921,6 +1023,14 @@ async function mmSyncViaSSE(animeIds) {
             changed = true;
           }
         });
+        // Update any remaining searching entries as failed
+        mmSyncLog.forEach(e => {
+          if (e.status === 'searching') {
+            e.status = 'failed';
+            e.detail = '连接断开，匹配中断';
+          }
+        });
+        if (mmSyncLog.length > 0) mmRenderSyncLog();
         if (changed) mmUpdateUI();
       }
       resolve();
@@ -962,13 +1072,16 @@ async function mmSyncViaBatch(animeIds) {
           item.error = null;
           if (r.matchedSeason != null) item.matchedSeason = r.matchedSeason;
           if (r.totalSeasons != null) item.totalSeasons = r.totalSeasons;
+          mmAddSyncLogEntry(r.animeId, r.title || item.title || item.folderName || '未知', 'matched', r.meta.bangumiTitle || r.meta.title || '匹配成功');
         } else {
           item.status = 'failed';
           item.error = '无元数据返回';
+          mmAddSyncLogEntry(r.animeId, r.title || item.title || item.folderName || '未知', 'failed', '无元数据返回');
         }
       } else {
         item.status = 'failed';
         item.error = r.error || '未知错误';
+        mmAddSyncLogEntry(r.animeId, r.title || item.title || item.folderName || '未知', 'failed', r.error || '未知错误');
       }
     }
   } catch (e) {
@@ -1018,7 +1131,7 @@ async function mmStartResearch(animeId) {
   } catch (e) {
     item.status = 'failed';
     item.error = e.message;
-    showToast('重新搜索失败: ' + e.message);
+    showToast('重新搜索失败: ' + e.message, 'error');
   }
 
   mmSyncInProgress = false;

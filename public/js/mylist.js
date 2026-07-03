@@ -11,7 +11,7 @@ async function loadMyList() {
     renderMyList();
   } catch (e) {
     if (window.location.origin !== 'http://localhost:3456') return;
-    showToast('加载我的列表失败: ' + e.message);
+    showToast('加载我的列表失败: ' + e.message, 'error');
   }
 }
 
@@ -338,12 +338,12 @@ function showMyListContextMenu(e, id) {
 async function setMyListItemStatus(id, status) {
   try {
     await API.put(`/api/mylist/${encodeURIComponent(id)}/status`, { status });
-    showToast('状态已更新');
+    showToast('状态已更新', 'success');
     hideContextMenu();
     loadMyList();
     if (typeof loadLibrary === 'function') loadLibrary();
   } catch (e) {
-    showToast('更新失败: ' + e.message);
+    showToast('更新失败: ' + e.message, 'error');
   }
 }
 
@@ -352,10 +352,10 @@ async function deleteWishlistItem(id) {
   if (!(await showConfirm('从愿望单移除？'))) return;
   try {
     await API.del(`/api/wishlist/${encodeURIComponent(id)}`);
-    showToast('已移除');
+    showToast('已移除', 'info');
     loadMyList();
   } catch (e) {
-    showToast('移除失败: ' + e.message);
+    showToast('移除失败: ' + e.message, 'error');
   }
 }
 
@@ -366,9 +366,9 @@ async function removeMyListItem(id) {
   if (!(await showConfirm(`将「${name}」从列表中移除？<br><small style="color:var(--text2)">资料库中的条目不受影响</small>`))) return;
   try {
     await API.del(`/api/mylist/${encodeURIComponent(id)}`);
-    showToast('已移除');
+    showToast('已移除', 'info');
     loadMyList();
   } catch (e) {
-    showToast('移除失败: ' + e.message);
+    showToast('移除失败: ' + e.message, 'error');
   }
 }

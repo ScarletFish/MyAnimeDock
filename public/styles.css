@@ -856,6 +856,10 @@ html.theme-transitioning .theme-dock {
   .dashboard-card::after { transition-duration: 0.01ms !important; }
   .dashboard-card:hover { transform: none !important; }
   .dashboard-card:hover .dashboard-card-cover img { transform: none !important; }
+  /* Continue-card hover effects */
+  .dashboard-continue-card { transition-duration: 0.01ms !important; }
+  .dashboard-continue-card:hover { transform: none !important; }
+  .dashboard-continue-btn:hover { transform: none !important; }
   /* Heatmap hover effects */
   .heatmap-cell:hover { transform: none !important; }
   .heatmap-cell::after { transition-duration: 0.01ms !important; }
@@ -893,6 +897,10 @@ html[data-reduce-motion="true"] .dashboard-card::after { transition-duration: 0.
 html[data-reduce-motion="true"] .dashboard-card:hover,
 html[data-reduce-motion="true"] .dashboard-card:hover img { transform: none !important; }
 html[data-reduce-motion="true"] .dashboard-card:hover .dashboard-card-cover img { transform: none !important; }
+
+html[data-reduce-motion="true"] .dashboard-continue-card { transition-duration: 0.01ms !important; }
+html[data-reduce-motion="true"] .dashboard-continue-card:hover { transform: none !important; }
+html[data-reduce-motion="true"] .dashboard-continue-btn:hover { transform: none !important; }
 
 html[data-reduce-motion="true"] .heatmap-cell { animation: none !important; }
 html[data-reduce-motion="true"] .settings-panel { animation: none !important; }

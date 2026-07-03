@@ -263,20 +263,41 @@ function renderContinueSection(data, container) {
     var aLast = Math.max.apply(null, (a.episodes || []).map(function(e) { return e.updatedAt ? new Date(e.updatedAt).getTime() : 0; }));
     var bLast = Math.max.apply(null, (b.episodes || []).map(function(e) { return e.updatedAt ? new Date(e.updatedAt).getTime() : 0; }));
     return bLast - aLast;
-  }).slice(0, 8);
+  }).slice(0, 10);
 
   container.parentElement.style.display = watching.length === 0 ? 'none' : '';
   if (watching.length === 0) return;
 
-  container.innerHTML = '<div class="dashboard-hscroll">' +
-    watching.map(function(a, i) {
+  container.innerHTML = '<div class="dashboard-continue-scroll">' +
+    watching.map(function(a) {
       var total = a.episodes ? a.episodes.length : 0;
       var watchedCount = a.episodes ? a.episodes.filter(function(e) { return e.watched; }).length : 0;
       var pct = total > 0 ? Math.round(watchedCount / total * 100) : 0;
       var nextEp = Math.min(watchedCount + 1, total);
-      var opts = { showProgress: true, progress: pct, progressLabel: '第 ' + nextEp + ' / ' + total + ' 集' };
-      if (i === 0) { opts.hero = true; opts.badge = '▶ 继续播放'; }
-      return renderHScrollCard(a, opts);
+      var title = escHtml(a.bangumiTitle || a.title);
+      var coverSrc = a.localCover
+        ? '/covers/' + path.basename(a.localCover) + '?w=500&q=75'
+        : (a.coverUrl || '');
+      var bgStyle = coverSrc ? ' style="background-image:url(' + escAttr(coverSrc) + ')"' : '';
+
+      return '<div class="dashboard-continue-card" onclick="navigateToDetail(\'' + escAttr(a.id) + '\', this)" oncontextmenu="showContextMenu(event, \'' + escAttr(a.id) + '\')">' +
+        '<div class="dashboard-continue-bg"' + bgStyle + '></div>' +
+        '<div class="dashboard-continue-overlay"></div>' +
+        '<div class="dashboard-continue-content">' +
+          '<div class="dashboard-continue-info">' +
+            '<div class="dashboard-continue-label">继续播放</div>' +
+            '<div class="dashboard-continue-title">' + title + '</div>' +
+            '<div class="dashboard-continue-progress-wrap">' +
+              '<div class="dashboard-continue-progress"><div class="dashboard-continue-progress-bar" style="width:' + pct + '%"></div></div>' +
+              '<span class="dashboard-continue-progress-label">第 ' + nextEp + ' / ' + total + ' 集</span>' +
+            '</div>' +
+          '</div>' +
+          '<button class="dashboard-continue-btn" onclick="event.stopPropagation();navigateToDetail(\'' + escAttr(a.id) + '\', this)">' +
+            '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg>' +
+            '继续播放' +
+          '</button>' +
+        '</div>' +
+      '</div>';
     }).join('') +
   '</div>';
 }

@@ -6,7 +6,8 @@
   "bin": "server.js",
   "scripts": {
     "start": "node server.js",
-    "build": "pkg . --target node18-win-x64 --output ../src-tauri/resources/server.exe"
+    "build": "pkg . --target node18-win-x64 --output ../src-tauri/resources/server.exe",
+    "test": "node --test __tests__/*.test.js"
   },
   "pkg": {
     "assets": [

@@ -424,19 +424,10 @@
           </div>
           <div class="mm-panel-synclog-entries" id="mmSyncLogEntries"></div>
           <div class="mm-panel-synclog-summary" id="mmSyncLogSummary" style="display:none"></div>
-        </div>
-        </div>
       </div>
-
-      <!-- Tab: 仪表盘 -->
-      <div class="settings-panel" id="tab-dashboard">
-        <div class="form-group">
-          <label>仪表盘布局</label>
-          <p class="form-hint" style="margin-top:0">勾选要在资料库首页显示的模块，用箭头调整顺序</p>
-          <div class="dashboard-layout-list" id="dashboardLayoutList"></div>
-        </div>
       </div>
     </div>
+  </div>
 </div>
 
 <!-- Memory Editor Modal -->
@@ -557,8 +548,8 @@
                 <span class="api-source-badge api-source-badge--bangumi">OAuth</span>
               </div>
               <div class="api-source-fields" style="gap:8px">
-                <input type="text" id="bangumiClientId" placeholder="Client ID" class="api-source-url" style="font-family:monospace;font-size:13px">
-                <input type="password" id="bangumiClientSecret" placeholder="Client Secret" class="api-source-url" style="font-family:monospace;font-size:13px">
+                <input type="text" id="bangumiClientId" placeholder="Client ID" class="api-source-url">
+                <input type="password" id="bangumiClientSecret" placeholder="Client Secret" class="api-source-url">
                 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
                   <button class="btn btn-sm" onclick="bangumiBind()" id="bangumiBindBtn">绑定 Bangumi</button>
                   <button class="btn btn-sm btn-danger" onclick="bangumiUnbind()" id="bangumiUnbindBtn" style="display:none">解除绑定</button>
@@ -587,6 +578,15 @@
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- Tab: 仪表盘 -->
+      <div class="settings-panel" id="tab-dashboard">
+        <div class="form-group">
+          <label>仪表盘布局</label>
+          <p class="form-hint" style="margin-top:0">勾选要在资料库首页显示的模块，用箭头调整顺序</p>
+          <div class="dashboard-layout-list" id="dashboardLayoutList"></div>
         </div>
       </div>
     </div>

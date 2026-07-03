@@ -1396,3 +1396,42 @@ input[type="range"]::-webkit-slider-thumb {
   0%   { width: 100%; }
   100% { width: 0%; }
 }
+
+/* ─── Dashboard Layout Settings ─── */
+.dashboard-layout-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+.dashboard-layout-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0.75rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.dashboard-layout-label {
+  flex: 1;
+  font-size: calc(0.8125rem * var(--scale));
+  color: var(--fg-primary);
+  font-weight: 500;
+}
+.dashboard-layout-arrows {
+  display: flex;
+  gap: 2px;
+}
+.btn-icon.btn-xs {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-icon.btn-xs:disabled {
+  opacity: 0.3;
+  cursor: default;
+}

@@ -10,6 +10,31 @@ const GRID_ZOOM_MAX = 2.0;
 const GRID_BASE_SIZE = 170;
 let gridZoom = parseFloat(localStorage.getItem('gridZoom') || '1');
 
+// Dashboard section definitions
+const DASHBOARD_SECTIONS = {
+  stats: { title: '统计概览', defaultEnabled: true },
+  continueWatch: { title: '继续观看', defaultEnabled: true },
+  recentlyAdded: { title: '最近添加', defaultEnabled: false },
+  allAnime: { title: '全部动漫', defaultEnabled: true }
+};
+const DASHBOARD_DEFAULT_LAYOUT = [
+  { id: 'stats', enabled: true },
+  { id: 'continueWatch', enabled: true },
+  { id: 'recentlyAdded', enabled: false },
+  { id: 'allAnime', enabled: true }
+];
+
+function getDashboardLayout() {
+  try {
+    const stored = localStorage.getItem('dashboardLayout');
+    if (stored) return JSON.parse(stored);
+  } catch {}
+  return DASHBOARD_DEFAULT_LAYOUT.map(s => ({ ...s }));
+}
+function saveDashboardLayout(layout) {
+  localStorage.setItem('dashboardLayout', JSON.stringify(layout));
+}
+
 function applyGridZoom() {
   const grid = document.getElementById('libraryGrid');
   if (!grid) return;
@@ -95,7 +120,7 @@ function killCardAnimations() {
 async function loadLibrary() {
   try {
     libraryData = await API.get('/api/library');
-    renderLibrary();
+    renderDashboard();
   } catch (e) {
     // Tauri 初始加载时（frontendDist，非 server 源）静默失败
     if (window.location.origin !== 'http://localhost:3456') return;
@@ -103,61 +128,226 @@ async function loadLibrary() {
   }
 }
 
-function renderLibrary(filter = '') {
-  const grid = document.getElementById('libraryGrid');
-  const empty = document.getElementById('libraryEmpty');
-  const paragraphs = empty.querySelectorAll('p');
+function renderDashboard() {
+  const container = document.getElementById('libraryDashboard');
+  if (!container) return;
 
-  let filtered = libraryData.filter(a => a.myListStatus === 'watching');
+  const layout = getDashboardLayout();
+  const enabledSections = layout.filter(s => s.enabled);
 
-  if (filter) {
-    const q = filter.toLowerCase();
-    filtered = filtered.filter(a =>
-      a.title.toLowerCase().includes(q) ||
-      (a.bangumiTitle && a.bangumiTitle.toLowerCase().includes(q)) ||
-      (a.pinyinTitle && a.pinyinTitle.toLowerCase().includes(q))
-    );
+  // Build HTML structure
+  container.innerHTML = enabledSections.map(s => {
+    const def = DASHBOARD_SECTIONS[s.id];
+    if (!def) return '';
+    return '<div class="dashboard-section" data-section="' + s.id + '">' +
+      '<div class="dashboard-section-header">' +
+        '<span class="dashboard-section-title">' + def.title + '</span>' +
+      '</div>' +
+      '<div class="dashboard-section-body" id="dashSection-' + s.id + '"></div>' +
+    '</div>';
+  }).join('');
+
+  // Render each section
+  for (const s of enabledSections) {
+    const body = document.getElementById('dashSection-' + s.id);
+    if (!body) continue;
+    if (s.id === 'stats') renderStatsSection(libraryData, body);
+    else if (s.id === 'continueWatch') renderContinueSection(libraryData, body);
+    else if (s.id === 'recentlyAdded') renderRecentSection(libraryData, body);
+    else if (s.id === 'allAnime') renderAllAnimeSection(libraryData, body);
+  }
+}
+
+function renderStatsSection(data, container) {
+  const watching = data.filter(a => a.myListStatus === 'watching').length;
+  const completed = data.filter(a => a.myListStatus === 'completed').length;
+  const total = data.length;
+  const totalEpWatched = data.reduce(function(sum, a) {
+    if (!a.episodes) return sum;
+    return sum + a.episodes.filter(function(e) { return e.watched; }).length;
+  }, 0);
+
+  container.innerHTML = '<div class="dashboard-stats">' +
+    '<div class="dashboard-stat">' +
+      '<div class="dashboard-stat-icon dashboard-stat-icon--watching"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>' +
+      '<div class="dashboard-stat-body"><span class="dashboard-stat-value">' + watching + '</span><span class="dashboard-stat-label">正在追番</span></div>' +
+    '</div>' +
+    '<div class="dashboard-stat">' +
+      '<div class="dashboard-stat-icon dashboard-stat-icon--completed"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>' +
+      '<div class="dashboard-stat-body"><span class="dashboard-stat-value">' + completed + '</span><span class="dashboard-stat-label">已看完</span></div>' +
+    '</div>' +
+    '<div class="dashboard-stat">' +
+      '<div class="dashboard-stat-icon dashboard-stat-icon--total"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg></div>' +
+      '<div class="dashboard-stat-body"><span class="dashboard-stat-value">' + total + '</span><span class="dashboard-stat-label">本地动漫</span></div>' +
+    '</div>' +
+    '<div class="dashboard-stat">' +
+      '<div class="dashboard-stat-icon dashboard-stat-icon--episodes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/></svg></div>' +
+      '<div class="dashboard-stat-body"><span class="dashboard-stat-value">' + totalEpWatched + '</span><span class="dashboard-stat-label">已看集数</span></div>' +
+    '</div>' +
+  '</div>';
+}
+
+function renderHScrollCard(anime, options) {
+  if (!options) options = {};
+  var showProgress = options.showProgress || false;
+  var progress = options.progress || 0;
+  var progressLabel = options.progressLabel || '';
+  var title = escHtml(anime.bangumiTitle || anime.title);
+  var coverSrc = anime.localCover
+    ? '/covers/' + path.basename(anime.localCover) + '?w=300&q=70'
+    : (anime.coverUrl || '');
+
+  return '<div class="dashboard-card" onclick="navigateToDetail(\'' + escAttr(anime.id) + '\', this)" oncontextmenu="showContextMenu(event, \'' + escAttr(anime.id) + '\')">' +
+    '<div class="dashboard-card-cover">' +
+      (coverSrc ? '<img src="' + escAttr(coverSrc) + '" alt="' + title + '" loading="lazy">' : renderGrayCover()) +
+      (anime.rating ? '<span class="dashboard-card-rating">★ ' + anime.rating + '</span>' : '') +
+    '</div>' +
+    '<div class="dashboard-card-body">' +
+      '<div class="dashboard-card-title">' + title + '</div>' +
+      (showProgress ? '<div class="dashboard-progress"><div class="dashboard-progress-bar" style="width:' + progress + '%"></div></div><div class="dashboard-progress-label">' + progressLabel + '</div>' : '') +
+    '</div>' +
+  '</div>';
+}
+
+function renderContinueSection(data, container) {
+  var watching = data.filter(function(a) {
+    if (!a.episodes || a.episodes.length === 0) return false;
+    var watchedCount = a.episodes.filter(function(e) { return e.watched; }).length;
+    var inProgress = a.episodes.some(function(e) { return e.progress > 0 && !e.watched; });
+    return inProgress || (watchedCount > 0 && watchedCount < a.episodes.length);
+  }).sort(function(a, b) {
+    var aLast = Math.max.apply(null, (a.episodes || []).map(function(e) { return e.updatedAt ? new Date(e.updatedAt).getTime() : 0; }));
+    var bLast = Math.max.apply(null, (b.episodes || []).map(function(e) { return e.updatedAt ? new Date(e.updatedAt).getTime() : 0; }));
+    return bLast - aLast;
+  }).slice(0, 8);
+
+  container.parentElement.style.display = watching.length === 0 ? 'none' : '';
+  if (watching.length === 0) return;
+
+  container.innerHTML = '<div class="dashboard-hscroll">' +
+    watching.map(function(a) {
+      var total = a.episodes ? a.episodes.length : 0;
+      var watchedCount = a.episodes ? a.episodes.filter(function(e) { return e.watched; }).length : 0;
+      var pct = total > 0 ? Math.round(watchedCount / total * 100) : 0;
+      var nextEp = Math.min(watchedCount + 1, total);
+      return renderHScrollCard(a, { showProgress: true, progress: pct, progressLabel: '第 ' + nextEp + ' / ' + total + ' 集' });
+    }).join('') +
+  '</div>';
+}
+
+function renderRecentSection(data, container) {
+  var recent = [].concat(data).sort(function(a, b) {
+    return new Date(b.importedAt || 0) - new Date(a.importedAt || 0);
+  }).slice(0, 8);
+
+  container.parentElement.style.display = recent.length === 0 ? 'none' : '';
+  if (recent.length === 0) return;
+
+  container.innerHTML = '<div class="dashboard-hscroll">' +
+    recent.map(function(a) { return renderHScrollCard(a); }).join('') +
+  '</div>';
+}
+
+function renderAllAnimeSection(data, container, filter) {
+  if (!filter) filter = '';
+  var currentStatusFilter = container._statusFilter || 'all';
+  var statusFilters = [
+    { id: 'all', label: '全部' },
+    { id: 'watching', label: '在看' },
+    { id: 'completed', label: '看完' },
+    { id: 'on_hold', label: '搁置' },
+    { id: 'dropped', label: '抛弃' }
+  ];
+
+  var filtered = [].concat(data);
+
+  if (currentStatusFilter !== 'all') {
+    filtered = filtered.filter(function(a) { return a.myListStatus === currentStatusFilter; });
   }
 
-  const sortMode = document.getElementById('librarySort').value;
+  if (filter) {
+    var q = filter.toLowerCase();
+    filtered = filtered.filter(function(a) {
+      return a.title.toLowerCase().includes(q) ||
+        (a.bangumiTitle && a.bangumiTitle.toLowerCase().includes(q)) ||
+        (a.pinyinTitle && a.pinyinTitle.toLowerCase().includes(q));
+    });
+  }
+
+  var sortEl = document.getElementById('librarySort');
+  var sortMode = sortEl ? sortEl.value : 'default';
   filtered = sortLibrary(filtered, sortMode);
+
+  container.innerHTML =
+    '<div class="all-anime-toolbar">' +
+      '<div class="all-anime-status-tabs">' +
+        statusFilters.map(function(sf) {
+          return '<button class="all-anime-status-tab' + (currentStatusFilter === sf.id ? ' active' : '') + '" data-status="' + sf.id + '" onclick="setAllAnimeStatusFilter(\'' + sf.id + '\')">' + sf.label + '</button>';
+        }).join('') +
+      '</div>' +
+      '<div class="all-anime-controls">' +
+        '<div class="sort-dropdown" id="librarySort" tabindex="0">' +
+          '<button class="sort-dropdown-trigger" onclick="toggleSortDropdown()">' +
+            '<span class="sort-dropdown-label">默认排序</span>' +
+            '<svg class="sort-dropdown-chevron" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>' +
+          '</button>' +
+          '<div class="sort-dropdown-panel">' +
+            '<div class="sort-dropdown-option" data-value="default" onclick="selectSortOption(this)">默认排序</div>' +
+            '<div class="sort-dropdown-option" data-value="pinyin" onclick="selectSortOption(this)">拼音</div>' +
+            '<div class="sort-dropdown-option" data-value="importDate" onclick="selectSortOption(this)">导入日期</div>' +
+            '<div class="sort-dropdown-option" data-value="rating" onclick="selectSortOption(this)">评分</div>' +
+          '</div>' +
+        '</div>' +
+        '<input type="text" class="search-input" id="librarySearch" placeholder="搜索动漫..." oninput="filterLibrary()">' +
+      '</div>' +
+    '</div>' +
+    '<div class="grid-container" id="libraryGrid"></div>' +
+    '<div class="empty-state" id="libraryEmpty" style="display:none">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>' +
+      '<p>暂无条目</p>' +
+      '<p style="font-size: 14px; color: var(--fg-muted)">' + (filter ? '没有匹配"' + escHtml(filter) + '"的动漫' : '设置媒体目录后自动导入动漫') + '</p>' +
+    '</div>';
+
+  // Re-init sort dropdown
+  initSortSelect();
+
+  var grid = document.getElementById('libraryGrid');
+  var empty = document.getElementById('libraryEmpty');
 
   if (filtered.length === 0) {
     killCardAnimations();
     grid.innerHTML = '';
+    var ps = empty.querySelectorAll('p');
     if (filter) {
-      paragraphs[0].textContent = '未检索到结果';
-      paragraphs[1].textContent = `没有匹配"${filter}"的动漫`;
+      ps[0].textContent = '未检索到结果';
+      ps[1].textContent = '没有匹配"' + filter + '"的动漫';
     } else {
-      paragraphs[0].textContent = '资料库为空';
-      paragraphs[1].textContent = '设置媒体目录后自动导入动漫';
+      ps[0].textContent = '暂无条目';
+      ps[1].textContent = '设置媒体目录后自动导入动漫';
     }
     empty.style.display = 'flex';
     return;
   }
 
   empty.style.display = 'none';
-  grid.innerHTML = filtered.map(anime => renderAnimeCard(anime)).join('');
+  grid.innerHTML = filtered.map(function(a) { return renderAnimeCard(a); }).join('');
 
-  const cards = grid.querySelectorAll('.anime-card');
+  var cards = grid.querySelectorAll('.anime-card');
   if (cards.length === 0) return;
-
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
   killCardAnimations();
 
-  const scroller = document.querySelector('.main-content');
-  const scrollerRect = scroller.getBoundingClientRect();
-
-  const visible = [];
-  const hidden = [];
-  cards.forEach(card => {
-    const r = card.getBoundingClientRect();
+  var scroller = document.querySelector('.main-content');
+  var scrollerRect = scroller.getBoundingClientRect();
+  var visible = [];
+  var hidden = [];
+  cards.forEach(function(card) {
+    var r = card.getBoundingClientRect();
     if (r.bottom > scrollerRect.top && r.top < scrollerRect.bottom) visible.push(card);
     else hidden.push(card);
   });
-
-  visible.forEach(card => {
+  visible.forEach(function(card) {
     card.style.animation = 'cardReveal 300ms var(--ease-out) forwards';
   });
 
@@ -168,13 +358,13 @@ function renderLibrary(filter = '') {
       trigger: grid,
       start: 'top bottom',
       once: true,
-      onEnter: () => {
+      onEnter: function() {
         cardTween = gsap.to(hidden, {
           opacity: 1, y: 0, scale: 1,
           stagger: 0.03,
           duration: 0.35,
           ease: 'back.out(1.4)',
-          onComplete: () => { cardTween = null; }
+          onComplete: function() { cardTween = null; }
         });
       }
     });
@@ -182,9 +372,21 @@ function renderLibrary(filter = '') {
   applyGridZoom();
 }
 
+function setAllAnimeStatusFilter(status) {
+  var body = document.getElementById('dashSection-allAnime');
+  if (!body) return;
+  body._statusFilter = status;
+  var q = document.getElementById('librarySearch');
+  renderAllAnimeSection(libraryData, body, q ? q.value : '');
+}
+window.setAllAnimeStatusFilter = setAllAnimeStatusFilter;
+
 function filterLibrary() {
-  const q = document.getElementById('librarySearch').value;
-  renderLibrary(q);
+  var q = document.getElementById('librarySearch');
+  var body = document.getElementById('dashSection-allAnime');
+  if (body) {
+    renderAllAnimeSection(libraryData, body, q ? q.value : '');
+  }
 }
 
 function sortLibrary(items, mode) {

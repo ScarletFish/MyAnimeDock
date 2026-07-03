@@ -179,29 +179,9 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
           批量匹配
         </button>
-        <div class="sort-dropdown" id="librarySort" tabindex="0">
-          <button class="sort-dropdown-trigger" onclick="toggleSortDropdown()">
-            <span class="sort-dropdown-label">默认排序</span>
-            <svg class="sort-dropdown-chevron" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-          </button>
-          <div class="sort-dropdown-panel">
-            <div class="sort-dropdown-option" data-value="default" onclick="selectSortOption(this)">默认排序</div>
-            <div class="sort-dropdown-option" data-value="pinyin" onclick="selectSortOption(this)">拼音</div>
-            <div class="sort-dropdown-option" data-value="importDate" onclick="selectSortOption(this)">导入日期</div>
-            <div class="sort-dropdown-option" data-value="rating" onclick="selectSortOption(this)">评分</div>
-          </div>
-        </div>
-        <input type="text" class="search-input" id="librarySearch" placeholder="搜索动漫..." oninput="filterLibrary()">
       </div>
     </div>
-    <div class="grid-container" id="libraryGrid"></div>
-    <div class="empty-state" id="libraryEmpty" style="display:none">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path>
-      </svg>
-      <p>资料库为空</p>
-      <p style="font-size: 14px; color: var(--fg-muted)">设置媒体目录后自动导入动漫</p>
-    </div>
+    <div class="dashboard" id="libraryDashboard"></div>
   </section>
 
   <!-- My List View -->
@@ -445,9 +425,18 @@
           <div class="mm-panel-synclog-entries" id="mmSyncLogEntries"></div>
           <div class="mm-panel-synclog-summary" id="mmSyncLogSummary" style="display:none"></div>
         </div>
+        </div>
+      </div>
+
+      <!-- Tab: 仪表盘 -->
+      <div class="settings-panel" id="tab-dashboard">
+        <div class="form-group">
+          <label>仪表盘布局</label>
+          <p class="form-hint" style="margin-top:0">勾选要在资料库首页显示的模块，用箭头调整顺序</p>
+          <div class="dashboard-layout-list" id="dashboardLayoutList"></div>
+        </div>
       </div>
     </div>
-  </div>
 </div>
 
 <!-- Memory Editor Modal -->
@@ -503,6 +492,7 @@
         <button class="settings-tab active" data-tab="basic" role="tab" aria-selected="true" onclick="switchSettingsTab(this, 'basic')">基本</button>
         <button class="settings-tab" data-tab="playback" role="tab" aria-selected="false" onclick="switchSettingsTab(this, 'playback')">播放</button>
         <button class="settings-tab" data-tab="scraper" role="tab" aria-selected="false" onclick="switchSettingsTab(this, 'scraper')">刮削</button>
+        <button class="settings-tab" data-tab="dashboard" role="tab" aria-selected="false" onclick="switchSettingsTab(this, 'dashboard')">仪表盘</button>
       </nav>
     </div>
 

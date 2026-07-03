@@ -215,6 +215,9 @@ async function openSettings() {
     if (config.bangumiClientSecret) document.getElementById('bangumiClientSecret').value = '••••••••';
     refreshBangumiAuthStatus();
 
+    // Dashboard layout
+    if (typeof renderDashboardLayoutSettings === 'function') renderDashboardLayoutSettings();
+
     openModal('settingsModal');
   } catch (e) {
     if (window.location.origin !== 'http://localhost:3456') return;
@@ -609,7 +612,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   loadTheme();
   loadReduceMotion();
   applyZoom(configCache?.uiScale || 1);
-  initSortSelect();
   showView('library');
 
   // Handle Bangumi OAuth redirect result
@@ -628,3 +630,53 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.history.replaceState({}, '', window.location.pathname);
   }
 });
+
+// ─── Dashboard Layout Settings ───
+
+function renderDashboardLayoutSettings() {
+  var list = document.getElementById('dashboardLayoutList');
+  if (!list) return;
+  if (typeof getDashboardLayout !== 'function') return;
+  var layout = getDashboardLayout();
+  var defs = { stats: '统计概览', continueWatch: '继续观看', recentlyAdded: '最近添加', allAnime: '全部动漫' };
+  list.innerHTML = layout.map(function(s, i) {
+    var label = defs[s.id] || s.id;
+    return '<div class="dashboard-layout-item" data-id="' + s.id + '">' +
+      '<label class="toggle-switch">' +
+        '<input type="checkbox" ' + (s.enabled ? 'checked' : '') + ' onchange="toggleDashboardSection(\'' + s.id + '\', this.checked)">' +
+        '<span class="toggle-slider"></span>' +
+      '</label>' +
+      '<span class="dashboard-layout-label">' + label + '</span>' +
+      '<div class="dashboard-layout-arrows">' +
+        '<button class="btn btn-icon btn-xs" onclick="moveDashboardSection(\'' + s.id + '\', -1)" ' + (i === 0 ? 'disabled' : '') + ' title="上移">' +
+          '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>' +
+        '</button>' +
+        '<button class="btn btn-icon btn-xs" onclick="moveDashboardSection(\'' + s.id + '\', 1)" ' + (i === layout.length - 1 ? 'disabled' : '') + ' title="下移">' +
+          '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>' +
+        '</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function toggleDashboardSection(id, enabled) {
+  if (typeof getDashboardLayout !== 'function') return;
+  var layout = getDashboardLayout();
+  var s = layout.find(function(s) { return s.id === id; });
+  if (s) s.enabled = enabled;
+  saveDashboardLayout(layout);
+}
+
+function moveDashboardSection(id, dir) {
+  if (typeof getDashboardLayout !== 'function') return;
+  var layout = getDashboardLayout();
+  var idx = layout.findIndex(function(s) { return s.id === id; });
+  if (idx === -1) return;
+  var newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= layout.length) return;
+  var tmp = layout[idx];
+  layout[idx] = layout[newIdx];
+  layout[newIdx] = tmp;
+  saveDashboardLayout(layout);
+  renderDashboardLayoutSettings();
+}

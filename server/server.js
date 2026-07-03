@@ -865,6 +865,32 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // --- API: dashboard stats ---
+  if (urlPath === '/api/stats' && req.method === 'GET') {
+    const lib = data.library || [];
+    const watching = lib.filter(a => a.myListStatus === 'watching').length;
+    const completed = lib.filter(a => a.myListStatus === 'completed').length;
+    const total = lib.filter(a => a.downloaded !== false).length;
+    let totalEpWatched = 0;
+    let totalFileSize = 0;
+    let totalFileCount = 0;
+    for (const a of lib) {
+      if (!a.episodes) continue;
+      for (const e of a.episodes) {
+        if (e.watched) totalEpWatched++;
+        if (e.fileSize) {
+          totalFileSize += e.fileSize;
+          totalFileCount++;
+        }
+      }
+    }
+    const totalWatchSeconds = (data.playSessions || []).reduce((sum, s) => {
+      return sum + Math.max(0, s.clockTime || 0);
+    }, 0);
+    jsonResp(res, 200, { watching, completed, total, totalEpWatched, totalWatchSeconds, totalFileSize, totalFileCount });
+    return;
+  }
+
   // --- API: play sessions for anime ---
   if (urlPath.startsWith('/api/anime/') && urlPath.endsWith('/sessions') && req.method === 'GET') {
     const id = decodeURIComponent(urlPath.slice('/api/anime/'.length, -'/sessions'.length));

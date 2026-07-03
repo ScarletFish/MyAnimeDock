@@ -143,6 +143,15 @@ async function showDetail(id, fromRect, fromSrc) {
 
     document.getElementById('headerTitle').textContent = currentAnime.bangumiTitle || currentAnime.title;
     startDetailRefresh();
+
+    // Auto-play from continue watching section
+    if (typeof pendingAutoPlay !== 'undefined' && pendingAutoPlay === id) {
+      pendingAutoPlay = null;
+      const ep = findWatchEpisode(currentAnime);
+      if (ep) {
+        setTimeout(() => playEpisode(ep.filePath, ep.progress), 400);
+      }
+    }
   } catch (e) {
     showToast('加载详情失败: ' + e.message, 'error');
   }

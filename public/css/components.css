@@ -1412,6 +1412,29 @@ input[type="range"]::-webkit-slider-thumb {
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
+  cursor: grab;
+  transition: background 0.15s var(--ease-out), border-color 0.15s var(--ease-out), transform 0.15s var(--ease-out);
+}
+.dashboard-layout-item:active {
+  cursor: grabbing;
+}
+.dashboard-layout-item.dragging {
+  opacity: 0.4;
+  transform: scale(0.98);
+}
+.dashboard-layout-item.drag-over {
+  border-color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.05);
+}
+.dashboard-layout-drag-handle {
+  color: var(--fg-muted);
+  opacity: 0.5;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+.dashboard-layout-item:hover .dashboard-layout-drag-handle {
+  opacity: 0.8;
 }
 .dashboard-layout-label {
   flex: 1;

@@ -638,10 +638,13 @@ function renderDashboardLayoutSettings() {
   if (!list) return;
   if (typeof getDashboardLayout !== 'function') return;
   var layout = getDashboardLayout();
-  var defs = { stats: '统计概览', continueWatch: '继续观看', recentlyAdded: '最近添加', allAnime: '全部动漫' };
+  var defs = { stats: '统计概览', continueWatch: '继续观看', allAnime: '全部动漫' };
   list.innerHTML = layout.map(function(s, i) {
     var label = defs[s.id] || s.id;
     return '<div class="dashboard-layout-item" data-id="' + s.id + '">' +
+      '<span class="dashboard-layout-drag-handle" data-drag-handle="' + s.id + '">' +
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="1.5"/><circle cx="15" cy="5" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="19" r="1.5"/><circle cx="15" cy="19" r="1.5"/></svg>' +
+      '</span>' +
       '<label class="toggle-switch">' +
         '<input type="checkbox" ' + (s.enabled ? 'checked' : '') + ' onchange="toggleDashboardSection(\'' + s.id + '\', this.checked)">' +
         '<span class="toggle-slider"></span>' +
@@ -657,6 +660,79 @@ function renderDashboardLayoutSettings() {
       '</div>' +
     '</div>';
   }).join('');
+
+  // ── Pointer-based drag (replaces native drag API) ──
+  if (list._dragCleanup) list._dragCleanup();
+  var dragState = { active: false, srcId: null, ghost: null, startY: 0, srcIdx: -1 };
+  var items = function() { return list.querySelectorAll('.dashboard-layout-item'); };
+
+  function onPointerDown(e) {
+    var handle = e.target.closest('[data-drag-handle]');
+    if (!handle) return;
+    var item = handle.closest('.dashboard-layout-item');
+    if (!item) return;
+    e.preventDefault();
+    dragState.active = true;
+    dragState.srcId = item.dataset.id;
+    dragState.startY = e.clientY;
+    var arr = Array.from(items());
+    dragState.srcIdx = arr.indexOf(item);
+    item.classList.add('dragging');
+  }
+
+  function onPointerMove(e) {
+    if (!dragState.active) return;
+    e.preventDefault();
+    // Find which item we're over
+    var arr = Array.from(items());
+    var overItem = null;
+    for (var i = 0; i < arr.length; i++) {
+      var rect = arr[i].getBoundingClientRect();
+      if (e.clientY >= rect.top && e.clientY <= rect.bottom) {
+        overItem = arr[i];
+        break;
+      }
+    }
+    arr.forEach(function(el) { el.classList.remove('drag-over'); });
+    if (overItem && overItem.dataset.id !== dragState.srcId) {
+      overItem.classList.add('drag-over');
+    }
+  }
+
+  function onPointerUp(e) {
+    if (!dragState.active) return;
+    dragState.active = false;
+    // Find target
+    var arr = Array.from(items());
+    var targetId = null;
+    for (var i = 0; i < arr.length; i++) {
+      var rect = arr[i].getBoundingClientRect();
+      if (e.clientY >= rect.top && e.clientY <= rect.bottom) {
+        targetId = arr[i].dataset.id;
+        break;
+      }
+    }
+    arr.forEach(function(el) { el.classList.remove('dragging', 'drag-over'); });
+    if (!targetId || targetId === dragState.srcId) return;
+    // Reorder
+    var layout = getDashboardLayout();
+    var fromIdx = layout.findIndex(function(s) { return s.id === dragState.srcId; });
+    var toIdx = layout.findIndex(function(s) { return s.id === targetId; });
+    if (fromIdx === -1 || toIdx === -1) return;
+    var moved = layout.splice(fromIdx, 1)[0];
+    layout.splice(toIdx, 0, moved);
+    saveDashboardLayout(layout);
+    renderDashboardLayoutSettings();
+  }
+
+  document.addEventListener('pointerdown', onPointerDown);
+  document.addEventListener('pointermove', onPointerMove);
+  document.addEventListener('pointerup', onPointerUp);
+  list._dragCleanup = function() {
+    document.removeEventListener('pointerdown', onPointerDown);
+    document.removeEventListener('pointermove', onPointerMove);
+    document.removeEventListener('pointerup', onPointerUp);
+  };
 }
 
 function toggleDashboardSection(id, enabled) {
@@ -665,6 +741,7 @@ function toggleDashboardSection(id, enabled) {
   var s = layout.find(function(s) { return s.id === id; });
   if (s) s.enabled = enabled;
   saveDashboardLayout(layout);
+  if (typeof renderDashboard === 'function') renderDashboard();
 }
 
 function moveDashboardSection(id, dir) {
@@ -679,4 +756,5 @@ function moveDashboardSection(id, dir) {
   layout[newIdx] = tmp;
   saveDashboardLayout(layout);
   renderDashboardLayoutSettings();
+  if (typeof renderDashboard === 'function') renderDashboard();
 }

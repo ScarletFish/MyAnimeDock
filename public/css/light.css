@@ -137,6 +137,48 @@
 :is([data-theme="light"], [data-theme-mode="light"]) .anime-card .overlay h3 { color: #fff; }
 :is([data-theme="light"], [data-theme-mode="light"]) .season-badge { background: rgba(44, 36, 24, 0.06); }
 
+/* ─── Dashboard Cards (hover shadows) ─── */
+:is([data-theme="light"], [data-theme-mode="light"]) .dashboard-card:hover {
+  box-shadow:
+    0 8px 32px rgba(44, 36, 24, 0.10),
+    0 0 40px rgba(var(--accent-rgb), 0.04);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .dashboard-card--hero:hover {
+  box-shadow:
+    0 12px 48px rgba(44, 36, 24, 0.12),
+    0 0 60px rgba(var(--accent-rgb), 0.06);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .dashboard-continue-card {
+  box-shadow: 0 2px 8px rgba(44, 36, 24, 0.06);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .dashboard-continue-card:hover {
+  box-shadow:
+    0 10px 36px rgba(44, 36, 24, 0.10),
+    0 0 40px rgba(var(--accent-rgb), 0.04);
+}
+
+/* ─── Detail View (shadows) ─── */
+:is([data-theme="light"], [data-theme-mode="light"]) .detail-cover-wrap {
+  box-shadow:
+    0 8px 40px rgba(44, 36, 24, 0.10),
+    0 0 60px rgba(var(--accent-rgb), 0.04);
+}
+
+/* ─── Watch Card Button ─── */
+:is([data-theme="light"], [data-theme-mode="light"]) .watch-card-btn {
+  box-shadow: 0 4px 20px rgba(var(--accent-rgb), 0.18);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .watch-card-btn:hover {
+  box-shadow: 0 6px 28px rgba(var(--accent-rgb), 0.25);
+}
+
+/* ─── Context Menu ─── */
+:is([data-theme="light"], [data-theme-mode="light"]) .context-menu {
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.04),
+    0 8px 24px rgba(0, 0, 0, 0.06);
+}
+
 /* ─── Episodes ─── */
 :is([data-theme="light"], [data-theme-mode="light"]) .episode-item {
   background: var(--bg-card);

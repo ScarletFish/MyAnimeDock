@@ -7,27 +7,35 @@ let cardTween = null;
 // Grid zoom
 const GRID_ZOOM_MIN = 0.5;
 const GRID_ZOOM_MAX = 2.0;
-const GRID_BASE_SIZE = 170;
+const GRID_BASE_SIZE = 207;
 let gridZoom = parseFloat(localStorage.getItem('gridZoom') || '1');
 
 // Dashboard section definitions
 const DASHBOARD_SECTIONS = {
   stats: { title: '统计概览', defaultEnabled: true },
   continueWatch: { title: '继续观看', defaultEnabled: true },
-  recentlyAdded: { title: '最近添加', defaultEnabled: false },
   allAnime: { title: '全部动漫', defaultEnabled: true }
 };
 const DASHBOARD_DEFAULT_LAYOUT = [
   { id: 'stats', enabled: true },
   { id: 'continueWatch', enabled: true },
-  { id: 'recentlyAdded', enabled: false },
   { id: 'allAnime', enabled: true }
 ];
 
 function getDashboardLayout() {
   try {
     const stored = localStorage.getItem('dashboardLayout');
-    if (stored) return JSON.parse(stored);
+    if (stored) {
+      var layout = JSON.parse(stored);
+      // Remove sections no longer defined
+      layout = layout.filter(function(s) { return DASHBOARD_SECTIONS[s.id]; });
+      // Merge new sections from defaults that aren't in stored layout
+      var ids = layout.map(function(s) { return s.id; });
+      DASHBOARD_DEFAULT_LAYOUT.forEach(function(s) {
+        if (ids.indexOf(s.id) === -1) layout.push({ id: s.id, enabled: s.enabled });
+      });
+      return layout;
+    }
   } catch {}
   return DASHBOARD_DEFAULT_LAYOUT.map(s => ({ ...s }));
 }
@@ -153,105 +161,64 @@ function renderDashboard() {
     if (!body) continue;
     if (s.id === 'stats') renderStatsSection(libraryData, body);
     else if (s.id === 'continueWatch') renderContinueSection(libraryData, body);
-    else if (s.id === 'recentlyAdded') renderRecentSection(libraryData, body);
     else if (s.id === 'allAnime') renderAllAnimeSection(libraryData, body);
   }
 }
 
 function renderStatsSection(data, container) {
-  const watching = data.filter(a => a.myListStatus === 'watching').length;
-  const completed = data.filter(a => a.myListStatus === 'completed').length;
-  const total = data.length;
-  const totalEpWatched = data.reduce(function(sum, a) {
-    if (!a.episodes) return sum;
-    return sum + a.episodes.filter(function(e) { return e.watched; }).length;
-  }, 0);
+  container.innerHTML = '<div class="dashboard-stats-loading">加载中...</div>';
 
-  container.innerHTML = '<div class="dashboard-stats">' +
-    '<div class="dashboard-stat">' +
-      '<div class="dashboard-stat-icon dashboard-stat-icon--watching"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>' +
-      '<div class="dashboard-stat-body"><span class="dashboard-stat-value">' + watching + '</span><span class="dashboard-stat-label">正在追番</span></div>' +
-    '</div>' +
-    '<div class="dashboard-stat">' +
-      '<div class="dashboard-stat-icon dashboard-stat-icon--completed"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>' +
-      '<div class="dashboard-stat-body"><span class="dashboard-stat-value">' + completed + '</span><span class="dashboard-stat-label">已看完</span></div>' +
-    '</div>' +
-    '<div class="dashboard-stat">' +
-      '<div class="dashboard-stat-icon dashboard-stat-icon--total"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg></div>' +
-      '<div class="dashboard-stat-body"><span class="dashboard-stat-value">' + total + '</span><span class="dashboard-stat-label">本地动漫</span></div>' +
-    '</div>' +
-    '<div class="dashboard-stat">' +
-      '<div class="dashboard-stat-icon dashboard-stat-icon--episodes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/></svg></div>' +
-      '<div class="dashboard-stat-body"><span class="dashboard-stat-value">' + totalEpWatched + '</span><span class="dashboard-stat-label">已看集数</span></div>' +
-    '</div>' +
-  '</div>';
-}
-
-function renderHScrollCard(anime, options) {
-  if (!options) options = {};
-  var isHero = options.hero || false;
-  var showProgress = options.showProgress || false;
-  var progress = options.progress || 0;
-  var progressLabel = options.progressLabel || '';
-  var badge = options.badge || '';
-  var title = escHtml(anime.bangumiTitle || anime.title);
-  var coverSrc = anime.localCover
-    ? '/covers/' + path.basename(anime.localCover) + '?w=300&q=70'
-    : (anime.coverUrl || '');
-  var total = anime.episodes ? anime.episodes.length : 0;
-  var heroClass = isHero ? ' dashboard-card--hero' : '';
-
-  // ── Hero card: overlay + big progress + action badge ──
-  if (isHero) {
-    var badgeHtml = badge
-      ? '<span class="dashboard-card-hero-badge">' + escHtml(badge) + '</span>'
-      : '';
-    var ratingHtml = anime.rating
-      ? '<span class="dashboard-card-rating">★ ' + anime.rating + '</span>'
-      : '';
-    var progressHtml = showProgress
-      ? '<div class="dashboard-hero-progress"><div class="dashboard-hero-progress-bar"><div style="width:' + progress + '%"></div></div><span class="dashboard-hero-progress-label">' + progressLabel + '</span></div>'
-      : '';
-    var subtitleHtml = '';
-    if (!showProgress && anime.importedAt) {
-      var days = Math.floor((Date.now() - new Date(anime.importedAt).getTime()) / 86400000);
-      subtitleHtml = '<span class="dashboard-hero-subtitle">' + (days === 0 ? '今天导入' : days + ' 天前导入') + '</span>';
+  API.get('/api/stats').then(function(stats) {
+    function fmtTime(sec) {
+      if (sec < 60) return sec + 's';
+      if (sec < 3600) return Math.round(sec / 60) + 'min';
+      var h = Math.floor(sec / 3600);
+      var m = Math.round((sec % 3600) / 60);
+      return m > 0 ? h + 'h ' + m + 'min' : h + 'h';
     }
-
-    return '<div class="dashboard-card' + heroClass + '" onclick="navigateToDetail(\'' + escAttr(anime.id) + '\', this)" oncontextmenu="showContextMenu(event, \'' + escAttr(anime.id) + '\')">' +
-      '<div class="dashboard-card-cover">' +
-        (coverSrc ? '<img src="' + escAttr(coverSrc) + '" alt="' + title + '" loading="lazy">' : renderGrayCover()) +
-        '<div class="dashboard-card-cover-grad"></div>' +
-        badgeHtml +
-        ratingHtml +
-        '<div class="dashboard-hero-info">' +
-          '<div class="dashboard-hero-title">' + title + '</div>' +
-          (subtitleHtml || progressHtml) +
-        '</div>' +
-      '</div>' +
-    '</div>';
-  }
-
-  // ── Standard card: body + optional progress ──
-  var epBadgeHtml = total > 0
-    ? '<span class="dashboard-card-ep-badge">' + total + ' 集</span>'
-    : '';
-  var ratingHtml = anime.rating
-    ? '<span class="dashboard-card-rating">★ ' + anime.rating + '</span>'
-    : '';
-
-  return '<div class="dashboard-card' + heroClass + '" onclick="navigateToDetail(\'' + escAttr(anime.id) + '\', this)" oncontextmenu="showContextMenu(event, \'' + escAttr(anime.id) + '\')">' +
-    '<div class="dashboard-card-cover">' +
-      (coverSrc ? '<img src="' + escAttr(coverSrc) + '" alt="' + title + '" loading="lazy">' : renderGrayCover()) +
-      epBadgeHtml +
-      ratingHtml +
-    '</div>' +
-    '<div class="dashboard-card-body">' +
-      '<div class="dashboard-card-title">' + title + '</div>' +
-      (showProgress ? '<div class="dashboard-progress"><div class="dashboard-progress-bar" style="width:' + progress + '%"></div></div><div class="dashboard-progress-label">' + progressLabel + '</div>' : '') +
-    '</div>' +
-  '</div>';
+    function fmtSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+      if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + ' MB';
+      return (bytes / 1073741824).toFixed(2) + ' GB';
+    }
+    var timeStr = fmtTime(stats.totalWatchSeconds || 0);
+    var sizeStr = fmtSize(stats.totalFileSize || 0);
+    container.innerHTML =
+      '<div class="dashboard-stats">' +
+        '<div class="dashboard-stats-item"><b>' + sizeStr + '</b>大小</div>' +
+        '<div class="dashboard-stats-item"><b>' + stats.totalFileCount + '</b>文件</div>' +
+        '<div class="dashboard-stats-item"><b>' + stats.watching + '</b>追番</div>' +
+        '<div class="dashboard-stats-item"><b>' + stats.completed + '</b>看完</div>' +
+        '<div class="dashboard-stats-item"><b>' + stats.total + '</b>本地</div>' +
+        '<div class="dashboard-stats-item"><b>' + stats.totalEpWatched + '</b>集数</div>' +
+        '<div class="dashboard-stats-item"><b>' + timeStr + '</b>时长</div>' +
+      '</div>';
+  }).catch(function() {
+    container.style.display = 'none';
+  });
 }
+
+function findContinueEpisode(anime) {
+  if (!anime.episodes || anime.episodes.length === 0) return null;
+  var first = null;
+  for (var i = 0; i < anime.episodes.length; i++) {
+    var ep = anime.episodes[i];
+    if (!first) first = ep;
+    if (!ep.watched && ep.progress > 0) return ep;
+  }
+  for (var i = 0; i < anime.episodes.length; i++) {
+    if (!anime.episodes[i].watched) return anime.episodes[i];
+  }
+  return first;
+}
+
+function navigateToDetailWithPlay(id, rect) {
+  pendingAutoPlay = id;
+  navigateToDetail(id, rect);
+}
+
+var pendingAutoPlay = null;
 
 function renderContinueSection(data, container) {
   var watching = data.filter(function(a) {
@@ -272,15 +239,22 @@ function renderContinueSection(data, container) {
     watching.map(function(a) {
       var total = a.episodes ? a.episodes.length : 0;
       var watchedCount = a.episodes ? a.episodes.filter(function(e) { return e.watched; }).length : 0;
-      var pct = total > 0 ? Math.round(watchedCount / total * 100) : 0;
       var nextEp = Math.min(watchedCount + 1, total);
       var title = escHtml(a.bangumiTitle || a.title);
+
+      var ep = findContinueEpisode(a);
+      var thumbUrl = '';
+      if (ep) {
+        var thumbTime = ep.progress > 0 ? ep.progress : 60;
+        thumbUrl = '/api/thumbnail?path=' + encodeURIComponent(ep.filePath) + '&time=' + thumbTime;
+      }
       var coverSrc = a.localCover
         ? '/covers/' + path.basename(a.localCover) + '?w=500&q=75'
         : (a.coverUrl || '');
-      var bgStyle = coverSrc ? ' style="background-image:url(' + escAttr(coverSrc) + ')"' : '';
+      var bgStyle = thumbUrl ? ' style="background-image:url(' + escAttr(thumbUrl) + ')"' :
+        (coverSrc ? ' style="background-image:url(' + escAttr(coverSrc) + ')"' : '');
 
-      return '<div class="dashboard-continue-card" onclick="navigateToDetail(\'' + escAttr(a.id) + '\', this)" oncontextmenu="showContextMenu(event, \'' + escAttr(a.id) + '\')">' +
+      return '<div class="dashboard-continue-card" onclick="navigateToDetailWithPlay(\'' + escAttr(a.id) + '\', this)" oncontextmenu="showContextMenu(event, \'' + escAttr(a.id) + '\')">' +
         '<div class="dashboard-continue-bg"' + bgStyle + '></div>' +
         '<div class="dashboard-continue-overlay"></div>' +
         '<div class="dashboard-continue-content">' +
@@ -288,33 +262,15 @@ function renderContinueSection(data, container) {
             '<div class="dashboard-continue-label">继续播放</div>' +
             '<div class="dashboard-continue-title">' + title + '</div>' +
             '<div class="dashboard-continue-progress-wrap">' +
-              '<div class="dashboard-continue-progress"><div class="dashboard-continue-progress-bar" style="width:' + pct + '%"></div></div>' +
               '<span class="dashboard-continue-progress-label">第 ' + nextEp + ' / ' + total + ' 集</span>' +
             '</div>' +
           '</div>' +
-          '<button class="dashboard-continue-btn" onclick="event.stopPropagation();navigateToDetail(\'' + escAttr(a.id) + '\', this)">' +
+          '<button class="dashboard-continue-btn" onclick="event.stopPropagation();navigateToDetailWithPlay(\'' + escAttr(a.id) + '\', this)">' +
             '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg>' +
             '继续播放' +
           '</button>' +
         '</div>' +
       '</div>';
-    }).join('') +
-  '</div>';
-}
-
-function renderRecentSection(data, container) {
-  var recent = [].concat(data).sort(function(a, b) {
-    return new Date(b.importedAt || 0) - new Date(a.importedAt || 0);
-  }).slice(0, 8);
-
-  container.parentElement.style.display = recent.length === 0 ? 'none' : '';
-  if (recent.length === 0) return;
-
-  container.innerHTML = '<div class="dashboard-hscroll">' +
-    recent.map(function(a, i) {
-      var opts = {};
-      if (i === 0) { opts.hero = true; opts.badge = '最新导入'; }
-      return renderHScrollCard(a, opts);
     }).join('') +
   '</div>';
 }

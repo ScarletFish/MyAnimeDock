@@ -851,6 +851,11 @@ html.theme-transitioning .theme-dock {
   .anime-card .overlay { transition-duration: 0.01ms !important; }
   .anime-card:hover .overlay { transform: none !important; opacity: 1 !important; }
   .anime-card::after { transition-duration: 0.01ms !important; }
+  /* Dashboard card hover effects */
+  .dashboard-card { transition-duration: 0.01ms !important; }
+  .dashboard-card::after { transition-duration: 0.01ms !important; }
+  .dashboard-card:hover { transform: none !important; }
+  .dashboard-card:hover .dashboard-card-cover img { transform: none !important; }
   /* Heatmap hover effects */
   .heatmap-cell:hover { transform: none !important; }
   .heatmap-cell::after { transition-duration: 0.01ms !important; }
@@ -882,6 +887,12 @@ html[data-reduce-motion="true"] .anime-card:hover img,
 html[data-reduce-motion="true"] .heatmap-cell:hover { transform: none !important; }
 
 html[data-reduce-motion="true"] .anime-card:hover .overlay { transform: none !important; opacity: 1 !important; }
+
+html[data-reduce-motion="true"] .dashboard-card,
+html[data-reduce-motion="true"] .dashboard-card::after { transition-duration: 0.01ms !important; }
+html[data-reduce-motion="true"] .dashboard-card:hover,
+html[data-reduce-motion="true"] .dashboard-card:hover img { transform: none !important; }
+html[data-reduce-motion="true"] .dashboard-card:hover .dashboard-card-cover img { transform: none !important; }
 
 html[data-reduce-motion="true"] .heatmap-cell { animation: none !important; }
 html[data-reduce-motion="true"] .settings-panel { animation: none !important; }

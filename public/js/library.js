@@ -189,18 +189,62 @@ function renderStatsSection(data, container) {
 
 function renderHScrollCard(anime, options) {
   if (!options) options = {};
+  var isHero = options.hero || false;
   var showProgress = options.showProgress || false;
   var progress = options.progress || 0;
   var progressLabel = options.progressLabel || '';
+  var badge = options.badge || '';
   var title = escHtml(anime.bangumiTitle || anime.title);
   var coverSrc = anime.localCover
     ? '/covers/' + path.basename(anime.localCover) + '?w=300&q=70'
     : (anime.coverUrl || '');
+  var total = anime.episodes ? anime.episodes.length : 0;
+  var heroClass = isHero ? ' dashboard-card--hero' : '';
 
-  return '<div class="dashboard-card" onclick="navigateToDetail(\'' + escAttr(anime.id) + '\', this)" oncontextmenu="showContextMenu(event, \'' + escAttr(anime.id) + '\')">' +
+  // ── Hero card: overlay + big progress + action badge ──
+  if (isHero) {
+    var badgeHtml = badge
+      ? '<span class="dashboard-card-hero-badge">' + escHtml(badge) + '</span>'
+      : '';
+    var ratingHtml = anime.rating
+      ? '<span class="dashboard-card-rating">★ ' + anime.rating + '</span>'
+      : '';
+    var progressHtml = showProgress
+      ? '<div class="dashboard-hero-progress"><div class="dashboard-hero-progress-bar"><div style="width:' + progress + '%"></div></div><span class="dashboard-hero-progress-label">' + progressLabel + '</span></div>'
+      : '';
+    var subtitleHtml = '';
+    if (!showProgress && anime.importedAt) {
+      var days = Math.floor((Date.now() - new Date(anime.importedAt).getTime()) / 86400000);
+      subtitleHtml = '<span class="dashboard-hero-subtitle">' + (days === 0 ? '今天导入' : days + ' 天前导入') + '</span>';
+    }
+
+    return '<div class="dashboard-card' + heroClass + '" onclick="navigateToDetail(\'' + escAttr(anime.id) + '\', this)" oncontextmenu="showContextMenu(event, \'' + escAttr(anime.id) + '\')">' +
+      '<div class="dashboard-card-cover">' +
+        (coverSrc ? '<img src="' + escAttr(coverSrc) + '" alt="' + title + '" loading="lazy">' : renderGrayCover()) +
+        '<div class="dashboard-card-cover-grad"></div>' +
+        badgeHtml +
+        ratingHtml +
+        '<div class="dashboard-hero-info">' +
+          '<div class="dashboard-hero-title">' + title + '</div>' +
+          (subtitleHtml || progressHtml) +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  // ── Standard card: body + optional progress ──
+  var epBadgeHtml = total > 0
+    ? '<span class="dashboard-card-ep-badge">' + total + ' 集</span>'
+    : '';
+  var ratingHtml = anime.rating
+    ? '<span class="dashboard-card-rating">★ ' + anime.rating + '</span>'
+    : '';
+
+  return '<div class="dashboard-card' + heroClass + '" onclick="navigateToDetail(\'' + escAttr(anime.id) + '\', this)" oncontextmenu="showContextMenu(event, \'' + escAttr(anime.id) + '\')">' +
     '<div class="dashboard-card-cover">' +
       (coverSrc ? '<img src="' + escAttr(coverSrc) + '" alt="' + title + '" loading="lazy">' : renderGrayCover()) +
-      (anime.rating ? '<span class="dashboard-card-rating">★ ' + anime.rating + '</span>' : '') +
+      epBadgeHtml +
+      ratingHtml +
     '</div>' +
     '<div class="dashboard-card-body">' +
       '<div class="dashboard-card-title">' + title + '</div>' +
@@ -225,12 +269,14 @@ function renderContinueSection(data, container) {
   if (watching.length === 0) return;
 
   container.innerHTML = '<div class="dashboard-hscroll">' +
-    watching.map(function(a) {
+    watching.map(function(a, i) {
       var total = a.episodes ? a.episodes.length : 0;
       var watchedCount = a.episodes ? a.episodes.filter(function(e) { return e.watched; }).length : 0;
       var pct = total > 0 ? Math.round(watchedCount / total * 100) : 0;
       var nextEp = Math.min(watchedCount + 1, total);
-      return renderHScrollCard(a, { showProgress: true, progress: pct, progressLabel: '第 ' + nextEp + ' / ' + total + ' 集' });
+      var opts = { showProgress: true, progress: pct, progressLabel: '第 ' + nextEp + ' / ' + total + ' 集' };
+      if (i === 0) { opts.hero = true; opts.badge = '▶ 继续播放'; }
+      return renderHScrollCard(a, opts);
     }).join('') +
   '</div>';
 }
@@ -244,7 +290,11 @@ function renderRecentSection(data, container) {
   if (recent.length === 0) return;
 
   container.innerHTML = '<div class="dashboard-hscroll">' +
-    recent.map(function(a) { return renderHScrollCard(a); }).join('') +
+    recent.map(function(a, i) {
+      var opts = {};
+      if (i === 0) { opts.hero = true; opts.badge = '最新导入'; }
+      return renderHScrollCard(a, opts);
+    }).join('') +
   '</div>';
 }
 

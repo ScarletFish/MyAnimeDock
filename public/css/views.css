@@ -2004,37 +2004,189 @@
 
 .dashboard-card {
   flex-shrink: 0;
-  width: 150px;
+  width: 160px;
   cursor: pointer;
   border-radius: var(--radius-md);
   overflow: hidden;
   background: var(--bg-card);
   border: 1px solid var(--border);
-  transition: transform var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out);
+  position: relative;
+  transition:
+    transform 0.35s var(--ease-spring),
+    box-shadow 0.4s var(--ease-out),
+    border-color 0.25s var(--ease-out);
+  will-change: transform;
 }
+.dashboard-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-md);
+  padding: 1px;
+  background: linear-gradient(135deg, transparent 40%, rgba(var(--accent-rgb), 0.3) 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.4s var(--ease-out);
+  pointer-events: none;
+  z-index: 2;
+}
+.dashboard-card:hover::after { opacity: 1; }
 .dashboard-card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-4px);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    0 0 40px rgba(var(--accent-rgb), 0.06);
   border-color: rgba(var(--accent-rgb), 0.2);
 }
+
+/* ─── Hero Card ─── */
+.dashboard-card--hero {
+  width: 264px;
+}
+.dashboard-card--hero:hover {
+  transform: translateY(-6px) scale(1.02);
+  box-shadow:
+    0 12px 48px rgba(0, 0, 0, 0.5),
+    0 0 60px rgba(var(--accent-rgb), 0.1);
+}
+.dashboard-card--hero::after {
+  border-radius: var(--radius-md);
+}
+
 .dashboard-card-cover {
   position: relative;
   aspect-ratio: 3/4;
   overflow: hidden;
   background: var(--bg-surface);
 }
-.dashboard-card-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.dashboard-card-cover img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.5s var(--ease-out);
+}
+.dashboard-card:hover .dashboard-card-cover img {
+  transform: scale(1.06);
+}
+.dashboard-card--hero:hover .dashboard-card-cover img {
+  transform: scale(1.08);
+}
 .dashboard-card-cover .gray-cover { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+
+/* Cover gradient overlay (hero) */
+.dashboard-card-cover-grad {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(transparent 35%, rgba(0,0,0,0.85) 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Badges */
+.dashboard-card-ep-badge {
+  position: absolute;
+  top: 6px; right: 6px;
+  background: rgba(0,0,0,0.65);
+  color: rgba(255,255,255,0.85);
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: calc(0.625rem * var(--scale));
+  font-weight: 500;
+  backdrop-filter: blur(4px);
+  z-index: 1;
+}
+.dashboard-card-hero-badge {
+  position: absolute;
+  top: 10px; left: 10px;
+  background: var(--accent-gradient);
+  color: #fff;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: calc(0.6875rem * var(--scale));
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  box-shadow: 0 2px 12px rgba(var(--accent-rgb), 0.4);
+  z-index: 3;
+}
 .dashboard-card-rating {
   position: absolute;
-  bottom: 6px; left: 6px;
+  bottom: 10px; left: 10px;
   background: rgba(0,0,0,0.75);
   color: #ffd700;
-  padding: 2px 6px;
+  padding: 3px 8px;
   border-radius: 4px;
   font-size: calc(0.6875rem * var(--scale));
   font-weight: 600;
   backdrop-filter: blur(4px);
+  z-index: 1;
 }
+.dashboard-card--hero .dashboard-card-rating {
+  bottom: auto;
+  top: 46px;
+  left: 10px;
+}
+
+/* Hero card info overlay */
+.dashboard-hero-info {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 1rem 1rem 0.875rem;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.dashboard-hero-title {
+  font-family: var(--font-body);
+  font-size: calc(0.9375rem * var(--scale));
+  font-weight: 600;
+  color: #fff;
+  line-height: 1.3;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.dashboard-hero-subtitle {
+  font-size: calc(0.6875rem * var(--scale));
+  color: rgba(255,255,255,0.75);
+  font-weight: 400;
+}
+
+/* Hero progress */
+.dashboard-hero-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+.dashboard-hero-progress-bar {
+  flex: 1;
+  height: 5px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.dashboard-hero-progress-bar div {
+  height: 100%;
+  background: var(--accent-gradient);
+  border-radius: 3px;
+  box-shadow: 0 0 8px rgba(var(--accent-rgb), 0.4);
+  transition: width 0.4s var(--ease-out);
+}
+.dashboard-hero-progress-label {
+  font-size: calc(0.625rem * var(--scale));
+  color: rgba(255,255,255,0.8);
+  font-weight: 500;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
 .dashboard-card-body { padding: 0.5rem 0.625rem; }
 .dashboard-card-title {
   font-size: calc(0.75rem * var(--scale));
@@ -2047,7 +2199,7 @@
   overflow: hidden;
 }
 
-/* ─── Progress Bar ─── */
+/* ─── Progress Bar (standard) ─── */
 .dashboard-progress {
   height: 3px;
   background: var(--bg-surface);

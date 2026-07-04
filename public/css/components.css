@@ -1553,32 +1553,217 @@ input[type="range"]::-webkit-slider-thumb {
   background: rgba(255,255,255,0.08);
 }
 
-/* ─── Status selector ─── */
-.status-modal-status-bar {
-  margin-bottom: 1.25rem;
+/* ─── Custom Status Dropdown ─── */
+.status-dd {
+  position: relative;
+  z-index: 10;
 }
-.status-modal-status-bar select {
+.status-dd-trigger {
   width: 100%;
-  padding: 10px 36px 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 10px 12px;
+  background: rgba(0,0,0,0.25);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: var(--radius-sm);
+  color: #fff;
   font-size: calc(0.875rem * var(--scale));
   font-family: var(--font-body);
-  color: #fff;
-  background: rgba(255,255,255,0.06) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.5)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") no-repeat right 10px center;
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: var(--radius-sm);
-  outline: none;
   cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
   transition: border-color 0.2s ease, background 0.2s ease;
+  outline: none;
+  -webkit-appearance: none;
 }
-.status-modal-status-bar select:hover {
-  background-color: rgba(255,255,255,0.09);
+.status-dd-trigger:hover {
+  background: rgba(0,0,0,0.3);
   border-color: rgba(255,255,255,0.12);
 }
-.status-modal-status-bar select:focus {
+.status-dd-trigger:focus-visible {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.15);
+}
+.status-dd-text {
+  flex: 1;
+  text-align: left;
+  font-weight: 500;
+}
+.status-dd-chevron {
+  flex-shrink: 0;
+  color: rgba(255,255,255,0.4);
+  transition: transform 0.25s var(--ease-out);
+}
+.status-dd.is-open .status-dd-chevron {
+  transform: rotate(180deg);
+}
+
+/* Dropdown menu */
+.status-dd-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: rgba(20,18,16,0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--radius-md);
+  padding: 4px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-6px) scale(0.96);
+  pointer-events: none;
+  transition: opacity 0.2s var(--ease-out), transform 0.2s var(--ease-out);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+  max-height: 280px;
+  overflow-y: auto;
+}
+.status-dd.is-open .status-dd-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.status-dd-opt {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 9px 10px;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: rgba(255,255,255,0.7);
+  font-size: calc(0.8125rem * var(--scale));
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: all 0.15s var(--ease-out);
+  text-align: left;
+}
+.status-dd-opt:hover {
+  background: rgba(255,255,255,0.06);
+  color: #fff;
+}
+.status-dd-opt.is-selected {
+  color: var(--accent-soft);
+}
+
+.status-dd-opt-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  opacity: 0.5;
+}
+.status-dd-opt:hover .status-dd-opt-icon { opacity: 0.8; }
+.status-dd-opt.is-selected .status-dd-opt-icon { opacity: 1; color: var(--accent-soft); }
+
+.status-dd-opt span {
+  flex: 1;
+}
+.status-dd-opt-check {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s var(--ease-out);
+}
+.status-dd-opt.is-selected .status-dd-opt-check {
+  opacity: 1;
+}
+
+/* ─── Number Stepper ─── */
+.num-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  background: rgba(0,0,0,0.25);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  height: 38px;
+}
+.num-stepper-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 100%;
+  border: none;
+  background: none;
+  color: rgba(255,255,255,0.45);
+  font-size: calc(1rem * var(--scale));
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s var(--ease-out);
+  padding: 0;
+  line-height: 1;
+}
+.num-stepper-btn:hover {
+  background: rgba(255,255,255,0.06);
+  color: #fff;
+}
+.num-stepper-btn:active {
+  background: rgba(255,255,255,0.1);
+}
+.num-stepper-val {
+  min-width: 3ch;
+  text-align: center;
+  font-size: calc(0.875rem * var(--scale));
+  color: #fff;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  padding: 0 2px;
+  user-select: none;
+}
+
+/* ─── Date Segments ─── */
+.date-segments {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: rgba(0,0,0,0.25);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  height: 38px;
+}
+.date-seg {
+  background: none;
+  border: none;
+  outline: none;
+  color: #fff;
+  font-size: calc(0.8125rem * var(--scale));
+  font-family: var(--font-body);
+  text-align: center;
+  padding: 0 2px;
+  height: 100%;
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+}
+.date-seg--y { width: 3.2rem; }
+.date-seg--m { width: 2rem; }
+.date-seg--d { width: 2rem; }
+.date-seg::placeholder { color: rgba(255,255,255,0.2); }
+.date-seg:focus { background: rgba(255,255,255,0.04); }
+
+.date-sep {
+  color: rgba(255,255,255,0.2);
+  font-size: calc(0.8125rem * var(--scale));
+  font-weight: 600;
+  user-select: none;
+  padding: 0 1px;
+}
+
+/* ─── Glass Field Label ─── */
+.glass-field-label {
+  display: block;
+  font-size: calc(0.625rem * var(--scale));
+  font-weight: 600;
+  color: rgba(255,255,255,0.45);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 6px;
 }
 
 /* ─── Glass Cards ─── */
@@ -1602,21 +1787,10 @@ input[type="range"]::-webkit-slider-thumb {
   flex: 1;
   min-width: 0;
 }
-.glass-card-field--sm { flex: 0 0 5rem; }
+.glass-card-field--sm { flex: 0 0 6rem; }
 .glass-card-field--grow { flex: 2; }
 
-.glass-card label {
-  display: block;
-  font-size: calc(0.625rem * var(--scale));
-  font-weight: 600;
-  color: rgba(255,255,255,0.45);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-bottom: 6px;
-}
-
-.glass-card input,
-.glass-card textarea {
+.glass-card--wide textarea {
   width: 100%;
   box-sizing: border-box;
   padding: 8px 10px;
@@ -1628,39 +1802,17 @@ input[type="range"]::-webkit-slider-thumb {
   border-radius: var(--radius-sm);
   outline: none;
   transition: border-color 0.2s ease, background 0.2s ease;
-}
-.glass-card input:focus,
-.glass-card textarea:focus {
-  border-color: var(--accent);
-  background: rgba(0,0,0,0.35);
-  box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.12);
-}
-.glass-card textarea {
   resize: vertical;
   min-height: 2.5em;
   line-height: 1.5;
 }
-.glass-card input[type="number"] {
-  font-variant-numeric: tabular-nums;
+.glass-card--wide textarea:focus {
+  border-color: var(--accent);
+  background: rgba(0,0,0,0.35);
+  box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.12);
 }
-.glass-card input::placeholder,
-.glass-card textarea::placeholder {
+.glass-card--wide textarea::placeholder {
   color: rgba(255,255,255,0.25);
-}
-
-/* Date inputs in glass card */
-.glass-card input[type="date"] {
-  color-scheme: dark;
-  min-width: 0;
-}
-.glass-card input[type="date"]::-webkit-calendar-picker-indicator {
-  filter: invert(0.9);
-  cursor: pointer;
-  opacity: 0.55;
-  transition: opacity 0.15s;
-}
-.glass-card input[type="date"]::-webkit-calendar-picker-indicator:hover {
-  opacity: 1;
 }
 
 /* ─── Actions ─── */

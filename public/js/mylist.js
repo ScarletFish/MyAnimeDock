@@ -175,13 +175,119 @@ function showWishlistDetail(id) {
 
 let _statusModalId = null;
 
+// Reverse map for status dropdown: label → value
+function _statusValue(label) {
+  for (var k in STATUS_LABELS) {
+    if (STATUS_LABELS[k] === label) return k;
+  }
+  return 'watching';
+}
+
+function toggleStatusDropdown(e) {
+  if (e) e.stopPropagation();
+  var dd = document.getElementById('statusDd');
+  if (!dd) return;
+  var isOpen = dd.classList.toggle('is-open');
+  if (isOpen) {
+    var selected = dd.querySelector('.status-dd-opt.is-selected');
+    if (selected) {
+      var menu = dd.querySelector('.status-dd-menu');
+      var scrollTop = selected.offsetTop - menu.offsetTop - menu.clientHeight / 2 + selected.clientHeight / 2;
+      menu.scrollTop = Math.max(0, scrollTop);
+    }
+    // Close on outside click
+    document.addEventListener('click', closeStatusDropdown);
+  } else {
+    document.removeEventListener('click', closeStatusDropdown);
+  }
+}
+
+function closeStatusDropdown(e) {
+  var dd = document.getElementById('statusDd');
+  if (!dd) return;
+  if (e && dd.contains(e.target)) return;
+  dd.classList.remove('is-open');
+  document.removeEventListener('click', closeStatusDropdown);
+}
+
+function selectStatusOption(btn) {
+  var dd = document.getElementById('statusDd');
+  if (!dd) return;
+  var value = btn.getAttribute('data-value');
+  var label = btn.querySelector('span').textContent;
+  // Update trigger text
+  document.getElementById('statusDdText').textContent = label;
+  // Update selected option
+  dd.querySelectorAll('.status-dd-opt').forEach(function(o) { o.classList.remove('is-selected'); });
+  btn.classList.add('is-selected');
+  // Close
+  dd.classList.remove('is-open');
+  document.removeEventListener('click', closeStatusDropdown);
+}
+
+// ─── Number Stepper ───
+function stepperChange(btn, delta) {
+  var stepper = btn.closest('.num-stepper');
+  if (!stepper) return;
+  var min = parseFloat(stepper.getAttribute('data-min')) || 0;
+  var max = parseFloat(stepper.getAttribute('data-max')) || 999;
+  var step = parseFloat(stepper.getAttribute('data-step')) || 1;
+  var valDisplay = stepper.querySelector('.num-stepper-val');
+  var current = valDisplay.textContent === '—' ? 0 : parseFloat(valDisplay.textContent) || 0;
+  var newVal = Math.round((current + delta) / step) * step;
+  newVal = Math.max(min, Math.min(max, newVal));
+  valDisplay.textContent = newVal === 0 && delta < 0 ? '—' : newVal;
+}
+
+// ─── Date Segments ───
+function segAutoTab(input) {
+  var val = input.value.replace(/\D/g, '');
+  input.value = val;
+  if (val.length >= input.maxLength) {
+    var segs = input.closest('.date-segments');
+    if (segs) {
+      var inputs = segs.querySelectorAll('.date-seg');
+      for (var i = 0; i < inputs.length; i++) {
+        if (inputs[i] === input && i < inputs.length - 1) {
+          inputs[i + 1].focus();
+          break;
+        }
+      }
+    }
+  }
+}
+
+function readDateSegments(segs) {
+  var y = segs.querySelector('.date-seg--y').value.trim();
+  var m = segs.querySelector('.date-seg--m').value.trim();
+  var d = segs.querySelector('.date-seg--d').value.trim();
+  if (!y && !m && !d) return '';
+  y = y.padStart(4, '0');
+  m = m.padStart(2, '0') || '01';
+  d = d.padStart(2, '0') || '01';
+  return y + '-' + m + '-' + d;
+}
+
+function setDateToSegments(segs, dateStr) {
+  if (dateStr) {
+    var parts = dateStr.substring(0, 10).split('-');
+    var yEl = segs.querySelector('.date-seg--y');
+    var mEl = segs.querySelector('.date-seg--m');
+    var dEl = segs.querySelector('.date-seg--d');
+    if (yEl) yEl.value = parts[0] || '';
+    if (mEl) mEl.value = parts[1] || '';
+    if (dEl) dEl.value = parts[2] || '';
+  }
+}
+
+// ─── Open Status Modal ───
 function openStatusModal(e, id) {
   if (e) e.stopPropagation();
   _statusModalId = id;
 
   // Find the item
-  const item = mylistData.find(i => i.id === id);
-  const libItem = typeof libraryData !== 'undefined' ? libraryData.find(a => a.id === id) : null;
+  const item = mylistData.find(function(i) { return i.id === id; });
+  const libItem = typeof libraryData !== 'undefined' ? libraryData.find(function(a) { return a.id === id; }) : null;
   const anime = libItem || item;
 
   // Title
@@ -201,41 +307,48 @@ function openStatusModal(e, id) {
     }
   }
 
-  // Status
-  const statusEl = document.getElementById('statusModalStatus');
-  if (statusEl) statusEl.value = (item && item.status) || 'watching';
+  // Status: custom dropdown
+  var curStatus = (item && item.status) || 'watching';
+  document.getElementById('statusDdText').textContent = STATUS_LABELS[curStatus] || '当前观看';
+  document.getElementById('statusDd').querySelectorAll('.status-dd-opt').forEach(function(o) {
+    o.classList.toggle('is-selected', o.getAttribute('data-value') === curStatus);
+  });
 
-  // Rating
-  const ratingEl = document.getElementById('statusModalRating');
-  if (ratingEl) ratingEl.value = item && item.rating != null ? item.rating : '';
+  // Rating: num-stepper
+  var rating = item && item.rating != null ? item.rating : '';
+  var ratingDisplay = document.getElementById('ratingDisplay');
+  if (ratingDisplay) ratingDisplay.textContent = rating !== '' ? rating : '—';
 
-  // Progress — use stored progress, or compute from watched episodes
-  const progressEl = document.getElementById('statusModalProgress');
+  // Progress
+  var progressEl = document.getElementById('progressDisplay');
   if (progressEl) {
     const storedProgress = item && item.progress != null ? item.progress : null;
     const watchedCount = anime && anime.episodes ? anime.episodes.filter(function(e) { return e.watched; }).length : 0;
-    progressEl.value = storedProgress != null ? storedProgress : (watchedCount || '');
+    var progVal = storedProgress != null ? storedProgress : (watchedCount || '');
+    progressEl.textContent = progVal !== '' ? progVal : '—';
   }
 
-  // Start date — use stored startedAt, or earliest episode first play, or today
-  const startEl = document.getElementById('statusModalStarted');
-  if (startEl) {
+  // Start date: three-segment
+  const startSegs = document.querySelector('.date-segments[data-date="startedAt"]');
+  if (startSegs) {
     const storedStart = item && item.startedAt ? item.startedAt : null;
-    startEl.value = storedStart ? storedStart.substring(0, 10) : _todayStr();
+    setDateToSegments(startSegs, storedStart ? storedStart.substring(0, 10) : _todayStr());
   }
 
-  // End date — use stored completedAt, or today
-  const endEl = document.getElementById('statusModalCompleted');
-  if (endEl) {
+  // End date
+  const endSegs = document.querySelector('.date-segments[data-date="completedAt"]');
+  if (endSegs) {
     const storedEnd = item && item.completedAt ? item.completedAt : null;
-    endEl.value = storedEnd ? storedEnd.substring(0, 10) : _todayStr();
+    setDateToSegments(endSegs, storedEnd ? storedEnd.substring(0, 10) : _todayStr());
   }
 
   // Notes
-  const notesEl = document.getElementById('statusModalNotes');
+  const notesEl = document.getElementById('notesInput');
   if (notesEl) notesEl.value = (item && item.notes) || '';
 
   openModal('statusModal');
+  // Close dropdown on modal close
+  closeStatusDropdown();
 }
 
 function _todayStr() {
@@ -245,26 +358,47 @@ function _todayStr() {
     String(d.getDate()).padStart(2, '0');
 }
 
+// ─── Save Status Modal ───
 async function saveStatusModal() {
   var id = _statusModalId;
   if (!id) return;
+
+  // Read status from custom dropdown
+  var statusText = document.getElementById('statusDdText').textContent;
+  var status = _statusValue(statusText);
+
+  // Read rating from stepper display
+  var ratingText = document.getElementById('ratingDisplay').textContent;
+  var rating = ratingText !== '—' ? parseFloat(ratingText) : null;
+
+  // Read progress from stepper display
+  var progressText = document.getElementById('progressDisplay').textContent;
+  var progress = progressText !== '—' ? parseInt(progressText, 10) : null;
+
+  // Read dates from segments
+  var startSegs = document.querySelector('.date-segments[data-date="startedAt"]');
+  var endSegs = document.querySelector('.date-segments[data-date="completedAt"]');
+  var startedAt = startSegs ? readDateSegments(startSegs) : '';
+  var completedAt = endSegs ? readDateSegments(endSegs) : '';
+
+  // Read notes
+  var notes = (document.getElementById('notesInput').value || '');
+
   var data = {
-    status: document.getElementById('statusModalStatus').value,
-    rating: parseFloat(document.getElementById('statusModalRating').value) || null,
-    progress: parseInt(document.getElementById('statusModalProgress').value, 10) || null,
-    startedAt: document.getElementById('statusModalStarted').value || null,
-    completedAt: document.getElementById('statusModalCompleted').value || null,
-    notes: document.getElementById('statusModalNotes').value || '',
+    status: status,
+    rating: rating,
+    progress: progress,
+    startedAt: startedAt ? startedAt + 'T00:00:00.000Z' : null,
+    completedAt: completedAt ? completedAt + 'T00:00:00.000Z' : null,
+    notes: notes,
   };
-  // If start date is set, convert to ISO
-  if (data.startedAt) data.startedAt = data.startedAt + 'T00:00:00.000Z';
-  if (data.completedAt) data.completedAt = data.completedAt + 'T00:00:00.000Z';
 
   try {
     await API.put('/api/mylist/' + encodeURIComponent(id), data);
     showToast('已保存', 'success');
     closeModal('statusModal');
     hideContextMenu();
+    closeStatusDropdown();
     loadMyList();
     if (typeof loadLibrary === 'function') loadLibrary();
   } catch (e) {

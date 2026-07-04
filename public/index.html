@@ -470,43 +470,97 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
-      <div class="status-modal-status-bar">
-        <select id="statusModalStatus">
-          <option value="watching">当前观看</option>
-          <option value="wish">计划中</option>
-          <option value="completed">已完成</option>
-          <option value="on_hold">搁置</option>
-          <option value="dropped">抛弃</option>
-        </select>
-      </div>
       <div class="status-modal-body">
+        <!-- Status: custom glass dropdown -->
+        <div class="glass-card">
+          <label class="glass-field-label">状态</label>
+          <div class="status-dd" id="statusDd">
+            <button type="button" class="status-dd-trigger" id="statusDdTrigger" onclick="toggleStatusDropdown(event)">
+              <span class="status-dd-text" id="statusDdText">当前观看</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="status-dd-chevron"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="status-dd-menu" id="statusDdMenu">
+              <button type="button" class="status-dd-opt" data-value="watching" onclick="selectStatusOption(this)">
+                <svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="9"/></svg>
+                <span>当前观看</span>
+                <svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              </button>
+              <button type="button" class="status-dd-opt" data-value="wish" onclick="selectStatusOption(this)">
+                <svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                <span>计划中</span>
+                <svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              </button>
+              <button type="button" class="status-dd-opt" data-value="completed" onclick="selectStatusOption(this)">
+                <svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>已完成</span>
+                <svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              </button>
+              <button type="button" class="status-dd-opt" data-value="on_hold" onclick="selectStatusOption(this)">
+                <svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                <span>搁置</span>
+                <svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              </button>
+              <button type="button" class="status-dd-opt" data-value="dropped" onclick="selectStatusOption(this)">
+                <svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                <span>抛弃</span>
+                <svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Rating + Progress: num-steppers -->
         <div class="glass-card">
           <div class="glass-card-row">
             <div class="glass-card-field glass-card-field--grow">
-              <label for="statusModalRating">评分</label>
-              <input type="number" id="statusModalRating" min="0" max="10" step="0.5" placeholder="0-10">
+              <label class="glass-field-label">评分</label>
+              <div class="num-stepper" id="ratingStepper" data-min="0" data-max="10" data-step="0.5">
+                <button type="button" class="num-stepper-btn" onclick="stepperChange(this, -0.5)">−</button>
+                <span class="num-stepper-val" id="ratingDisplay">—</span>
+                <button type="button" class="num-stepper-btn" onclick="stepperChange(this, 0.5)">+</button>
+              </div>
             </div>
             <div class="glass-card-field glass-card-field--sm">
-              <label for="statusModalProgress">进度 (集)</label>
-              <input type="number" id="statusModalProgress" min="0" placeholder="0">
+              <label class="glass-field-label">进度 (集)</label>
+              <div class="num-stepper" id="progressStepper" data-min="0" data-max="999" data-step="1">
+                <button type="button" class="num-stepper-btn" onclick="stepperChange(this, -1)">−</button>
+                <span class="num-stepper-val" id="progressDisplay">—</span>
+                <button type="button" class="num-stepper-btn" onclick="stepperChange(this, 1)">+</button>
+              </div>
             </div>
           </div>
         </div>
+
+        <!-- Start + End dates: three-segment inputs -->
         <div class="glass-card">
           <div class="glass-card-row">
             <div class="glass-card-field">
-              <label for="statusModalStarted">开始日期</label>
-              <input type="date" id="statusModalStarted">
+              <label class="glass-field-label">开始日期</label>
+              <div class="date-segments" data-date="startedAt">
+                <input type="text" class="date-seg date-seg--y" maxlength="4" placeholder="YYYY" inputmode="numeric" oninput="segAutoTab(this)">
+                <span class="date-sep">/</span>
+                <input type="text" class="date-seg date-seg--m" maxlength="2" placeholder="MM" inputmode="numeric" oninput="segAutoTab(this)">
+                <span class="date-sep">/</span>
+                <input type="text" class="date-seg date-seg--d" maxlength="2" placeholder="DD" inputmode="numeric">
+              </div>
             </div>
             <div class="glass-card-field">
-              <label for="statusModalCompleted">结束日期</label>
-              <input type="date" id="statusModalCompleted">
+              <label class="glass-field-label">结束日期</label>
+              <div class="date-segments" data-date="completedAt">
+                <input type="text" class="date-seg date-seg--y" maxlength="4" placeholder="YYYY" inputmode="numeric" oninput="segAutoTab(this)">
+                <span class="date-sep">/</span>
+                <input type="text" class="date-seg date-seg--m" maxlength="2" placeholder="MM" inputmode="numeric" oninput="segAutoTab(this)">
+                <span class="date-sep">/</span>
+                <input type="text" class="date-seg date-seg--d" maxlength="2" placeholder="DD" inputmode="numeric">
+              </div>
             </div>
           </div>
         </div>
+
+        <!-- Notes -->
         <div class="glass-card glass-card--wide">
-          <label for="statusModalNotes">笔记</label>
-          <textarea id="statusModalNotes" placeholder="简短记录..." maxlength="200" rows="2"></textarea>
+          <label class="glass-field-label">笔记</label>
+          <textarea id="notesInput" placeholder="简短记录..." maxlength="200" rows="2"></textarea>
         </div>
       </div>
       <div class="status-modal-actions">

@@ -467,28 +467,61 @@ function showContextMenu(e, animeId) {
   e.stopPropagation();
   contextMenuAnimeId = animeId;
   const menu = document.getElementById('contextMenu');
-  // Restore default library context menu items
-  menu.innerHTML = `
-    <div class="context-menu-item" id="ctxArchive">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M21 8v13H3V8"></path>
-        <path d="M1 3h22v5H1z"></path>
-        <path d="M10 12h4"></path>
-      </svg>
-      归档
-    </div>
-    <div class="context-menu-divider"></div>
-    <div class="context-menu-item context-menu-danger" id="ctxDelete">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M3 6h18"></path>
-        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-      </svg>
-      移除
-    </div>`;
-  // Re-bind event listeners after restoring content
+
+  const anime = libraryData.find(function(a) { return a.id === animeId; });
+  var title = '';
+  var bangumiId = null;
+  var myListStatus = null;
+  if (anime) {
+    title = anime.bangumiTitle || anime.title || '';
+    bangumiId = anime.bangumiId || null;
+    myListStatus = anime.myListStatus || null;
+  }
+
+  var statusItems = [
+    { value: 'wish', label: '想看', icon: '<svg viewBox="0 0 24 24" width="14" height="14" fill="' + (myListStatus === 'wish' ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>' },
+    { value: 'watching', label: '在看', icon: '<svg viewBox="0 0 24 24" width="14" height="14" fill="' + (myListStatus === 'watching' ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' },
+    { value: 'completed', label: '看完', icon: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' },
+    { value: 'on_hold', label: '搁置', icon: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>' },
+  ];
+
+  menu.innerHTML =
+    '<div class="context-menu-item" id="ctxCopyTitle">' +
+      '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>' +
+      '<span>复制标题</span>' +
+    '</div>' +
+    (bangumiId ? '<div class="context-menu-item" id="ctxOpenBgm">' +
+      '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>' +
+      '<span>在 Bangumi 打开</span>' +
+    '</div>' : '') +
+    '<div class="context-menu-divider"></div>' +
+    statusItems.map(function(s) {
+      var cls = 'context-menu-item';
+      if (s.value === myListStatus) cls += ' context-menu-item--active';
+      return '<div class="' + cls + '" onclick="event.stopPropagation();contextSetStatus(\'' + animeId + '\', \'' + s.value + '\')">' +
+        s.icon +
+        '<span>' + s.label + '</span>' +
+        (s.value === myListStatus ? '<span class="context-menu-check"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>' : '') +
+      '</div>';
+    }).join('') +
+    '<div class="context-menu-divider"></div>' +
+    '<div class="context-menu-item" id="ctxArchive">' +
+      '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>' +
+      '<span>归档</span>' +
+    '</div>' +
+    '<div class="context-menu-item context-menu-danger" id="ctxDelete">' +
+      '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>' +
+      '<span>移除</span>' +
+    '</div>';
+
+  // Bind event listeners
   document.getElementById('ctxDelete').addEventListener('click', contextDeleteAnime);
   document.getElementById('ctxArchive').addEventListener('click', contextArchiveAnime);
+  document.getElementById('ctxCopyTitle').addEventListener('click', contextCopyTitle);
+  if (bangumiId) {
+    document.getElementById('ctxOpenBgm').addEventListener('click', contextOpenBgm);
+  }
+
   // Position
   let x = e.clientX;
   let y = e.clientY;
@@ -498,6 +531,34 @@ function showContextMenu(e, animeId) {
   if (y + rect.height > window.innerHeight) y = window.innerHeight - rect.height - 8;
   menu.style.left = x + 'px';
   menu.style.top = y + 'px';
+}
+
+function contextCopyTitle() {
+  const id = contextMenuAnimeId;
+  hideContextMenu();
+  if (!id) return;
+  const anime = libraryData.find(function(a) { return a.id === id; });
+  if (!anime) return;
+  const title = anime.bangumiTitle || anime.title || '';
+  if (!title) return;
+  navigator.clipboard.writeText(title).then(function() {
+    showToast('已复制「' + title + '」', 'success');
+  }).catch(function() {
+    showToast('复制失败', 'error');
+  });
+}
+
+function contextOpenBgm() {
+  const id = contextMenuAnimeId;
+  hideContextMenu();
+  if (!id) return;
+  const anime = libraryData.find(function(a) { return a.id === id; });
+  if (!anime || !anime.bangumiId) return;
+  window.open('https://bgm.tv/subject/' + anime.bangumiId, '_blank', 'noopener');
+}
+
+function contextSetStatus(animeId, status) {
+  setMyListItemStatus(animeId, status);
 }
 
 function hideContextMenu() {

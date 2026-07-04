@@ -1481,3 +1481,88 @@ input[type="range"]::-webkit-slider-thumb {
   opacity: 0.3;
   cursor: default;
 }
+
+/* ─── Status Modal — 2×3 Grid ─── */
+/* ─── Status Modal Grid ─── */
+.status-modal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.875rem;
+  margin-bottom: 1.5rem;
+}
+.status-modal-grid .form-group {
+  margin-bottom: 0;
+}
+.form-group--span2 {
+  grid-column: span 2;
+}
+.form-group--full {
+  grid-column: 1 / -1;
+}
+.form-group--narrow input[type="number"] {
+  max-width: 7rem;
+}
+
+.status-modal-grid label {
+  display: block;
+  font-size: calc(0.6875rem * var(--scale));
+  font-weight: 600;
+  color: var(--fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+.status-modal-grid input,
+.status-modal-grid select,
+.status-modal-grid textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  font-size: calc(0.8125rem * var(--scale));
+  font-family: var(--font-body);
+  color: var(--fg-primary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+.status-modal-grid textarea {
+  resize: vertical;
+  min-height: 2.5em;
+  line-height: 1.5;
+}
+.status-modal-grid input:focus,
+.status-modal-grid select:focus,
+.status-modal-grid textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.1);
+}
+.status-modal-grid input[type="number"] {
+  font-variant-numeric: tabular-nums;
+}
+.status-modal-grid input::placeholder,
+.status-modal-grid textarea::placeholder {
+  color: var(--fg-muted);
+  opacity: 0.6;
+}
+
+/* ─── Date input styling ─── */
+.date-input {
+  color-scheme: dark;
+}
+.date-input::-webkit-calendar-picker-indicator {
+  filter: invert(0.85);
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.15s ease;
+}
+.date-input::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+[data-theme-mode="light"] .date-input {
+  color-scheme: light;
+}
+[data-theme-mode="light"] .date-input::-webkit-calendar-picker-indicator {
+  filter: invert(0.3);
+}

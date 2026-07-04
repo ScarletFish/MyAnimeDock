@@ -302,26 +302,17 @@ function showMyListContextMenu(e, id) {
     menu.innerHTML = `
       <div class="context-menu-item context-menu-danger" onclick="event.stopPropagation();deleteWishlistItem('${id}')">从愿望单移除</div>`;
   } else {
-    // Library items: show status options
-    const statuses = [
-      { value: 'watching', label: '当前观看' },
-      { value: 'wish', label: '计划中' },
-      { value: 'completed', label: '已完成' },
-      { value: 'on_hold', label: '搁置' },
-      { value: 'dropped', label: '抛弃' },
-    ];
-
-    menu.innerHTML = statuses.map(s => {
-      const active = s.value === item.status;
-      return `
-        <div class="context-menu-item${active ? ' context-menu-item--active' : ''}"
-             onclick="event.stopPropagation();setMyListItemStatus('${id}', '${s.value}');hideContextMenu()">
-          ${active ? '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" style="vertical-align:middle;margin-right:4px"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
-          ${s.label}
-        </div>`;
-    }).join('') + `
-      <div class="context-menu-divider"></div>
-      <div class="context-menu-item context-menu-danger" onclick="event.stopPropagation();removeMyListItem('${id}')">移除</div>`;
+    // Library items: show status popover trigger
+    menu.innerHTML =
+      '<div class="context-menu-item" onclick="event.stopPropagation();hideContextMenu();openStatusPopoverForAnime(\'' + id + '\', ' + e.clientX + ', ' + e.clientY + ')">' +
+        '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' +
+        '<span>标记状态</span>' +
+      '</div>' +
+      '<div class="context-menu-divider"></div>' +
+      '<div class="context-menu-item context-menu-danger" onclick="event.stopPropagation();removeMyListItem(\'' + id + '\')">' +
+        '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>' +
+        '<span>移除</span>' +
+      '</div>';
   }
 
   // Position
@@ -371,4 +362,78 @@ async function removeMyListItem(id) {
   } catch (e) {
     showToast('移除失败: ' + e.message, 'error');
   }
+}
+
+/**
+ * Open the MyList status popover at given screen coordinates.
+ * Called from context menu (library.js) as a replacement for inline status items.
+ */
+function openStatusPopoverForAnime(id, x, y) {
+  // Close existing popover
+  if (activeStatusPopover) {
+    activeStatusPopover.remove();
+    activeStatusPopover = null;
+  }
+
+  // Find current status
+  let currentStatus = null;
+  const myItem = mylistData.find(i => i.id === id);
+  if (myItem) {
+    currentStatus = myItem.status;
+  } else if (typeof libraryData !== 'undefined') {
+    const libItem = libraryData.find(a => a.id === id);
+    if (libItem && libItem.myListStatus) currentStatus = libItem.myListStatus;
+  }
+
+  const popover = document.createElement('div');
+  popover.className = 'status-popover';
+  popover._targetId = id;
+
+  const statuses = [
+    { value: 'watching', label: '当前观看' },
+    { value: 'wish', label: '计划中' },
+    { value: 'completed', label: '已完成' },
+    { value: 'on_hold', label: '搁置' },
+    { value: 'dropped', label: '抛弃' },
+  ];
+
+  popover.innerHTML = statuses.map(s => {
+    const active = s.value === currentStatus;
+    return `<div class="status-popover-item${active ? ' status-popover-item--active' : ''}"
+           data-status="${s.value}">${s.label}</div>`;
+  }).join('') +
+    '<div class="status-popover-separator"></div>' +
+    '<div class="status-popover-item status-popover-item--danger" data-action="remove">移除</div>';
+
+  popover.addEventListener('click', (ev) => {
+    const itemEl = ev.target.closest('.status-popover-item');
+    if (!itemEl) return;
+    if (itemEl.dataset.action === 'remove') {
+      popover.remove();
+      activeStatusPopover = null;
+      removeMyListItem(id);
+      return;
+    }
+    const status = itemEl.dataset.status;
+    if (!status) return;
+    popover.remove();
+    activeStatusPopover = null;
+    setMyListItemStatus(id, status);
+  });
+
+  document.body.appendChild(popover);
+  popover.classList.add('show');
+  const popRect = popover.getBoundingClientRect();
+
+  // Center on click position
+  let top = y - popRect.height / 2;
+  let left = x - popRect.width / 2;
+  if (top < 4) top = 4;
+  if (left < 4) left = 4;
+  if (top + popRect.height > window.innerHeight - 4) top = window.innerHeight - popRect.height - 4;
+  if (left + popRect.width > window.innerWidth - 4) left = window.innerWidth - popRect.width - 4;
+  popover.style.top = top + 'px';
+  popover.style.left = left + 'px';
+
+  activeStatusPopover = popover;
 }

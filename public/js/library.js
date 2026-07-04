@@ -1,6 +1,8 @@
 // Library view logic
 let libraryData = [];
 let contextMenuAnimeId = null;
+let contextMenuX = 0;
+let contextMenuY = 0;
 let cardScrollTrigger = null;
 let cardTween = null;
 
@@ -466,24 +468,17 @@ function showContextMenu(e, animeId) {
   e.preventDefault();
   e.stopPropagation();
   contextMenuAnimeId = animeId;
+  contextMenuX = e.clientX;
+  contextMenuY = e.clientY;
   const menu = document.getElementById('contextMenu');
 
   const anime = libraryData.find(function(a) { return a.id === animeId; });
   var title = '';
   var bangumiId = null;
-  var myListStatus = null;
   if (anime) {
     title = anime.bangumiTitle || anime.title || '';
     bangumiId = anime.bangumiId || null;
-    myListStatus = anime.myListStatus || null;
   }
-
-  var statusItems = [
-    { value: 'wish', label: '想看', icon: '<svg viewBox="0 0 24 24" width="14" height="14" fill="' + (myListStatus === 'wish' ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>' },
-    { value: 'watching', label: '在看', icon: '<svg viewBox="0 0 24 24" width="14" height="14" fill="' + (myListStatus === 'watching' ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' },
-    { value: 'completed', label: '看完', icon: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' },
-    { value: 'on_hold', label: '搁置', icon: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>' },
-  ];
 
   menu.innerHTML =
     '<div class="context-menu-item" id="ctxCopyTitle">' +
@@ -495,15 +490,10 @@ function showContextMenu(e, animeId) {
       '<span>在 Bangumi 打开</span>' +
     '</div>' : '') +
     '<div class="context-menu-divider"></div>' +
-    statusItems.map(function(s) {
-      var cls = 'context-menu-item';
-      if (s.value === myListStatus) cls += ' context-menu-item--active';
-      return '<div class="' + cls + '" onclick="event.stopPropagation();contextSetStatus(\'' + animeId + '\', \'' + s.value + '\')">' +
-        s.icon +
-        '<span>' + s.label + '</span>' +
-        (s.value === myListStatus ? '<span class="context-menu-check"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>' : '') +
-      '</div>';
-    }).join('') +
+    '<div class="context-menu-item" id="ctxToggleStatus">' +
+      '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' +
+      '<span>标记状态</span>' +
+    '</div>' +
     '<div class="context-menu-divider"></div>' +
     '<div class="context-menu-item" id="ctxArchive">' +
       '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>' +
@@ -518,6 +508,7 @@ function showContextMenu(e, animeId) {
   document.getElementById('ctxDelete').addEventListener('click', contextDeleteAnime);
   document.getElementById('ctxArchive').addEventListener('click', contextArchiveAnime);
   document.getElementById('ctxCopyTitle').addEventListener('click', contextCopyTitle);
+  document.getElementById('ctxToggleStatus').addEventListener('click', contextToggleStatus);
   if (bangumiId) {
     document.getElementById('ctxOpenBgm').addEventListener('click', contextOpenBgm);
   }
@@ -548,17 +539,33 @@ function contextCopyTitle() {
   });
 }
 
-function contextOpenBgm() {
+async function contextOpenBgm() {
   const id = contextMenuAnimeId;
   hideContextMenu();
   if (!id) return;
   const anime = libraryData.find(function(a) { return a.id === id; });
   if (!anime || !anime.bangumiId) return;
-  window.open('https://bgm.tv/subject/' + anime.bangumiId, '_blank', 'noopener');
+  const url = 'https://bgm.tv/subject/' + anime.bangumiId;
+  if (window.__TAURI__?.shell?.open) {
+    try {
+      await window.__TAURI__.shell.open(url);
+    } catch (e) {
+      showToast('打开浏览器失败', 'error');
+    }
+  } else {
+    window.open(url, '_blank');
+  }
 }
 
-function contextSetStatus(animeId, status) {
-  setMyListItemStatus(animeId, status);
+function contextToggleStatus() {
+  const id = contextMenuAnimeId;
+  const x = contextMenuX;
+  const y = contextMenuY;
+  hideContextMenu();
+  if (!id) return;
+  if (typeof openStatusPopoverForAnime === 'function') {
+    openStatusPopoverForAnime(id, x, y);
+  }
 }
 
 function hideContextMenu() {

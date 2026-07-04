@@ -1546,13 +1546,11 @@ input[type="range"]::-webkit-slider-thumb {
   width: 16px; height: 16px;
 }
 
-/* ─── Inner content: frosted glass ─── */
+/* ─── Inner content ─── */
 .status-modal-inner {
   position: relative;
   z-index: 1;
-  background: rgba(15, 12, 9, 0.4);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  background: var(--bg-elevated);
   padding: 1.5rem 1.75rem 1.25rem;
   border-radius: var(--radius-lg);
 }
@@ -1561,7 +1559,7 @@ input[type="range"]::-webkit-slider-thumb {
   font-family: var(--font-display);
   font-size: calc(1.15rem * var(--scale));
   font-weight: 700;
-  color: var(--fg-primary);
+  color: var(--accent-soft);
   margin: 0 0 1.25rem;
   padding: 0;
   letter-spacing: -0.02em;
@@ -1613,11 +1611,11 @@ input[type="range"]::-webkit-slider-thumb {
   min-height: 40px;
 }
 .status-dd-trigger:hover {
-  border-color: var(--border);
+  background: var(--bg-elevated);
 }
 .status-dd-trigger:focus-visible {
-  border-color: rgba(var(--accent-rgb), 0.25);
-  box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.08);
+  border-color: var(--border);
+  background: var(--bg-elevated);
 }
 .status-dd-text {
   flex: 1;
@@ -1640,8 +1638,6 @@ input[type="range"]::-webkit-slider-thumb {
   left: 0;
   right: 0;
   background: var(--bg-elevated);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 4px;
@@ -1786,7 +1782,7 @@ input[type="range"]::-webkit-slider-thumb {
 .date-seg--m { width: 2rem; }
 .date-seg--d { width: 2rem; }
 .date-seg::placeholder { color: var(--fg-muted); opacity: 0.5; }
-.date-seg:focus { background: rgba(var(--accent-rgb), 0.04); }
+.date-seg:focus { background: var(--bg-elevated); }
 
 .date-sep {
   color: var(--fg-muted);
@@ -1813,9 +1809,8 @@ input[type="range"]::-webkit-slider-thumb {
   min-height: 40px;
 }
 .notes-input:focus {
-  border-color: var(--accent);
+  border-color: var(--border);
   background: var(--bg-elevated);
-  box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.12);
 }
 .notes-input::placeholder {
   color: var(--fg-muted);

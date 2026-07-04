@@ -372,9 +372,6 @@
     transparent 25%
   );
 }
-:is([data-theme="light"], [data-theme-mode="light"]) .status-modal-inner {
-  background: rgba(245, 240, 234, 0.6);
-}
 :is([data-theme="light"], [data-theme-mode="light"]) .status-modal-close {
   color: var(--fg-muted);
 }

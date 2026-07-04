@@ -368,9 +368,12 @@
 :is([data-theme="light"], [data-theme-mode="light"]) .status-modal-overlay {
   background: linear-gradient(
     180deg,
-    rgba(245,240,234,0.60) 0%,
-    transparent 18%
+    rgba(245,240,234,0.50) 0%,
+    transparent 25%
   );
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .status-modal-inner {
+  background: rgba(245, 240, 234, 0.75);
 }
 :is([data-theme="light"], [data-theme-mode="light"]) .status-modal-close {
   color: var(--fg-muted);

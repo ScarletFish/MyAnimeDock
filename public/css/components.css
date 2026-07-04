@@ -1489,7 +1489,7 @@ input[type="range"]::-webkit-slider-thumb {
   padding: 0 !important;
   overflow: visible;
   max-width: 680px;
-  background: var(--bg-elevated);
+  background: transparent;
 }
 
 /* Full‑bleed cover as subtle backdrop — top ~50px only */
@@ -1511,15 +1511,15 @@ input[type="range"]::-webkit-slider-thumb {
   -webkit-mask-image: linear-gradient(to bottom, black 0%, black 12%, transparent 22%);
   mask-image: linear-gradient(to bottom, black 0%, black 12%, transparent 22%);
 }
-.status-modal-bg[style*="background-image"] { opacity: 0.35; }
+.status-modal-bg[style*="background-image"] { opacity: 0.2; }
 
 .status-modal-overlay {
   position: absolute;
   inset: 0;
   background: linear-gradient(
     180deg,
-    rgba(15,12,9,0.25) 0%,
-    transparent 20%
+    rgba(15,12,9,0.40) 0%,
+    transparent 25%
   );
 }
 
@@ -1546,11 +1546,15 @@ input[type="range"]::-webkit-slider-thumb {
   width: 16px; height: 16px;
 }
 
-/* ─── Inner content ─── */
+/* ─── Inner content: frosted glass ─── */
 .status-modal-inner {
   position: relative;
   z-index: 1;
+  background: rgba(15, 12, 9, 0.55);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   padding: 1.5rem 1.75rem 1.25rem;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
 }
 
 .status-modal-heading {
@@ -1574,7 +1578,6 @@ input[type="range"]::-webkit-slider-thumb {
   flex: 1;
   min-width: 0;
 }
-.field-cell--status { flex: 1.4; }
 
 .field-label {
   display: block;

@@ -173,119 +173,104 @@ function showWishlistDetail(id) {
 
 // ─── Hover status popover ───
 
-let activeStatusPopover = null;
+let _statusModalId = null;
 
-function toggleStatusPopover(e, id) {
-  e.stopPropagation();
+function openStatusModal(e, id) {
+  if (e) e.stopPropagation();
+  _statusModalId = id;
 
-  if (activeStatusPopover) {
-    const wasSame = activeStatusPopover._targetId === id;
-    activeStatusPopover.remove();
-    activeStatusPopover = null;
-    if (wasSame) return;
-  }
+  // Find the item
+  const item = mylistData.find(i => i.id === id);
+  const libItem = typeof libraryData !== 'undefined' ? libraryData.find(a => a.id === id) : null;
+  const anime = libItem || item;
 
-  const card = e.currentTarget.closest('.anime-card');
-  if (!card) return;
-  const cardRect = card.getBoundingClientRect();
+  // Title
+  const titleEl = document.getElementById('statusModalTitle');
+  if (titleEl) titleEl.textContent = anime ? (anime.bangumiTitle || anime.title || '标记状态') : '标记状态';
 
-  // Find current status — check mylistData first, then fall back to libraryData
-  let currentStatus = null;
-  const myItem = mylistData.find(i => i.id === id);
-  if (myItem) {
-    currentStatus = myItem.status;
-  } else if (typeof libraryData !== 'undefined') {
-    const libItem = libraryData.find(a => a.id === id);
-    if (libItem && libItem.myListStatus) currentStatus = libItem.myListStatus;
-  }
-
-  const popover = document.createElement('div');
-  popover.className = 'status-popover';
-  popover._targetId = id;
-
-  const statuses = [
-    { value: 'watching', label: '当前观看' },
-    { value: 'wish', label: '计划中' },
-    { value: 'completed', label: '已完成' },
-    { value: 'on_hold', label: '搁置' },
-    { value: 'dropped', label: '抛弃' },
-  ];
-
-  popover.innerHTML = statuses.map(s => {
-    const active = s.value === currentStatus;
-    return `
-      <div class="status-popover-item${active ? ' status-popover-item--active' : ''}"
-           data-status="${s.value}">${s.label}</div>`;
-  }).join('') + `
-      <div class="status-popover-separator"></div>
-      <div class="status-popover-item status-popover-item--danger"
-           data-action="remove">移除</div>`;
-
-  popover.addEventListener('click', (ev) => {
-    const itemEl = ev.target.closest('.status-popover-item');
-    if (!itemEl) return;
-    if (itemEl.dataset.action === 'remove') {
-      popover.remove();
-      activeStatusPopover = null;
-      removeMyListItem(id);
-      return;
+  // Cover background
+  const bgEl = document.getElementById('statusModalBg');
+  if (bgEl) {
+    var coverSrc = anime && anime.localCover
+      ? '/covers/' + path.basename(anime.localCover) + '?w=600&q=80'
+      : (anime && anime.coverUrl || '');
+    if (coverSrc) {
+      bgEl.style.backgroundImage = 'url(' + coverSrc + ')';
+    } else {
+      bgEl.style.backgroundImage = '';
     }
-    const status = itemEl.dataset.status;
-    if (!status) return;
-    popover.remove();
-    activeStatusPopover = null;
-    setMyListItemStatus(id, status);
-  });
+  }
 
-  popover._targetCard = card;
-  document.body.appendChild(popover);
-  // Measure at full scale (add .show temporarily, no paint between)
-  popover.classList.add('show');
-  const popRect = popover.getBoundingClientRect();
-  popover.classList.remove('show');
+  // Status
+  const statusEl = document.getElementById('statusModalStatus');
+  if (statusEl) statusEl.value = (item && item.status) || 'watching';
 
-  // Center on card
-  let top = cardRect.top + (cardRect.height - popRect.height) / 2;
-  let left = cardRect.left + (cardRect.width - popRect.width) / 2;
-  if (top < 4) top = 4;
-  if (left < 4) left = 4;
-  if (top + popRect.height > window.innerHeight - 4) top = window.innerHeight - popRect.height - 4;
-  if (left + popRect.width > window.innerWidth - 4) left = window.innerWidth - popRect.width - 4;
-  popover.style.top = top + 'px';
-  popover.style.left = left + 'px';
+  // Rating
+  const ratingEl = document.getElementById('statusModalRating');
+  if (ratingEl) ratingEl.value = item && item.rating != null ? item.rating : '';
 
-  requestAnimationFrame(() => popover.classList.add('show'));
-  activeStatusPopover = popover;
+  // Progress — use stored progress, or compute from watched episodes
+  const progressEl = document.getElementById('statusModalProgress');
+  if (progressEl) {
+    const storedProgress = item && item.progress != null ? item.progress : null;
+    const watchedCount = anime && anime.episodes ? anime.episodes.filter(function(e) { return e.watched; }).length : 0;
+    progressEl.value = storedProgress != null ? storedProgress : (watchedCount || '');
+  }
+
+  // Start date — use stored startedAt, or earliest episode first play, or today
+  const startEl = document.getElementById('statusModalStarted');
+  if (startEl) {
+    const storedStart = item && item.startedAt ? item.startedAt : null;
+    startEl.value = storedStart ? storedStart.substring(0, 10) : _todayStr();
+  }
+
+  // End date — use stored completedAt, or today
+  const endEl = document.getElementById('statusModalCompleted');
+  if (endEl) {
+    const storedEnd = item && item.completedAt ? item.completedAt : null;
+    endEl.value = storedEnd ? storedEnd.substring(0, 10) : _todayStr();
+  }
+
+  // Notes
+  const notesEl = document.getElementById('statusModalNotes');
+  if (notesEl) notesEl.value = (item && item.notes) || '';
+
+  openModal('statusModal');
 }
 
-// Close popover on outside click
-document.addEventListener('click', function closeStatusPopover(e) {
-  if (activeStatusPopover && !activeStatusPopover.contains(e.target)) {
-    activeStatusPopover.remove();
-    activeStatusPopover = null;
-  }
-});
+function _todayStr() {
+  var d = new Date();
+  return d.getFullYear() + '-' +
+    String(d.getMonth() + 1).padStart(2, '0') + '-' +
+    String(d.getDate()).padStart(2, '0');
+}
 
-// Auto-close popover when mouse is >100px away from card bounds
-document.addEventListener('mousemove', function proximityCheck(e) {
-  if (!activeStatusPopover) return;
-  const card = activeStatusPopover._targetCard;
-  if (!card || !card.isConnected) { activeStatusPopover = null; return; }
-  const r = card.getBoundingClientRect();
-  const margin = 100;
-  if (e.clientX < r.left - margin || e.clientX > r.right + margin ||
-      e.clientY < r.top - margin || e.clientY > r.bottom + margin) {
-    activeStatusPopover.remove();
-    activeStatusPopover = null;
-  }
-});
+async function saveStatusModal() {
+  var id = _statusModalId;
+  if (!id) return;
+  var data = {
+    status: document.getElementById('statusModalStatus').value,
+    rating: parseFloat(document.getElementById('statusModalRating').value) || null,
+    progress: parseInt(document.getElementById('statusModalProgress').value, 10) || null,
+    startedAt: document.getElementById('statusModalStarted').value || null,
+    completedAt: document.getElementById('statusModalCompleted').value || null,
+    notes: document.getElementById('statusModalNotes').value || '',
+  };
+  // If start date is set, convert to ISO
+  if (data.startedAt) data.startedAt = data.startedAt + 'T00:00:00.000Z';
+  if (data.completedAt) data.completedAt = data.completedAt + 'T00:00:00.000Z';
 
-document.addEventListener('keydown', function escStatusPopover(e) {
-  if (e.key === 'Escape' && activeStatusPopover) {
-    activeStatusPopover.remove();
-    activeStatusPopover = null;
+  try {
+    await API.put('/api/mylist/' + encodeURIComponent(id), data);
+    showToast('已保存', 'success');
+    closeModal('statusModal');
+    hideContextMenu();
+    loadMyList();
+    if (typeof loadLibrary === 'function') loadLibrary();
+  } catch (e) {
+    showToast('保存失败: ' + e.message, 'error');
   }
-});
+}
 
 // ─── Context menu (right-click status change) ───
 
@@ -314,7 +299,7 @@ function showMyListContextMenu(e, id) {
         '<span>在 Bangumi 打开</span>' +
       '</div>' +
       '<div class="context-menu-divider"></div>' +
-      '<div class="context-menu-item" onclick="event.stopPropagation();contextToggleStatus()">' +
+      '<div class="context-menu-item" onclick="event.stopPropagation();hideContextMenu();openStatusModal(null, \'' + id + '\')">' +
         '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' +
         '<span>标记状态</span>' +
       '</div>' +

@@ -361,4 +361,66 @@
   box-shadow: 0 0 8px rgba(200, 48, 80, 0.3);
 }
 
+/* ─── Status Modal Light ─── */
+:is([data-theme="light"], [data-theme-mode="light"]) .status-modal {
+  box-shadow: 0 8px 48px rgba(44, 36, 24, 0.2);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .status-modal-bg {
+  background: linear-gradient(135deg, #f0ebe5, #e8e0d8, #f5f0ea);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .status-modal-overlay {
+  background: linear-gradient(135deg, rgba(245,240,234,0.88) 0%, rgba(245,240,234,0.5) 40%, rgba(245,240,234,0.7) 100%);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .status-modal-header h2 {
+  color: var(--fg-primary);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .status-modal-header .modal-close-btn {
+  color: var(--fg-muted);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .status-modal-header .modal-close-btn:hover {
+  color: var(--fg-primary);
+  background: var(--bg-canvas);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .status-modal-status-bar select {
+  color: var(--fg-primary);
+  background: rgba(44,36,24,0.04) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='rgba(44,36,24,0.4)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") no-repeat right 10px center;
+  border-color: rgba(44,36,24,0.08);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .status-modal-status-bar select:hover {
+  background-color: rgba(44,36,24,0.06);
+  border-color: rgba(44,36,24,0.12);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .status-modal-status-bar select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.1);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .glass-card {
+  background: rgba(255,255,255,0.75);
+  border-color: rgba(44,36,24,0.06);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .glass-card label {
+  color: rgba(44,36,24,0.5);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .glass-card input,
+:is([data-theme="light"], [data-theme-mode="light"]) .glass-card textarea {
+  color: var(--fg-primary);
+  background: rgba(44,36,24,0.04);
+  border-color: rgba(44,36,24,0.08);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .glass-card input:focus,
+:is([data-theme="light"], [data-theme-mode="light"]) .glass-card textarea:focus {
+  background: rgba(44,36,24,0.06);
+  border-color: var(--accent);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .glass-card input::placeholder,
+:is([data-theme="light"], [data-theme-mode="light"]) .glass-card textarea::placeholder {
+  color: rgba(44,36,24,0.2);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .glass-card input[type="date"] {
+  color-scheme: light;
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .glass-card input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.3);
+}
+
 /* ─── Reduced Motion ─── */

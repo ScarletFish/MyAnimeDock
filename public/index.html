@@ -458,13 +458,19 @@
   </div>
 </div>
 
-<!-- Status Modal -->
+<!-- Status Modal — Cover Card -->
 <div class="modal-overlay" id="statusModal" onclick="if(event.target===this)closeModal('statusModal')">
-  <div class="modal">
-    <h2 id="statusModalTitle">标记状态</h2>
-    <div class="status-modal-grid">
-      <div class="form-group form-group--span2">
-        <label for="statusModalStatus">状态</label>
+  <div class="modal status-modal">
+    <div class="status-modal-bg" id="statusModalBg"></div>
+    <div class="status-modal-overlay"></div>
+    <div class="status-modal-content">
+      <div class="status-modal-header">
+        <h2 id="statusModalTitle">标记状态</h2>
+        <button class="modal-close-btn" onclick="closeModal('statusModal')" aria-label="关闭">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="status-modal-status-bar">
         <select id="statusModalStatus">
           <option value="watching">当前观看</option>
           <option value="wish">计划中</option>
@@ -473,33 +479,40 @@
           <option value="dropped">抛弃</option>
         </select>
       </div>
-      <div class="form-group">
-        <label for="statusModalRating">评分</label>
-        <input type="number" id="statusModalRating" min="0" max="10" step="0.5" placeholder="0-10">
+      <div class="status-modal-body">
+        <div class="glass-card">
+          <div class="glass-card-row">
+            <div class="glass-card-field glass-card-field--grow">
+              <label for="statusModalRating">评分</label>
+              <input type="number" id="statusModalRating" min="0" max="10" step="0.5" placeholder="0-10">
+            </div>
+            <div class="glass-card-field glass-card-field--sm">
+              <label for="statusModalProgress">进度 (集)</label>
+              <input type="number" id="statusModalProgress" min="0" placeholder="0">
+            </div>
+          </div>
+        </div>
+        <div class="glass-card">
+          <div class="glass-card-row">
+            <div class="glass-card-field">
+              <label for="statusModalStarted">开始日期</label>
+              <input type="date" id="statusModalStarted">
+            </div>
+            <div class="glass-card-field">
+              <label for="statusModalCompleted">结束日期</label>
+              <input type="date" id="statusModalCompleted">
+            </div>
+          </div>
+        </div>
+        <div class="glass-card glass-card--wide">
+          <label for="statusModalNotes">笔记</label>
+          <textarea id="statusModalNotes" placeholder="简短记录..." maxlength="200" rows="2"></textarea>
+        </div>
       </div>
-      <div class="form-group">
-        <label for="statusModalStarted">开始日期</label>
-        <input type="date" id="statusModalStarted" class="date-input">
-      </div>
-      <div class="form-group">
-        <label for="statusModalCompleted">结束日期</label>
-        <input type="date" id="statusModalCompleted" class="date-input">
-      </div>
-      <div class="form-group form-group--narrow">
-        <label for="statusModalProgress">进度 (集)</label>
-        <input type="number" id="statusModalProgress" min="0" placeholder="0">
-      </div>
-      <div class="form-group form-group--full">
-        <label for="statusModalNotes">笔记</label>
-        <textarea id="statusModalNotes" placeholder="简短记录..." maxlength="200" rows="2"></textarea>
+      <div class="status-modal-actions">
+        <button class="btn btn-primary" onclick="saveStatusModal()">保存</button>
       </div>
     </div>
-    <div class="modal-actions">
-      <button class="btn btn-primary" onclick="saveStatusModal()">保存</button>
-    </div>
-    <button class="modal-close-btn" onclick="closeModal('statusModal')" aria-label="关闭">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>
   </div>
 </div>
 

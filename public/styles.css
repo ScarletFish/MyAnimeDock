@@ -860,6 +860,12 @@ html.theme-transitioning .theme-dock {
   .dashboard-continue-card { transition-duration: 0.01ms !important; }
   .dashboard-continue-card:hover { transform: none !important; }
   .dashboard-continue-btn:hover { transform: none !important; }
+  /* Status modal stagger */
+  .modal-overlay.show .status-modal-content .glass-card {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
   /* Heatmap hover effects */
   .heatmap-cell:hover { transform: none !important; }
   .heatmap-cell::after { transition-duration: 0.01ms !important; }
@@ -901,6 +907,12 @@ html[data-reduce-motion="true"] .dashboard-card:hover .dashboard-card-cover img 
 html[data-reduce-motion="true"] .dashboard-continue-card { transition-duration: 0.01ms !important; }
 html[data-reduce-motion="true"] .dashboard-continue-card:hover { transform: none !important; }
 html[data-reduce-motion="true"] .dashboard-continue-btn:hover { transform: none !important; }
+
+html[data-reduce-motion="true"] .modal-overlay.show .status-modal-content .glass-card {
+  animation: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+}
 
 html[data-reduce-motion="true"] .heatmap-cell { animation: none !important; }
 html[data-reduce-motion="true"] .settings-panel { animation: none !important; }

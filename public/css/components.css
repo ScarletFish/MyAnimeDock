@@ -1483,86 +1483,205 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 /* ─── Status Modal — 2×3 Grid ─── */
-/* ─── Status Modal Grid ─── */
-.status-modal-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 0.875rem;
-  margin-bottom: 1.5rem;
-}
-.status-modal-grid .form-group {
-  margin-bottom: 0;
-}
-.form-group--span2 {
-  grid-column: span 2;
-}
-.form-group--full {
-  grid-column: 1 / -1;
-}
-.form-group--narrow input[type="number"] {
-  max-width: 7rem;
+/* ─── Status Modal — Cover Card ─── */
+.status-modal {
+  padding: 0 !important;
+  overflow: hidden;
+  background: none !important;
+  border: none !important;
+  max-width: 420px;
+  box-shadow: 0 25px 60px rgba(0,0,0,0.6), 0 8px 20px rgba(0,0,0,0.3);
 }
 
-.status-modal-grid label {
+.status-modal-bg {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+  background-size: cover;
+  background-position: center;
+  filter: blur(28px) saturate(1.3);
+  transform: scale(1.2);
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+.status-modal-bg[style*="background-image"] {
+  opacity: 1;
+}
+.status-modal-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(15,12,9,0.55) 0%, rgba(15,12,9,0.2) 40%, rgba(15,12,9,0.5) 100%);
+}
+
+.status-modal-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(15,12,9,0.6) 0%, rgba(15,12,9,0.15) 35%, rgba(15,12,9,0.45) 100%);
+}
+
+.status-modal-content {
+  position: relative;
+  z-index: 1;
+  padding: 1.75rem 1.5rem 1.5rem;
+}
+
+/* ─── Header ─── */
+.status-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+.status-modal-header h2 {
+  font-family: var(--font-display);
+  font-size: calc(1.25rem * var(--scale));
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.02em;
+  margin: 0;
+  padding: 0;
+}
+.status-modal-header h2::before { display: none; }
+.status-modal-header .modal-close-btn {
+  color: rgba(255,255,255,0.5);
+  position: static;
+  flex-shrink: 0;
+}
+.status-modal-header .modal-close-btn:hover {
+  color: #fff;
+  background: rgba(255,255,255,0.08);
+}
+
+/* ─── Status selector ─── */
+.status-modal-status-bar {
+  margin-bottom: 1.25rem;
+}
+.status-modal-status-bar select {
+  width: 100%;
+  padding: 10px 36px 10px 12px;
+  font-size: calc(0.875rem * var(--scale));
+  font-family: var(--font-body);
+  color: #fff;
+  background: rgba(255,255,255,0.06) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.5)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") no-repeat right 10px center;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--radius-sm);
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+.status-modal-status-bar select:hover {
+  background-color: rgba(255,255,255,0.09);
+  border-color: rgba(255,255,255,0.12);
+}
+.status-modal-status-bar select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.15);
+}
+
+/* ─── Glass Cards ─── */
+.glass-card {
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: var(--radius-md);
+  padding: 0.875rem 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.glass-card-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+}
+
+.glass-card-field {
+  flex: 1;
+  min-width: 0;
+}
+.glass-card-field--sm { flex: 0 0 5rem; }
+.glass-card-field--grow { flex: 2; }
+
+.glass-card label {
   display: block;
-  font-size: calc(0.6875rem * var(--scale));
+  font-size: calc(0.625rem * var(--scale));
   font-weight: 600;
-  color: var(--fg-muted);
+  color: rgba(255,255,255,0.45);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   margin-bottom: 6px;
 }
-.status-modal-grid input,
-.status-modal-grid select,
-.status-modal-grid textarea {
+
+.glass-card input,
+.glass-card textarea {
   width: 100%;
   box-sizing: border-box;
   padding: 8px 10px;
   font-size: calc(0.8125rem * var(--scale));
   font-family: var(--font-body);
-  color: var(--fg-primary);
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
+  color: #fff;
+  background: rgba(0,0,0,0.25);
+  border: 1px solid rgba(255,255,255,0.06);
   border-radius: var(--radius-sm);
   outline: none;
-  transition: border-color var(--duration-fast) var(--ease-out);
+  transition: border-color 0.2s ease, background 0.2s ease;
 }
-.status-modal-grid textarea {
+.glass-card input:focus,
+.glass-card textarea:focus {
+  border-color: var(--accent);
+  background: rgba(0,0,0,0.35);
+  box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.12);
+}
+.glass-card textarea {
   resize: vertical;
   min-height: 2.5em;
   line-height: 1.5;
 }
-.status-modal-grid input:focus,
-.status-modal-grid select:focus,
-.status-modal-grid textarea:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.1);
-}
-.status-modal-grid input[type="number"] {
+.glass-card input[type="number"] {
   font-variant-numeric: tabular-nums;
 }
-.status-modal-grid input::placeholder,
-.status-modal-grid textarea::placeholder {
-  color: var(--fg-muted);
-  opacity: 0.6;
+.glass-card input::placeholder,
+.glass-card textarea::placeholder {
+  color: rgba(255,255,255,0.25);
 }
 
-/* ─── Date input styling ─── */
-.date-input {
+/* Date inputs in glass card */
+.glass-card input[type="date"] {
   color-scheme: dark;
+  min-width: 0;
 }
-.date-input::-webkit-calendar-picker-indicator {
-  filter: invert(0.85);
+.glass-card input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.9);
   cursor: pointer;
-  opacity: 0.7;
-  transition: opacity 0.15s ease;
+  opacity: 0.55;
+  transition: opacity 0.15s;
 }
-.date-input::-webkit-calendar-picker-indicator:hover {
+.glass-card input[type="date"]::-webkit-calendar-picker-indicator:hover {
   opacity: 1;
 }
-[data-theme-mode="light"] .date-input {
-  color-scheme: light;
+
+/* ─── Actions ─── */
+.status-modal-actions {
+  margin-top: 1.25rem;
+  text-align: right;
 }
-[data-theme-mode="light"] .date-input::-webkit-calendar-picker-indicator {
-  filter: invert(0.3);
+.status-modal-actions .btn {
+  padding: 10px 36px;
+}
+
+/* ─── Stagger Entry ─── */
+.modal-overlay.show .status-modal-content .glass-card {
+  opacity: 0;
+  transform: translateY(14px);
+  animation: statusCardIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.modal-overlay.show .status-modal-content .glass-card:nth-child(1) { animation-delay: 0.05s; }
+.modal-overlay.show .status-modal-content .glass-card:nth-child(2) { animation-delay: 0.12s; }
+.modal-overlay.show .status-modal-content .glass-card:nth-child(3) { animation-delay: 0.19s; }
+
+@keyframes statusCardIn {
+  to { opacity: 1; transform: translateY(0); }
 }

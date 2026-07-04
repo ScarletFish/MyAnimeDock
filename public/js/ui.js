@@ -82,7 +82,7 @@ function renderAnimeCard(anime, options = {}) {
 
   // More button
   const moreBtnHtml = showMoreBtn
-    ? ('<div class="card-more-btn" onclick="event.stopPropagation();toggleStatusPopover(event, \'' + id + '\')" title="设置状态">' +
+    ? ('<div class="card-more-btn" onclick="event.stopPropagation();openStatusModal(event, \'' + id + '\')" title="设置状态">' +
         '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">' +
           '<circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/>' +
         '</svg></div>')

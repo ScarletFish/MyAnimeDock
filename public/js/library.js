@@ -556,16 +556,10 @@ async function contextOpenBgm() {
 
 function contextToggleStatus() {
   const id = contextMenuAnimeId;
-  const card = contextMenuCard;
   hideContextMenu();
-  if (!id || !card || !card.isConnected) return;
-  // Close any pre-existing popover (e.g. from badge click) before opening new one
-  if (typeof activeStatusPopover !== 'undefined' && activeStatusPopover) {
-    activeStatusPopover.remove();
-    activeStatusPopover = null;
-  }
-  if (typeof toggleStatusPopover === 'function') {
-    toggleStatusPopover({ currentTarget: card, stopPropagation: function() {} }, id);
+  if (!id) return;
+  if (typeof openStatusModal === 'function') {
+    openStatusModal(null, id);
   }
 }
 

@@ -88,6 +88,9 @@ model MyList {
   rating       Float?
   thoughts     String?
   notes        String?
+  startedAt    DateTime?
+  completedAt  DateTime?
+  progress     Int?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

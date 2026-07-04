@@ -264,12 +264,9 @@
 }
 
 .detail-info-line .info-rating-num {
-  font-size: calc(1.125rem * var(--scale));
-  font-weight: 700;
-  background: var(--accent-mixed-gradient);
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  color: transparent;
+  font-size: calc(1rem * var(--scale));
+  font-weight: 600;
+  color: var(--accent-secondary);
 }
 
 .detail-info-line .info-rating-sub {

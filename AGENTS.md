@@ -46,6 +46,8 @@ POST /api/bangumi/fetch       # Fetch metadata for library item
 GET  /api/mylist              # List MyList (library + wishlist, merged)
 PUT  /api/mylist/:id/status   # Update MyList status (watching/wish/completed/on_hold/dropped)
 GET  /api/mpv-status          # Active mpv sessions
+GET  /api/stats               # Dashboard stats (watching/completed/total/episodes/fileSize/fileCount/watchTime)
+GET  /api/recommendations     # Bangumi current-season random picks (6 items)
 POST /api/quit                # Shutdown server
 GET  /api/health              # Tauri readiness polling
 GET  /api/thumbnail?path=&time # Video thumbnail (ffmpeg)
@@ -150,6 +152,8 @@ opencode.json       → OpenCode 配置（插件声明）
 
 **视图切换**: CSS `hidden` class toggle，无客户端路由器。
 
+**网格卡片尺寸基准**: `GRID_BASE_SIZE = 207`（`library.js:10`），实际渲染尺寸 = `207 × gridZoom × --scale`。122% gridZoom + 125% --scale = 315px 宽度。仪表盘各模块以此为锚点对齐。
+
 ## Key Patterns
 
 - **API 调用**: `await API.get('/api/...')`, `API.post()`, `API.del()`（`api.js` 封装）
@@ -180,11 +184,16 @@ opencode.json       → OpenCode 配置（插件声明）
 - **MyList 状态管理**: `mylist.js` 中 `toggleStatusPopover()`/`setMyListItemStatus()` 管理状态（watching/wish/completed/on_hold/dropped）；卡片左上角 `.mylist-badge` 显示当前状态；弹窗支持鼠标离开 >100px 自动关闭
 - **状态自动创建**: 导入时自动创建 MyList 条目（默认 `watching`），删除动画时自动标记 `completed`；`db.saveMyList()` 仅写入 mylist 表
 - **主题切换按钮**: 设置页 theme 从 `<select>` 改为 toggle switch（`<input type="checkbox">`），onchange 实时调用 `handleThemeToggle()` + GSAP 波纹动画（从 toggle 位置向外扩散） + 全页 CSS 过渡（bg 0.7s/其他 0.55s）
-- **多主题系统**: 6 种色彩主题（default/amber/ocean/sakura/emerald/neon）+ 独立 dark/light 模式，`data-theme` 存色彩名、`data-theme-mode` 存明暗；default 主题用 `data-theme="dark|light"` 兼容旧选择器；底部 dock 选择器切换即时生效
+- **多主题系统**: 6 种色彩主题（default/amber/ocean/sakura/emerald/violet）+ 独立 dark/light 模式，`data-theme` 存色彩名、`data-theme-mode` 存明暗；default 主题用 `data-theme="dark|light"` 兼容旧选择器；底部 dock 选择器切换即时生效
+- **主题配色规范**: 所有主题 secondary 与 accent 同色系（色轮距离 ≤40°），渐变过渡自然无脏色；深色背景统一中性黑（R≈G≈B），不泛蓝；浅色背景保持中性或极微色偏，不铺满主题色
 - **底部视觉设置 Dock**: 主题选择、明暗切换、缩放滑块从设置模态框抽离到底部浮动 dock（`#themeDock`），支持折叠/展开（▾ 按钮），点击遮罩层折叠而非关闭；folded 状态显示 8px 手柄条
 - **启动自动导入**: `autoImportNewFolders()`（`server.js:2006`）在服务器启动后异步执行，扫描 mediaDir 下所有子文件夹，对有 `[bgmN]` 标识且尚未导入的文件夹自动执行全流程导入（metadata fetch + 回写入库 + MyList watching + Bangumi sync），无需用户干预
 - **bangumiId 精准匹配**: `extractBgmId(name)`（`scanner.js:398`）从文件夹名提取 `[bgmN]` 数字 ID，作为 anime 主键（`id: String(bgmId)`），匹配精度 100%；手动导入项（无 `[bgmN]`）仍使用 `parsedTitle + Season` 方案
 - **自动导入 Toast**: 首次页面加载时 `GET /api/config` 返回 `autoImport` 字段（一次性消费），前端检查 >0 则 `showToast('自动导入了 N 部新番')`
+- **仪表盘统计**: `renderStatsSection()` 异步获取 `/api/stats`，渲染为纯文字行（无卡片无图标），`justify-content: space-evenly` 均匀分布；数字用 `fg-primary`，标签用 `fg-muted`
+- **继续播放卡片**: `renderContinueSection()` 用剧集缩略图（`/api/thumbnail`）作背景，fallback 到封面；点击调用 `navigateToDetailWithPlay()` 进详情并自动播放（`pendingAutoPlay` 标记 + `setTimeout(playEpisode, 400)`）；卡片尺寸 480×210px
+- **仪表盘设置拖拽**: 用 pointer events（`pointerdown/pointermove/pointerup`）实现拖拽排序，六点手柄触发；同时保留上下箭头按钮；`list._dragCleanup` 防止监听器叠加
+- **浅色主题阴影**: 所有 `rgba(0,0,0,0.4~0.7)` 硬编码阴影在浅色主题下替换为 `rgba(44,36,24, 0.06~0.12)`，暖棕色低透明度
 
 ## Config
 
@@ -210,7 +219,7 @@ opencode.json       → OpenCode 配置（插件声明）
 | `mediaDir` | string | `""` | 动漫文件夹根目录 |
 | `playerMode` | string | `"mpv"` | 播放器模式，固定为 `"mpv"`（mpv + IPC 进度追踪） |
 | `mpvPath` | string | `"mpv"` | mpv 可执行文件路径 |
-| `theme` | string | `"default"` | 色彩主题：`"default"`（粉紫）、`"amber"`（琥珀）、`"ocean"`（海洋）、`"sakura"`（樱花）、`"emerald"`（翡翠）、`"neon"`（霓虹） |
+| `theme` | string | `"default"` | 色彩主题：`"default"`（玫红）、`"amber"`（琥珀）、`"ocean"`（海洋）、`"sakura"`（樱花）、`"emerald"`（翡翠）、`"violet"`（紫罗兰） |
 | `themeMode` | string | `"dark"` | `"dark"` 或 `"light"`，与色彩主题独立 |
 | `autoMarkWatched` | bool | `true` | 播放完成后自动标记为已看 |
 | `uiScale` | number | `1.25` | UI 缩放倍数（前端以 % 显示，范围 75-150，前端除 100 后存储） |
@@ -362,7 +371,7 @@ UI 缩放使用 CSS 自定义属性 `--scale` 实现，**禁止使用 CSS `zoom`
 | font-size | 必须用 `calc(Xrem * var(--scale))` | `font-size: calc(0.8125rem * var(--scale))` |
 | 容器 max-width | 乘以 `--scale` | `max-width: calc(75rem * var(--scale))` |
 | grid gap/clamp 值 | 乘以 `--scale` | `gap: calc(clamp(1.5rem, 3vw, 3rem) * var(--scale))` |
-| 网格卡片尺寸 | `applyGridZoom()` 已自动处理 | 通过 `library.js:22` 乘入 `--scale` |
+| 网格卡片尺寸 | `applyGridZoom()` 已自动处理 | 通过 `library.js:50` 乘入 `--scale` |
 | 固定覆盖层（dock/toast/context-menu） | 禁用缩放：`--scale: 1` | `.theme-dock { --scale: 1; }` |
 | JS inline style 尺寸 | 读取 `getComputedStyle` 的 `--scale` 乘算 | `parseFloat(getComputedStyle(docEl).getPropertyValue('--scale'))` |
 
@@ -438,6 +447,28 @@ npm run build:nsis           # 仅 NSIS
 ```
 
 仅用于验证安装器效果、中文界面、升级覆盖等最终场景。
+
+## Testing
+
+```bash
+cd server && npm test    # 运行所有测试（73 个，14 个套件）
+```
+
+**测试框架**: Node.js 内置 `node:test` + `node:assert`，无外部依赖。
+
+**测试文件**:
+
+| 文件 | 测试数 | 覆盖模块 |
+|------|--------|----------|
+| `server/__tests__/scanner.test.js` | 28 | `extractBgmId`, `isExtraVideo`, `parseFolderName` |
+| `server/__tests__/scrapers.test.js` | 38 | `normalizeTitle`, `sorensenDice`, `detectSpecialType`, `extractBaseAndSuffix` |
+| `server/__tests__/db.test.js` | 7 | `loadData`, `saveLibrary`, `saveMyList`（集成测试，操作真实 SQLite） |
+
+**何时运行测试**:
+- 修改 `scanner.js`、`scrapers/`、`db.js` 后运行
+- 添加新功能前先写测试（TDD）
+- 提交前确认全部通过
+- CI/CD 管道中自动运行
 
 ## Available Skills
 

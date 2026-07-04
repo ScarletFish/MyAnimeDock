@@ -536,12 +536,12 @@ async function openDialog(options) {
   if (window.__TAURI__?.dialog?.open) {
     return await window.__TAURI__.dialog.open(options);
   }
-  // 回退：core.invoke（Tauri v2 plugin 命名规则用下划线）
+  // 回退：core.invoke（Tauri v2 plugin 命名规则用竖线分隔）
   if (window.__TAURI__?.core?.invoke) {
-    return await window.__TAURI__.core.invoke('plugin:dialog_open', options);
+    return await window.__TAURI__.core.invoke('plugin:dialog|open', options);
   }
   if (window.__TAURI__?.invoke) {
-    return await window.__TAURI__.invoke('plugin:dialog_open', options);
+    return await window.__TAURI__.invoke('plugin:dialog|open', options);
   }
   return null;
 }

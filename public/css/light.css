@@ -368,9 +368,9 @@
 :is([data-theme="light"], [data-theme-mode="light"]) .status-modal-overlay {
   background: linear-gradient(
     180deg,
-    rgba(245,240,234,0.85) 0%,
-    rgba(245,240,234,0.2) 35%,
-    transparent 75%
+    rgba(245,240,234,0.82) 0%,
+    rgba(245,240,234,0.1) 18%,
+    transparent 35%
   );
 }
 :is([data-theme="light"], [data-theme-mode="light"]) .status-modal-header .modal-close-btn {

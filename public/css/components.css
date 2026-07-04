@@ -1488,15 +1488,17 @@ input[type="range"]::-webkit-slider-thumb {
 .status-modal {
   padding: 0 !important;
   overflow: visible;
-  max-width: 480px;
+  max-width: 640px;
+  background: var(--bg-elevated);
 }
 
-/* ─── Cover Visual ─── */
-.status-modal-visual {
-  position: relative;
-  height: 180px;
+/* Full-bleed cover with mask fade */
+.status-modal-bg-wrap {
+  position: absolute;
+  inset: 0;
   overflow: hidden;
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  border-radius: var(--radius-lg);
+  pointer-events: none;
 }
 .status-modal-bg {
   position: absolute;
@@ -1506,18 +1508,22 @@ input[type="range"]::-webkit-slider-thumb {
   background-position: center 15%;
   opacity: 0;
   transition: opacity 0.6s ease;
+  -webkit-mask-image: linear-gradient(to bottom, black 0%, black 30%, transparent 55%);
+  mask-image: linear-gradient(to bottom, black 0%, black 30%, transparent 55%);
 }
 .status-modal-bg[style*="background-image"] { opacity: 1; }
+
 .status-modal-overlay {
   position: absolute;
   inset: 0;
   background: linear-gradient(
     180deg,
-    rgba(15,12,9,0.72) 0%,
-    rgba(15,12,9,0.25) 35%,
-    transparent 75%
+    rgba(15,12,9,0.68) 0%,
+    rgba(15,12,9,0.12) 20%,
+    transparent 38%
   );
 }
+
 .status-modal-header {
   position: absolute;
   top: 0; left: 0; right: 0;
@@ -1526,18 +1532,19 @@ input[type="range"]::-webkit-slider-thumb {
   justify-content: space-between;
   padding: 1rem 1.25rem;
   z-index: 2;
+  pointer-events: none;
 }
 .status-modal-header h2 {
   font-family: var(--font-display);
   font-size: calc(1.1rem * var(--scale));
   font-weight: 700;
   color: #fff;
-  margin: 0;
-  padding: 0;
+  margin: 0; padding: 0;
   letter-spacing: -0.02em;
 }
 .status-modal-header h2::before { display: none; }
 .status-modal-header .modal-close-btn {
+  pointer-events: auto;
   color: rgba(255,255,255,0.5);
   position: static;
   flex-shrink: 0;
@@ -1549,7 +1556,10 @@ input[type="range"]::-webkit-slider-thumb {
 
 /* ─── Inner content ─── */
 .status-modal-inner {
+  position: relative;
+  z-index: 1;
   padding: 1rem 1.25rem 0.75rem;
+  /* inherits modal's --bg-elevated; transparent so cover shows through at top */
 }
 
 /* ─── Field Rows ─── */

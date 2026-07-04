@@ -1247,6 +1247,7 @@
   position: relative;
   min-height: 44px;
   animation: mmRowIn 0.2s var(--ease-out) both;
+  user-select: none;
 }
 @keyframes mmRowIn {
   from { opacity: 0; transform: translateX(-6px); }

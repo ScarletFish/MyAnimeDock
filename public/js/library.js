@@ -89,13 +89,16 @@ function initSortSelect() {
       return sel ? sel.dataset.value : 'default';
     }
   });
-  dropdown.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeSortDropdown();
-  });
-  document.addEventListener('click', (e) => {
-    if (!dropdown.contains(e.target)) closeSortDropdown();
-  });
 }
+
+// Global listeners — bound once, always check current DOM
+document.addEventListener('click', (e) => {
+  const dropdown = document.getElementById('librarySort');
+  if (dropdown && !dropdown.contains(e.target)) closeSortDropdown();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeSortDropdown();
+});
 
 function toggleSortDropdown() {
   const dropdown = document.getElementById('librarySort');
@@ -108,7 +111,8 @@ function toggleSortDropdown() {
 }
 
 function closeSortDropdown() {
-  document.getElementById('librarySort').classList.remove('open');
+  var el = document.getElementById('librarySort');
+  if (el) el.classList.remove('open');
 }
 
 function selectSortOption(opt) {
@@ -287,25 +291,6 @@ function renderAllAnimeSection(data, container, filter) {
     { id: 'dropped', label: '抛弃' }
   ];
 
-  var filtered = [].concat(data);
-
-  if (currentStatusFilter !== 'all') {
-    filtered = filtered.filter(function(a) { return a.myListStatus === currentStatusFilter; });
-  }
-
-  if (filter) {
-    var q = filter.toLowerCase();
-    filtered = filtered.filter(function(a) {
-      return a.title.toLowerCase().includes(q) ||
-        (a.bangumiTitle && a.bangumiTitle.toLowerCase().includes(q)) ||
-        (a.pinyinTitle && a.pinyinTitle.toLowerCase().includes(q));
-    });
-  }
-
-  var sortEl = document.getElementById('librarySort');
-  var sortMode = sortEl ? sortEl.value : 'default';
-  filtered = sortLibrary(filtered, sortMode);
-
   container.innerHTML =
     '<div class="all-anime-toolbar">' +
       '<div class="all-anime-status-tabs">' +
@@ -339,8 +324,50 @@ function renderAllAnimeSection(data, container, filter) {
   // Re-init sort dropdown
   initSortSelect();
 
+  // Render grid using shared helpers
+  var filtered = getFilteredAnimeData(data, filter, currentStatusFilter);
+  renderAnimeGrid(filtered, filter);
+}
+
+function setAllAnimeStatusFilter(status) {
+  var body = document.getElementById('dashSection-allAnime');
+  if (!body) return;
+  body._statusFilter = status;
+  // Update active tab visually
+  var tabs = body.querySelectorAll('.all-anime-status-tab');
+  tabs.forEach(function(tab) {
+    tab.classList.toggle('active', tab.dataset.status === status);
+  });
+  // Only re-render grid, keep toolbar intact
+  var q = document.getElementById('librarySearch');
+  var filter = q ? q.value : '';
+  var filtered = getFilteredAnimeData(libraryData, filter, status);
+  renderAnimeGrid(filtered, filter);
+}
+window.setAllAnimeStatusFilter = setAllAnimeStatusFilter;
+
+function getFilteredAnimeData(data, filter, statusFilter) {
+  var filtered = [].concat(data);
+  if (statusFilter && statusFilter !== 'all') {
+    filtered = filtered.filter(function(a) { return a.myListStatus === statusFilter; });
+  }
+  if (filter) {
+    var q = filter.toLowerCase();
+    filtered = filtered.filter(function(a) {
+      return a.title.toLowerCase().includes(q) ||
+        (a.bangumiTitle && a.bangumiTitle.toLowerCase().includes(q)) ||
+        (a.pinyinTitle && a.pinyinTitle.toLowerCase().includes(q));
+    });
+  }
+  var sortEl = document.getElementById('librarySort');
+  var sortMode = sortEl ? sortEl.value : 'default';
+  return sortLibrary(filtered, sortMode);
+}
+
+function renderAnimeGrid(filtered, filter) {
   var grid = document.getElementById('libraryGrid');
   var empty = document.getElementById('libraryEmpty');
+  if (!grid || !empty) return;
 
   if (filtered.length === 0) {
     killCardAnimations();
@@ -397,24 +424,16 @@ function renderAllAnimeSection(data, container, filter) {
       }
     });
   }
-  applyGridZoom();
 }
-
-function setAllAnimeStatusFilter(status) {
-  var body = document.getElementById('dashSection-allAnime');
-  if (!body) return;
-  body._statusFilter = status;
-  var q = document.getElementById('librarySearch');
-  renderAllAnimeSection(libraryData, body, q ? q.value : '');
-}
-window.setAllAnimeStatusFilter = setAllAnimeStatusFilter;
 
 function filterLibrary() {
   var q = document.getElementById('librarySearch');
   var body = document.getElementById('dashSection-allAnime');
-  if (body) {
-    renderAllAnimeSection(libraryData, body, q ? q.value : '');
-  }
+  if (!body) return;
+  var filter = q ? q.value : '';
+  var statusFilter = body._statusFilter || 'all';
+  var filtered = getFilteredAnimeData(libraryData, filter, statusFilter);
+  renderAnimeGrid(filtered, filter);
 }
 
 function sortLibrary(items, mode) {

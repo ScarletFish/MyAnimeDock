@@ -352,6 +352,12 @@ Tauri (窗口壳)
 - 动画 `onComplete` 中不删除 `detail-enter-active` class（防止 `.view fadeSlideUp` 激活），由 `resetDetailEnter()` 在下次导航时清理
 - 搜索无结果时显示「未检索到结果 · 没有匹配"xxx"的动漫」（`library.js` 中动态切换 empty state 文案）
 - **Modal 弹窗模式**：`.modal-overlay` 包裹 `.modal`，overlay 设 `onclick="if(event.target===this)closeFn()"` 支持点击遮罩层关闭；右上角加 `.modal-close-btn`（✕ SVG 图标）作为显式关闭入口；底部 `.modal-actions` 不设「取消」文字按钮。参见 `#syncModal` 和 `#memoryModal`。
+- **模块化与全局状态**：
+  - 全局监听器只在脚本顶层绑一次，内部通过 `getElementById` 延迟查找 DOM（lazy lookup），不在绑定时捕获引用
+  - 局部刷新（filter/sort/status）只更新内容区域，不重建父容器（避免搜索框失焦、排序状态丢失）
+  - 数据逻辑和 DOM 渲染分离：纯函数处理 filter/sort，渲染函数只管 innerHTML
+  - 高频路径（搜索 oninput）不触发重量级操作（如 `applyGridZoom` 的 layout recalc）
+  - 操作 DOM 前检查元素存在性（非当前页面时 `getElementById` 返回 null）
 
 ### CSS 缩放标准（`--scale` 变量）
 

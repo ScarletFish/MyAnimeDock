@@ -525,7 +525,6 @@ function mmRowClick(event, animeId) {
   if (mmSyncInProgress) return;
 
   if (event.shiftKey) {
-    event.preventDefault();
     mmToggleSelect(animeId);
     return;
   }

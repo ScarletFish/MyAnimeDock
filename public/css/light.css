@@ -362,17 +362,11 @@
 }
 
 /* ─── Status Modal Light ─── */
-:is([data-theme="light"], [data-theme-mode="light"]) .status-modal {
-  box-shadow: 0 8px 48px rgba(44, 36, 24, 0.2);
-}
 :is([data-theme="light"], [data-theme-mode="light"]) .status-modal-bg {
   background: linear-gradient(135deg, #f0ebe5, #e8e0d8, #f5f0ea);
 }
 :is([data-theme="light"], [data-theme-mode="light"]) .status-modal-overlay {
   background: linear-gradient(135deg, rgba(245,240,234,0.88) 0%, rgba(245,240,234,0.5) 40%, rgba(245,240,234,0.7) 100%);
-}
-:is([data-theme="light"], [data-theme-mode="light"]) .status-modal-header h2 {
-  color: var(--fg-primary);
 }
 :is([data-theme="light"], [data-theme-mode="light"]) .status-modal-header .modal-close-btn {
   color: var(--fg-muted);
@@ -381,78 +375,8 @@
   color: var(--fg-primary);
   background: var(--bg-canvas);
 }
-:is([data-theme="light"], [data-theme-mode="light"]) .glass-card {
-  background: rgba(255,255,255,0.75);
-  border-color: rgba(44,36,24,0.06);
-}
-:is([data-theme="light"], [data-theme-mode="light"]) .glass-field-label {
+:is([data-theme="light"], [data-theme-mode="light"]) .field-label {
   color: rgba(44,36,24,0.5);
-}
-:is([data-theme="light"], [data-theme-mode="light"]) .status-dd-trigger {
-  background: rgba(44,36,24,0.04);
-  border-color: rgba(44,36,24,0.08);
-  color: var(--fg-primary);
-}
-:is([data-theme="light"], [data-theme-mode="light"]) .status-dd-trigger:hover {
-  background: rgba(44,36,24,0.06);
-  border-color: rgba(44,36,24,0.12);
-}
-:is([data-theme="light"], [data-theme-mode="light"]) .status-dd-chevron {
-  color: rgba(44,36,24,0.35);
-}
-:is([data-theme="light"], [data-theme-mode="light"]) .status-dd-menu {
-  background: rgba(250,247,242,0.97);
-  border-color: rgba(44,36,24,0.08);
-  box-shadow: 0 16px 48px rgba(44,36,24,0.15);
-}
-:is([data-theme="light"], [data-theme-mode="light"]) .status-dd-opt {
-  color: rgba(44,36,24,0.6);
-}
-:is([data-theme="light"], [data-theme-mode="light"]) .status-dd-opt:hover {
-  background: rgba(44,36,24,0.04);
-  color: var(--fg-primary);
-}
-:is([data-theme="light"], [data-theme-mode="light"]) .num-stepper {
-  background: rgba(44,36,24,0.04);
-  border-color: rgba(44,36,24,0.08);
-}
-:is([data-theme="light"], [data-theme-mode="light"]) .num-stepper-btn {
-  color: rgba(44,36,24,0.4);
-}
-:is([data-theme="light"], [data-theme-mode="light"]) .num-stepper-btn:hover {
-  background: rgba(44,36,24,0.06);
-  color: var(--fg-primary);
-}
-:is([data-theme="light"], [data-theme-mode="light"]) .num-stepper-val {
-  color: var(--fg-primary);
-}
-:is([data-theme="light"], [data-theme-mode="light"]) .date-segments {
-  background: rgba(44,36,24,0.04);
-  border-color: rgba(44,36,24,0.08);
-}
-:is([data-theme="light"], [data-theme-mode="light"]) .date-seg {
-  color: var(--fg-primary);
-}
-:is([data-theme="light"], [data-theme-mode="light"]) .date-seg::placeholder {
-  color: rgba(44,36,24,0.2);
-}
-:is([data-theme="light"], [data-theme-mode="light"]) .date-seg:focus {
-  background: rgba(44,36,24,0.04);
-}
-:is([data-theme="light"], [data-theme-mode="light"]) .date-sep {
-  color: rgba(44,36,24,0.2);
-}
-:is([data-theme="light"], [data-theme-mode="light"]) .glass-card--wide textarea {
-  color: var(--fg-primary);
-  background: rgba(44,36,24,0.04);
-  border-color: rgba(44,36,24,0.08);
-}
-:is([data-theme="light"], [data-theme-mode="light"]) .glass-card--wide textarea:focus {
-  background: rgba(44,36,24,0.06);
-  border-color: var(--accent);
-}
-:is([data-theme="light"], [data-theme-mode="light"]) .glass-card--wide textarea::placeholder {
-  color: rgba(44,36,24,0.2);
 }
 
 /* ─── Reduced Motion ─── */

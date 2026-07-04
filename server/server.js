@@ -995,6 +995,10 @@ const server = http.createServer((req, res) => {
           season: anime ? anime.season : null,
           rating: item.rating,
           thoughts: item.thoughts,
+          notes: item.notes,
+          progress: item.progress,
+          startedAt: item.startedAt,
+          completedAt: item.completedAt,
           status: item.status,
           episodeCount: anime ? anime.episodes.length : 0,
           episodesWatched: anime ? anime.episodes.filter(e => e.watched).length : 0,
@@ -1053,6 +1057,50 @@ const server = http.createServer((req, res) => {
       }).catch(e => {
         logger.error('MyList status save error:', e);
         jsonResp(res, 500, { error: 'Failed to save status' });
+      });
+    }).catch(e => {
+      jsonResp(res, 400, { error: 'Invalid request body' });
+    });
+    return;
+  }
+
+  // PUT /api/mylist/:id — full update (status, rating, progress, dates, notes)
+  const mylistUpdateMatch = urlPath.match(/^\/api\/mylist\/([^/]+)$/);
+  if (mylistUpdateMatch && req.method === 'PUT') {
+    const id = decodeURIComponent(mylistUpdateMatch[1]);
+    readBody(req).then(body => {
+      const fields = JSON.parse(body);
+      // Whitelist allowed fields
+      const allowed = ['status', 'rating', 'progress', 'startedAt', 'completedAt', 'notes', 'thoughts'];
+      const update = {};
+      for (const k of allowed) {
+        if (fields[k] !== undefined) update[k] = fields[k];
+      }
+      if (Object.keys(update).length === 0) {
+        jsonResp(res, 400, { error: 'No valid fields' });
+        return;
+      }
+      // Validate status if present
+      if (update.status && !['watching', 'wish', 'completed', 'on_hold', 'dropped'].includes(update.status)) {
+        jsonResp(res, 400, { error: 'Invalid status' });
+        return;
+      }
+      db.updateMyListItem(id, update).then(() => {
+        // Update in-memory cache
+        if (data && data.myList) {
+          const idx = data.myList.findIndex(m => m.id === id || m.animeId === id);
+          if (idx !== -1) {
+            for (const k of allowed) {
+              if (update[k] !== undefined) {
+                data.myList[idx][k] = update[k];
+              }
+            }
+          }
+        }
+        jsonResp(res, 200, { ok: true });
+      }).catch(e => {
+        logger.error('MyList update error:', e);
+        jsonResp(res, 500, { error: 'Failed to update' });
       });
     }).catch(e => {
       jsonResp(res, 400, { error: 'Invalid request body' });

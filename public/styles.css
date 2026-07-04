@@ -860,12 +860,7 @@ html.theme-transitioning .theme-dock {
   .dashboard-continue-card { transition-duration: 0.01ms !important; }
   .dashboard-continue-card:hover { transform: none !important; }
   .dashboard-continue-btn:hover { transform: none !important; }
-  /* Status modal stagger */
-  .modal-overlay.show .status-modal-content .glass-card {
-    animation: none !important;
-    opacity: 1 !important;
-    transform: none !important;
-  }
+  /* Status modal - disable anim */
   .status-dd-menu {
     transition-duration: 0.01ms !important;
     transform: none !important;
@@ -913,11 +908,7 @@ html[data-reduce-motion="true"] .dashboard-continue-card { transition-duration: 
 html[data-reduce-motion="true"] .dashboard-continue-card:hover { transform: none !important; }
 html[data-reduce-motion="true"] .dashboard-continue-btn:hover { transform: none !important; }
 
-html[data-reduce-motion="true"] .modal-overlay.show .status-modal-content .glass-card {
-  animation: none !important;
-  opacity: 1 !important;
-  transform: none !important;
-}
+html[data-reduce-motion="true"] .dashboard-continue-btn:hover { transform: none !important; }
 
 html[data-reduce-motion="true"] .status-dd-menu {
   transition-duration: 0.01ms !important;

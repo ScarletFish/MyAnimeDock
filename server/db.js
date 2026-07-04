@@ -105,7 +105,7 @@ const INIT_SQL = [
   `CREATE INDEX IF NOT EXISTS "PlaySession_animeId_idx" ON "PlaySession"("animeId")`,
   `CREATE INDEX IF NOT EXISTS "PlaySession_sessionId_idx" ON "PlaySession"("sessionId")`,
   `CREATE INDEX IF NOT EXISTS "PlaySession_startTime_idx" ON "PlaySession"("startTime")`,
-  `CREATE TABLE IF NOT EXISTS "MyList" ("id" TEXT NOT NULL PRIMARY KEY, "animeId" TEXT REFERENCES "Anime"("id") ON DELETE CASCADE, "bangumiId" INTEGER, "title" TEXT NOT NULL DEFAULT '', "bangumiTitle" TEXT, "coverUrl" TEXT, "summary" TEXT, "status" TEXT NOT NULL DEFAULT 'watching', "rating" REAL, "thoughts" TEXT, "notes" TEXT, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" DATETIME NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS "MyList" ("id" TEXT NOT NULL PRIMARY KEY, "animeId" TEXT REFERENCES "Anime"("id") ON DELETE CASCADE, "bangumiId" INTEGER, "title" TEXT NOT NULL DEFAULT '', "bangumiTitle" TEXT, "coverUrl" TEXT, "summary" TEXT, "status" TEXT NOT NULL DEFAULT 'watching', "rating" REAL, "thoughts" TEXT, "notes" TEXT, "startedAt" DATETIME, "completedAt" DATETIME, "progress" INTEGER, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" DATETIME NOT NULL)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "MyList_animeId_key" ON "MyList"("animeId")`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "MyList_bangumiId_key" ON "MyList"("bangumiId")`,
   `CREATE INDEX IF NOT EXISTS "MyList_animeId_idx" ON "MyList"("animeId")`,
@@ -353,6 +353,9 @@ function myListToLegacy(m) {
     rating: m.rating,
     thoughts: m.thoughts || '',
     notes: m.notes || '',
+    progress: m.progress,
+    startedAt: m.startedAt ? m.startedAt.toISOString() : null,
+    completedAt: m.completedAt ? m.completedAt.toISOString() : null,
     createdAt: m.createdAt.toISOString(),
     updatedAt: m.updatedAt.toISOString(),
   };
@@ -574,6 +577,9 @@ async function saveMyList(data) {
           rating: item.rating,
           thoughts: item.thoughts || '',
           notes: item.notes || '',
+          progress: item.progress !== undefined ? item.progress : null,
+          startedAt: item.startedAt ? new Date(item.startedAt) : null,
+          completedAt: item.completedAt ? new Date(item.completedAt) : null,
           title: item.title || '',
           bangumiTitle: item.bangumiTitle || null,
           coverUrl: item.coverUrl || null,
@@ -739,4 +745,27 @@ async function deletePlaySession(sessionId) {
   }
 }
 
-module.exports = { loadData, saveAll, saveLibrary, saveMyList, saveMemories, updateMyItemStatus, savePlaySessions, updateEpisodeProgress, updatePlaySession, deletePlaySession, shutdown, getPrisma, ensureSchema };
+async function updateMyListItem(animeId, fields) {
+  try {
+    const p = getPrisma();
+    const data = {};
+    if (fields.status !== undefined) data.status = fields.status;
+    if (fields.rating !== undefined) data.rating = fields.rating;
+    if (fields.thoughts !== undefined) data.thoughts = fields.thoughts;
+    if (fields.notes !== undefined) data.notes = fields.notes;
+    if (fields.progress !== undefined) data.progress = fields.progress;
+    if (fields.startedAt !== undefined) data.startedAt = fields.startedAt ? new Date(fields.startedAt) : null;
+    if (fields.completedAt !== undefined) data.completedAt = fields.completedAt ? new Date(fields.completedAt) : null;
+    if (Object.keys(data).length === 0) return;
+    await p.myList.upsert({
+      where: { animeId },
+      create: { id: animeId, animeId, ...data },
+      update: data,
+    });
+    logger.info(`Updated MyList item: ${animeId}`);
+  } catch (e) {
+    logger.error('MyList item update error:', e.message);
+  }
+}
+
+module.exports = { loadData, saveAll, saveLibrary, saveMyList, saveMemories, updateMyItemStatus, updateMyListItem, savePlaySessions, updateEpisodeProgress, updatePlaySession, deletePlaySession, shutdown, getPrisma, ensureSchema };

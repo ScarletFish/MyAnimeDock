@@ -1,8 +1,7 @@
 // Library view logic
 let libraryData = [];
 let contextMenuAnimeId = null;
-let contextMenuX = 0;
-let contextMenuY = 0;
+let contextMenuCard = null;
 let cardScrollTrigger = null;
 let cardTween = null;
 
@@ -468,8 +467,7 @@ function showContextMenu(e, animeId) {
   e.preventDefault();
   e.stopPropagation();
   contextMenuAnimeId = animeId;
-  contextMenuX = e.clientX;
-  contextMenuY = e.clientY;
+  contextMenuCard = e.currentTarget;
   const menu = document.getElementById('contextMenu');
 
   const anime = libraryData.find(function(a) { return a.id === animeId; });
@@ -490,7 +488,7 @@ function showContextMenu(e, animeId) {
       '<span>在 Bangumi 打开</span>' +
     '</div>' : '') +
     '<div class="context-menu-divider"></div>' +
-    '<div class="context-menu-item" id="ctxToggleStatus">' +
+    '<div class="context-menu-item" onclick="event.stopPropagation();contextToggleStatus()">' +
       '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' +
       '<span>标记状态</span>' +
     '</div>' +
@@ -508,7 +506,6 @@ function showContextMenu(e, animeId) {
   document.getElementById('ctxDelete').addEventListener('click', contextDeleteAnime);
   document.getElementById('ctxArchive').addEventListener('click', contextArchiveAnime);
   document.getElementById('ctxCopyTitle').addEventListener('click', contextCopyTitle);
-  document.getElementById('ctxToggleStatus').addEventListener('click', contextToggleStatus);
   if (bangumiId) {
     document.getElementById('ctxOpenBgm').addEventListener('click', contextOpenBgm);
   }
@@ -559,18 +556,23 @@ async function contextOpenBgm() {
 
 function contextToggleStatus() {
   const id = contextMenuAnimeId;
-  const x = contextMenuX;
-  const y = contextMenuY;
+  const card = contextMenuCard;
   hideContextMenu();
-  if (!id) return;
-  if (typeof openStatusPopoverForAnime === 'function') {
-    openStatusPopoverForAnime(id, x, y);
+  if (!id || !card || !card.isConnected) return;
+  // Close any pre-existing popover (e.g. from badge click) before opening new one
+  if (typeof activeStatusPopover !== 'undefined' && activeStatusPopover) {
+    activeStatusPopover.remove();
+    activeStatusPopover = null;
+  }
+  if (typeof toggleStatusPopover === 'function') {
+    toggleStatusPopover({ currentTarget: card, stopPropagation: function() {} }, id);
   }
 }
 
 function hideContextMenu() {
   document.getElementById('contextMenu').classList.remove('show');
   contextMenuAnimeId = null;
+  contextMenuCard = null;
 }
 
 async function contextDeleteAnime() {

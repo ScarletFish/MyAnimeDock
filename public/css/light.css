@@ -368,15 +368,14 @@
 :is([data-theme="light"], [data-theme-mode="light"]) .status-modal-overlay {
   background: linear-gradient(
     180deg,
-    rgba(245,240,234,0.82) 0%,
-    rgba(245,240,234,0.1) 18%,
-    transparent 35%
+    rgba(245,240,234,0.60) 0%,
+    transparent 18%
   );
 }
-:is([data-theme="light"], [data-theme-mode="light"]) .status-modal-header .modal-close-btn {
+:is([data-theme="light"], [data-theme-mode="light"]) .status-modal-close {
   color: var(--fg-muted);
 }
-:is([data-theme="light"], [data-theme-mode="light"]) .status-modal-header .modal-close-btn:hover {
+:is([data-theme="light"], [data-theme-mode="light"]) .status-modal-close:hover {
   color: var(--fg-primary);
   background: var(--bg-canvas);
 }

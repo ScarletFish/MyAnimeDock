@@ -327,6 +327,9 @@ function renderAllAnimeSection(data, container, filter) {
   // Render grid using shared helpers
   var filtered = getFilteredAnimeData(data, filter, currentStatusFilter);
   renderAnimeGrid(filtered, filter);
+
+  // Set grid columns on initial render (not on filter/sort updates)
+  applyGridZoom();
 }
 
 function setAllAnimeStatusFilter(status) {

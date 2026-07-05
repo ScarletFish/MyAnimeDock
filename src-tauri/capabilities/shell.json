@@ -3,6 +3,9 @@
   "identifier": "shell-capability",
   "description": "Shell access for mpv and ffmpeg",
   "windows": ["main"],
+  "remote": {
+    "urls": ["http://localhost:3456"]
+  },
   "permissions": [
     "shell:default",
     "shell:allow-open",

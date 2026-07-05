@@ -3,6 +3,9 @@
   "identifier": "fs-capability",
   "description": "Filesystem access for MyAnimeDocker",
   "windows": ["main"],
+  "remote": {
+    "urls": ["http://localhost:3456"]
+  },
   "permissions": [
     "fs:default",
     "fs:allow-app-read",

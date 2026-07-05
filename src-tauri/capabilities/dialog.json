@@ -3,6 +3,9 @@
   "identifier": "dialog-capability",
   "description": "Native file/directory selection dialogs for settings",
   "windows": ["main"],
+  "remote": {
+    "urls": ["http://localhost:3456"]
+  },
   "permissions": [
     "dialog:default",
     "dialog:allow-open",

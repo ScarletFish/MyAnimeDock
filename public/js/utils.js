@@ -1,0 +1,144 @@
+/**
+ * Pure utility functions for testing.
+ * These are extracted from ui.js and other modules for unit testing.
+ */
+
+// ─── XSS 防护 ───
+
+function escHtml(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function escAttr(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// ─── 路径工具 ───
+
+function basename(p) {
+  if (!p) return '';
+  return p.split(/[\\/]/).pop();
+}
+
+function dirname(p) {
+  if (!p) return '';
+  const parts = p.split(/[\\/]/);
+  parts.pop();
+  return parts.join('/') || parts.join('\\') || '.';
+}
+
+function extname(p) {
+  if (!p) return '';
+  const base = basename(p);
+  const dotIndex = base.lastIndexOf('.');
+  return dotIndex <= 0 ? '' : base.slice(dotIndex);
+}
+
+// ─── 共享常量 ───
+
+const STATUS_LABELS = {
+  watching: '进行中',
+  wish: '计划中',
+  completed: '已完成',
+  on_hold: '搁置',
+  dropped: '抛弃'
+};
+
+const STATUS_VALUES = Object.keys(STATUS_LABELS);
+
+// ─── 字符串工具 ───
+
+function normalizeSearchText(text) {
+  return String(text)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Remove diacritics
+    .trim();
+}
+
+function truncate(str, maxLength, suffix = '...') {
+  if (!str || str.length <= maxLength) return str || '';
+  return str.slice(0, maxLength - suffix.length) + suffix;
+}
+
+// ─── 数字工具 ───
+
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function formatFileSize(bytes) {
+  if (bytes === 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  return (bytes / Math.pow(1024, i)).toFixed(1) + ' ' + units[i];
+}
+
+function formatDuration(seconds) {
+  if (!seconds || seconds < 0) return '0:00';
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  if (h > 0) {
+    return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  }
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+// ─── 日期工具 ───
+
+function formatDate(date) {
+  if (!date) return '';
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '';
+  return d.toISOString().split('T')[0];
+}
+
+function formatDateTime(date) {
+  if (!date) return '';
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '';
+  return d.toISOString();
+}
+
+// ─── 季节工具 ───
+
+/**
+ * Get anime season from date string (Japanese anime conventions):
+ * 春 (Spring): Apr-Jun | 夏 (Summer): Jul-Sep | 秋 (Autumn): Oct-Dec | 冬 (Winter): Jan-Mar
+ * @param {string} dateStr - Date string in YYYY-MM-DD or YYYY/MM/DD format
+ * @returns {'spring'|'summer'|'autumn'|'winter'|null}
+ */
+function getAnimeSeason(dateStr) {
+  if (!dateStr || typeof dateStr !== 'string') return null;
+  const match = dateStr.match(/^(\d{4})[-/](\d{1,2})/);
+  if (!match) return null;
+  const month = parseInt(match[2], 10);
+  if (month >= 4 && month <= 6) return 'spring';
+  if (month >= 7 && month <= 9) return 'summer';
+  if (month >= 10 && month <= 12) return 'autumn';
+  if (month >= 1 && month <= 3) return 'winter';
+  return null;
+}
+
+// ─── 导出（用于测试） ───
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    escHtml,
+    escAttr,
+    basename,
+    dirname,
+    extname,
+    STATUS_LABELS,
+    STATUS_VALUES,
+    normalizeSearchText,
+    truncate,
+    clamp,
+    formatFileSize,
+    formatDuration,
+    formatDate,
+    formatDateTime,
+    getAnimeSeason
+  };
+}

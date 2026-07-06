@@ -18,7 +18,13 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "postinstall": "cd server && npm ci --production && cd .. && prisma generate"
+    "postinstall": "cd server && npm ci --production && cd .. && prisma generate",
+    "prepare": "husky",
+    "test:frontend": "vitest run",
+    "test:frontend:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug"
   },
   "keywords": [],
   "author": "",
@@ -29,11 +35,20 @@
     "@tauri-apps/api": "^2.11.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@tauri-apps/cli": "^2.11.2",
     "concurrently": "^8.2.2",
     "d3": "^7.9.0",
+    "husky": "^9.1.7",
+    "jsdom": "^29.1.1",
+    "lint-staged": "^16.4.0",
     "nodemon": "^3.1.14",
     "prisma": "^5.22.0",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.10"
+  },
+  "lint-staged": {
+    "server/**/*.js": "npm test --prefix server",
+    "public/**/*.js": "node scripts/check-frontend-syntax.js"
   }
 }

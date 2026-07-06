@@ -42,3 +42,8 @@ prisma/server/
 
 # Dev/test files
 toast-preview.html
+
+# Testing
+test-results/
+playwright-report/
+e2e/visual.spec.js-snapshots/

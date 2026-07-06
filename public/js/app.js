@@ -2,9 +2,10 @@
 let currentView = 'library';
 let configCache = null;
 let libraryScrollTop = 0;
+let _libraryChangingView = false; // set by showView to skip scroll-save in loadLibrary
 
 function showView(view) {
-  const views = ['discovery', 'library', 'mylist', 'detail'];
+  const views = ['discovery', 'library', 'stats', 'mylist', 'detail'];
   for (const v of views) {
     const el = document.getElementById(v + 'View');
     if (el) el.classList.toggle('hidden', v !== view);
@@ -13,6 +14,7 @@ function showView(view) {
   // Update sidebar active state
   document.getElementById('btnDiscovery').classList.toggle('active', view === 'discovery');
   document.getElementById('btnLibrary').classList.toggle('active', view === 'library');
+  document.getElementById('btnStats').classList.toggle('active', view === 'stats');
   document.getElementById('btnMyList').classList.toggle('active', view === 'mylist');
 
   const mc = document.querySelector('.main-content');
@@ -37,11 +39,11 @@ function showView(view) {
   // Load data for view
   if (view === 'discovery') loadDiscovery();
   if (view === 'library') {
+    _libraryChangingView = true;
     loadLibrary();
-    // Restore scroll after render
-    requestAnimationFrame(() => { if (mc) mc.scrollTop = libraryScrollTop; });
   }
   if (view === 'mylist') loadMyList();
+  if (view === 'stats') loadStats();
 }
 
 // Theme
@@ -207,7 +209,7 @@ async function openSettings() {
     const sources = config.apiSources || [];
     const bangumiSrc = sources.find(s => s.type === 'bangumi');
     const anilistSrc = sources.find(s => s.type === 'anilist');
-    document.getElementById('bangumiUrl').value = bangumiSrc?.url || 'https://api.bangumi.one';
+    document.getElementById('bangumiUrl').value = bangumiSrc?.url || 'https://api.bangumi.lol';
     document.getElementById('anilistEnabled').checked = !!anilistSrc;
 
     // Bangumi OAuth 凭据
@@ -377,7 +379,7 @@ async function saveSettings() {
   const currentZoom = parseFloat(document.documentElement.style.getPropertyValue('--scale')) || 1;
 
   // Build apiSources from simple toggles
-  const bangumiUrl = document.getElementById('bangumiUrl').value.trim() || 'https://api.bangumi.one';
+  const bangumiUrl = document.getElementById('bangumiUrl').value.trim() || 'https://api.bangumi.lol';
   const anilistEnabled = document.getElementById('anilistEnabled').checked;
 
   const apiSources = [
@@ -509,7 +511,6 @@ function showToast(msg, type, opts) {
     </div>
     <div class="toast-progress" style="animation-duration:${duration}ms"></div>
   `;
-  el.addEventListener('click', () => dismissToast(el));
   container.prepend(el);
 
   // Cap max visible
@@ -517,8 +518,41 @@ function showToast(msg, type, opts) {
     dismissToast(container.lastChild);
   }
 
-  // Auto dismiss
-  setTimeout(() => dismissToast(el), duration);
+  // ─── Auto-dismiss with hover pause ───
+  let remaining = duration;
+  let timerStart = Date.now();
+  let timerId;
+
+  function startTimer() {
+    timerId = setTimeout(() => dismissToast(el), remaining);
+    timerStart = Date.now();
+  }
+  function pauseTimer() {
+    clearTimeout(timerId);
+    remaining -= Date.now() - timerStart;
+    if (remaining < 0) remaining = 0;
+  }
+
+  el.addEventListener('mouseenter', pauseTimer);
+  el.addEventListener('mouseleave', startTimer);
+
+  // Left-click dismiss
+  el.addEventListener('click', function onClick() {
+    clearTimeout(timerId);
+    dismissToast(el);
+  });
+
+  // Right-click copy message
+  el.addEventListener('contextmenu', function onContext(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const text = title + (desc ? '\n' + desc : '');
+    navigator.clipboard.writeText(text)
+      .then(() => showToast('已复制', 'success', { duration: 1500 }))
+      .catch(() => showToast('复制失败', 'error'));
+  });
+
+  startTimer();
 }
 
 function formatSize(bytes) {
@@ -638,7 +672,7 @@ function renderDashboardLayoutSettings() {
   if (!list) return;
   if (typeof getDashboardLayout !== 'function') return;
   var layout = getDashboardLayout();
-  var defs = { stats: '统计概览', continueWatch: '继续观看', allAnime: '全部动漫' };
+  var defs = { stats: '统计概览', continueWatch: '继续观看', allAnime: '本地动漫' };
   list.innerHTML = layout.map(function(s, i) {
     var label = defs[s.id] || s.id;
     return '<div class="dashboard-layout-item" data-id="' + s.id + '">' +
@@ -758,3 +792,51 @@ function moveDashboardSection(id, dir) {
   renderDashboardLayoutSettings();
   if (typeof renderDashboard === 'function') renderDashboard();
 }
+
+// ─── Sidebar floating tooltip ───
+(function() {
+  var tip = document.getElementById('sidebarTooltip');
+  if (!tip) return;
+  var textEl = document.getElementById('sidebarTooltipText');
+  var btns = document.querySelectorAll('.sidebar-nav .nav-btn, .sidebar-bottom .nav-btn');
+  var hideTimer = null;
+  var showTimer = null;
+
+  function showTip(btn) {
+    if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+    var label = btn.getAttribute('data-tip');
+    if (!label) return;
+    textEl.textContent = label;
+    var br = btn.getBoundingClientRect();
+    tip.style.top = (br.top + br.height / 2) + 'px';
+    tip.classList.add('is-visible');
+  }
+
+  function scheduleShow(btn) {
+    if (showTimer) clearTimeout(showTimer);
+    showTimer = setTimeout(function() { showTip(btn); }, 400);
+  }
+
+  function cancelShow() {
+    if (showTimer) { clearTimeout(showTimer); showTimer = null; }
+  }
+
+  function hideTip() {
+    cancelShow();
+    hideTimer = setTimeout(function() {
+      tip.classList.remove('is-visible');
+    }, 120);
+  }
+
+  btns.forEach(function(btn) {
+    btn.addEventListener('mouseenter', function() { scheduleShow(btn); });
+    btn.addEventListener('mouseleave', hideTip);
+  });
+
+  // Hide on tip mouseenter to avoid flicker when cursor moves to tooltip
+  tip.addEventListener('mouseenter', function() {
+    cancelShow();
+    if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+  });
+  tip.addEventListener('mouseleave', hideTip);
+})();

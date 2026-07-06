@@ -35,3 +35,10 @@ src-tauri/sidecar-modules/
 # Build artifacts
 build-tauri.bat
 rustup-init.exe
+
+# Generated Prisma working directories
+prisma/prisma/
+prisma/server/
+
+# Dev/test files
+toast-preview.html

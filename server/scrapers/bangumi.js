@@ -76,7 +76,7 @@ async function tryFetch(url, options = {}) {
 class BangumiScraper {
   constructor() {
     this.name = 'bangumi';
-    this.apiBase = 'https://api.bangumi.one';
+    this.apiBase = 'https://api.bangumi.lol';
   }
 
   /**

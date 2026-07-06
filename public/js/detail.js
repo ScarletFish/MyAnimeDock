@@ -826,6 +826,7 @@ async function deleteAnime() {
     loadLibrary();
     loadDiscovery();
     loadMemories();
+    if (typeof loadMyList === 'function') loadMyList();
   } catch (e) {
     showToast('删除失败: ' + e.message, 'error');
   }

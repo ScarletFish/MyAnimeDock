@@ -15,7 +15,7 @@ let gridZoom = parseFloat(localStorage.getItem('gridZoom') || '1');
 const DASHBOARD_SECTIONS = {
   stats: { title: '统计概览', defaultEnabled: true },
   continueWatch: { title: '继续观看', defaultEnabled: true },
-  allAnime: { title: '全部动漫', defaultEnabled: true }
+  allAnime: { title: '本地动漫', defaultEnabled: true }
 };
 const DASHBOARD_DEFAULT_LAYOUT = [
   { id: 'stats', enabled: true },
@@ -132,13 +132,31 @@ function killCardAnimations() {
 
 async function loadLibrary() {
   try {
+    // Save scroll for in-place refresh (context menu delete/archive, etc.)
+    // When called from showView (view switch), skip — showView already saved it
+    if (!_libraryChangingView && currentView === 'library') {
+      const mc = document.querySelector('.main-content');
+      if (mc) libraryScrollTop = mc.scrollTop;
+    }
+    _libraryChangingView = false;
     libraryData = await API.get('/api/library');
     renderDashboard();
+    restoreLibraryScroll();
   } catch (e) {
     // Tauri 初始加载时（frontendDist，非 server 源）静默失败
     if (window.location.origin !== 'http://localhost:3456') return;
     showToast('加载资料库失败: ' + e.message, 'error');
   }
+}
+
+function restoreLibraryScroll() {
+  if (currentView !== 'library') return;
+  const mc = document.querySelector('.main-content');
+  if (!mc) return;
+  // First pass: after sync render
+  requestAnimationFrame(() => { if (currentView === 'library') mc.scrollTop = libraryScrollTop; });
+  // Second pass: after async sections load (e.g. stats API)
+  setTimeout(() => { if (currentView === 'library') mc.scrollTop = libraryScrollTop; }, 250);
 }
 
 function renderDashboard() {
@@ -600,8 +618,9 @@ async function contextDeleteAnime() {
   if (!(await showConfirm(`确定要彻底删除「${title}」吗？<br>数据将被清除，不可恢复。`))) return;
   try {
     await API.del(`/api/anime/${encodeURIComponent(animeId)}`);
-    showToast('已删除，已归档到追番列表', 'success');
+    showToast('已删除', 'success');
     loadLibrary();
+    if (typeof loadMyList === 'function') loadMyList();
   } catch (e) {
     showToast('删除失败: ' + e.message, 'error');
   }

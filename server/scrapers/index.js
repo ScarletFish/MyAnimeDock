@@ -100,6 +100,8 @@ function buildSearchTerms(folderParsed, keyword) {
     const generic = /^(OVA|OAD|Special|PV\d*|NCOP|NCED|CM[ \d]*|Menu\d*|Preview|Trailer|特典)$/i;
     if (content.length > 3 && !generic.test(content)) {
       terms.push(content);
+      // Combined base + suffix: "Yuru Yuri dear my sister" has better Bangumi matching
+      terms.push(`${base} ${content}`);
     }
   }
 
@@ -213,6 +215,45 @@ function validateMatch(detail, folderParsed) {
 }
 
 /**
+ * Search AniList for base title → find Nth season by temporal sort → native title → Bangumi
+ * Bangumi search ignores "第3期" markers, so we use AniList's season metadata to
+ * locate the correct entry, then use its exact native title for Bangumi lookup.
+ */
+async function searchBangumiBySeason(registry, bangumi, baseTitle, season, config) {
+  const anilist = registry.get('anilist');
+  if (!anilist || !anilist.enabled(config)) return [];
+
+  try {
+    const source = config.apiSources?.find(s => s.type === 'anilist');
+    const alResults = await anilist.search(baseTitle, source);
+    if (alResults.length === 0) return [];
+
+    // Sort by season-year + season-order (not POPULARITY_DESC from AniList)
+    const SEASON_ORDER = { WINTER: 1, SPRING: 2, SUMMER: 3, FALL: 4 };
+    const sorted = [...alResults].sort((a, b) => {
+      const ya = a.seasonYear || 9999, yb = b.seasonYear || 9999;
+      if (ya !== yb) return ya - yb;
+      return (SEASON_ORDER[a.season] || 0) - (SEASON_ORDER[b.season] || 0);
+    });
+
+    // Prefer TV entries, fall back to any format
+    let candidates = sorted.filter(r => r.format === 'TV');
+    if (candidates.length === 0) candidates = sorted;
+    const target = candidates[season - 1];
+    if (!target) return [];
+
+    const nativeTitle = target.title_native || target.name;
+    if (!nativeTitle) return [];
+
+    logger.info(`Season lookup: "${baseTitle}" S${season} → "${nativeTitle}" (${target.seasonYear || '?'} ${target.season || '?'}, ${target.format})`);
+    return await searchBangumi(bangumi, nativeTitle, config);
+  } catch (e) {
+    logger.error('Season-specific AniList lookup failed:', e.message);
+    return [];
+  }
+}
+
+/**
  * Main entry: single-phase matching
  * Search by title → pick best → get detail
  */
@@ -223,27 +264,39 @@ async function matchSeason(registry, keyword, folderParsed, videoCount, config) 
   // 1. Build search terms (multiple variations)
   const searchTerms = buildSearchTerms(folderParsed, keyword);
 
-  // 2. Search by language route
-  const isRomaji = isPrimarilyRomaji(folderParsed.cleanTitle || folderParsed.title);
+  // 2. Season-aware lookup via AniList (both romaji and CJK titles)
+  //    Bangumi search ignores "第3期" markers and always returns S1.
+  //    AniList provides seasonYear/season metadata → sort temporally →
+  //    find the N-th entry's native title → precise Bangumi match.
   let results = [];
-  for (const term of searchTerms) {
-    if (isRomaji) {
-      results = await searchViaAniList(registry, bangumi, term, config);
-    } else {
-      results = await searchBangumi(bangumi, term, config);
+  if (folderParsed.season) {
+    results = await searchBangumiBySeason(registry, bangumi, folderParsed.cleanTitle, folderParsed.season, config);
+  }
+
+  // 3. Fallback: normal search term loop
+  if (results.length === 0) {
+    for (const term of searchTerms) {
+      // Base title → use AniList route (gets native JP/CJK title → Bangumi)
+      // Other terms (season marker, suffix) → Bangumi directly
+      const isBaseTitle = term === (folderParsed.cleanTitle || folderParsed.title);
+      if (isBaseTitle) {
+        results = await searchViaAniList(registry, bangumi, term, config);
+      } else {
+        results = await searchBangumi(bangumi, term, config);
+      }
+      if (results.length > 0) break;
     }
-    if (results.length > 0) break;
   }
   if (results.length === 0) return null;
 
-  // 3. Pick best match using Sorensen-Dice
+  // 4. Pick best match using Sorensen-Dice
   const best = pickBestBySimilarity(folderParsed.cleanTitle, results);
 
-  // 4. Get full detail
+  // 5. Get full detail
   const detail = await bangumi.getSubjectDetail(best.id);
   if (!detail) return null;
 
-  // 5. Validate (optional, for confidence reference)
+  // 6. Validate (optional, for confidence reference)
   const confidence = validateMatch(detail, folderParsed);
 
   return {
@@ -296,7 +349,7 @@ class ScraperRegistry {
     if (config.scrapers?.bangumi?.enabled !== false) {
       sources.push({
         type: 'bangumi',
-        url: config.scrapers.bangumi?.apiBase || 'https://api.bangumi.one',
+        url: config.scrapers.bangumi?.apiBase || 'https://api.bangumi.lol',
         key: '',
       });
     }
@@ -370,6 +423,7 @@ module.exports = {
   matchSeason,
   searchViaAniList,
   searchBangumi,
+  searchBangumiBySeason,
   pickBestBySimilarity,
   buildSearchTerms,
   validateMatch,

@@ -361,21 +361,6 @@ function myListToLegacy(m) {
   };
 }
 
-// Backward compat: convert MyList to old Memory shape for legacy endpoints
-function myListToMemoryLegacy(m, anime) {
-  return {
-    animeId: m.animeId,
-    title: anime ? anime.title : m.animeId,
-    bangumiId: anime ? anime.bangumiId : null,
-    bangumiTitle: anime ? anime.bangumiTitle : null,
-    rating: m.rating,
-    thoughts: m.thoughts || '',
-    notes: m.notes || '',
-    watchedAt: m.createdAt.toISOString(),
-    coverLocal: anime ? anime.localCover : null,
-  };
-}
-
 function sessionToLegacy(s) {
   return {
     animeId: s.animeId,
@@ -406,19 +391,10 @@ async function loadData() {
       p.scannedTree.findUnique({ where: { id: 'current' } }),
     ]);
 
-    // Build legacy memories from MyList for backward compat
-    const animeMap = new Map(animeList.map(a => [a.id, a]));
-    const memoriesLegacy = myList.map(m => {
-      const anime = animeMap.get(m.animeId);
-      return myListToMemoryLegacy(m, anime);
-    });
-
     return {
       discovered: [],
       library: animeList.map(animeToLegacy),
       myList: myList.map(myListToLegacy),
-      // Backward compat: memories computed from MyList
-      memories: memoriesLegacy,
       playSessions: playSessions.map(sessionToLegacy),
       scannedTree: scannedTreeRecord ? JSON.parse(scannedTreeRecord.data) : [],
     };
@@ -605,7 +581,7 @@ async function saveMyList(data) {
             });
           } else {
             await tx.myList.create({
-              data: { id: item.id || ('wish-' + item.bangumiId), animeId: null, bangumiId: item.bangumiId, ...commonData },
+              data: { animeId: null, bangumiId: item.bangumiId, ...commonData },
             });
           }
         }
@@ -631,29 +607,6 @@ async function updateMyItemStatus(animeId, status) {
   } catch (e) {
     logger.error('MyList status update error:', e.message);
   }
-}
-
-// ─── 旧 saveMemories 兼容包装 ───
-async function saveMemories(data) {
-  if (!data) return;
-  // 旧 memories 格式转为 myList 格式后写入
-  const legacyMemories = (data.memories || []).filter(m => m.animeId);
-  if (legacyMemories.length > 0) {
-    data.myList = data.myList || [];
-    for (const m of legacyMemories) {
-      const existing = data.myList.find(x => x.animeId === m.animeId);
-      if (!existing) {
-        data.myList.push({
-          animeId: m.animeId,
-          status: 'completed',
-          rating: m.rating,
-          thoughts: m.thoughts || '',
-          notes: m.notes || '',
-        });
-      }
-    }
-  }
-  return saveMyList(data);
 }
 
 async function savePlaySessions(data) {
@@ -768,4 +721,4 @@ async function updateMyListItem(animeId, fields) {
   }
 }
 
-module.exports = { loadData, saveAll, saveLibrary, saveMyList, saveMemories, updateMyItemStatus, updateMyListItem, savePlaySessions, updateEpisodeProgress, updatePlaySession, deletePlaySession, shutdown, getPrisma, ensureSchema };
+module.exports = { loadData, saveAll, saveLibrary, saveMyList, updateMyItemStatus, updateMyListItem, savePlaySessions, updateEpisodeProgress, updatePlaySession, deletePlaySession, shutdown, getPrisma, ensureSchema };

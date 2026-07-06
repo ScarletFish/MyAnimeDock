@@ -87,7 +87,7 @@ server/            → Tauri sidecar (Node.js backend)
 │   ├── node-fetch.js → pkg 兼容的 fetch polyfill（http/https 原生模块）
 │   ├── bangumi.js → Bangumi API（curl fallback）
 │   ├── bangumi-personal.js → Bangumi 个人 OAuth + 收藏管理 API
-│   ├── anilist.js → AniList GraphQL API（免费无需 Key，含 seasonChain 提取）
+│   ├── anilist.js → AniList GraphQL API（仅用于罗马音标题 + seasonChain 提取，非元数据来源）
 │   └── tmdb.js    → TMDB API（需配置 API Key）
 └── package.json   → Sidecar dependencies (pkg target)
 src-tauri/         → Tauri v2 desktop shell (Rust)
@@ -173,11 +173,12 @@ opencode.json       → OpenCode 配置（插件声明）
 - **Discovery 扁平扫描**: `data.scannedTree` 存扁平 leaf 数组（含 `parentChain`），旧树格式（`branch` 节点）在 `/api/browse` 时自动递归展平为 leaf，无需重扫
 - **兄弟组连续竖线**: `discovery.js` 中 `renderDiscovery()` 按 `parentChain` 分组，连续同 parent 的卡片包裹于 `.discovery-sibling-group`，其 `::before` 绘制 3px 垂直 accent 线（`position: absolute; left: -10px`，不参与布局）
 - **滚动条隐藏**: `html { overflow: hidden }` 禁用页面滚动条；`.main-content` 设为独立滚动容器，`scrollbar-width: none` + `::-webkit-scrollbar { display: none }` 彻底隐藏
-- **多源刮削**: `scrapers/index.js` → `ScraperRegistry` 统一注册、优先级、批量搜索；`bangumi.js`/`tmdb.js` 实现统一接口
+- **多源刮削**: `scrapers/index.js` → `ScraperRegistry` 统一注册、优先级、批量搜索；`bangumi.js`/`tmdb.js` 实现统一接口。注意：Bangumi 是唯一元数据来源，AniList 仅限罗马音/季度链。TMDB 为可选图片源。
 - **内联操作**: 卡片内直接显示「取消导入」「排除」「取消排除」按钮，无需详情抽屉
 - **细粒度数据持久化**: 每个 API 端点只写入实际修改的 SQLite 表（`saveLibrary` / `saveMemories` / `savePlaySessions` / `updateEpisodeProgress`），避免全量 `saveData()` 导致 nodemon 误重启
 - **MetaMatch 批量匹配**: `metamatch.js` 列表+面板布局，SSE 流式同步 `/api/library/sync/stream`，支持取消、重试失败项、手动修正搜索
-- **AniList 刮削**: `scrapers/anilist.js` — GraphQL API，免费无需 Key，返回 `seasonChain` 数据用于季度关系分析；扫描后自动后台预取
+- **元数据来源：只有 Bangumi**: Bangumi 是唯一元数据来源（标题、封面、简介、评分、标签）。AniList 仅用于罗马音标题辅助匹配 + seasonChain 季度关系提取，其 genres/tags 不写入数据库，不作为分类标签来源。TMDB 为可选额外图片源（需配置 API Key）。
+- **AniList 罗马音辅助**: `scrapers/anilist.js` — GraphQL API，免费无需 Key。扫描后后台预取仅提取罗马音标题（`romajiTitle`）和季度链（`seasonChain`），不获取元数据字段。
 - **季度匹配**: Anime 表 `matchedSeason`/`totalSeasons` 字段（Prisma schema），由 AniList `extractSeasonChain()` 提取
 - **结构化日志**: `server/logger.js` — `debug/info/warn/error` + `[TAG]` 前缀，`logger.child('[TAG]')` 模块级标签，`LOG_LEVEL` 环境变量控制
 - **Sorensen-Dice 模糊匹配**: `scrapers/index.js` 中 `sorensenDice()` 用于搜索结果匹配，5 分钟 TTL 缓存避免重复请求
@@ -207,7 +208,7 @@ opencode.json       → OpenCode 配置（插件声明）
   "autoMarkWatched": true,
   "uiScale": 1.25,
   "apiSources": [
-    { "type": "bangumi", "url": "https://api.bangumi.one", "key": "" }
+    { "type": "bangumi", "url": "https://api.bangumi.lol", "key": "" }
   ]
 }
 ```
@@ -275,7 +276,7 @@ mpv 模式下自动记录播放进度到 SQLite。
 - **封面路径**：`localCover` 存储为绝对路径，迁移 DATA_DIR 后文件可能不存在，`init()` 中验证文件存在性，缺失则清空字段（前端显示灰色占位）
 - **window.close() 无效**：Tauri WebView 中 `window.close()` 仅对弹出窗口生效，需要通过 Rust `window.close()` 或 `__TAURI__` IPC 关闭主窗口
 - **Prisma 引擎路径**：pkg 模式下通过 `PRISMA_QUERY_ENGINE_LIBRARY` 环境变量指定引擎 DLL 路径，`NODE_PATH` 指向 `sidecar-modules/`
-- **AniList 预取**：扫描完成后自动后台调用 AniList 预取元数据（`prefetch()`），不阻塞主流程
+- **AniList 预取**：扫描完成后自动后台调用 AniList 预取罗马音标题 + seasonChain（`prefetch()`），不获取元数据/分类标签，不阻塞主流程
 - **批量同步取消**：`/api/library/sync/stream` 支持客户端取消，`cancelledSyncSessions` Map 追踪取消状态
 - **Tauri sidecar 监控**：Rust 监控线程检测 sidecar 退出后自动关闭 Tauri 窗口；窗口关闭时 kill sidecar 进程
 - **nodemon data ignore**：`dev:server:watch` 忽略 `server/prisma/`、`server/covers/`、`server/thumbs/`、`server/scanned-tree.json`，防止数据写入触发重启

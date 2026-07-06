@@ -7,14 +7,16 @@ async function loadMemories() {
     memoriesData = await API.get('/api/memories');
     renderMemories();
   } catch (e) {
-    // Tauri 初始加载时静默失败
-    if (window.location.origin !== 'http://localhost:3456') return;
+    // Only show error if memory view is visible
+    if (!document.getElementById('memoriesGrid')) return;
     showToast('加载归档失败: ' + e.message, 'error');
   }
 }
 
 function renderMemories() {
   const grid = document.getElementById('memoriesGrid');
+  // If memory view DOM isn't rendered (e.g. unlink from discovery), skip silently
+  if (!grid) return;
   const empty = document.getElementById('memoriesEmpty');
   const statsBar = document.getElementById('memoryStats');
 

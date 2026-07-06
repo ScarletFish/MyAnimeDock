@@ -36,7 +36,7 @@ async function bgmFetch(url, options = {}, timeoutMs = TIMEOUT) {
 class BangumiPersonal {
   /**
    * @param {object} [opts]
-   * @param {string} [opts.apiBase] - Bangumi API 基地址，默认 https://api.bgm.tv（可用镜像站如 https://api.bangumi.one）
+   * @param {string} [opts.apiBase] - Bangumi API 基地址，默认 https://api.bgm.tv（可用镜像站如 https://api.bangumi.lol）
    */
   constructor(opts = {}) {
     this.accessToken = null;

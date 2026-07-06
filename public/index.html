@@ -48,6 +48,11 @@
         <line x1="3" y1="18" x2="3.01" y2="18"></line>
       </svg>
     </button>
+    <button class="nav-btn" id="btnStats" data-tip="统计" onclick="showView('stats')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+      </svg>
+    </button>
   </nav>
   <div class="sidebar-bottom">
     <button class="nav-btn" id="btnSettings" data-tip="设置" onclick="openSettings()">
@@ -58,6 +63,12 @@
     </button>
   </div>
 </aside>
+
+<!-- Floating tooltip for sidebar -->
+<div class="sidebar-tooltip" id="sidebarTooltip">
+  <div class="sidebar-tooltip-arrow"></div>
+  <div class="sidebar-tooltip-text" id="sidebarTooltipText"></div>
+</div>
 
 <!-- Theme Dock Overlay -->
 <div class="theme-dock-overlay" id="themeDockOverlay" onclick="handleDockOverlayClick()"></div>
@@ -186,13 +197,43 @@
     <div class="dashboard" id="libraryDashboard"></div>
   </section>
 
+  <!-- Stats View -->
+  <section class="view hidden" id="statsView">
+    <div class="view-header">
+      <h1>统计</h1>
+    </div>
+    <div class="stats-grid" id="statsGrid">
+      <div class="stats-card stats-card--wordcloud" id="statsWordCloudCard">
+        <div class="stats-card-header">
+          <h2>分类词云</h2>
+          <span class="stats-card-subtitle">Bangumi 类型标签聚合</span>
+          <button class="stats-refresh-btn" onclick="loadStats()" title="刷新词云">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+          </button>
+        </div>
+        <div class="stats-card-body">
+          <canvas id="wordCloudCanvas" width="800" height="400"></canvas>
+          <div class="stats-loading" id="statsLoading">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+            加载中…
+          </div>
+          <div class="stats-empty" id="statsEmpty" style="display:none">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+            <p>暂无标签数据</p>
+            <p class="empty-hint">导入动漫并获取元数据后，标签词云将在此展示</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- My List View -->
   <section class="view hidden" id="mylistView">
     <div class="view-header">
       <h1>我的列表</h1>
       <div class="mylist-tab-bar">
         <button class="mylist-tab active" data-filter="all" onclick="setMyListFilter('all')">全部</button>
-        <button class="mylist-tab" data-filter="watching" onclick="setMyListFilter('watching')">当前观看</button>
+        <button class="mylist-tab" data-filter="in_progress" onclick="setMyListFilter('in_progress')">进行中</button>
         <button class="mylist-tab" data-filter="wish" onclick="setMyListFilter('wish')">计划中</button>
         <button class="mylist-tab" data-filter="completed" onclick="setMyListFilter('completed')">已完成</button>
         <button class="mylist-tab" data-filter="on_hold" onclick="setMyListFilter('on_hold')">搁置</button>
@@ -478,11 +519,11 @@
             <label class="field-label">状态</label>
             <div class="status-dd" id="statusDd">
               <button type="button" class="status-dd-trigger" id="statusDdTrigger" onclick="toggleStatusDropdown(event)">
-                <span class="status-dd-text" id="statusDdText">当前观看</span>
+                <span class="status-dd-text" id="statusDdText">进行中</span>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="status-dd-chevron"><polyline points="6 9 12 15 18 9"/></svg>
               </button>
               <div class="status-dd-menu" id="statusDdMenu">
-                <button type="button" class="status-dd-opt" data-value="watching" onclick="selectStatusOption(this)"><svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="9"/></svg><span>当前观看</span><svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></button>
+                <button type="button" class="status-dd-opt" data-value="watching" onclick="selectStatusOption(this)"><svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="9"/></svg><span>进行中</span><svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></button>
                 <button type="button" class="status-dd-opt" data-value="wish" onclick="selectStatusOption(this)"><svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg><span>计划中</span><svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></button>
                 <button type="button" class="status-dd-opt" data-value="completed" onclick="selectStatusOption(this)"><svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg><span>已完成</span><svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></button>
                 <button type="button" class="status-dd-opt" data-value="on_hold" onclick="selectStatusOption(this)"><svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg><span>搁置</span><svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></button>
@@ -622,8 +663,8 @@
                 <span class="api-source-badge api-source-badge--bangumi">Bangumi</span>
               </div>
               <div class="api-source-fields">
-                <input type="text" class="api-source-url" id="bangumiUrl" placeholder="API 地址" value="https://api.bangumi.one">
-                <p class="form-hint">默认使用 bangumi.one，可换为镜像站如 api.bgm.tv</p>
+                <input type="text" class="api-source-url" id="bangumiUrl" placeholder="API 地址" value="https://api.bangumi.lol">
+                <p class="form-hint">默认使用 bangumi.lol，可换为镜像站如 api.bgm.tv</p>
               </div>
             </div>
           </div>
@@ -727,12 +768,15 @@ function switchSettingsTab(btn, tab) {
 <!-- Toast -->
 <div class="toast-container" id="toastContainer" role="alert" aria-live="polite"></div>
 
+<script src="/vendor/d3/d3.min.js"></script>
+<script src="/vendor/wordcloud/wordcloud2.js"></script>
 <script src="/vendor/gsap/gsap.min.js"></script>
 <script src="/vendor/gsap/Flip.min.js"></script>
 <script src="/vendor/gsap/ScrollTrigger.min.js"></script>
 <script src="/js/state.js"></script>
 <script src="/js/ui.js"></script>
 <script src="/js/api.js"></script>
+<script src="/js/memory.js"></script>
 <script src="/js/discovery.js"></script>
 <script src="/js/library.js"></script>
 <script src="/js/detail-stats.js"></script>
@@ -740,6 +784,7 @@ function switchSettingsTab(btn, tab) {
 <script src="/js/detail.js"></script>
 <script src="/js/mylist.js"></script>
 <script src="/js/metamatch.js"></script>
+<script src="/js/stats.js"></script>
 <script src="/js/app.js"></script>
 </body>
 </html>

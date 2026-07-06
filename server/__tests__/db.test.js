@@ -17,7 +17,6 @@ describe('DB Integration Tests', () => {
       }
       assert.ok(Array.isArray(data.library), 'library should be array');
       assert.ok(Array.isArray(data.myList), 'myList should be array');
-      assert.ok(Array.isArray(data.memories), 'memories should be array');
       assert.ok(Array.isArray(data.playSessions), 'playSessions should be array');
       assert.ok(Array.isArray(data.scannedTree), 'scannedTree should be array');
     });
@@ -27,7 +26,6 @@ describe('DB Integration Tests', () => {
       if (data === null) return;
       assert.ok(data.hasOwnProperty('library'), 'should have library key');
       assert.ok(data.hasOwnProperty('myList'), 'should have myList key');
-      assert.ok(data.hasOwnProperty('memories'), 'should have memories key');
       assert.ok(data.hasOwnProperty('playSessions'), 'should have playSessions key');
       assert.ok(data.hasOwnProperty('scannedTree'), 'should have scannedTree key');
     });

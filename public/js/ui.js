@@ -23,7 +23,7 @@ const path = {
 // ─── 共享常量 ───
 
 const STATUS_LABELS = {
-  watching: '当前观看',
+  watching: '进行中',
   wish: '计划中',
   completed: '已完成',
   on_hold: '搁置',

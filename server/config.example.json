@@ -7,6 +7,6 @@
   "autoMarkWatched": true,
   "reduceMotion": false,
   "apiSources": [
-    { "type": "bangumi", "url": "https://api.bangumi.one", "key": "" }
+    { "type": "bangumi", "url": "https://api.bangumi.lol", "key": "" }
   ]
 }

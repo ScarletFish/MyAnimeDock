@@ -81,7 +81,6 @@ class BangumiSync {
           const subject = remote.subject || {};
           const existingIdx = data.myList.findIndex(m => !m.animeId && String(m.bangumiId) === bgmId);
           const wishEntry = {
-            id: 'wish-' + bgmId,
             bangumiId: parseInt(bgmId),
             title: subject.name_cn || subject.name || `Subject #${bgmId}`,
             bangumiTitle: subject.name || null,

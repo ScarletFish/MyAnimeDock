@@ -116,7 +116,7 @@ const DEFAULT_CONFIG = {
   autoMarkWatched: true,
   uiScale: 1.25,
   apiSources: [
-    { type: 'bangumi', url: 'https://api.bangumi.one', key: '' },
+    { type: 'bangumi', url: 'https://api.bangumi.lol', key: '' },
   ],
 };
 
@@ -130,7 +130,7 @@ function loadConfig() {
       if (cfg.scrapers.bangumi?.enabled !== false) {
         sources.push({
           type: 'bangumi',
-          url: cfg.scrapers.bangumi?.apiBase || 'https://api.bangumi.one',
+          url: cfg.scrapers.bangumi?.apiBase || 'https://api.bangumi.lol',
           key: '',
         });
       }
@@ -431,7 +431,7 @@ const server = http.createServer((req, res) => {
         if (parsed.scrapers.bangumi?.enabled !== false) {
           sources.push({
             type: 'bangumi',
-            url: parsed.scrapers.bangumi?.apiBase || 'https://api.bangumi.one',
+            url: parsed.scrapers.bangumi?.apiBase || 'https://api.bangumi.lol',
             key: '',
           });
         }
@@ -606,7 +606,9 @@ const server = http.createServer((req, res) => {
         return;
       }
       const { findVideos, isExtraVideo } = require('./scanner');
+      const { registry } = require('./scrapers');
       const imported = [];
+      const metadataFetches = [];
       for (const item of items) {
         const { folderPath, folderName, parsedTitle, parsedSeason, specialSuffix } = item;
         if (!folderPath || !folderName) continue;
@@ -652,6 +654,7 @@ const server = http.createServer((req, res) => {
           coverUrl: scannedNode?.coverUrl || null,
           localCover: scannedNode?.localCover || null,
           rating: scannedNode?.rating || null,
+          tags: scannedNode?.tags || [],
           episodes: episodeFiles.map((v, i) => ({
             number: i + 1,
             filePath: v.path,
@@ -667,9 +670,9 @@ const server = http.createServer((req, res) => {
         // Auto-create MyList entry so imported items appear in MyList immediately
         if (!data.myList) data.myList = [];
         if (!data.myList.find(m => m.animeId === anime.id)) {
-          data.myList.push({ animeId: anime.id, status: 'watching', rating: null, thoughts: '', notes: '' });
+          data.myList.push({ animeId: anime.id, rating: null, thoughts: '', notes: '' });
         }
-        // 若有同 bangumiId 的 wish 条目，清理（已转为 watching）
+        // 若有同 bangumiId 的 wish 条目，清理（已转为进行中）
         if (anime.bangumiId) {
           const wishIdx = data.myList.findIndex(m => !m.animeId && m.bangumiId === anime.bangumiId);
           if (wishIdx !== -1) {
@@ -680,12 +683,35 @@ const server = http.createServer((req, res) => {
         if (scannedNode) {
           scannedNode.excluded = false;
         }
+        // 有 bangumiId & 缺 tags → 后台拉取元数据（不阻塞响应）
+        if (anime.bangumiId && (!anime.tags || anime.tags.length === 0)) {
+          const coverDir = path.join(DATA_DIR, 'covers');
+          metadataFetches.push(
+            registry.fetchMetadata('bangumi', anime.title, coverDir, anime.bangumiId, config)
+              .then(meta => {
+                if (meta) {
+                  anime.tags = meta.tags || [];
+                  anime.bangumiTitle = meta.bangumiTitle || anime.bangumiTitle;
+                  anime.bangumiTitleJp = meta.bangumiTitleJp || anime.bangumiTitleJp;
+                  anime.summary = meta.summary || anime.summary;
+                  anime.coverUrl = meta.coverUrl || anime.coverUrl;
+                  anime.localCover = meta.localCover || anime.localCover;
+                  anime.rating = meta.rating || anime.rating;
+                  if (meta.localCover) preGenerateCovers(meta.localCover);
+                  return db.saveLibrary(data);
+                }
+              })
+              .catch(e => logger.warn(`Background metadata fetch failed for ${anime.id}: ${e.message}`))
+          );
+        }
         // 有 bangumiId → 自动推送到 Bangumi（异步，不阻塞响应）
         if (anime.bangumiId) {
           bangumiSync.pushStatusChange(anime.id, data);
         }
       }
-      Promise.all([db.saveLibrary(data), db.saveMyList(data), saveScannedTree(data.scannedTree)]);
+      Promise.all([db.saveLibrary(data), db.saveMyList(data), saveScannedTree(data.scannedTree)])
+        .then(() => Promise.all(metadataFetches))
+        .catch(e => logger.warn('Import/background save error: ' + e.message));
       jsonResp(res, 200, { ok: true, imported });
     }).catch(e => {
       jsonResp(res, 400, { error: 'Invalid request body' });
@@ -706,7 +732,13 @@ const server = http.createServer((req, res) => {
         jsonResp(res, 404, { error: 'Anime not found in library' });
         return;
       }
-      data.library.splice(idx, 1);
+      // Remove from library and cleanup related data
+      const removed = data.library.splice(idx, 1)[0];
+      // Also remove associated MyList entry
+      if (data.myList) {
+        const myIdx = data.myList.findIndex(m => m.animeId === removed.id);
+        if (myIdx !== -1) data.myList.splice(myIdx, 1);
+      }
       // Clear scannedTree metadata so Discovery view reflects the change
       const scannedNode = data.scannedTree && data.scannedTree.find(n => n.path === path);
       if (scannedNode) {
@@ -724,6 +756,9 @@ const server = http.createServer((req, res) => {
         scannedNode.metadataSource = null;
       }
       saveScannedTree(data.scannedTree);
+      // Persist to SQLite so the change survives server restart
+      db.saveLibrary(data);
+      db.saveMyList(data);
       jsonResp(res, 200, { ok: true });
     }).catch(e => {
       jsonResp(res, 400, { error: 'Invalid request body' });
@@ -826,6 +861,7 @@ const server = http.createServer((req, res) => {
         node.localCover = meta.localCover;
         node.rating = meta.rating;
         node.metadataSource = meta.source;
+        node.tags = meta.tags || [];
         if (meta.localCover) preGenerateCovers(meta.localCover);
         saveScannedTree(data.scannedTree);
         jsonResp(res, 200, { ok: true, meta, node });
@@ -891,6 +927,43 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // --- API: stats tags (word cloud source) ---
+  if (urlPath === '/api/stats/tags' && req.method === 'GET') {
+    // Noise patterns — filter out obvious non-genre tags
+    const isNoise = (tag, platform) => {
+      if (!tag) return true;
+      // Pure numbers, year/month dates
+      if (/^\d+$/.test(tag)) return true;
+      if (/^\d{4}年/.test(tag)) return true;
+      if (/^\d{1,2}月$/.test(tag)) return true;
+      // Season indicators
+      if (/^第\d+[期季部]$/.test(tag)) return true;
+      // Format codes (all-caps short tags)
+      if (/^(TVA|OVA|OAD|OAV|WEB|BD|DVD|TV|SP|ONA)$/i.test(tag)) return true;
+      // Known meta/format tags
+      if (/^(劇場版|映画|映畫|短片|番組|PV|特典|CM|预告|預告|予告)$/.test(tag)) return true;
+      if (/^(原作|漫画改|小说改|游戏改|轻小说改|Web系)$/.test(tag)) return true;
+      // Redundant nationality/generic tags
+      if (/^(日本|日本动画|动画|アニメ)$/.test(tag)) return true;
+      if (/^(评分|推薦|推荐)$/.test(tag)) return true;
+      // Platform match
+      if (platform && tag === platform) return true;
+      return false;
+    };
+    const lib = data.library || [];
+    const tagCount = {};
+    for (const a of lib) {
+      if (!a.tags || !Array.isArray(a.tags)) continue;
+      for (const t of a.tags) {
+        const tag = t.trim();
+        if (isNoise(tag, a.platform)) continue;
+        tagCount[tag] = (tagCount[tag] || 0) + 1;
+      }
+    }
+    jsonResp(res, 200, { tags: tagCount });
+    return;
+  }
+
   // --- API: play sessions for anime ---
   if (urlPath.startsWith('/api/anime/') && urlPath.endsWith('/sessions') && req.method === 'GET') {
     const id = decodeURIComponent(urlPath.slice('/api/anime/'.length, -'/sessions'.length));
@@ -936,22 +1009,11 @@ const server = http.createServer((req, res) => {
       jsonResp(res, 404, { error: 'Anime not found' });
       return;
     }
-    const removed = data.library[idx];
-    removed.downloaded = false;
-    // Ensure MyList entry persists (delete = archive in MyList)
-    const existingMyItem = (data.myList || []).find(m => m.animeId === id);
-    if (existingMyItem) {
-      // keep existing status/thoughts/rating — user's manual data preserved
-    } else {
-      // auto-create MyList record with completed status
-      if (!data.myList) data.myList = [];
-      data.myList.push({
-        animeId: id,
-        status: 'completed',
-        rating: removed.rating || null,
-        thoughts: '',
-        notes: '',
-      });
+    const removed = data.library.splice(idx, 1)[0];
+    // Remove associated MyList entry
+    if (data.myList) {
+      const myIdx = data.myList.findIndex(m => m.animeId === id);
+      if (myIdx !== -1) data.myList.splice(myIdx, 1);
     }
     // Clear metadata in scannedTree so Discovery view reflects the removal
     const scannedNode = data.scannedTree && data.scannedTree.find(n => n.path === removed.folderPath);
@@ -1038,14 +1100,17 @@ const server = http.createServer((req, res) => {
       // Update in-memory data
       if (!data.myList) data.myList = [];
       let existing;
+      // Look up by either myList id or animeId (library items)
       if (id.startsWith('wish-')) {
+        // Legacy wishlist items with 'wish-' prefix — lookup by full id
         existing = data.myList.find(m => m.id === id);
       } else {
-        existing = data.myList.find(m => m.animeId === id);
+        existing = data.myList.find(m => m.animeId === id || m.id === id);
       }
       if (existing) {
         existing.status = status;
       } else if (id.startsWith('wish-')) {
+        // Legacy fallback for old-format wishlist
         data.myList.push({ id, bangumiId: parseInt(id.replace('wish-', '')), title: '', status, rating: null, thoughts: '', notes: '' });
       } else {
         data.myList.push({ animeId: id, status, rating: null, thoughts: '', notes: '' });
@@ -1127,9 +1192,25 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // --- API: memories (backward compat, read from myList) ---
+  // --- API: memories (derived from myList completed items) ---
   if (urlPath === '/api/memories' && req.method === 'GET') {
-    jsonResp(res, 200, data.memories);
+    const memories = (data.myList || [])
+      .filter(m => m.status === 'completed')
+      .map(m => {
+        const anime = data.library.find(a => a.id === m.animeId);
+        return {
+          animeId: m.animeId,
+          title: anime ? anime.title : m.animeId,
+          bangumiId: anime ? anime.bangumiId : null,
+          bangumiTitle: anime ? anime.bangumiTitle : null,
+          rating: m.rating,
+          thoughts: m.thoughts || '',
+          notes: m.notes || '',
+          watchedAt: m.completedAt || m.createdAt || null,
+          coverLocal: anime ? anime.localCover : null,
+        };
+      });
+    jsonResp(res, 200, memories);
     return;
   }
 
@@ -1203,7 +1284,6 @@ const server = http.createServer((req, res) => {
         return;
       }
       const entry = {
-        id: 'wish-' + item.bangumiId,
         bangumiId: item.bangumiId,
         title: item.title,
         bangumiTitle: item.bangumiTitle || null,
@@ -1316,7 +1396,15 @@ const server = http.createServer((req, res) => {
                 }
               }
               if (final) {
-                // 播放结束 → 自动推送已看集数到 Bangumi
+                // 播放结束 → MyList 状态改为 watching（只要看过）
+                if (active.anime) {
+                  const myEntry = (data.myList || []).find(m => m.animeId === active.anime.id);
+                  if (myEntry && myEntry.status !== 'watching') {
+                    myEntry.status = 'watching';
+                    db.saveMyList(data);
+                  }
+                }
+                // 自动推送已看集数到 Bangumi
                 if (active.anime?.bangumiId) {
                   bangumiSync.pushStatusChange(active.anime.id, data);
                 }
@@ -1621,13 +1709,14 @@ const server = http.createServer((req, res) => {
       await parallelMap(toSync, async ({ animeId, anime }) => {
         if (cancelledSyncSessions.get(sessionId) || res.writableEnded) return;
 
-        try {
-          const folderParsed = resolveFolderParsed(anime);
-          const videoCount = anime.episodes?.length || 0;
+          try {
+            const folderParsed = resolveFolderParsed(anime);
+            const videoCount = anime.episodes?.length || 0;
 
-          let timedOut = false;
-          const itemPromise = (async () => {
-            const searchTerm = folderParsed.cleanTitle || folderParsed.cjkTitle || anime.folderName || anime.title || '未知';
+            let timedOut = false;
+            const itemPromise = (async () => {
+              const baseName = folderParsed.cleanTitle || folderParsed.cjkTitle || anime.folderName || anime.title || '未知';
+              const searchTerm = folderParsed.season ? `${baseName} (S${folderParsed.season})` : baseName;
             send('matching', { animeId, searchTerm });
             const match = await matchSeason(registry, folderParsed.cleanTitle, folderParsed, videoCount, config);
             if (timedOut) return;
@@ -1896,12 +1985,6 @@ async function validateCovers(data) {
       if (!fs.existsSync(coverPath)) item.localCover = undefined;
     }
   }
-  for (const mem of data.memories || []) {
-    if (mem.coverLocal) {
-      const coverPath = path.join(coverDir, path.basename(mem.coverLocal));
-      if (!fs.existsSync(coverPath)) mem.coverLocal = undefined;
-    }
-  }
   for (const item of data.myList || []) {
     if (!item.animeId && item.coverUrl && item.coverUrl.startsWith(DATA_DIR)) {
       const coverPath = path.join(coverDir, path.basename(item.coverUrl));
@@ -1990,7 +2073,7 @@ async function autoImportNewFolders(data, config) {
       data.library.push(anime);
       if (!data.myList) data.myList = [];
       if (!data.myList.find(m => m.animeId === anime.id)) {
-        data.myList.push({ animeId: anime.id, status: 'watching', rating: null, thoughts: '', notes: '' });
+        data.myList.push({ animeId: anime.id, rating: null, thoughts: '', notes: '' });
       }
 
       await db.saveLibrary(data);
@@ -2059,12 +2142,12 @@ async function init() {
   }
   data.scannedTree = scannedTree;
 
-  // 迁移：已有库项目自动创建 MyList 记录（无状态则默认为 watching）
+  // 迁移：已有库项目自动创建 MyList 记录（无状态则留空）
   if (!data.myList) data.myList = [];
   let myListDirty = false;
   for (const anime of data.library) {
     if (!data.myList.find(m => m.animeId === anime.id)) {
-      data.myList.push({ animeId: anime.id, status: 'watching', rating: null, thoughts: '', notes: '' });
+      data.myList.push({ animeId: anime.id, rating: null, thoughts: '', notes: '' });
       myListDirty = true;
     }
   }

@@ -43,7 +43,10 @@ function showView(view) {
     loadLibrary();
   }
   if (view === 'mylist') loadMyList();
-  if (view === 'stats') loadStats();
+  if (view === 'stats') {
+    loadStats();
+    loadSeasonChart();
+  }
 }
 
 // Theme

@@ -964,6 +964,40 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // --- API: stats seasons (Nightingale rose chart source) ---
+  if (urlPath === '/api/stats/seasons' && req.method === 'GET') {
+    const lib = data.library || [];
+    const seasonCount = { spring: 0, summer: 0, autumn: 0, winter: 0, unknown: 0 };
+    // Japanese anime season conventions:
+    // 春 (Spring): Apr-Jun | 夏 (Summer): Jul-Sep | 秋 (Autumn): Oct-Dec | 冬 (Winter): Jan-Mar
+    for (const a of lib) {
+      // date field is spread from metadata by animeToLegacy()
+      let dateStr = a.date || null;
+      // Fallback: try to parse from importedAt
+      if (!dateStr && a.importedAt) {
+        dateStr = a.importedAt.slice(0, 10);
+      }
+      if (!dateStr || typeof dateStr !== 'string') {
+        seasonCount.unknown++;
+        continue;
+      }
+      // Parse month from date string (YYYY-MM-DD or YYYY/MM/DD)
+      const match = dateStr.match(/^(\d{4})[-/](\d{1,2})/);
+      if (!match) {
+        seasonCount.unknown++;
+        continue;
+      }
+      const month = parseInt(match[2], 10);
+      // Japanese anime seasons: 春(Apr-Jun) 夏(Jul-Sep) 秋(Oct-Dec) 冬(Jan-Mar)
+      if (month >= 4 && month <= 6) seasonCount.spring++;
+      else if (month >= 7 && month <= 9) seasonCount.summer++;
+      else if (month >= 10 && month <= 12) seasonCount.autumn++;
+      else seasonCount.winter++;
+    }
+    jsonResp(res, 200, { seasons: seasonCount });
+    return;
+  }
+
   // --- API: play sessions for anime ---
   if (urlPath.startsWith('/api/anime/') && urlPath.endsWith('/sessions') && req.method === 'GET') {
     const id = decodeURIComponent(urlPath.slice('/api/anime/'.length, -'/sessions'.length));

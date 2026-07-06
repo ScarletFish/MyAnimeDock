@@ -1077,3 +1077,8 @@ html[data-reduce-motion="true"] .ambient-orb { display: none !important; }
 #wordCloudCanvas {
   background: var(--bg-surface);
 }
+
+#seasonChartCanvas {
+  background: var(--bg-surface);
+  border-radius: var(--radius-md);
+}

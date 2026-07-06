@@ -233,8 +233,8 @@
       <h1>我的列表</h1>
       <div class="mylist-tab-bar">
         <button class="mylist-tab active" data-filter="all" onclick="setMyListFilter('all')">全部</button>
-        <button class="mylist-tab" data-filter="in_progress" onclick="setMyListFilter('in_progress')">进行中</button>
         <button class="mylist-tab" data-filter="wish" onclick="setMyListFilter('wish')">计划中</button>
+        <button class="mylist-tab" data-filter="in_progress" onclick="setMyListFilter('in_progress')">进行中</button>
         <button class="mylist-tab" data-filter="completed" onclick="setMyListFilter('completed')">已完成</button>
         <button class="mylist-tab" data-filter="on_hold" onclick="setMyListFilter('on_hold')">搁置</button>
         <button class="mylist-tab" data-filter="dropped" onclick="setMyListFilter('dropped')">抛弃</button>
@@ -519,7 +519,7 @@
             <label class="field-label">状态</label>
             <div class="status-dd" id="statusDd">
               <button type="button" class="status-dd-trigger" id="statusDdTrigger" onclick="toggleStatusDropdown(event)">
-                <span class="status-dd-text" id="statusDdText">进行中</span>
+                <span class="status-dd-text" id="statusDdText">计划中</span>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="status-dd-chevron"><polyline points="6 9 12 15 18 9"/></svg>
               </button>
               <div class="status-dd-menu" id="statusDdMenu">

@@ -1855,6 +1855,7 @@
   height: 14px;
 }
 .mm-panel-synclog-icon--searching svg { color: var(--accent-soft); }
+.mm-panel-synclog-icon--fetching svg { color: var(--accent); }
 .mm-panel-synclog-icon--matched svg { color: var(--success); }
 .mm-panel-synclog-icon--failed svg { color: var(--error); }
 .mm-panel-synclog-body {
@@ -1866,6 +1867,7 @@
   color: var(--fg-primary);
 }
 .mm-panel-synclog-title--searching { color: var(--accent-soft); }
+.mm-panel-synclog-title--fetching { color: var(--accent); }
 .mm-panel-synclog-title--matched { color: var(--success); }
 .mm-panel-synclog-title--failed { color: var(--error); }
 .mm-panel-synclog-detail {

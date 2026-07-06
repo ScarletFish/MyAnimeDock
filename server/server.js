@@ -1636,6 +1636,7 @@ const server = http.createServer((req, res) => {
               return;
             }
 
+            send('fetching', { animeId, matchSource: match.source || 'unknown', matchTitle: match.title || match.name || '' });
             const meta = await registry.fetchMetadata(match.source, folderParsed.cleanTitle, coverDir, match.id, config, match._detail);
             if (timedOut) return;
             if (!meta) {

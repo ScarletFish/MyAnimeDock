@@ -10,6 +10,7 @@ let mmFixResults = [];
 let mmSelectedIds = new Set();
 let mmSelectionOrder = []; // tracks selection order for panel cycling
 let mmSyncCancelled = false;
+let mmSyncResolve = null;       // stored resolve() so mmCancelSync can force-resolve the promise
 let mmSSESource = null;
 let mmUIThrottleTimer = null;
 let mmPanelOpen = false;
@@ -31,6 +32,7 @@ function mmOpenModal() {
       mmSyncCancelled = true;
       mmSyncLog = [];
       if (mmSSESource) { mmSSESource.close(); mmSSESource = null; }
+      if (mmSyncResolve) { mmSyncResolve(); mmSyncResolve = null; }
     }
   });
   mmLoadModalData();
@@ -855,6 +857,18 @@ async function mmStartSync(animeIds) {
     });
   }
 
+  // On cancellation: reset any items still stuck in 'matching' (they were being processed
+  // when EventSource was closed) and fix sync log entries
+  if (mmSyncCancelled) {
+    mmItems.forEach(i => {
+      if (i.status === 'matching') i.status = 'pending';
+    });
+    mmSyncLog.forEach(e => {
+      if (e.status === 'searching' || e.status === 'fetching') { e.status = 'failed'; e.detail = '已取消'; }
+    });
+    if (mmSyncLog.length > 0) mmRenderSyncLog();
+  }
+
   mmSyncInProgress = false;
   mmUpdateUI();
   mmUpdateMainAction();
@@ -885,6 +899,12 @@ function mmCancelSync() {
   if (mmSSESource) {
     mmSSESource.close();
     mmSSESource = null;
+  }
+  // Force-resolve the pending mmSyncViaSSE promise — EventSource.close() does NOT fire 'error',
+  // so cleanup() inside that Promise never runs and the Promise would hang forever.
+  if (mmSyncResolve) {
+    mmSyncResolve();
+    mmSyncResolve = null;
   }
   mmUpdateMainAction();
 }
@@ -919,6 +939,10 @@ function mmRenderSyncLog() {
     if (e.status === 'searching') {
       iconHtml = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>';
       titleCls = 'mm-panel-synclog-title--searching';
+      detailCls = '';
+    } else if (e.status === 'fetching') {
+      iconHtml = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>';
+      titleCls = 'mm-panel-synclog-title--fetching';
       detailCls = '';
     } else if (e.status === 'matched') {
       iconHtml = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
@@ -970,6 +994,7 @@ function mmRenderSyncSummary(matched, failed, total) {
 
 async function mmSyncViaSSE(animeIds) {
   return new Promise((resolve) => {
+    mmSyncResolve = resolve; // allow mmCancelSync to force-resolve when EventSource.close() doesn't fire 'error'
     const url = '/api/library/sync/stream?ids=' + encodeURIComponent(JSON.stringify(animeIds));
     const es = new EventSource(url);
     mmSSESource = es;
@@ -1006,6 +1031,20 @@ async function mmSyncViaSSE(animeIds) {
       } catch (_) {}
     });
 
+    es.addEventListener('fetching', (e) => {
+      if (mmSyncCancelled) return;
+      try {
+        const data = JSON.parse(e.data);
+        // Update sync log entry: searching → fetching
+        const existing = mmSyncLog.find(entry => entry.animeId === data.animeId);
+        if (existing) {
+          existing.status = 'fetching';
+          existing.detail = `正在获取元数据（${data.matchSource || '?'}）`;
+        }
+        mmRenderSyncLog();
+      } catch (_) {}
+    });
+
     es.addEventListener('cancelled', () => {
       cleanup();
     });
@@ -1013,6 +1052,7 @@ async function mmSyncViaSSE(animeIds) {
     function cleanup() {
       es.close();
       mmSSESource = null;
+      mmSyncResolve = null;
       if (!mmSyncCancelled) {
         let changed = false;
         mmItems.forEach(i => {
@@ -1022,9 +1062,9 @@ async function mmSyncViaSSE(animeIds) {
             changed = true;
           }
         });
-        // Update any remaining searching entries as failed
+        // Update any remaining searching/fetching entries as failed
         mmSyncLog.forEach(e => {
-          if (e.status === 'searching') {
+          if (e.status === 'searching' || e.status === 'fetching') {
             e.status = 'failed';
             e.detail = '连接断开，匹配中断';
           }

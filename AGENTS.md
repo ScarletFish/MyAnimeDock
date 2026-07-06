@@ -21,6 +21,12 @@ npm run prisma:migrate   # Create/apply Prisma migrations
 npm run prisma:studio    # Open Prisma Studio (SQLite browser)
 node scripts/migrate-to-sqlite.js  # 从 JSON 迁移数据到 SQLite（一次性）
 start.bat             # Windows 菜单：开发/构建/清理/prisma 操作
+# 测试命令
+cd server && npm test    # 运行后端测试（79 tests）
+npm run test:frontend    # 运行前端单元测试（58 tests）
+npm run test:e2e         # 运行 E2E 测试
+npm run test:e2e:ui      # E2E 测试 UI 模式
+node scripts/generate-tests.js server/scanner.js  # 生成测试骨架
 ```
 
 ## API Endpoints
@@ -458,7 +464,9 @@ npm run build:nsis           # 仅 NSIS
 ## Testing
 
 ```bash
-cd server && npm test    # 运行所有测试（73 个，14 个套件）
+cd server && npm test    # 运行所有测试（79 tests）
+npm run test:frontend    # 运行前端单元测试（58 tests）
+npm run test:e2e         # 运行 E2E 测试
 ```
 
 **测试框架**: Node.js 内置 `node:test` + `node:assert`，无外部依赖。
@@ -470,12 +478,25 @@ cd server && npm test    # 运行所有测试（73 个，14 个套件）
 | `server/__tests__/scanner.test.js` | 28 | `extractBgmId`, `isExtraVideo`, `parseFolderName` |
 | `server/__tests__/scrapers.test.js` | 38 | `normalizeTitle`, `sorensenDice`, `detectSpecialType`, `extractBaseAndSuffix` |
 | `server/__tests__/db.test.js` | 7 | `loadData`, `saveLibrary`, `saveMyList`（集成测试，操作真实 SQLite） |
+| `server/__tests__/snapshot-demo.test.js` | 6 | 快照测试示例 |
+| `public/__tests__/utils.test.js` | 58 | 前端纯函数：escHtml, basename, formatFileSize 等 |
+| `e2e/app.spec.js` | 8 | E2E：页面加载、导航、主题切换 |
 
 **何时运行测试**:
 - 修改 `scanner.js`、`scrapers/`、`db.js` 后运行
 - 添加新功能前先写测试（TDD）
 - 提交前确认全部通过
 - CI/CD 管道中自动运行
+
+**测试生成**:
+```bash
+node scripts/generate-tests.js server/scanner.js  # 为模块生成测试骨架
+```
+
+**快照测试**:
+```bash
+set UPDATE_SNAPSHOTS=1 && cd server && node --test __tests__/*.test.js  # 更新快照
+```
 
 ## Available Skills
 
@@ -487,6 +508,8 @@ cd server && npm test    # 运行所有测试（73 个，14 个套件）
 | **code-explorer** | `skill("code-explorer")` | Deeply analyze existing feature by tracing execution paths, mapping architecture layers |
 | **code-reviewer** | `skill("code-reviewer")` | Review code for bugs, logic errors, security vulnerabilities, code quality |
 | **feature-dev** | `skill("feature-dev")` | Guide a feature through a structured 7-phase workflow with codebase understanding, architecture, and review |
+| **req-implement-test** | `skill("req-implement-test")` | Complete requirements-implementation-testing workflow: structured templates, TDD, regression testing, quality gates |
+| **test-generator** | `skill("test-generator")` | Auto-generate test skeletons by analyzing function signatures and code patterns |
 | **frontend-design** | `skill("frontend-design")` | Create distinctive, production-grade frontend interfaces with high design quality |
 | **security-review** | `skill("security-review")` | Focused security review of pending git changes |
 | **gsap-core** | `skill("gsap-core")` | GSAP core API — gsap.to(), from(), fromTo(), easing, stagger, matchMedia |

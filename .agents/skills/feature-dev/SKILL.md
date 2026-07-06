@@ -30,11 +30,15 @@ These bias toward caution over speed — use judgment on trivial tasks.
 Goal: Understand what needs to be built.
 
 1. Create a todo list covering all seven phases.
-2. If the feature is unclear, ask the user:
-   - What problem are they solving?
-   - What should the feature do?
-   - Any constraints or requirements?
-3. Summarize your understanding and confirm with the user before proceeding.
+2. **使用需求模板**：要求用户填写 `REQUIREMENTS-TEMPLATE.md`（同目录），或协助填写。模板包含：
+   - 一句话描述
+   - 解决什么问题
+   - 验收标准（至少 3 条可测试标准）
+   - 边界情况清单
+   - 影响范围
+   - 非目标
+3. 如果用户已提供清晰需求，直接确认模板内容；如果模糊，先协助填写模板再继续。
+4. Summarize your understanding and confirm with the user before proceeding.
 
 ## Phase 2: Codebase exploration
 
@@ -82,19 +86,30 @@ Goal: Build the feature.
 2. Re-read all relevant files identified earlier.
 3. Implement following the chosen architecture.
 4. Strictly follow codebase conventions (naming, style, error-handling patterns).
-5. Update todos as you progress.
+5. **同步写测试（TDD 强制化）**：
+   - 后端模块：使用 `node scripts/generate-tests.js <module>` 生成测试骨架
+   - 前端纯函数：在 `public/__tests__/` 添加单元测试
+   - 每完成一个功能点，立即运行测试确认通过
+6. Update todos as you progress.
 
 ## Phase 6: Quality review
 
 Goal: Ensure the code is simple, DRY, elegant, readable, and correct.
 
-1. Dispatch 3 `code-reviewer` sub-tasks in parallel, each with a different focus:
+1. **运行所有测试**：
+   - 后端测试：`cd server && npm test`
+   - 前端单元测试：`npm run test:frontend`
+   - 确认所有测试通过
+2. **回归测试**：
+   - 如果修改了 scanner/scrapers/db，运行快照测试确认输出未变
+   - 如果修改了前端 UI，运行 `npm run test:e2e` 验证关键流程
+3. Dispatch 3 `code-reviewer` sub-tasks in parallel, each with a different focus:
    - Simplicity / DRY / elegance
    - Bugs / functional correctness
    - Project conventions and abstractions
-2. Consolidate findings and rank issues by severity.
-3. Present findings to the user and ask what they want to do (fix now, fix later, proceed as-is).
-4. Address issues based on their decision.
+4. Consolidate findings and rank issues by severity.
+5. Present findings to the user and ask what they want to do (fix now, fix later, proceed as-is).
+6. Address issues based on their decision.
 
 ## Phase 7: Summary
 

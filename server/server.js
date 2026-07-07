@@ -921,7 +921,8 @@ const server = http.createServer((req, res) => {
       }
     }
     const totalWatchSeconds = (data.playSessions || []).reduce((sum, s) => {
-      return sum + Math.max(0, s.clockTime || 0);
+      // Use duration (actual content watched) as primary, clockTime as fallback
+      return sum + Math.max(0, s.duration || 0, s.clockTime || 0);
     }, 0);
     jsonResp(res, 200, { watching, completed, total, totalEpWatched, totalWatchSeconds, totalFileSize, totalFileCount });
     return;
@@ -1023,22 +1024,25 @@ const server = http.createServer((req, res) => {
   // --- API: stats watch activity (area chart source) ---
   if (urlPath === '/api/stats/watch-activity' && req.method === 'GET') {
     const sessions = data.playSessions || [];
-    // Build last 6 months labels
+    // Build last 6 months labels using LOCAL time (toISOString is UTC, would shift month in UTC+8)
     const months = [];
     const now = new Date();
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const ym = d.toISOString().slice(0, 7); // "YYYY-MM"
+      const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
       const label = `${d.getFullYear()}年${d.getMonth() + 1}月`;
       months.push({ ym, label, minutes: 0 });
     }
-    // Aggregate clockTime by month
+    // Aggregate by month (parse startTime as Date for local month matching)
     for (const s of sessions) {
       if (!s.startTime || !s.endTime) continue;
-      const ym = s.startTime.slice(0, 7);
+      const sd = new Date(s.startTime);
+      const ym = `${sd.getFullYear()}-${String(sd.getMonth() + 1).padStart(2, '0')}`;
       const entry = months.find(m => m.ym === ym);
       if (entry) {
-        entry.minutes += Math.round(Math.max(0, s.clockTime || 0) / 60);
+        // Use duration (actual content watched) as primary, clockTime as fallback
+        const watchSecs = Math.max(0, s.duration || 0, s.clockTime || 0);
+        entry.minutes += Math.round(watchSecs / 60);
       }
     }
     jsonResp(res, 200, { months: months.map(m => ({ label: m.label, minutes: m.minutes })) });
@@ -1049,19 +1053,20 @@ const server = http.createServer((req, res) => {
   if (urlPath.startsWith('/api/anime/') && urlPath.endsWith('/sessions') && req.method === 'GET') {
     const id = decodeURIComponent(urlPath.slice('/api/anime/'.length, -'/sessions'.length));
     const sessions = data.playSessions.filter(s => s.animeId === id && s.endTime);
-    // Aggregate by date
+    // Aggregate by LOCAL date (avoid UTC shift for UTC+8 timezone)
     const byDate = {};
     for (const s of sessions) {
-      const dateKey = s.startTime.slice(0, 10);
+      const sd = new Date(s.startTime);
+      const dateKey = `${sd.getFullYear()}-${String(sd.getMonth() + 1).padStart(2, '0')}-${String(sd.getDate()).padStart(2, '0')}`;
       byDate[dateKey] = (byDate[dateKey] || 0) + Math.max(0, s.duration || 0);
     }
-    // Fill last 90 days
+    // Fill last 90 days using LOCAL dates
     const result = {};
     const now = new Date();
     for (let i = 89; i >= 0; i--) {
       const d = new Date(now);
       d.setDate(d.getDate() - i);
-      const key = d.toISOString().slice(0, 10);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       result[key] = Math.round((byDate[key] || 0) / 60);
     }
     jsonResp(res, 200, result);
@@ -1078,6 +1083,11 @@ const server = http.createServer((req, res) => {
     }
     // Update downloaded status
     anime.downloaded = fs.existsSync(anime.folderPath);
+    // Clean bilingual Bangumi summaries for existing data
+    if (anime.summary) {
+      const { truncateSummary } = require('./scrapers/bangumi');
+      anime.summary = truncateSummary(anime.summary);
+    }
     jsonResp(res, 200, anime);
     return;
   }
@@ -1418,6 +1428,14 @@ const server = http.createServer((req, res) => {
         const ep = a.episodes.find(e => e.filePath === filePath);
         if (ep) { targetAnime = a; targetEp = ep; break; }
       }
+      // Calculate start position in seconds
+      // Frontend sends position as 0-1 (ep.progress after normalization)
+      // For resume: convert 0-1 to seconds using known episode duration
+      // For legacy/corrupt data (>1): already in seconds, use as-is
+      let startSeconds = Math.round(position || 0);
+      if (targetEp && targetEp.duration && position > 0 && position < 1) {
+        startSeconds = Math.round(position * targetEp.duration);
+      }
       let sessionId = null;
       if (targetAnime && targetEp) {
         // Auto-mark all previous episodes as watched when starting a new episode
@@ -1442,7 +1460,7 @@ const server = http.createServer((req, res) => {
           endTime: null,
           duration: 0,
           clockTime: 0,
-          progressStart: position || 0,
+          progressStart: startSeconds,
         });
         if (data.playSessions.length > MAX_PLAY_SESSIONS) {
           data.playSessions.sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
@@ -1456,16 +1474,18 @@ const server = http.createServer((req, res) => {
         let settled = false;
         let spawnError = null;
         const spawnResult = await new Promise((resolve) => {
-          startMpv(mpvPath, filePath, position || 0, {
+          startMpv(mpvPath, filePath, startSeconds || 0, {
             onProgress: ({ sessionId: cbSid, filePath: fp, progress, peakPos, watched, duration, final }) => {
               if (cbSid !== sessionId) return;
               const active = activePlays.get(fp);
               if (!active) return;
               const ep = active.episode;
-              ep.progress = progress;
+              // mpv time-pos is in seconds; normalize to 0-1 for storage
+              const normalizedProgress = duration > 0 ? Math.min(1, Math.max(0, progress / duration)) : progress;
+              ep.progress = normalizedProgress;
               if (duration > 0) ep.duration = duration;
               if (watched) ep.watched = true;
-              db.updateEpisodeProgress(active.anime.id, ep.number, { progress, duration: duration > 0 ? duration : undefined, watched });
+              db.updateEpisodeProgress(active.anime.id, ep.number, { progress: normalizedProgress, duration: duration > 0 ? duration : undefined, watched });
               if (active.sessionId) {
                 const session = data.playSessions.find(s => s.sessionId === active.sessionId);
                 if (session) {

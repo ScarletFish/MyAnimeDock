@@ -146,6 +146,25 @@ class BangumiScraper {
     return filepath;
   }
 
+  /**
+   * Truncate Bangumi summary to remove Japanese text after Chinese text.
+   * Bangumi often stores bilingual summaries: Chinese version first, then Japanese.
+   * Detection uses hiragana (U+3040-U+309F) and katakana (U+30A0-U+30FF) which
+   * are unique to Japanese and never appear in Chinese text.
+   * - If the first line contains kana → summary is entirely Japanese, keep as-is.
+   * - If no kana detected → Chinese/English only, keep as-is.
+   * - If Chinese lines followed by Japanese lines → truncate at first kana line.
+   */
+  static truncateSummary(summary) {
+    if (!summary) return summary;
+    const lines = summary.split('\n').filter(l => l.trim());
+    if (lines.length <= 1) return summary;
+    const hasKana = /[\u3040-\u309F\u30A0-\u30FF]/;
+    const firstJpIdx = lines.findIndex(l => hasKana.test(l));
+    if (firstJpIdx <= 0) return summary; // all Japanese or no Japanese detected
+    return lines.slice(0, firstJpIdx).join('\n');
+  }
+
   async fetchMetadata(title, coverDir, subjectId, preDetail) {
     let detail = preDetail;
     if (!detail) {
@@ -168,7 +187,7 @@ class BangumiScraper {
       bangumiId: subjectId,
       bangumiTitle: detail.name_cn || detail.name || null,
       bangumiTitleJp: detail.name || null,
-      summary: detail.summary || null,
+      summary: BangumiScraper.truncateSummary(detail.summary) || null,
       coverUrl: detail.images?.large || null,
       localCover,
       rating: detail.rating?.score ? parseFloat(detail.rating.score.toFixed(1)) : null,
@@ -252,3 +271,4 @@ class BangumiScraper {
 }
 
 module.exports = BangumiScraper;
+module.exports.truncateSummary = BangumiScraper.truncateSummary.bind(BangumiScraper);

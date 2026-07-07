@@ -735,6 +735,7 @@ html {
   margin-left: 3.75rem;
   height: 100vh;
   overflow-y: auto;
+  overflow-anchor: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
 }

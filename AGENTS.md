@@ -334,6 +334,30 @@ UI 缩放使用 CSS 自定义属性 `--scale` 实现，**禁止使用 CSS `zoom`
 | 间距/内边距 | 使用 `--space-*` 变量 | `padding: var(--space-4)` |
 | 固定覆盖层 | 禁用缩放：`--scale: 1` | `.theme-dock { --scale: 1; }` |
 
+## Debug Diagnostic System
+
+`public/js/debug.js` — 前端诊断系统，默认关闭，全环境可用。
+
+**设计原则**：调试工具跟随代码，不跟随环境。不区分 dev/prod，只区分"需不需要"。默认零开销，需要时 F12 启用。
+
+```js
+__debug.toggle()              // 启用/关闭（localStorage 持久化）
+__debug.log(tag, ...args)     // 带标签的 console.log，关闭时不输出
+__debug.snapshot(label)       // 快照：view, scrollTop, scrollHeight, 数据长度等
+```
+
+**何时用**：遇到前端状态类 bug（滚动、视图切换、数据不一致）时，先用 `__debug.toggle()` 打开日志，复现一遍，看锚点输出定位问题，而不是直接猜原因。
+
+**埋点位置**（遇到新 bug 时应在相关代码追加 snapshot/log）：
+
+| 位置 | 文件:行 | 记录内容 |
+|------|---------|----------|
+| `showView()` 前后 | `app.js:24-28` | view 切换 + scrollTop 变化 |
+| `loadLibrary()` 软/硬路径 | `library.js:144-155` | soft判定 + ID 对比结果 |
+| `restoreLibraryScroll()` | `library.js:169-173` | 实际设的 scrollTop + max scrollable |
+
+**误区预防**：过去调试 scroll 恢复花了很长时间（6 次尝试），根本原因是`showView()`中 scrollTop 保存**晚于**视图切换，导致坐标空间错误。如果 debug 日志当时就位，一次 snapshot 就能发现——`libraryScrollTop` 的值在 library→detail 时就已经是 detail 空间的值了。
+
 ## Development Workflow — 四层验证
 
 ### Tier 0 — Rust 类型检查（~20 秒）

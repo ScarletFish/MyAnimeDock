@@ -88,7 +88,7 @@ function renderAnimeCard(anime, options = {}) {
         '</svg></div>')
     : '';
 
-  return '<div class="' + cardClass + '" onclick="' + onClick + '(\'' + id + '\', this)" ' +
+  return '<div class="' + cardClass + '" data-id="' + id + '" onclick="' + onClick + '(\'' + id + '\', this)" ' +
     'oncontextmenu="' + onContextMenu + '(event, \'' + id + '\')" ' +
     extraAttrs +
     '>' +

@@ -880,17 +880,8 @@ async function mmStartSync(animeIds) {
     mmRenderSyncSummary(matched, failed, mmSyncLog.length);
   }
 
-  if (mmSyncCancelled) {
-    showToast('匹配已取消', 'info');
-  } else {
-    const hasFailed = failed > 0;
-    if (hasFailed) {
-      showToast('部分条目匹配失败，请手动修正', 'warning');
-    } else {
-      showToast('全部匹配完成', 'success');
-    }
-    // Refresh library view with new metadata
-    if (matched > 0 && typeof loadLibrary === 'function') loadLibrary();
+  if (!mmSyncCancelled && matched > 0 && typeof loadLibrary === 'function') {
+    loadLibrary();
   }
 }
 

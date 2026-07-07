@@ -433,4 +433,5 @@ module.exports = {
   extractBaseAndSuffix,
   parallelMap,
   isPrimarilyRomaji,
+  truncateSummary: BangumiScraper.truncateSummary,
 };

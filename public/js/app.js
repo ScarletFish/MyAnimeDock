@@ -5,6 +5,16 @@ let libraryScrollTop = 0;
 let _libraryChangingView = false; // set by showView to skip scroll-save in loadLibrary
 
 function showView(view) {
+  const mc = document.querySelector('.main-content');
+
+  // Save library scroll BEFORE toggling view visibility
+  // At this point library view is still visible, so mc.scrollTop is in
+  // the library content coordinate system — the only correct moment to save.
+  if (currentView === 'library' && view !== 'library' && mc) {
+    libraryScrollTop = mc.scrollTop;
+  }
+  __debug.snapshot(currentView + ' → ' + view + ' (after save, before toggle)');
+
   const views = ['discovery', 'library', 'stats', 'mylist', 'detail'];
   for (const v of views) {
     const el = document.getElementById(v + 'View');
@@ -17,14 +27,8 @@ function showView(view) {
   document.getElementById('btnStats').classList.toggle('active', view === 'stats');
   document.getElementById('btnMyList').classList.toggle('active', view === 'mylist');
 
-  const mc = document.querySelector('.main-content');
-
-  // Save library scroll before leaving
-  if (currentView === 'library' && view !== 'library' && mc) {
-    libraryScrollTop = mc.scrollTop;
-  }
-
   currentView = view;
+  __debug.snapshot(currentView + ' (after toggle)');
 
   // Scroll to top when entering detail view
   if (view === 'detail') {
@@ -40,7 +44,7 @@ function showView(view) {
   if (view === 'discovery') loadDiscovery();
   if (view === 'library') {
     _libraryChangingView = true;
-    loadLibrary();
+    loadLibrary(true);
   }
   if (view === 'mylist') loadMyList();
   if (view === 'stats') {

@@ -130,7 +130,7 @@ function killCardAnimations() {
   if (cardScrollTrigger) { cardScrollTrigger.kill(); cardScrollTrigger = null; }
 }
 
-async function loadLibrary() {
+async function loadLibrary(soft = false) {
   try {
     // Save scroll for in-place refresh (context menu delete/archive, etc.)
     // When called from showView (view switch), skip — showView already saved it
@@ -139,9 +139,26 @@ async function loadLibrary() {
       if (mc) libraryScrollTop = mc.scrollTop;
     }
     _libraryChangingView = false;
-    libraryData = await API.get('/api/library');
-    renderDashboard();
-    restoreLibraryScroll();
+    var newData = await API.get('/api/library');
+
+    // Soft refresh: preserve ALL DOM when data hasn't changed
+    // No layout shift → scroll position stays exactly as saved
+    // Only skip re-render if we have existing DOM (first load always re-renders)
+    if (soft && libraryData.length > 0) {
+      var oldIds = libraryData.map(function(a) { return a.id; }).sort().join(',');
+      var newIds = newData.map(function(a) { return a.id; }).sort().join(',');
+      if (oldIds === newIds) {
+        libraryData = newData;
+        __debug.snapshot('loadLibrary soft — before restore');
+        restoreLibraryScroll();
+        return;
+      }
+    }
+
+    libraryData = newData;
+    await renderDashboard();     // 等所有异步 section（stats）加载完
+    __debug.snapshot('loadLibrary hard — before restore');
+    restoreLibraryScroll();      // 此时内容高度已稳定
   } catch (e) {
     // Tauri 初始加载时（frontendDist，非 server 源）静默失败
     if (window.location.origin !== 'http://localhost:3456') return;
@@ -153,10 +170,8 @@ function restoreLibraryScroll() {
   if (currentView !== 'library') return;
   const mc = document.querySelector('.main-content');
   if (!mc) return;
-  // First pass: after sync render
-  requestAnimationFrame(() => { if (currentView === 'library') mc.scrollTop = libraryScrollTop; });
-  // Second pass: after async sections load (e.g. stats API)
-  setTimeout(() => { if (currentView === 'library') mc.scrollTop = libraryScrollTop; }, 250);
+  mc.scrollTop = libraryScrollTop;
+  __debug.log('SCROLL', 'restored to', libraryScrollTop, '(max:', mc.scrollHeight - mc.clientHeight, ')');
 }
 
 function renderDashboard() {
@@ -178,20 +193,22 @@ function renderDashboard() {
     '</div>';
   }).join('');
 
-  // Render each section
+  // Render each section, collect async render promises
+  const promises = [];
   for (const s of enabledSections) {
     const body = document.getElementById('dashSection-' + s.id);
     if (!body) continue;
-    if (s.id === 'stats') renderStatsSection(libraryData, body);
+    if (s.id === 'stats') promises.push(renderStatsSection(libraryData, body));
     else if (s.id === 'continueWatch') renderContinueSection(libraryData, body);
     else if (s.id === 'allAnime') renderAllAnimeSection(libraryData, body);
   }
+  return Promise.all(promises);
 }
 
 function renderStatsSection(data, container) {
   container.innerHTML = '<div class="dashboard-stats-loading">加载中...</div>';
 
-  API.get('/api/stats').then(function(stats) {
+  return API.get('/api/stats').then(function(stats) {
     function fmtTime(sec) {
       if (sec < 60) return sec + 's';
       if (sec < 3600) return Math.round(sec / 60) + 'min';

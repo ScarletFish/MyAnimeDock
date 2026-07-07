@@ -798,10 +798,56 @@ html {
   color: var(--fg-primary);
 }
 
+.dashboard-section-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+.dashboard-section-title {
+  font-family: var(--font-display);
+  font-size: calc(1.15rem * var(--scale));
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--fg-primary);
+}
+
 .view-header-right {
   display: flex;
   gap: var(--space-3);
   align-items: center;
+}
+
+/* ─── Status Section (dashboard grid segments) ─── */
+.status-section {
+  margin-bottom: calc(2rem * var(--scale));
+}
+.status-section:last-child {
+  margin-bottom: 0;
+}
+.status-section-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  margin-top: var(--space-4);
+}
+.status-section-header:first-child {
+  margin-top: 0;
+}
+.status-section-title {
+  font-size: calc(0.9375rem * var(--scale));
+  font-weight: 600;
+  color: var(--fg-muted);
+}
+.status-section-count {
+  font-size: calc(0.75rem * var(--scale));
+  font-weight: 600;
+  color: var(--fg-muted);
+  background: var(--bg-surface);
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
 }
 
 /* ─── Light theme overrides for settings ─── */
@@ -836,8 +882,6 @@ html.theme-transitioning .theme-dock {
   .view-header { flex-direction: column; gap: 1rem; align-items: flex-start; }
   .view-header-right { width: 100%; }
   .search-input { width: 100%; }
-  .sort-dropdown { width: 100%; }
-  .sort-dropdown-trigger { width: 100%; justify-content: space-between; }
   .detail-layout { grid-template-columns: 1fr; }
   .detail-left { position: static; }
   .detail-cover-wrap { max-width: 240px; }

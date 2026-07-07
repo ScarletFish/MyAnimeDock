@@ -11,49 +11,12 @@ const GRID_ZOOM_MAX = 2.0;
 const GRID_BASE_SIZE = 207;
 let gridZoom = parseFloat(localStorage.getItem('gridZoom') || '1');
 
-// Dashboard section definitions
-const DASHBOARD_SECTIONS = {
-  stats: { title: '统计概览', defaultEnabled: true },
-  continueWatch: { title: '继续观看', defaultEnabled: true },
-  allAnime: { title: '本地动漫', defaultEnabled: true }
-};
-const DASHBOARD_DEFAULT_LAYOUT = [
-  { id: 'stats', enabled: true },
-  { id: 'continueWatch', enabled: true },
-  { id: 'allAnime', enabled: true }
-];
-
-function getDashboardLayout() {
-  try {
-    const stored = localStorage.getItem('dashboardLayout');
-    if (stored) {
-      var layout = JSON.parse(stored);
-      // Remove sections no longer defined
-      layout = layout.filter(function(s) { return DASHBOARD_SECTIONS[s.id]; });
-      // Merge new sections from defaults that aren't in stored layout
-      var ids = layout.map(function(s) { return s.id; });
-      DASHBOARD_DEFAULT_LAYOUT.forEach(function(s) {
-        if (ids.indexOf(s.id) === -1) layout.push({ id: s.id, enabled: s.enabled });
-      });
-      return layout;
-    }
-  } catch {}
-  return DASHBOARD_DEFAULT_LAYOUT.map(s => ({ ...s }));
-}
-function saveDashboardLayout(layout) {
-  localStorage.setItem('dashboardLayout', JSON.stringify(layout));
-}
-
 function applyGridZoom() {
-  const grid = document.getElementById('libraryGrid');
-  if (!grid) return;
   const scale = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--scale')) || 1;
   const size = Math.round(GRID_BASE_SIZE * gridZoom * scale);
-  grid.style.setProperty('--grid-min', size + 'px');
-  grid.style.gridTemplateColumns = `repeat(auto-fill, minmax(${size}px, 1fr))`;
-  // Also apply to mylist grids
   document.documentElement.style.setProperty('--grid-zoom-size', size + 'px');
-  document.querySelectorAll('#mylistView .grid-container').forEach(g => {
+  // Apply to all library and mylist grids
+  document.querySelectorAll('#libraryDashboard .grid-container, #mylistView .grid-container').forEach(g => {
     g.style.gridTemplateColumns = `repeat(auto-fill, minmax(${size}px, 1fr))`;
   });
 }
@@ -73,57 +36,6 @@ function showZoomLevel() {
 }
 
 gsap.registerPlugin(ScrollTrigger);
-
-function initSortSelect() {
-  const dropdown = document.getElementById('librarySort');
-  const saved = localStorage.getItem('librarySort') || 'default';
-  const target = dropdown.querySelector(`.sort-dropdown-option[data-value="${saved}"]`);
-  if (target) {
-    dropdown.querySelectorAll('.sort-dropdown-option').forEach(o => o.classList.remove('selected'));
-    target.classList.add('selected');
-    dropdown.querySelector('.sort-dropdown-label').textContent = target.textContent;
-  }
-  Object.defineProperty(dropdown, 'value', {
-    get() {
-      const sel = dropdown.querySelector('.sort-dropdown-option.selected');
-      return sel ? sel.dataset.value : 'default';
-    }
-  });
-}
-
-// Global listeners — bound once, always check current DOM
-document.addEventListener('click', (e) => {
-  const dropdown = document.getElementById('librarySort');
-  if (dropdown && !dropdown.contains(e.target)) closeSortDropdown();
-});
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') closeSortDropdown();
-});
-
-function toggleSortDropdown() {
-  const dropdown = document.getElementById('librarySort');
-  const isOpen = dropdown.classList.contains('open');
-  if (isOpen) closeSortDropdown();
-  else {
-    dropdown.classList.add('open');
-    dropdown.focus();
-  }
-}
-
-function closeSortDropdown() {
-  var el = document.getElementById('librarySort');
-  if (el) el.classList.remove('open');
-}
-
-function selectSortOption(opt) {
-  const dropdown = document.getElementById('librarySort');
-  dropdown.querySelectorAll('.sort-dropdown-option').forEach(o => o.classList.remove('selected'));
-  opt.classList.add('selected');
-  dropdown.querySelector('.sort-dropdown-label').textContent = opt.textContent;
-  localStorage.setItem('librarySort', opt.dataset.value);
-  closeSortDropdown();
-  filterLibrary();
-}
 
 function killCardAnimations() {
   if (cardTween) { cardTween.kill(); cardTween = null; }
@@ -149,6 +61,11 @@ async function loadLibrary(soft = false) {
       var newIds = newData.map(function(a) { return a.id; }).sort().join(',');
       if (oldIds === newIds) {
         libraryData = newData;
+        // Refresh stats + continue section (data may have changed: progress, counts)
+        var statsBody = document.getElementById('dashSection-stats');
+        if (statsBody) await renderStatsSection(libraryData, statsBody);
+        var contBody = document.getElementById('dashSection-continueWatch');
+        if (contBody) renderContinueSection(libraryData, contBody);
         __debug.snapshot('loadLibrary soft — before restore');
         restoreLibraryScroll();
         return;
@@ -178,30 +95,27 @@ function renderDashboard() {
   const container = document.getElementById('libraryDashboard');
   if (!container) return;
 
-  const layout = getDashboardLayout();
-  const enabledSections = layout.filter(s => s.enabled);
-
-  // Build HTML structure
-  container.innerHTML = enabledSections.map(s => {
-    const def = DASHBOARD_SECTIONS[s.id];
-    if (!def) return '';
-    return '<div class="dashboard-section" data-section="' + s.id + '">' +
-      '<div class="dashboard-section-header">' +
-        '<span class="dashboard-section-title">' + def.title + '</span>' +
-      '</div>' +
-      '<div class="dashboard-section-body" id="dashSection-' + s.id + '"></div>' +
+  container.innerHTML =
+    '<div class="dashboard-section" data-section="stats">' +
+      '<div class="dashboard-section-header"><span class="dashboard-section-title">统计概览</span></div>' +
+      '<div class="dashboard-section-body" id="dashSection-stats"></div>' +
+    '</div>' +
+    '<div class="dashboard-section" data-section="continueWatch">' +
+      '<div class="dashboard-section-header"><span class="dashboard-section-title">继续观看</span></div>' +
+      '<div class="dashboard-section-body" id="dashSection-continueWatch"></div>' +
+    '</div>' +
+    '<div class="dashboard-section" data-section="localLibrary">' +
+      '<div class="dashboard-section-header"><span class="dashboard-section-title">本地动漫</span></div>' +
+      '<div class="dashboard-section-body" id="dashSection-localLibrary"></div>' +
     '</div>';
-  }).join('');
 
-  // Render each section, collect async render promises
+  // Render sections
   const promises = [];
-  for (const s of enabledSections) {
-    const body = document.getElementById('dashSection-' + s.id);
-    if (!body) continue;
-    if (s.id === 'stats') promises.push(renderStatsSection(libraryData, body));
-    else if (s.id === 'continueWatch') renderContinueSection(libraryData, body);
-    else if (s.id === 'allAnime') renderAllAnimeSection(libraryData, body);
-  }
+  var statsBody = document.getElementById('dashSection-stats');
+  if (statsBody) promises.push(renderStatsSection(libraryData, statsBody));
+  var contBody = document.getElementById('dashSection-continueWatch');
+  if (contBody) renderContinueSection(libraryData, contBody);
+  renderStatusGrids(libraryData);
   return Promise.all(promises);
 }
 
@@ -285,11 +199,24 @@ function renderContinueSection(data, container) {
       var ep = findContinueEpisode(a);
       var thumbUrl = '';
       if (ep) {
-        var thumbTime = ep.progress > 0 ? ep.progress : 60;
+        // Same thumbnail as detail page watch card: use progress position if available
+        // Guard against corrupt 0-1 normalized data: treat <1s as invalid for regular videos
+        var durationSafe = ep.duration > 0 ? ep.duration : 0;
+        var thumbTime = 60; // default fallback: 1min in
+        if (ep.progress > 0 && durationSafe > 0) {
+          if (ep.progress >= 1 || ep.progress > durationSafe * 0.5) {
+            // Sane seconds value, clamp to < duration
+            thumbTime = Math.min(Math.round(ep.progress), durationSafe - 10);
+          } else {
+            // Suspicious (< 1s or less than half of duration for >2s content) → 25% in
+            thumbTime = Math.round(durationSafe * 0.25);
+          }
+        }
+        if (thumbTime <= 0) thumbTime = 60;
         thumbUrl = '/api/thumbnail?path=' + encodeURIComponent(ep.filePath) + '&time=' + thumbTime;
       }
       var coverSrc = a.localCover
-        ? '/covers/' + path.basename(a.localCover) + '?w=500&q=75'
+        ? '/covers/' + path.basename(a.localCover) + '?w=540&q=80'
         : (a.coverUrl || '');
       var bgStyle = thumbUrl ? ' style="background-image:url(' + escAttr(thumbUrl) + ')"' :
         (coverSrc ? ' style="background-image:url(' + escAttr(coverSrc) + ')"' : '');
@@ -315,208 +242,51 @@ function renderContinueSection(data, container) {
   '</div>';
 }
 
-function renderAllAnimeSection(data, container, filter) {
-  if (!filter) filter = '';
-  var currentStatusFilter = container._statusFilter || 'all';
-  var statusFilters = [
-    { id: 'all', label: '全部' },
-    { id: 'watching', label: '在看' },
-    { id: 'completed', label: '看完' },
-    { id: 'on_hold', label: '搁置' },
-    { id: 'dropped', label: '抛弃' }
+function renderStatusGrids(data) {
+  var container = document.getElementById('dashSection-localLibrary');
+  if (!container) return;
+
+  // Three status sections: filter null as wish (计划中)
+  var sections = [
+    { status: 'watching', label: '进行中' },
+    { status: 'wish', label: '计划中' },
+    { status: 'completed', label: '已完成' }
   ];
 
-  container.innerHTML =
-    '<div class="all-anime-toolbar">' +
-      '<div class="all-anime-status-tabs">' +
-        statusFilters.map(function(sf) {
-          return '<button class="all-anime-status-tab' + (currentStatusFilter === sf.id ? ' active' : '') + '" data-status="' + sf.id + '" onclick="setAllAnimeStatusFilter(\'' + sf.id + '\')">' + sf.label + '</button>';
-        }).join('') +
+  container.innerHTML = sections.map(function(cfg) {
+    var items = data.filter(function(a) {
+      return (a.myListStatus || 'wish') === cfg.status;
+    });
+    if (items.length === 0) return '';
+    var cardsHtml = items.map(function(a) { return renderAnimeCard(a); }).join('');
+    return '<div class="status-section" id="statusSection-' + cfg.status + '">' +
+      '<div class="status-section-header">' +
+        '<span class="status-section-title">' + cfg.label + '</span>' +
+        '<span class="status-section-count">' + items.length + '</span>' +
       '</div>' +
-      '<div class="all-anime-controls">' +
-        '<div class="sort-dropdown" id="librarySort" tabindex="0">' +
-          '<button class="sort-dropdown-trigger" onclick="toggleSortDropdown()">' +
-            '<span class="sort-dropdown-label">默认排序</span>' +
-            '<svg class="sort-dropdown-chevron" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>' +
-          '</button>' +
-          '<div class="sort-dropdown-panel">' +
-            '<div class="sort-dropdown-option" data-value="default" onclick="selectSortOption(this)">默认排序</div>' +
-            '<div class="sort-dropdown-option" data-value="pinyin" onclick="selectSortOption(this)">拼音</div>' +
-            '<div class="sort-dropdown-option" data-value="importDate" onclick="selectSortOption(this)">导入日期</div>' +
-            '<div class="sort-dropdown-option" data-value="rating" onclick="selectSortOption(this)">评分</div>' +
-          '</div>' +
-        '</div>' +
-        '<input type="text" class="search-input" id="librarySearch" placeholder="搜索动漫..." oninput="filterLibrary()">' +
-      '</div>' +
-    '</div>' +
-    '<div class="grid-container" id="libraryGrid"></div>' +
-    '<div class="empty-state" id="libraryEmpty" style="display:none">' +
-      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>' +
-      '<p>暂无条目</p>' +
-      '<p style="font-size: 14px; color: var(--fg-muted)">' + (filter ? '没有匹配"' + escHtml(filter) + '"的动漫' : '设置媒体目录后自动导入动漫') + '</p>' +
+      '<div class="grid-container" id="libraryGrid-' + cfg.status + '">' + cardsHtml + '</div>' +
     '</div>';
+  }).join('');
 
-  // Re-init sort dropdown
-  initSortSelect();
-
-  // Render grid using shared helpers
-  var filtered = getFilteredAnimeData(data, filter, currentStatusFilter);
-  renderAnimeGrid(filtered, filter);
-
-  // Set grid columns on initial render (not on filter/sort updates)
+  // Apply grid columns
   applyGridZoom();
-}
 
-function setAllAnimeStatusFilter(status) {
-  var body = document.getElementById('dashSection-allAnime');
-  if (!body) return;
-  body._statusFilter = status;
-  // Update active tab visually
-  var tabs = body.querySelectorAll('.all-anime-status-tab');
-  tabs.forEach(function(tab) {
-    tab.classList.toggle('active', tab.dataset.status === status);
-  });
-  // Only re-render grid, keep toolbar intact
-  var q = document.getElementById('librarySearch');
-  var filter = q ? q.value : '';
-  var filtered = getFilteredAnimeData(libraryData, filter, status);
-  renderAnimeGrid(filtered, filter);
-}
-window.setAllAnimeStatusFilter = setAllAnimeStatusFilter;
-
-function getFilteredAnimeData(data, filter, statusFilter) {
-  var filtered = [].concat(data);
-  if (statusFilter && statusFilter !== 'all') {
-    filtered = filtered.filter(function(a) { return a.myListStatus === statusFilter; });
-  }
-  if (filter) {
-    var q = filter.toLowerCase();
-    filtered = filtered.filter(function(a) {
-      return a.title.toLowerCase().includes(q) ||
-        (a.bangumiTitle && a.bangumiTitle.toLowerCase().includes(q)) ||
-        (a.pinyinTitle && a.pinyinTitle.toLowerCase().includes(q));
+  // Card reveal: only below-fold cards get fade-in animation
+  // (visible cards already display naturally — no flash)
+  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    var scroller = document.querySelector('.main-content');
+    var scrollerRect = scroller.getBoundingClientRect();
+    sections.forEach(function(cfg) {
+      var grid = document.getElementById('libraryGrid-' + cfg.status);
+      if (!grid) return;
+      Array.from(grid.children).forEach(function(card) {
+        var r = card.getBoundingClientRect();
+        if (!(r.bottom > scrollerRect.top && r.top < scrollerRect.bottom)) {
+          card.style.animation = 'cardReveal 300ms var(--ease-out) forwards';
+        }
+      });
     });
   }
-  var sortEl = document.getElementById('librarySort');
-  var sortMode = sortEl ? sortEl.value : 'default';
-  return sortLibrary(filtered, sortMode);
-}
-
-function renderAnimeGrid(filtered, filter) {
-  var grid = document.getElementById('libraryGrid');
-  var empty = document.getElementById('libraryEmpty');
-  if (!grid || !empty) return;
-
-  if (filtered.length === 0) {
-    killCardAnimations();
-    grid.innerHTML = '';
-    var ps = empty.querySelectorAll('p');
-    if (filter) {
-      ps[0].textContent = '未检索到结果';
-      ps[1].textContent = '没有匹配"' + filter + '"的动漫';
-    } else {
-      ps[0].textContent = '暂无条目';
-      ps[1].textContent = '设置媒体目录后自动导入动漫';
-    }
-    empty.style.display = 'flex';
-    return;
-  }
-
-  empty.style.display = 'none';
-  grid.innerHTML = filtered.map(function(a) { return renderAnimeCard(a); }).join('');
-
-  var cards = grid.querySelectorAll('.anime-card');
-  if (cards.length === 0) return;
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-
-  killCardAnimations();
-
-  var scroller = document.querySelector('.main-content');
-  var scrollerRect = scroller.getBoundingClientRect();
-  var visible = [];
-  var hidden = [];
-  cards.forEach(function(card) {
-    var r = card.getBoundingClientRect();
-    if (r.bottom > scrollerRect.top && r.top < scrollerRect.bottom) visible.push(card);
-    else hidden.push(card);
-  });
-  visible.forEach(function(card) {
-    card.style.animation = 'cardReveal 300ms var(--ease-out) forwards';
-  });
-
-  if (hidden.length > 0) {
-    gsap.set(hidden, { opacity: 0, y: 24, scale: 0.97 });
-    cardScrollTrigger = ScrollTrigger.create({
-      scroller: '.main-content',
-      trigger: grid,
-      start: 'top bottom',
-      once: true,
-      onEnter: function() {
-        cardTween = gsap.to(hidden, {
-          opacity: 1, y: 0, scale: 1,
-          stagger: 0.03,
-          duration: 0.35,
-          ease: 'back.out(1.4)',
-          onComplete: function() { cardTween = null; }
-        });
-      }
-    });
-  }
-}
-
-function filterLibrary() {
-  var q = document.getElementById('librarySearch');
-  var body = document.getElementById('dashSection-allAnime');
-  if (!body) return;
-  var filter = q ? q.value : '';
-  var statusFilter = body._statusFilter || 'all';
-  var filtered = getFilteredAnimeData(libraryData, filter, statusFilter);
-  renderAnimeGrid(filtered, filter);
-}
-
-function sortLibrary(items, mode) {
-  if (mode === 'default') return items;
-  const sorted = [...items];
-  switch (mode) {
-    case 'pinyin':
-      sorted.sort((a, b) => (a.pinyinTitle || '').localeCompare(b.pinyinTitle || ''));
-      break;
-    case 'importDate':
-      sorted.sort((a, b) => new Date(b.importedAt) - new Date(a.importedAt));
-      break;
-    case 'rating':
-      sorted.sort((a, b) => (b.rating || 0) - (a.rating || 0));
-      break;
-  }
-  return applySeriesGrouping(sorted);
-}
-
-function applySeriesGrouping(sorted) {
-  const seriesMap = new Map();
-  for (const item of sorted) {
-    if (!seriesMap.has(item.title)) seriesMap.set(item.title, []);
-    seriesMap.get(item.title).push(item);
-  }
-  const multiSeasonTitles = new Set();
-  for (const [title, items] of seriesMap) {
-    if (items.length > 1) {
-      multiSeasonTitles.add(title);
-      items.sort((a, b) => (a.season || Infinity) - (b.season || Infinity));
-    }
-  }
-  if (multiSeasonTitles.size === 0) return sorted;
-  const result = [];
-  const placed = new Set();
-  for (const item of sorted) {
-    if (placed.has(item.title)) continue;
-    if (multiSeasonTitles.has(item.title)) {
-      result.push(...seriesMap.get(item.title));
-      placed.add(item.title);
-    } else {
-      result.push(item);
-    }
-  }
-  return result;
 }
 
 // --- Context Menu ---
@@ -694,9 +464,10 @@ let syncInProgress = false;
 // 监听在滚动容器 .main-content 上，避免 Chromium 合成器滚动拦截 preventDefault()
 document.querySelector('.main-content').addEventListener('wheel', function(e) {
   if (!e.ctrlKey && !e.metaKey) return;
-  const grid = document.getElementById('libraryGrid');
-  const mylistGrid = document.querySelector('#mylistView .grid-container');
-  if (!grid || (!grid.contains(e.target) && (!mylistGrid || !mylistGrid.contains(e.target)))) return;
+  // Check if the target is inside any library or mylist grid
+  var inLibraryGrid = e.target.closest('#libraryDashboard .grid-container');
+  var inMyListGrid = e.target.closest('#mylistView .grid-container');
+  if (!inLibraryGrid && !inMyListGrid) return;
   e.preventDefault();
   // deltaY proportional: mouse notch ~100px → 0.08, trackpad light ~10px → 0.008
   const absDelta = Math.min(Math.abs(e.deltaY), 300);

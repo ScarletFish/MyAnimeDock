@@ -478,18 +478,6 @@ const server = http.createServer((req, res) => {
           n.parsedSeason = null;
         }
       }
-      // Migrate existing scannedTree titles: strip S\d+ from parsedTitle, compute specialSuffix
-      for (const n of tree) {
-        if (n.type === 'leaf') {
-          if (n.parsedTitle) {
-            n.parsedTitle = n.parsedTitle.replace(/\s*S\d+\s*$/i, '').trim();
-          }
-          if (!n.specialSuffix && n.parsedTitle) {
-            const suffixMatch = n.parsedTitle.match(/([~～][^~～]*[~～])\s*$/);
-            if (suffixMatch) n.specialSuffix = suffixMatch[1].trim();
-          }
-        }
-      }
       const libraryPaths = new Set(data.library.map(a => a.folderPath));
       for (const n of tree) {
         if (n.type === 'leaf') {
@@ -877,16 +865,6 @@ const server = http.createServer((req, res) => {
   // --- API: library list ---
   if (urlPath === '/api/library' && req.method === 'GET') {
     data.library.forEach(a => {
-      // 防御：episodes 可能存为数字（旧数据），统一转为数组
-      if (a.episodes != null && !Array.isArray(a.episodes)) a.episodes = [];
-      // Migrate existing titles: compute specialSuffix from title (which has ~...~ at end), strip S\d+ from title
-      if (a.specialSuffix == null && a.title) {
-        const suffixMatch = a.title.match(/([~～][^~～]*[~～])\s*$/);
-        if (suffixMatch) a.specialSuffix = suffixMatch[1].trim();
-      }
-      if (a.title) {
-        a.title = a.title.replace(/\s*S\d+\s*$/i, '').trim();
-      }
       const name = a.bangumiTitle || a.title || '';
       try {
         a.pinyinTitle = pinyinFn(name).map(p => (p[0] || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')).join('');
@@ -1429,9 +1407,8 @@ const server = http.createServer((req, res) => {
         if (ep) { targetAnime = a; targetEp = ep; break; }
       }
       // Calculate start position in seconds
-      // Frontend sends position as 0-1 (ep.progress after normalization)
-      // For resume: convert 0-1 to seconds using known episode duration
-      // For legacy/corrupt data (>1): already in seconds, use as-is
+      // ep.progress is stored in seconds (mpv time-pos)
+      // For legacy/normalized data (<1): convert 0-1 to seconds using known duration
       let startSeconds = Math.round(position || 0);
       if (targetEp && targetEp.duration && position > 0 && position < 1) {
         startSeconds = Math.round(position * targetEp.duration);
@@ -1480,12 +1457,11 @@ const server = http.createServer((req, res) => {
               const active = activePlays.get(fp);
               if (!active) return;
               const ep = active.episode;
-              // mpv time-pos is in seconds; normalize to 0-1 for storage
-              const normalizedProgress = duration > 0 ? Math.min(1, Math.max(0, progress / duration)) : progress;
-              ep.progress = normalizedProgress;
+              // progress = mpv time-pos in seconds; store as-is (frontend expects seconds)
+              ep.progress = progress;
               if (duration > 0) ep.duration = duration;
               if (watched) ep.watched = true;
-              db.updateEpisodeProgress(active.anime.id, ep.number, { progress: normalizedProgress, duration: duration > 0 ? duration : undefined, watched });
+              db.updateEpisodeProgress(active.anime.id, ep.number, { progress, duration: duration > 0 ? duration : undefined, watched });
               if (active.sessionId) {
                 const session = data.playSessions.find(s => s.sessionId === active.sessionId);
                 if (session) {

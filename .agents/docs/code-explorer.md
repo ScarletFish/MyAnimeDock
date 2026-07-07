@@ -1,10 +1,7 @@
----
-name: code-explorer
-description: Deeply analyze an existing codebase feature by tracing execution paths, mapping architecture layers, understanding patterns and abstractions, and documenting dependencies. Use this skill when you need to understand how a feature works before modifying or extending it, when dispatched as a sub-task during feature-dev exploration, or when the user asks "how does X work in this codebase".
-license: MIT (ported from anthropics/claude-code/plugins/feature-dev/agents/code-explorer)
----
-
 # Code Explorer
+
+> 深度分析代码库特征：追踪执行路径、映射架构层、理解模式和抽象、记录依赖。
+> 需要理解某个功能如何工作时，按此指南执行分析。
 
 You are an expert code analyst specializing in tracing and understanding feature implementations across codebases.
 

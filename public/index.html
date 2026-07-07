@@ -203,6 +203,7 @@
       <h1>统计</h1>
     </div>
     <div class="stats-grid" id="statsGrid">
+      <!-- Card 1: Word Cloud (unchanged) -->
       <div class="stats-card stats-card--wordcloud" id="statsWordCloudCard">
         <div class="stats-card-header">
           <h2>分类词云</h2>
@@ -225,6 +226,53 @@
         </div>
       </div>
 
+      <!-- Card 2: Watch Activity (new) -->
+      <div class="stats-card stats-card--activity" id="statsActivityCard">
+        <div class="stats-card-header">
+          <h2>观看活跃度</h2>
+          <span class="stats-card-subtitle">最近 6 个月观看时长趋势</span>
+          <button class="stats-refresh-btn" onclick="loadActivityChart()" title="刷新图表">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+          </button>
+        </div>
+        <div class="stats-card-body">
+          <div id="activityChartContainer"></div>
+          <div class="stats-loading" id="activityLoading">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+            加载中…
+          </div>
+          <div class="stats-empty" id="activityEmpty" style="display:none">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+            <p>暂无播放记录</p>
+            <p class="empty-hint">使用 mpv 播放视频后，活跃度趋势将在此展示</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 3: Rating Distribution (new) -->
+      <div class="stats-card stats-card--rating" id="statsRatingCard">
+        <div class="stats-card-header">
+          <h2>评分分布</h2>
+          <span class="stats-card-subtitle">Bangumi 评分偏好一览</span>
+          <button class="stats-refresh-btn" onclick="loadRatingChart()" title="刷新图表">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+          </button>
+        </div>
+        <div class="stats-card-body">
+          <div id="ratingChartContainer"></div>
+          <div class="stats-loading" id="ratingLoading">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+            加载中…
+          </div>
+          <div class="stats-empty" id="ratingEmpty" style="display:none">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+            <p>暂无评分数据</p>
+            <p class="empty-hint">导入动漫并获取元数据后，评分分布将在此展示</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 4: Season Distribution (rewritten) -->
       <div class="stats-card stats-card--season" id="statsSeasonCard">
         <div class="stats-card-header">
           <h2>季度分布</h2>
@@ -234,7 +282,7 @@
           </button>
         </div>
         <div class="stats-card-body">
-          <canvas id="seasonChartCanvas"></canvas>
+          <div id="seasonChartContainer"></div>
           <div class="stats-loading" id="seasonChartLoading">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
             加载中…

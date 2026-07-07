@@ -1036,7 +1036,7 @@ html[data-reduce-motion="true"] .ambient-orb { display: none !important; }
 .stats-card-body {
   padding: calc(1rem * var(--scale)) calc(1.5rem * var(--scale)) calc(1.5rem * var(--scale));
   position: relative;
-  min-height: 420px;
+  min-height: 280px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1062,6 +1062,8 @@ html[data-reduce-motion="true"] .ambient-orb { display: none !important; }
   text-align: center;
   color: var(--fg-muted);
   padding: 3rem 1rem;
+  width: 100%;
+  margin: auto;
 }
 
 .stats-empty svg {
@@ -1078,7 +1080,27 @@ html[data-reduce-motion="true"] .ambient-orb { display: none !important; }
   background: var(--bg-surface);
 }
 
-#seasonChartCanvas {
-  background: var(--bg-surface);
-  border-radius: var(--radius-md);
+/* Stats tooltip */
+.stats-tooltip {
+  display: none;
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  background: var(--bg-elevated, #2a2a3e);
+  color: var(--fg-primary, #ede8e2);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: calc(0.8125rem * var(--scale));
+  line-height: 1.5;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  white-space: nowrap;
+}
+
+/* D3 chart containers */
+#activityChartContainer,
+#ratingChartContainer,
+#seasonChartContainer {
+  width: 100%;
+  display: flex;
+  justify-content: center;
 }

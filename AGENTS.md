@@ -2,6 +2,67 @@
 
 Vanilla JS SPA + Node.js HTTP server. 自托管动漫媒体库管理器。
 
+## Agent Instructions — 工作流程
+
+用户提出任务时，按以下流程执行。**禁止跳过需求确认直接写代码。**
+
+### Step 1: 需求规范化
+
+加载 `skill("req-implement-test")`，用结构化提问提炼完整需求表（功能描述、数据来源、边界情况、验收标准、非目标），用户确认后再进入下一步。
+
+### Step 2: 理解数据流
+
+**任何涉及数据持久化、API 端点、或数据模型改动的任务**，必须先读 `.agents/docs/data-flow.md`，理解数据在系统中的完整流转路径（scan → import → metadata → SQLite → frontend）。
+
+这一步决定你的改动影响哪些文件、哪些 API、哪些数据表。
+
+### Step 3: 架构探索
+
+根据任务复杂度选择：
+- **小改动**（单文件/纯函数）→ 直接读代码
+- **跨模块改动** → 读 `.agents/docs/code-explorer.md` 按指南追踪执行路径
+- **新功能** → 加载 `skill("code-architect")` 设计实现蓝图
+
+### Step 4: 实现
+
+按项目规范编码（见 Key Patterns、Frontend Conventions、CSS 缩放标准）。
+
+### Step 5: 验证
+
+- 数据相关改动 → `cd server && npm test`
+- 根据改动类型选择验证层级（见 Development Workflow — 四层验证）
+
+### Step 6: 审查
+
+重要改动加载 `skill("code-reviewer")` 做代码审查；涉及外部输入/API 调用时加载 `skill("security-review")`。
+
+### Step 7: 回归测试
+
+**修 bug 时**：先写一个能复现 bug 的测试（确认失败），再修代码让它通过。
+**新增数据持久化功能时**：测试必须覆盖"修改 → `loadData()` 重载 → 验证"路径，只测内存状态不够。
+
+### Step 8: 文档更新
+
+涉及以下改动时，**必须**同步更新 `.agents/docs/` 中的参考文档：
+
+| 改动类型 | 更新文档 |
+|----------|----------|
+| 新增/修改 API 端点 | `.agents/docs/data-flow.md` — 对应的数据流节 |
+| 修改数据模型（Prisma schema） | `.agents/docs/data-flow.md` — Save Function Taxonomy |
+| 新增/修改数据持久化路径 | `.agents/docs/data-flow.md` — 对应的数据流节 |
+| 新增 scraper/外部集成 | `.agents/docs/data-flow.md` — Metadata Fetch Flow |
+
+### 技能速查
+
+| 场景 | 加载技能/文档 | 时机 |
+|------|--------------|------|
+| 需求不明确 | `skill("req-implement-test")` | 任何新功能/改动 |
+| 数据流相关 | 读 `.agents/docs/data-flow.md` | 涉及 db.js / API / 数据模型 |
+| 探索代码 | 读 `.agents/docs/code-explorer.md` | 需要追踪执行路径 |
+| 新功能设计 | `skill("code-architect")` | 架构级实现方案 |
+| 代码审查 | `skill("code-reviewer")` | 完成实现后 |
+| 安全审查 | `skill("security-review")` | 涉及外部输入 |
+
 ## Commands
 
 ```bash
@@ -22,11 +83,7 @@ npm run prisma:studio    # Open Prisma Studio (SQLite browser)
 node scripts/migrate-to-sqlite.js  # 从 JSON 迁移数据到 SQLite（一次性）
 start.bat             # Windows 菜单：开发/构建/清理/prisma 操作
 # 测试命令
-cd server && npm test    # 运行后端测试（79 tests）
-npm run test:frontend    # 运行前端单元测试（58 tests）
-npm run test:e2e         # 运行 E2E 测试
-npm run test:e2e:ui      # E2E 测试 UI 模式
-node scripts/generate-tests.js server/scanner.js  # 生成测试骨架
+cd server && npm test    # 运行数据持久化集成测试（17 tests）
 ```
 
 ## API Endpoints
@@ -121,8 +178,9 @@ public/            → 前端静态文件（无构建步骤）
 scripts/            → 构建/迁移工具
 ├── copy-sidecar-deps.js   → pkg 打包后复制原生模块（Prisma 引擎 + ffmpeg）
 └── migrate-to-sqlite.js   → JSON → SQLite 数据迁移（一次性）
-.agents/            → Agent 规则/技能
-└── skills/         → 专业技能（16 个：data-flow, gsap-*, feature-dev, code-reviewer 等）
+.agents/            → Agent 规则/技能/文档
+├── skills/         → 行为指令（req-implement-test, feature-dev, code-reviewer 等）
+└── docs/           → 参考文档（data-flow, code-explorer）
 opencode.json       → OpenCode 配置（插件声明）
 ```
 
@@ -164,43 +222,20 @@ opencode.json       → OpenCode 配置（插件声明）
 
 - **API 调用**: `await API.get('/api/...')`, `API.post()`, `API.del()`（`api.js` 封装）
 - **XSS 防护**: 所有用户数据用 `escHtml()` / `escAttr()` 包裹
-- **封面动画**: `detail.js` 中 `animateHeroCoverFlip()` — GSAP Flip，创建 `position:fixed` overlay，`Flip.getState()` → DOM 变化 → `Flip.from(state, { absolute: true })`
-- **主题**: CSS 自定义属性，`[data-theme="light"]` 覆盖深色变量
-- **图片动态缩放**: ffmpeg 实时缩放（替代已移除的 sharp），列表缩略图 `/covers/xxx.jpg?w=400&q=75`，详情页 `/covers/xxx.jpg?w=540&q=80`；首请求生成后缓存到 `covers/.resized/`
-- **视频缩略图**: ffmpeg `-ss {time} -i "{path}" -vframes 1 -q:v 5` 截帧，缓存到 `thumbs/`，API `/api/thumbnail?path=&time=`
-- **播放会话追踪**: mpv 模式在服务器内存维护 `activePlays` Map（`filePath → {sessionId, episode, anime}`），每 10s 通过 `db.updateEpisodeProgress()` + `db.updatePlaySession()` 精细化更新，mpv 关闭时 `db.savePlaySessions()` 落盘
-- **剧集热力图**: `detail.js` 中 `renderEpisodeHeatmap()` — 10 列色块网格（未观看/观看中/已观看），`addEventListener('click')` 绑定播放（此组件有意违反 onclick 约定）
-- **观看统计**: `detail.js` 中 `renderWatchStats()` — Canvas 柱状图，数据来自 `GET /api/anime/:id/sessions`；无数据时整个 `#watchStats` 模块隐藏
-- **详情页导航箭头**: `detail.js` 中 `initDetailNav()` — 左右边缘热区（50px）显示 SVG 箭头，点击/键盘 ArrowLeft/Right 切换动漫；顶部全宽热区（48px）显示 X 图标，点击返回资料库
-- **导航动画锁定**: `slideToAnime()` 中 `isSliding` 标志 + `document.body.style.pointerEvents = 'none'` 防止动画期间重复点击；`goPrev()`/`goNext()` 开头有 early guard
-- **拼音搜索**: `server.js` 中 `/api/library` 返回的 `pinyinTitle` 去掉声调（`normalize('NFD')` + 去除组合变音符号）；`library.js` 中 `renderLibrary()` 同时匹配 `title`/`bangumiTitle`/`pinyinTitle`
-- **浅色模式修正**: Canvas 图表色值根据 `data-theme` 切换（`rgba(44,36,24,...)` vs `rgba(237,232,226,...)`）；`.watch-card-title` 固定 `color: #fff`；`.season-badge` 在卡片覆盖层内使用白色文字；修复未定义的 `--text1`/`--text2`/`--text3` 变量
+- **封面动画**: GSAP Flip（`detail.js` 中 `animateHeroCoverFlip()`），创建 `position:fixed` overlay → `Flip.getState()` → DOM 变化 → `Flip.from(state, { absolute: true })`
+- **元数据来源：只有 Bangumi**: Bangumi 是唯一元数据来源（标题、封面、简介、评分、标签）。AniList 仅用于罗马音标题 + seasonChain 季度链。TMDB 为可选图片源。
+- **播放会话追踪**: `activePlays` Map（内存），每 10s 精细化更新 SQLite，mpv 关闭时落盘
+- **细粒度数据持久化**: 每个 API 端点只写入实际修改的 SQLite 表，避免全量 `saveData()` 导致 nodemon 误重启
+- **bangumiId 精准匹配**: `extractBgmId(name)` 从文件夹名提取 `[bgmN]` 数字 ID 作为主键（`String(bangumiId)`），手动导入项使用 `parsedTitle + Season`
+- **启动自动导入**: `autoImportNewFolders()` 在服务器启动后异步执行，扫描有 `[bgmN]` 标识的文件夹自动全流程导入
+- **拼音搜索**: `server.js` 返回 `pinyinTitle`（去声调），`library.js` 同时匹配 `title`/`bangumiTitle`/`pinyinTitle`
+- **多主题系统**: 6 种色彩主题（default/amber/ocean/sakura/emerald/violet）+ 独立 dark/light 模式，底部 dock 选择器切换即时生效
 - **GSAP 引用**: `public/vendor/gsap/`（从 `node_modules/gsap/dist/` 拷贝），不经过 npm 构建；`index.html` 中 `<script>` 直接加载
-- **Discovery 扁平扫描**: `data.scannedTree` 存扁平 leaf 数组（含 `parentChain`），旧树格式（`branch` 节点）在 `/api/browse` 时自动递归展平为 leaf，无需重扫
-- **兄弟组连续竖线**: `discovery.js` 中 `renderDiscovery()` 按 `parentChain` 分组，连续同 parent 的卡片包裹于 `.discovery-sibling-group`，其 `::before` 绘制 3px 垂直 accent 线（`position: absolute; left: -10px`，不参与布局）
-- **滚动条隐藏**: `html { overflow: hidden }` 禁用页面滚动条；`.main-content` 设为独立滚动容器，`scrollbar-width: none` + `::-webkit-scrollbar { display: none }` 彻底隐藏
-- **多源刮削**: `scrapers/index.js` → `ScraperRegistry` 统一注册、优先级、批量搜索；`bangumi.js`/`tmdb.js` 实现统一接口。注意：Bangumi 是唯一元数据来源，AniList 仅限罗马音/季度链。TMDB 为可选图片源。
-- **内联操作**: 卡片内直接显示「取消导入」「排除」「取消排除」按钮，无需详情抽屉
-- **细粒度数据持久化**: 每个 API 端点只写入实际修改的 SQLite 表（`saveLibrary` / `saveMemories` / `savePlaySessions` / `updateEpisodeProgress`），避免全量 `saveData()` 导致 nodemon 误重启
-- **MetaMatch 批量匹配**: `metamatch.js` 列表+面板布局，SSE 流式同步 `/api/library/sync/stream`，支持取消、重试失败项、手动修正搜索
-- **元数据来源：只有 Bangumi**: Bangumi 是唯一元数据来源（标题、封面、简介、评分、标签）。AniList 仅用于罗马音标题辅助匹配 + seasonChain 季度关系提取，其 genres/tags 不写入数据库，不作为分类标签来源。TMDB 为可选额外图片源（需配置 API Key）。
-- **AniList 罗马音辅助**: `scrapers/anilist.js` — GraphQL API，免费无需 Key。扫描后后台预取仅提取罗马音标题（`romajiTitle`）和季度链（`seasonChain`），不获取元数据字段。
-- **季度匹配**: Anime 表 `matchedSeason`/`totalSeasons` 字段（Prisma schema），由 AniList `extractSeasonChain()` 提取
-- **结构化日志**: `server/logger.js` — `debug/info/warn/error` + `[TAG]` 前缀，`logger.child('[TAG]')` 模块级标签，`LOG_LEVEL` 环境变量控制
-- **Sorensen-Dice 模糊匹配**: `scrapers/index.js` 中 `sorensenDice()` 用于搜索结果匹配，5 分钟 TTL 缓存避免重复请求
-- **MyList 状态管理**: `mylist.js` 中 `toggleStatusPopover()`/`setMyListItemStatus()` 管理状态（watching/wish/completed/on_hold/dropped）；卡片左上角 `.mylist-badge` 显示当前状态；弹窗支持鼠标离开 >100px 自动关闭
-- **状态自动创建**: 导入时自动创建 MyList 条目（默认 `watching`），删除动画时自动标记 `completed`；`db.saveMyList()` 仅写入 mylist 表
-- **主题切换按钮**: 设置页 theme 从 `<select>` 改为 toggle switch（`<input type="checkbox">`），onchange 实时调用 `handleThemeToggle()` + GSAP 波纹动画（从 toggle 位置向外扩散） + 全页 CSS 过渡（bg 0.7s/其他 0.55s）
-- **多主题系统**: 6 种色彩主题（default/amber/ocean/sakura/emerald/violet）+ 独立 dark/light 模式，`data-theme` 存色彩名、`data-theme-mode` 存明暗；default 主题用 `data-theme="dark|light"` 兼容旧选择器；底部 dock 选择器切换即时生效
-- **主题配色规范**: 所有主题 secondary 与 accent 同色系（色轮距离 ≤40°），渐变过渡自然无脏色；深色背景统一中性黑（R≈G≈B），不泛蓝；浅色背景保持中性或极微色偏，不铺满主题色
-- **底部视觉设置 Dock**: 主题选择、明暗切换、缩放滑块从设置模态框抽离到底部浮动 dock（`#themeDock`），支持折叠/展开（▾ 按钮），点击遮罩层折叠而非关闭；folded 状态显示 8px 手柄条
-- **启动自动导入**: `autoImportNewFolders()`（`server.js:2006`）在服务器启动后异步执行，扫描 mediaDir 下所有子文件夹，对有 `[bgmN]` 标识且尚未导入的文件夹自动执行全流程导入（metadata fetch + 回写入库 + MyList watching + Bangumi sync），无需用户干预
-- **bangumiId 精准匹配**: `extractBgmId(name)`（`scanner.js:398`）从文件夹名提取 `[bgmN]` 数字 ID，作为 anime 主键（`id: String(bgmId)`），匹配精度 100%；手动导入项（无 `[bgmN]`）仍使用 `parsedTitle + Season` 方案
-- **自动导入 Toast**: 首次页面加载时 `GET /api/config` 返回 `autoImport` 字段（一次性消费），前端检查 >0 则 `showToast('自动导入了 N 部新番')`
-- **仪表盘统计**: `renderStatsSection()` 异步获取 `/api/stats`，渲染为纯文字行（无卡片无图标），`justify-content: space-evenly` 均匀分布；数字用 `fg-primary`，标签用 `fg-muted`
-- **继续播放卡片**: `renderContinueSection()` 用剧集缩略图（`/api/thumbnail`）作背景，fallback 到封面；点击调用 `navigateToDetailWithPlay()` 进详情并自动播放（`pendingAutoPlay` 标记 + `setTimeout(playEpisode, 400)`）；卡片尺寸 480×210px
-- **仪表盘设置拖拽**: 用 pointer events（`pointerdown/pointermove/pointerup`）实现拖拽排序，六点手柄触发；同时保留上下箭头按钮；`list._dragCleanup` 防止监听器叠加
-- **浅色主题阴影**: 所有 `rgba(0,0,0,0.4~0.7)` 硬编码阴影在浅色主题下替换为 `rgba(44,36,24, 0.06~0.12)`，暖棕色低透明度
+- **Discovery 扁平扫描**: `data.scannedTree` 存扁平 leaf 数组（含 `parentChain`），旧树格式在 `/api/browse` 时自动展平
+- **MetaMatch 批量匹配**: `metamatch.js` 列表+面板布局，SSE 流式同步 `/api/library/sync/stream`，支持取消、重试
+- **MyList 状态管理**: 导入时自动创建 MyList 条目（默认 `watching`），删除动画时自动标记 `completed`
+- **Modal 弹窗模式**: `.modal-overlay` 包裹 `.modal`，overlay `onclick` 支持点击遮罩层关闭；右上角 `.modal-close-btn` 显式关闭
+- **详情页封面不能加 `decoding="async"`**：`renderDetail()` 中封面 `<img>` 必须 eager 加载，否则 GSAP Flip 动画完成时封面尚未解码，露出空白框架闪白
 
 ## Config
 
@@ -232,8 +267,6 @@ opencode.json       → OpenCode 配置（插件声明）
 | `uiScale` | number | `1.25` | UI 缩放倍数（前端以 % 显示，范围 75-150，前端除 100 后存储） |
 | `apiSources` | array | `[{type:"bangumi",...}]` | 元数据源列表，每项含 `type`/`url`/`key` |
 
-**注意**: Discovery（发现）视图执行扫描后显示候选列表供用户勾选导入，支持排除/取消关联/获取元数据等管理操作。
-
 ## Play Sessions（播放会话追踪）
 
 mpv 模式下自动记录播放进度到 SQLite。
@@ -259,260 +292,96 @@ mpv 模式下自动记录播放进度到 SQLite。
 
 ## Gotchas
 
-- Bangumi API 受代理影响时 fallback 到 `curl`（`scrapers/bangumi.js` 中自动检测）
-- `config.json` 在 `.gitignore` 中，不会提交
-- 标题解析依赖 `anitomy`（TypeScript 移植版，纯 JS 无原生模块），pkg 打包无额外步骤
-- 视频缩略图依赖 `ffmpeg`（PATH 中可用），生成时缓存到 `thumbs/` 目录，首次请求可能延迟
-- 无认证/授权，局域网内 `/api/quit` 可关闭服务器
-- mpv 通过 `spawn` + IPC pipe（`--input-ipc-server`）启动，实时追踪播放进度；spawn 错误通过 Promise 2s 超时窗口捕获并返回前端
-- `activePlays` Map（`filePath → {sessionId, episode, anime}`）仅存内存，服务器重启后丢失；持久化的 `playSessions` 保存在 SQLite
-- **动漫 ID 使用 bangumiId 作为主键**（`String(bangumiId)`），不怕改名，数据可重建。手动导入项（无 `[bgmN]` 标识）仍使用 `parsedTitle + Season` 方案。
-- **只支持 mpv 播放器**（`--input-ipc-server` IPC 管道实时追踪进度）。系统播放器模式已移除。
-- pkg 打包用 `process.pkg ? path.dirname(process.execPath) : __dirname` 处理路径
-- TMDB API 需要配置 API Key 才能启用（设置页填入）
-- 旧格式 `branch` 节点在 `/api/browse` 时自动递归展平为 leaf，无需手动重扫描
-- Tauri 开发模式：sidecar 不自动启动，需先运行 `npm run dev:server`，再运行 `npm run dev:tauri`
-- Tauri 生产构建：`npm run build`（先 pkg 打包 sidecar，然后 Tauri 构建 MSI/NSIS），依赖 Rust MSVC 工具链
-- Cargo mirror：清华源配置在 `src-tauri/.cargo/config.toml`
-- 构建缓存：`src-tauri/target/` 可达 5GB+，可安全删除后重新构建
-- pkg 打包 sidecar 后输出到 `src-tauri/server-x86_64-pc-windows-msvc.exe`，copy-sidecar-deps.js 复制原生模块到 `src-tauri/sidecar-modules/`
 - **DATA_DIR 差异**：dev 模式 DATA_DIR = `server/`；pkg/MSI 模式 DATA_DIR = `%APPDATA%/com.myanimedocker.app`
-- **数据加载顺序**：`init()` 从 SQLite（`db.loadData()`）加载数据——JSON 是同步写入源，SQLite 是持久化副本
 - **退出行为**：`/api/quit` 不调 `server.close()`（避免 keep-alive 阻塞响应），延迟 1.5s 后 `process.exit(0)`；Rust 监控线程检测 sidecar 退出后自动关闭 Tauri 窗口
-- **封面路径**：`localCover` 存储为绝对路径，迁移 DATA_DIR 后文件可能不存在，`init()` 中验证文件存在性，缺失则清空字段（前端显示灰色占位）
-- **window.close() 无效**：Tauri WebView 中 `window.close()` 仅对弹出窗口生效，需要通过 Rust `window.close()` 或 `__TAURI__` IPC 关闭主窗口
+- **封面路径**：`localCover` 存储为绝对路径，迁移 DATA_DIR 后文件可能不存在，`init()` 中验证文件存在性，缺失则清空字段
 - **Prisma 引擎路径**：pkg 模式下通过 `PRISMA_QUERY_ENGINE_LIBRARY` 环境变量指定引擎 DLL 路径，`NODE_PATH` 指向 `sidecar-modules/`
-- **AniList 预取**：扫描完成后自动后台调用 AniList 预取罗马音标题 + seasonChain（`prefetch()`），不获取元数据/分类标签，不阻塞主流程
-- **批量同步取消**：`/api/library/sync/stream` 支持客户端取消，`cancelledSyncSessions` Map 追踪取消状态
-- **Tauri sidecar 监控**：Rust 监控线程检测 sidecar 退出后自动关闭 Tauri 窗口；窗口关闭时 kill sidecar 进程
-- **nodemon data ignore**：`dev:server:watch` 忽略 `server/prisma/`、`server/covers/`、`server/thumbs/`、`server/scanned-tree.json`，防止数据写入触发重启
-- **详情页封面不能加 `decoding="async"` 或 `loading="lazy"`**：`renderDetail()` 中封面 `<img>` 必须 eager 加载，`animateHeroCoverFlip()` 的 `onComplete` 必须直接 reveal（不能用 `revealCover()` 检查 `img.complete`）。`decoding="async"` 会导致 GSAP Flip 动画完成时封面尚未解码，露出空白框架闪白。0.35s Flip 时长足够本地服务端图片完成加载+解码，不需要任何延迟/检查。
-
-## 设计理念与用户工作流
-
-本软件以「个人本地动漫库管理」为核心理念。用户的典型工作流如下：
-
-```
-下载好番（[bgmN] 命名规范） → 启动软件 → 自动扫描导入 → 观看管理 → 看完归档
-```
-
-### 用户期望的完整能力链
-
-1. **了解基本信息** — 自动刮削元数据（标题、封面、简介、评分等），支持多源（Bangumi/TMDB）
-2. **追踪观看进度** — 记录每集观看状态（未看/观看中/已看）、播放进度、观看时长统计
-3. **同步到 Bangumi** — 自动更新 Bangumi 个人列表的集数进度（未来功能）
-4. **看完后管理** — 支持个人评分、感想笔记（Memories 归档页）
-5. **BD 盘内容扩展** — 未来支持查看 SCANS、OST 音乐等 BD 特典内容
-6. **本地清理** — 看完后可删除本地文件，归档页作为「已观看证明」保留记录
-
-### 数据分层
-
-| 层级 | 页面 | 数据源 | 生命周期 |
-|------|------|--------|---------|
-| 资料库 | Library | `data.library`（本地文件） | 当前下载、正在观看 |
-| 追番列表 | Watching（未来） | 本地+Bangumi 同步 | 想看/在看/搁置的番 |
-| 归档 | Memories | `data.memories`（看完归档） | 已看完、已删除本地文件 |
-
-- 资料库 = 本地有文件的番，可播放、可管理进度
-- 追番列表 = 用户在 Bangumi 上关注的番，无论本地是否有文件（未来功能）
-- 归档 = 已看完的番的「纪念册」，保留评分、感想、封面
-  - **展示形式**：与资料库一致的瀑布流卡片网格（`anime-grid` + `anime-card`），封面 + 标题 + 评分 + 简评
-  - 点击卡片进入详情页（只读模式，不可播放本地不存在的文件）
-
-### 外部集成
-
-- **[ani-rss](https://github.com/wushuo894/ani-rss)** — 主要本地动漫下载来源（自动 RSS 订阅下载）
-- ani-rss v3.0.1+ 内置 **Swagger REST API**（需鉴权），可用于查询订阅列表、下载状态
-
-### 设计原则
-
-- **离线优先**：核心功能不依赖网络，Bangumi 同步为增强特性
-- **渐进增强**：先做本地管理，再打通外部同步
-- **尊重用户数据**：删除本地文件 ≠ 删除记录，归档自动保留
-
-## Tauri 桌面壳（Phases 0-6 已完成）
-
-### 架构路线
-
-Tauri v2 作为**桌面壳**，Node.js 后端以 **sidecar 进程** 方式运行。不重写 Rust 后端。
-
-```
-Tauri (窗口壳)
-  └── Sidecar: Node.js server (现有 server.js，不变)
-        └── HTTP API (:3456)
-              └── WebView: 现有前端 (HTML/CSS/JS，不变)
-```
-
-### 关键注意事项
-
-- Dev 模式：sidecar 不自动启动，需先 `npm run dev:server`，再 `npm run dev:tauri`
-- 生产构建：`npm run build:server`（pkg打包 sidecar）→ `npm run build:tauri`（Tauri 构建 MSI）
-- Cargo mirror：清华源配置在 `src-tauri/.cargo/config.toml`
-- 构建缓存：`src-tauri/target/` 可达 5GB+，可安全删除后重新构建
+- **数据加载顺序**：`init()` 从 SQLite（`db.loadData()`）加载数据——JSON 是同步写入源，SQLite 是持久化副本
+- **动漫 ID 使用 bangumiId 作为主键**（`String(bangumiId)`），不怕改名，数据可重建。手动导入项使用 `parsedTitle + Season`。
+- **只支持 mpv 播放器**（`--input-ipc-server` IPC 管道实时追踪进度）。系统播放器模式已移除。
+- **自动标记前集必须落盘**：播放第 N 集时自动标记前 N-1 集为 watched，必须调用 `db.updateEpisodesWatched()` 写入 SQLite，否则重启后丢失。
+- **window.close() 无效**：Tauri WebView 中 `window.close()` 仅对弹出窗口生效，需要通过 Rust `window.close()` 或 `__TAURI__` IPC 关闭主窗口
+- **Tauri 开发模式**：sidecar 不自动启动，需先 `npm run dev:server`，再 `npm run dev:tauri`
+- **Tauri 生产构建**：`npm run build`（先 pkg 打包 sidecar，然后 Tauri 构建 MSI/NSIS），依赖 Rust MSVC 工具链
+- **pkg 打包**：sidecar 输出到 `src-tauri/server-x86_64-pc-windows-msvc.exe`，`copy-sidecar-deps.js` 复制原生模块到 `src-tauri/sidecar-modules/`
+- **构建缓存**：`src-tauri/target/` 可达 5GB+，可安全删除后重新构建
+- **Cargo mirror**：清华源配置在 `src-tauri/.cargo/config.toml`
+- **无认证/授权**：局域网内 `/api/quit` 可关闭服务器
+- **视频缩略图依赖 ffmpeg**：PATH 中可用，生成时缓存到 `thumbs/`，首次请求可能延迟
 
 ## Frontend Conventions
 
 - `camelCase` 命名，2 空格缩进
-- 默认启动视图为 library（`app.js` 中 `showView('library')`），侧边栏 `btnDiscovery` 不再默认 `active`
-- HTML 事件用 `onclick` 属性（非 `addEventListener`），除 `settingsPlayerMode.change` 以及 `detail.js` 中 `renderEpisodeHeatmap()` 的热力方格点击（动态渲染必须用 `addEventListener`）
+- 默认启动视图为 library（`app.js` 中 `showView('library')`）
+- HTML 事件用 `onclick` 属性（除 `settingsPlayerMode.change` 和热力方格动态渲染用 `addEventListener`）
 - GSAP 已注册全局 `gsap.registerPlugin(Flip)`
-- 动画 `onComplete` 中不删除 `detail-enter-active` class（防止 `.view fadeSlideUp` 激活），由 `resetDetailEnter()` 在下次导航时清理
-- 搜索无结果时显示「未检索到结果 · 没有匹配"xxx"的动漫」（`library.js` 中动态切换 empty state 文案）
-- **Modal 弹窗模式**：`.modal-overlay` 包裹 `.modal`，overlay 设 `onclick="if(event.target===this)closeFn()"` 支持点击遮罩层关闭；右上角加 `.modal-close-btn`（✕ SVG 图标）作为显式关闭入口；底部 `.modal-actions` 不设「取消」文字按钮。参见 `#syncModal` 和 `#memoryModal`。
-- **模块化与全局状态**：
-  - 全局监听器只在脚本顶层绑一次，内部通过 `getElementById` 延迟查找 DOM（lazy lookup），不在绑定时捕获引用
-  - 局部刷新（filter/sort/status）只更新内容区域，不重建父容器（避免搜索框失焦、排序状态丢失）
-  - 数据逻辑和 DOM 渲染分离：纯函数处理 filter/sort，渲染函数只管 innerHTML
-  - 高频路径（搜索 oninput）不触发重量级操作（如 `applyGridZoom` 的 layout recalc）
-  - 操作 DOM 前检查元素存在性（非当前页面时 `getElementById` 返回 null）
+- 操作 DOM 前检查元素存在性（非当前页面时 `getElementById` 返回 null）
+- 局部刷新只更新内容区域，不重建父容器（避免搜索框失焦、排序状态丢失）
 
 ### CSS 缩放标准（`--scale` 变量）
 
 UI 缩放使用 CSS 自定义属性 `--scale` 实现，**禁止使用 CSS `zoom`**（导致 GSAP Flip 断裂、fixed 元素错位）。
 
-**机制**：
-- `:root { --scale: 1 }` 定义基准值（`styles.css:43`）
-- `applyZoom(scale)`（`app.js:173`）设置 `document.documentElement.style.setProperty('--scale', s)`
-- 所有可缩放尺寸通过 `calc(X * var(--scale))` 级联计算
+**机制**：`:root { --scale: 1 }`，`applyZoom(scale)`（`app.js:173`）设置属性，所有可缩放尺寸通过 `calc(X * var(--scale))` 级联计算。
 
 **硬性规则**：
 
 | 场景 | 做法 | 示例 |
 |------|------|------|
-| 间距/内边距 | 使用 `--space-*` 变量 | `padding: var(--space-4)` |
-| 圆角 | 使用 `--radius-*` 变量 | `border-radius: var(--radius-md)` |
 | font-size | 必须用 `calc(Xrem * var(--scale))` | `font-size: calc(0.8125rem * var(--scale))` |
 | 容器 max-width | 乘以 `--scale` | `max-width: calc(75rem * var(--scale))` |
-| grid gap/clamp 值 | 乘以 `--scale` | `gap: calc(clamp(1.5rem, 3vw, 3rem) * var(--scale))` |
-| 网格卡片尺寸 | `applyGridZoom()` 已自动处理 | 通过 `library.js:50` 乘入 `--scale` |
-| 固定覆盖层（dock/toast/context-menu） | 禁用缩放：`--scale: 1` | `.theme-dock { --scale: 1; }` |
-| JS inline style 尺寸 | 读取 `getComputedStyle` 的 `--scale` 乘算 | `parseFloat(getComputedStyle(docEl).getPropertyValue('--scale'))` |
-
-**可用的 CSS 变量**（`:root`，均自动缩放）：
-```
---space-1/2/3/4/5/6/8/10/12/16  → 间距、内边距、外边距、gap
---radius-sm/md/lg/xl             → 圆角
-```
-
-**例外**（不缩放的值）：
-- `z-index`、`opacity`、`flex`（无单位值）
-- `vw`/`vh`/`%` 值（视口/容器相对）
-- `s`/`ms`（动画时长）
-- `deg`（角度）
-- `line-height`（无单位时）
-- `box-shadow` 偏移（不缩放更自然）
+| grid gap/clamp | 乘以 `--scale` | `gap: calc(clamp(1.5rem, 3vw, 3rem) * var(--scale))` |
+| 间距/内边距 | 使用 `--space-*` 变量 | `padding: var(--space-4)` |
+| 固定覆盖层 | 禁用缩放：`--scale: 1` | `.theme-dock { --scale: 1; }` |
 
 ## Development Workflow — 四层验证
 
-**目标**：避免每次修改都打包 MSI/NSIS，根据改动类型选择最快的验证方式。
-
 ### Tier 0 — Rust 类型检查（~20 秒）
-
-仅检查 Rust 代码是否编译通过，不生成二进制，比完整构建快得多。
-
 ```bash
 npm run check:rust           # cargo check，只检查类型不编译
 ```
 
-- 用于 `into_string` 这类编译错误的快速发现
-- 无需启动 server 或 Tauri 窗口
-
 ### Tier 1 — JS 改动（秒级）
-
-含 `server/*.js` 后端逻辑和 `public/*` 前端文件。
-
 ```bash
 npm run dev:server:watch   # nodemon 自动监听 server/ + public/，修改后立即重启
 ```
+后端改动 → nodemon 自动重启；前端改动 → F5 刷新浏览器/Tauri 窗口。
 
-- 后端改动 → nodemon 自动重启 Node.js 进程
-- 前端改动 → 直接 F5 刷新 Tauri 窗口（或浏览器 http://localhost:3456）
-- 无需任何构建步骤
-
-### Tier 2 — Rust 改动 + 生产流程模拟（~1 分钟）
-
-含 `src-tauri/src/main.rs`、`tauri.conf.json`、`Cargo.toml`。
-
+### Tier 2 — Rust 改动（~1 分钟）
 ```bash
-# 方式 A：普通 dev（sidecar 手动启动，window 自动显示）
 npm run dev:server:watch    # 终端 1：后端
 npm run dev:tauri           # 终端 2：Tauri 窗口
-
-# 方式 B：生产流程模拟（sidecar 自启，visible:false → 轮询 → 显示）
-npm run dev:prod            # 先 build:server，再 TAURI_PROD=1 tauri dev
+# 或
+npm run dev:prod            # 生产流程模拟（sidecar 自启，visible:false → 轮询 → 显示）
 ```
-
-- **方式 A** 适用于日常 Rust 修改验证
-- **方式 B** 模拟完整生产启动流程（`TAURI_PROD=1` 环境变量使 dev 模式也启动 sidecar、隐藏窗口、轮询 /api/health、就绪后显示），可发现 toast 闪烁、窗口时序等问题
-- 也可以单独打包 release .exe 测试安装目录行为（不含 MSI 捆绑）：
-  ```bash
-  npm run build:exe   # cargo build --release，产出 target/release/myanimedocker.exe
-  ```
 
 ### Tier 3 — 最终打包（~5 分钟）
-
-Tier 0-2 验证通过后，确认 MSI/NSIS 安装体验：
-
 ```bash
-npm run build                # pkg sidecar → copy-sidecar-deps → tauri build (MSI + NSIS)
-npm run build:msi            # 仅 MSI
-npm run build:nsis           # 仅 NSIS
+npm run build                # pkg sidecar → tauri build (MSI + NSIS)
+npm run build:msi / build:nsis  # 仅安装器
 ```
-
-仅用于验证安装器效果、中文界面、升级覆盖等最终场景。
 
 ## Testing
 
 ```bash
-cd server && npm test    # 运行所有测试（79 tests）
-npm run test:frontend    # 运行前端单元测试（58 tests）
-npm run test:e2e         # 运行 E2E 测试
+cd server && npm test    # 运行数据持久化集成测试（17 tests）
 ```
-
-**测试框架**: Node.js 内置 `node:test` + `node:assert`，无外部依赖。
-
-**测试文件**:
 
 | 文件 | 测试数 | 覆盖模块 |
 |------|--------|----------|
-| `server/__tests__/scanner.test.js` | 28 | `extractBgmId`, `isExtraVideo`, `parseFolderName` |
-| `server/__tests__/scrapers.test.js` | 38 | `normalizeTitle`, `sorensenDice`, `detectSpecialType`, `extractBaseAndSuffix` |
-| `server/__tests__/db.test.js` | 7 | `loadData`, `saveLibrary`, `saveMyList`（集成测试，操作真实 SQLite） |
-| `server/__tests__/snapshot-demo.test.js` | 6 | 快照测试示例 |
-| `public/__tests__/utils.test.js` | 58 | 前端纯函数：escHtml, basename, formatFileSize 等 |
-| `e2e/app.spec.js` | 8 | E2E：页面加载、导航、主题切换 |
-
-**何时运行测试**:
-- 修改 `scanner.js`、`scrapers/`、`db.js` 后运行
-- 添加新功能前先写测试（TDD）
-- 提交前确认全部通过
-- CI/CD 管道中自动运行
-
-**测试生成**:
-```bash
-node scripts/generate-tests.js server/scanner.js  # 为模块生成测试骨架
-```
-
-**快照测试**:
-```bash
-set UPDATE_SNAPSHOTS=1 && cd server && node --test __tests__/*.test.js  # 更新快照
-```
+| `server/__tests__/db.test.js` | 17 | `loadData`, `saveLibrary`, `saveMyList`, `updateEpisodesWatched`, 全生命周期（导入→播放→归档→删除） |
 
 ## Available Skills
 
 | Skill | Load with | Purpose |
 |-------|-----------|---------|
-| **data-flow** | `skill("data-flow")` | Complete data flow reference: 10 major flows (config, scan, import, metadata, play sessions, memories, covers/thumbnails, dual-write, startup, call chain) with file:line references. Load before making data path changes or debugging persistence issues. |
-| **agents-md-improver** | `skill("agents-md-improver")` | Audit, evaluate, and improve project-rules files (AGENTS.md, CLAUDE.md) |
+| **req-implement-test** | `skill("req-implement-test")` | 需求规范化：结构化提问提炼完整需求（功能描述、数据来源、边界情况、验收标准、非目标），确认后再实现 |
 | **code-architect** | `skill("code-architect")` | Design feature architecture by analyzing existing codebase patterns, produce implementation blueprint |
-| **code-explorer** | `skill("code-explorer")` | Deeply analyze existing feature by tracing execution paths, mapping architecture layers |
 | **code-reviewer** | `skill("code-reviewer")` | Review code for bugs, logic errors, security vulnerabilities, code quality |
 | **feature-dev** | `skill("feature-dev")` | Guide a feature through a structured 7-phase workflow with codebase understanding, architecture, and review |
-| **req-implement-test** | `skill("req-implement-test")` | Complete requirements-implementation-testing workflow: structured templates, TDD, regression testing, quality gates |
-| **test-generator** | `skill("test-generator")` | Auto-generate test skeletons by analyzing function signatures and code patterns |
 | **frontend-design** | `skill("frontend-design")` | Create distinctive, production-grade frontend interfaces with high design quality |
 | **security-review** | `skill("security-review")` | Focused security review of pending git changes |
-| **gsap-core** | `skill("gsap-core")` | GSAP core API — gsap.to(), from(), fromTo(), easing, stagger, matchMedia |
+| **gsap-core** | `skill("gsap-core")` | GSAP core API — gsap.to(), from(), fromTo(), easing, duration, stagger, matchMedia |
 | **web-design-guidelines** | `skill("web-design-guidelines")` | Review UI code for Web Interface Guidelines compliance |
 | **gsap-timeline** | `skill("gsap-timeline")` | Timeline sequencing, position parameter, nesting, playback |
 | **gsap-scrolltrigger** | `skill("gsap-scrolltrigger")` | Scroll-linked animations, pinning, scrub, triggers |
@@ -521,3 +390,10 @@ set UPDATE_SNAPSHOTS=1 && cd server && node --test __tests__/*.test.js  # 更新
 | **gsap-frameworks** | `skill("gsap-frameworks")` | GSAP with Vue, Svelte, and other non-React frameworks |
 | **gsap-performance** | `skill("gsap-performance")` | Performance optimizations: transforms, will-change, layout avoidance |
 | **gsap-utils** | `skill("gsap-utils")` | gsap.utils utilities: clamp, mapRange, random, snap, wrap, toArray |
+
+## Reference Docs
+
+| Doc | Location | Purpose |
+|-----|----------|---------|
+| **data-flow** | `.agents/docs/data-flow.md` | Complete data flow reference: 14 major flows with file:line references. Read before making data path changes. |
+| **code-explorer** | `.agents/docs/code-explorer.md` | Code analysis guide: trace execution paths, map architecture layers, document dependencies. |

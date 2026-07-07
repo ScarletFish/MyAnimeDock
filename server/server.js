@@ -670,9 +670,9 @@ const server = http.createServer((req, res) => {
         // Auto-create MyList entry so imported items appear in MyList immediately
         if (!data.myList) data.myList = [];
         if (!data.myList.find(m => m.animeId === anime.id)) {
-          data.myList.push({ animeId: anime.id, rating: null, thoughts: '', notes: '' });
+          data.myList.push({ animeId: anime.id, status: 'wish', rating: null, thoughts: '', notes: '' });
         }
-        // 若有同 bangumiId 的 wish 条目，清理（已转为进行中）
+        // 若有同 bangumiId 的 wish 条目，清理（已导入 library）
         if (anime.bangumiId) {
           const wishIdx = data.myList.findIndex(m => !m.animeId && m.bangumiId === anime.bangumiId);
           if (wishIdx !== -1) {
@@ -995,6 +995,53 @@ const server = http.createServer((req, res) => {
       else seasonCount.winter++;
     }
     jsonResp(res, 200, { seasons: seasonCount });
+    return;
+  }
+
+  // --- API: stats ratings (histogram source) ---
+  if (urlPath === '/api/stats/ratings' && req.method === 'GET') {
+    const lib = data.library || [];
+    const bins = [0, 0, 0, 0, 0, 0, 0]; // 0-2, 2-4, 4-6, 6-7, 7-8, 8-9, 9-10
+    for (const a of lib) {
+      const r = a.rating;
+      if (r == null || typeof r !== 'number' || isNaN(r)) continue;
+      if (r < 2) bins[0]++;
+      else if (r < 4) bins[1]++;
+      else if (r < 6) bins[2]++;
+      else if (r < 7) bins[3]++;
+      else if (r < 8) bins[4]++;
+      else if (r < 9) bins[5]++;
+      else bins[6]++;
+    }
+    jsonResp(res, 200, {
+      bins,
+      labels: ['0-2', '2-4', '4-6', '6-7', '7-8', '8-9', '9-10']
+    });
+    return;
+  }
+
+  // --- API: stats watch activity (area chart source) ---
+  if (urlPath === '/api/stats/watch-activity' && req.method === 'GET') {
+    const sessions = data.playSessions || [];
+    // Build last 6 months labels
+    const months = [];
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const ym = d.toISOString().slice(0, 7); // "YYYY-MM"
+      const label = `${d.getFullYear()}年${d.getMonth() + 1}月`;
+      months.push({ ym, label, minutes: 0 });
+    }
+    // Aggregate clockTime by month
+    for (const s of sessions) {
+      if (!s.startTime || !s.endTime) continue;
+      const ym = s.startTime.slice(0, 7);
+      const entry = months.find(m => m.ym === ym);
+      if (entry) {
+        entry.minutes += Math.round(Math.max(0, s.clockTime || 0) / 60);
+      }
+    }
+    jsonResp(res, 200, { months: months.map(m => ({ label: m.label, minutes: m.minutes })) });
     return;
   }
 
@@ -1375,10 +1422,15 @@ const server = http.createServer((req, res) => {
       if (targetAnime && targetEp) {
         // Auto-mark all previous episodes as watched when starting a new episode
         if (config.autoMarkWatched && targetEp.number >= 2) {
+          const autoMarked = [];
           for (const ep of targetAnime.episodes) {
             if (ep.number < targetEp.number && !ep.watched) {
               ep.watched = true;
+              autoMarked.push(ep.number);
             }
+          }
+          if (autoMarked.length > 0) {
+            db.updateEpisodesWatched(targetAnime.id, autoMarked);
           }
         }
         sessionId = Date.now() + '-' + Math.random().toString(36).slice(2, 8);
@@ -2107,7 +2159,14 @@ async function autoImportNewFolders(data, config) {
       data.library.push(anime);
       if (!data.myList) data.myList = [];
       if (!data.myList.find(m => m.animeId === anime.id)) {
-        data.myList.push({ animeId: anime.id, rating: null, thoughts: '', notes: '' });
+        data.myList.push({ animeId: anime.id, status: 'wish', rating: null, thoughts: '', notes: '' });
+      }
+      // 若有同 bangumiId 的 wish 条目，清理（已导入 library）
+      if (anime.bangumiId) {
+        const wishIdx = data.myList.findIndex(m => !m.animeId && m.bangumiId === anime.bangumiId);
+        if (wishIdx !== -1) {
+          data.myList.splice(wishIdx, 1);
+        }
       }
 
       await db.saveLibrary(data);
@@ -2181,7 +2240,7 @@ async function init() {
   let myListDirty = false;
   for (const anime of data.library) {
     if (!data.myList.find(m => m.animeId === anime.id)) {
-      data.myList.push({ animeId: anime.id, rating: null, thoughts: '', notes: '' });
+      data.myList.push({ animeId: anime.id, status: 'wish', rating: null, thoughts: '', notes: '' });
       myListDirty = true;
     }
   }

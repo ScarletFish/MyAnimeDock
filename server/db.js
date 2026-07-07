@@ -524,7 +524,7 @@ async function saveMyList(data) {
   const p = getPrisma();
   try {
     await p.$transaction(async (tx) => {
-      const existing = await tx.myList.findMany({ select: { id: true, animeId: true, bangumiId: true } });
+      const existing = await tx.myList.findMany({ select: { id: true, animeId: true, bangumiId: true, status: true } });
       const existingByAnimeId = new Map(existing.filter(x => x.animeId).map(x => [x.animeId, x]));
       const existingByBgmId = new Map(existing.filter(x => x.bangumiId && !x.animeId).map(x => [String(x.bangumiId), x]));
       const existingById = new Map(existing.map(x => [x.id, x]));
@@ -548,8 +548,16 @@ async function saveMyList(data) {
 
       // Upsert incoming items
       for (const item of data.myList || []) {
+        // Preserve existing DB status when incoming item has no explicit status
+        let resolvedStatus = item.status;
+        if (!resolvedStatus) {
+          const existingRecord = item.animeId
+            ? existingByAnimeId.get(item.animeId)
+            : item.bangumiId ? existingByBgmId.get(String(item.bangumiId)) : null;
+          resolvedStatus = existingRecord ? existingRecord.status : 'wish';
+        }
         const commonData = {
-          status: item.status || 'watching',
+          status: resolvedStatus,
           rating: item.rating,
           thoughts: item.thoughts || '',
           notes: item.notes || '',
@@ -698,6 +706,19 @@ async function deletePlaySession(sessionId) {
   }
 }
 
+async function updateEpisodesWatched(animeId, episodeNumbers) {
+  try {
+    if (!episodeNumbers.length) return;
+    const p = getPrisma();
+    await p.episode.updateMany({
+      where: { animeId, number: { in: episodeNumbers } },
+      data: { watched: true },
+    });
+  } catch (e) {
+    logger.error('Episodes watched batch update error:', e.message);
+  }
+}
+
 async function updateMyListItem(animeId, fields) {
   try {
     const p = getPrisma();
@@ -721,4 +742,4 @@ async function updateMyListItem(animeId, fields) {
   }
 }
 
-module.exports = { loadData, saveAll, saveLibrary, saveMyList, updateMyItemStatus, updateMyListItem, savePlaySessions, updateEpisodeProgress, updatePlaySession, deletePlaySession, shutdown, getPrisma, ensureSchema };
+module.exports = { loadData, saveAll, saveLibrary, saveMyList, updateMyItemStatus, updateMyListItem, savePlaySessions, updateEpisodeProgress, updateEpisodesWatched, updatePlaySession, deletePlaySession, shutdown, getPrisma, ensureSchema };

@@ -45,6 +45,8 @@ function showView(view) {
   if (view === 'mylist') loadMyList();
   if (view === 'stats') {
     loadStats();
+    loadActivityChart();
+    loadRatingChart();
     loadSeasonChart();
   }
 }

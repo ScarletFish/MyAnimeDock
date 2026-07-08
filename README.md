@@ -112,10 +112,7 @@ Anime Title/Season 1
 
 ### ▶️ mpv 播放与进度追踪
 
-> [!IMPORTANT]
-> MyAnimeDocker **仅支持 mpv 播放器，暂不支持其他播放器**。系统需预先安装 mpv，在设置页中配置 mpv 可执行文件路径即可。我们仅负责启动 mpv 并通过 IPC 追踪进度，播放体验（渲染、着色器、补帧、字幕样式等）完全由 mpv 自身决定。
-
-推荐使用 [hooke007/MPV_lazy](https://github.com/hooke007/MPV_lazy) Windows 整合包，内置常用着色器、补帧、字幕渲染等优化，开箱即用。
+在设置页中配置 mpv 可执行文件路径即可使用。我们仅负责启动 mpv 并通过 IPC 追踪进度，播放体验（渲染、着色器、补帧、字幕样式等）完全由 mpv 自身决定。
 
 播放与进度追踪功能：
 - 通过 `--input-ipc-server` IPC 管道实时追踪播放进度
@@ -202,9 +199,6 @@ MyList 是独立的完整管理视图，覆盖动漫消费周期的所有状态�
 ### 安装（推荐）
 
 从 [Releases](https://github.com/user/MyAnimeDocker/releases) 下载 MSI 或 NSIS 安装包，双击安装。需要 Windows 10+（WebView2 已内置）。
-
-> [!IMPORTANT]
-> 本工具**仅支持 mpv 播放器**，暂不支持其他播放器。使用前需自行安装 [mpv](https://mpv.io)。推荐 [hooke007/MPV_lazy](https://github.com/hooke007/MPV_lazy) Windows 整合包，内置常用着色器、补帧、字幕渲染等优化，开箱即用。
 
 ### 从源码运行
 

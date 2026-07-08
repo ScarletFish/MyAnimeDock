@@ -113,10 +113,7 @@ Each group has a title and count. Cards beyond the viewport fade in with animati
 
 ### ▶️ mpv Playback & Progress Tracking
 
-> [!IMPORTANT]
-> MyAnimeDocker **only supports the mpv player** — other players are not currently supported. Install mpv on your system and configure the executable path in settings. We only launch mpv and track progress via IPC; the playback experience (rendering, shaders, interpolation, subtitle styling) is entirely determined by mpv itself.
-
-We recommend [hooke007/MPV_lazy](https://github.com/hooke007/MPV_lazy) for Windows — it ships with commonly used shaders, frame interpolation, and subtitle rendering optimizations.
+Configure the mpv executable path in settings to get started. We only launch mpv and track progress via IPC; the playback experience (rendering, shaders, interpolation, subtitle styling) is entirely determined by mpv itself.
 
 Playback features:
 - Real-time progress tracking via `--input-ipc-server` IPC pipe
@@ -203,9 +200,6 @@ The frontend searches across `title`, `bangumiTitle`, and `pinyinTitle` simultan
 ### Installation (Recommended)
 
 Download the MSI or NSIS installer from [Releases](https://github.com/user/MyAnimeDocker/releases) and double-click to install. Requires Windows 10+ (WebView2 is built-in).
-
-> [!IMPORTANT]
-> This tool **only supports the mpv player**. You need to install [mpv](https://mpv.io) separately. We recommend [hooke007/MPV_lazy](https://github.com/hooke007/MPV_lazy) for a ready-to-use Windows setup with shaders, interpolation, and subtitle rendering optimizations.
 
 ### Running from Source
 

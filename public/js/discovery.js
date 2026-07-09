@@ -162,7 +162,10 @@ function renderDiscovery() {
       html += '</div>';
       i--;
     } else {
-      html += renderCard(displayData[i], false);
+      // 父目录下只有一个子项时，展平父目录（如制片公司合集/系列合集）
+      const singleChild = key && parentCounts[key] === 1;
+      const node = singleChild ? { ...displayData[i], parentChain: [] } : displayData[i];
+      html += renderCard(node, false);
     }
   }
   grid.innerHTML = html;

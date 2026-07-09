@@ -208,12 +208,9 @@ const routeTable = [
   { method: 'GET', path: '/api/mylist', handler: H.handleGetMyList },
   { method: 'PUT', pattern: /^\/api\/mylist\/([^/]+)\/status$/, handler: H.handleUpdateMyListStatus },
   { method: 'PUT', pattern: /^\/api\/mylist\/([^/]+)$/, handler: H.handleUpdateMyListItem },
-  { method: 'DELETE', pattern: /^\/api\/mylist\/([^/]+)$/, handler: H.handleDeleteMyListItem },
-  // Memories
-  { method: 'GET', path: '/api/memories', handler: H.handleGetMemories },
-  { method: 'POST', path: '/api/memories', handler: H.handlePostMemory },
-  // Wishlist
-  { method: 'GET', path: '/api/wishlist', handler: H.handleGetWishlist },
+	{ method: 'DELETE', pattern: /^\/api\/mylist\/([^/]+)$/, handler: H.handleDeleteMyListItem },
+	// Wishlist
+	{ method: 'GET', path: '/api/wishlist', handler: H.handleGetWishlist },
   { method: 'POST', path: '/api/wishlist', handler: H.handlePostWishlist },
   { method: 'DELETE', pattern: /^\/api\/wishlist\/([^/]+)$/, handler: H.handleDeleteWishlistItem },
   // Stats
@@ -413,7 +410,7 @@ async function init() {
   await db.ensureSchema().catch(e => logger.warn('Schema ensure skipped:', e.message));
 
   // Phase 2: Hydrate data
-  data = (await db.loadData()) || { discovered: [], library: [], memories: [], myList: [], playSessions: [] };
+  data = (await db.loadData()) || { discovered: [], library: [], myList: [], playSessions: [] };
 
   // Migrate scannedTree from old anime-data.json
   const OLD_DATA_PATH = path.join(DATA_DIR, 'anime-data.json');

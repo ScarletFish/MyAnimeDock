@@ -529,11 +529,11 @@ describe('DB Integration Tests', () => {
       assert.equal(updatedMyList.rating, 9.0);
     });
 
-    it('Step 5: Memories API returns completed items', async () => {
+    it('Step 5: Completed items appear in myList with rating and thoughts', async () => {
       const data = await db.loadData();
       if (data === null) return;
 
-      // Simulate GET /api/memories logic
+      // Simulate completed myList query
       const memories = (data.myList || [])
         .filter(m => m.status === 'completed')
         .map(m => {

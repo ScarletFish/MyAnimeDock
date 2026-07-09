@@ -366,7 +366,6 @@ async function unlinkSingle(path) {
     checkedPaths.delete(path);
     loadDiscovery();
     loadLibrary();
-    loadMemories();
   } catch (e) {
     showToast('取消导入失败: ' + e.message, 'error');
   }

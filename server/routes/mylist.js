@@ -126,60 +126,6 @@ module.exports = {
     }
   },
 
-  handleGetMemories(req, res, state) {
-    const { data } = state;
-    const memories = (data.myList || [])
-      .filter(m => m.status === 'completed')
-      .map(m => {
-        const anime = data.library.find(a => a.id === m.animeId);
-        return {
-          animeId: m.animeId,
-          title: anime ? anime.title : m.animeId,
-          bangumiId: anime ? anime.bangumiId : null,
-          bangumiTitle: anime ? anime.bangumiTitle : null,
-          rating: m.rating, thoughts: m.thoughts || '', notes: m.notes || '',
-          watchedAt: m.completedAt || m.createdAt || null,
-          coverLocal: anime ? anime.localCover : null,
-        };
-      });
-    jsonResp(res, 200, memories);
-  },
-
-  async handlePostMemory(req, res, state) {
-    const { data, db, bangumiSync, logger } = state;
-    try {
-      const body = await readBody(req);
-      const { animeId, rating, thoughts, notes } = JSON.parse(body);
-      if (!animeId) { jsonResp(res, 400, { error: 'animeId is required' }); return; }
-      if (!data.myList) data.myList = [];
-      let existing = data.myList.find(m => m.animeId === animeId);
-      if (existing) {
-        if (rating !== undefined) existing.rating = rating;
-        if (thoughts !== undefined) existing.thoughts = thoughts;
-        if (notes !== undefined) existing.notes = notes;
-        if (!existing.status) existing.status = 'completed';
-      } else {
-        data.myList.push({ animeId, status: 'completed', rating: rating || null, thoughts: thoughts || '', notes: notes || '' });
-      }
-      db.saveMyList(data);
-      if (rating !== undefined) {
-        bangumiSync.pushStatusChange(animeId, data);
-      }
-      const anime = data.library.find(a => a.id === animeId);
-      const legacy = {
-        animeId, title: anime ? anime.title : animeId,
-        bangumiId: anime ? anime.bangumiId : null,
-        bangumiTitle: anime ? anime.bangumiTitle : null,
-        rating: rating || null, thoughts: thoughts || '', notes: notes || '',
-        watchedAt: new Date().toISOString(),
-        coverLocal: anime ? anime.localCover : null,
-      };
-      jsonResp(res, 200, { ok: true, memory: legacy });
-    } catch (e) {
-      jsonResp(res, 400, { error: 'Invalid request body' });
-    }
-  },
-
   handleGetWishlist(req, res, state) {
     const { data } = state;
     const wishItems = (data.myList || []).filter(m => !m.animeId);

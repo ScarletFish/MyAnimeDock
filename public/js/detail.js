@@ -5,8 +5,6 @@ let watchCardVersion = 0;
 let detailRefreshTimer = null;
 let wasMpvActive = false;
 
-// Archive mode flags (set by memory.js)
-let isArchiveMode = false;
 // Wishlist mode (set when viewing mylist wishlist items)
 let isWishlistMode = false;
 
@@ -64,13 +62,10 @@ function toggleExpand(wrapId) {
     if (wrapId === 'detailCharWrap') checkToggleOverflow(wrap, '.detail-char-grid', '.detail-char-toggle');
   }, 50);
 }
-let archiveMemoryData = null;
 let detailSourceView = 'library';
 
 // Sync from AppState for cross-module state
 AppState.on('currentAnime', v => { currentAnime = v; });
-AppState.on('isArchiveMode', v => { isArchiveMode = v; });
-AppState.on('archiveMemoryData', v => { archiveMemoryData = v; });
 AppState.on('detailSourceView', v => { detailSourceView = v; });
 
 function resetDetailEnter() {
@@ -114,14 +109,8 @@ function stopDetailRefresh() {
 }
 
 async function showDetail(id, fromRect, fromSrc) {
-  // Reset archive mode when viewing library items
-  isArchiveMode = false; AppState.set('isArchiveMode', false);
   isWishlistMode = false;
-  archiveMemoryData = null; AppState.set('archiveMemoryData', null);
   detailSourceView = 'library'; AppState.set('detailSourceView', 'library');
-  // Remove archive magazine layout class if present
-  const layoutEl = document.querySelector('.detail-layout');
-  if (layoutEl) layoutEl.classList.remove('detail-layout--archive');
 
   resetDetailEnter();
   stopDetailRefresh();
@@ -280,28 +269,12 @@ function renderDetail() {
 
   const fetchBtn = document.getElementById('btnFetchBangumi');
   const deleteBtn = document.getElementById('btnDeleteAnime');
-  const writeBtn = document.getElementById('btnWriteMemory');
 
-  if (isArchiveMode) {
-    if (fetchBtn) fetchBtn.style.display = 'none';
-    if (deleteBtn) deleteBtn.style.display = 'none';
-    if (writeBtn) {
-      writeBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>编辑感想`;
-      writeBtn.style.display = 'inline-flex';
-    }
-  } else {
-    if (fetchBtn) { fetchBtn.style.display = 'inline-flex'; fetchBtn.disabled = false; }
-    if (deleteBtn) deleteBtn.style.display = 'inline-flex';
-    if (writeBtn) {
-      writeBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>写感想`;
-      writeBtn.style.display = 'inline-flex';
-    }
-  }
+  if (fetchBtn) { fetchBtn.style.display = 'inline-flex'; fetchBtn.disabled = false; }
+  if (deleteBtn) deleteBtn.style.display = 'inline-flex';
 
   // ─── Right column modules ───
-  if (isArchiveMode) {
-    renderArchiveDetail(anime);
-  } else if (isWishlistMode) {
+  if (isWishlistMode) {
     renderWishlistDetail(anime);
   } else {
     document.getElementById('archiveDetail').style.display = 'none';
@@ -309,9 +282,6 @@ function renderDetail() {
     document.getElementById('episodeHeatmap').style.display = '';
     document.getElementById('detailCharacters').style.display = '';
     document.getElementById('watchStats').style.display = '';
-    // Remove archive layout class
-    const layoutEl = document.querySelector('.detail-layout');
-    if (layoutEl) layoutEl.classList.remove('detail-layout--archive');
     renderWatchCard(anime);
     renderEpisodeHeatmap(anime);
     renderCharacters(anime);
@@ -408,7 +378,7 @@ let charResizeTimer = null;
 window.addEventListener('resize', () => {
   clearTimeout(charResizeTimer);
   charResizeTimer = setTimeout(() => {
-    if (currentAnime && !isArchiveMode && document.getElementById('detailView')?.classList.contains('hidden') === false) {
+    if (currentAnime && document.getElementById('detailView')?.classList.contains('hidden') === false) {
       const wrap = document.getElementById('detailCharWrap');
       if (wrap && wrap.dataset.userToggled !== 'true') {
         autoExpandCharacters();
@@ -461,53 +431,6 @@ function renderWishlistDetail(anime) {
       </a>
     </div>
   `;
-}
-
-function renderArchiveDetail(anime) {
-  // Switch layout to archive magazine mode
-  const layoutEl = document.querySelector('.detail-layout');
-  if (layoutEl) layoutEl.classList.add('detail-layout--archive');
-
-  // Hide library right-column modules
-  document.getElementById('watchCard').style.display = 'none';
-  document.getElementById('episodeHeatmap').style.display = 'none';
-  document.getElementById('detailCharacters').style.display = 'none';
-  document.getElementById('watchStats').style.display = 'none';
-
-  const archiveEl = document.getElementById('archiveDetail');
-  archiveEl.style.display = 'block';
-
-  const memory = archiveMemoryData || {};
-  const thoughts = memory.thoughts || '';
-  const notes = memory.notes || '';
-  const rating = memory.rating || null;
-  const dateStr = memory.watchedAt
-    ? new Date(memory.watchedAt).toLocaleDateString('zh-CN', {
-        year: 'numeric', month: 'long', day: 'numeric'
-      })
-    : '';
-
-  // Essay / thoughts
-  document.getElementById('archiveThoughts').textContent = thoughts || '暂无感想';
-
-  // Rating
-  document.getElementById('archiveRating').textContent = rating ? '★ ' + rating : '——';
-
-  // Date
-  document.getElementById('archiveDate').textContent = dateStr || '——';
-
-  // Episode count
-  const epCount = (anime.episodes && anime.episodes.length) || archiveMemoryData?.episodeCount || '—';
-  document.getElementById('archiveEpisodes').textContent = epCount !== '—' ? '全 ' + epCount + ' 集' : '—';
-
-  // Notes
-  const notesEl = document.getElementById('archiveNotes');
-  if (notes) {
-    notesEl.style.display = 'block';
-    document.getElementById('archiveNotesContent').textContent = notes;
-  } else {
-    notesEl.style.display = 'none';
-  }
 }
 
 function findWatchEpisode(anime) {
@@ -825,7 +748,6 @@ async function deleteAnime() {
     goBack();
     loadLibrary();
     loadDiscovery();
-    loadMemories();
     if (typeof loadMyList === 'function') loadMyList();
   } catch (e) {
     showToast('删除失败: ' + e.message, 'error');

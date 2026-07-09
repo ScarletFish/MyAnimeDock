@@ -51,7 +51,7 @@ let heatmapResizeTimer = null;
 window.addEventListener('resize', () => {
   clearTimeout(heatmapResizeTimer);
   heatmapResizeTimer = setTimeout(() => {
-    if (currentAnime && !isArchiveMode && document.getElementById('detailView').classList.contains('hidden') === false) {
+    if (currentAnime && document.getElementById('detailView').classList.contains('hidden') === false) {
       renderEpisodeHeatmap(currentAnime, false);
     }
   }, 200);

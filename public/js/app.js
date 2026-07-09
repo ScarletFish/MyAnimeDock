@@ -432,9 +432,6 @@ async function saveSettings() {
 
 function goBack() {
   if (typeof stopDetailRefresh === 'function') stopDetailRefresh();
-  AppState.set('isArchiveMode', false);
-  const layoutEl = document.querySelector('.detail-layout');
-  if (layoutEl) layoutEl.classList.remove('detail-layout--archive');
   const target = AppState.get('detailSourceView') || 'library';
   showView(target);
 }

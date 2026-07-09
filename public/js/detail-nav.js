@@ -49,12 +49,6 @@ function findCurrentLibraryIndex() {
   return libraryData.findIndex(a => a.id === currentAnime.id);
 }
 
-function findCurrentMemoryIndex() {
-  if (!currentAnime) return -1;
-  if (typeof memoriesData === 'undefined' || !memoriesData.length) return -1;
-  return memoriesData.findIndex(m => m.animeId === currentAnime.id);
-}
-
 let isSliding = false;
 
 function goPrev() {
@@ -67,17 +61,6 @@ function goPrev() {
 if (prev) {
         showToast(`← ${prev.bangumiTitle || prev.title}`, 'info');
         slideToAnime(prev.id, 'prev');
-      }
-      return;
-    }
-    if (isArchiveMode) {
-      const idx = findCurrentMemoryIndex();
-      if (idx === -1) return;
-      const prevIdx = idx === 0 ? memoriesData.length - 1 : idx - 1;
-      const prev = memoriesData[prevIdx];
-      if (prev) {
-        showToast(`← ${prev.bangumiTitle || prev.title}`, 'info');
-        slideToAnime(prev.animeId, 'prev');
       }
       return;
     }
@@ -101,17 +84,6 @@ function goNext() {
 if (next) {
         showToast(`${next.bangumiTitle || next.title} →`, 'info');
         slideToAnime(next.id, 'next');
-      }
-      return;
-    }
-    if (isArchiveMode) {
-      const idx = findCurrentMemoryIndex();
-      if (idx === -1) return;
-      const nextIdx = idx === memoriesData.length - 1 ? 0 : idx + 1;
-      const next = memoriesData[nextIdx];
-      if (next) {
-        showToast(`${next.bangumiTitle || next.title} →`, 'info');
-        slideToAnime(next.animeId, 'next');
       }
       return;
     }
@@ -154,7 +126,6 @@ async function slideToAnime(id, direction) {
       if (!item) throw new Error('条目不存在');
       if (item.source === 'wishlist') {
         isWishlistMode = true;
-        isArchiveMode = false; AppState.set('isArchiveMode', false);
         currentAnime = {
           id: item.id,
           title: item.title,
@@ -171,26 +142,9 @@ async function slideToAnime(id, direction) {
         AppState.set('currentAnime', currentAnime);
       } else {
         isWishlistMode = false;
-        isArchiveMode = false; AppState.set('isArchiveMode', false);
         currentAnime = await API.get(`/api/anime/${encodeURIComponent(id)}`);
         AppState.set('currentAnime', currentAnime);
       }
-    } else if (isArchiveMode) {
-      const memory = memoriesData.find(m => m.animeId === id);
-      if (!memory) throw new Error('归档记录不存在');
-      archiveMemoryData = memory; AppState.set('archiveMemoryData', memory);
-      currentAnime = {
-        id: memory.animeId,
-        title: memory.title,
-        bangumiTitle: memory.bangumiTitle || memory.title,
-        localCover: memory.coverLocal,
-        rating: memory.rating || null,
-        summary: memory.thoughts || '暂无简介',
-        season: null,
-        episodes: [],
-        downloaded: false,
-      };
-      AppState.set('currentAnime', currentAnime);
     } else {
       currentAnime = await API.get(`/api/anime/${encodeURIComponent(id)}`);
       AppState.set('currentAnime', currentAnime);
@@ -203,7 +157,7 @@ async function slideToAnime(id, direction) {
       wrap.style.transform = 'scale(1)';
     }
     document.getElementById('headerTitle').textContent = currentAnime.bangumiTitle || currentAnime.title;
-    if (!isArchiveMode && !isWishlistMode) startDetailRefresh();
+    if (!isWishlistMode) startDetailRefresh();
   } catch (e) {
     showToast('加载详情失败: ' + e.message, 'error');
     isSliding = false;

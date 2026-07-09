@@ -28,8 +28,6 @@
   };
 
   // Initialize cross-module shared state
-  AppState.set('isArchiveMode', false);
-  AppState.set('archiveMemoryData', null);
   AppState.set('detailSourceView', 'library');
   AppState.set('currentAnime', null);
 })();

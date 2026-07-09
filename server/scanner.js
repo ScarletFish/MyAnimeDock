@@ -272,6 +272,19 @@ function buildLeaf(dirPath, name, parentName, parentChain) {
       break;
     }
   }
+  // If leaf itself has no bangumiId, check parent chain for [bgmN]
+  if (!parsed.bangumiId) {
+    if (parentName) {
+      const pBgm = extractBgmId(parentName);
+      if (pBgm) parsed.bangumiId = pBgm;
+    }
+    if (!parsed.bangumiId) {
+      for (let i = 0; i < chain.length; i++) {
+        const cBgm = extractBgmId(chain[i]);
+        if (cBgm) { parsed.bangumiId = cBgm; break; }
+      }
+    }
+  }
   // If leaf title is Latin-only and ancestor has CJK, prefer ancestor's CJK
   if (nearestCjk && parsed.title && !/[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]/.test(parsed.title)) {
     parsed.title = nearestCjk;

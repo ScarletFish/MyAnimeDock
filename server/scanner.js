@@ -273,15 +273,18 @@ function buildLeaf(dirPath, name, parentName, parentChain) {
     }
   }
   // If leaf itself has no bangumiId, check parent chain for [bgmN]
+  // When propagation succeeds, the leaf's identity is resolved to parent —
+  // flatten parentChain so it displays like a single-season entry.
+  let flattenChain = false;
   if (!parsed.bangumiId) {
     if (parentName) {
       const pBgm = extractBgmId(parentName);
-      if (pBgm) parsed.bangumiId = pBgm;
+      if (pBgm) { parsed.bangumiId = pBgm; flattenChain = true; }
     }
     if (!parsed.bangumiId) {
       for (let i = 0; i < chain.length; i++) {
         const cBgm = extractBgmId(chain[i]);
-        if (cBgm) { parsed.bangumiId = cBgm; break; }
+        if (cBgm) { parsed.bangumiId = cBgm; flattenChain = true; break; }
       }
     }
   }
@@ -314,7 +317,7 @@ function buildLeaf(dirPath, name, parentName, parentChain) {
     totalVideoFiles: allVideos.length,
     totalSize: allVideos.reduce((sum, v) => sum + v.size, 0),
     videos: allVideos.map(v => ({ name: v.name, size: v.size, isExtra: isExtraVideo(v.name) })),
-    parentChain: chain,
+    parentChain: flattenChain ? [] : chain,
   };
 }
 

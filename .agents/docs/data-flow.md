@@ -14,9 +14,12 @@
 │    • Hides window until server ready (visible:false → window.show())          │
 │    • In production: navigates to http://localhost:3456 after ready            │
 │                                                                               │
-│  Sidecar: server/server.js (Node.js, pkg-bundled)                            │
+│  Sidecar: server/server.js → lib/ + routes/ (Node.js, pkg-bundled)           │
 │    • HTTP server @ :3456                                                      │
-│    • REST API (40+ endpoints)                                                 │
+│    • lib/config.js: path/constants + config loading                           │
+│    • lib/utils.js: mime, serveImage, jsonResp, readBody, ffmpeg helpers       │
+│    • routes/*.js: 7 route modules (config, discovery, library, playback,       │
+│      mylist, stats, bangumi) — each exports handler(req, res, state)          │
 │    • Persistence: SQLite (Prisma ORM) — library/memories/playSessions         │
 │    • JSON files: config.json (settings), scanned-tree.json (scan result)      │
 │    • Static file serving: public/ frontend + covers/ + thumbs/                │
@@ -29,8 +32,8 @@
 | File | Location (dev) | Location (MSI/pkg) | Purpose |
 |------|---------------|-------------------|---------|
 | `anime.db` | `prisma/anime.db` | `%APPDATA%/com.myanimedocker.app/anime.db` | SQLite — primary store for library, memories, playSessions |
-| `config.json` | `server/config.json` | `%APPDATA%/com.myanimedocker.app/config.json` | Settings (JSON only, managed by server.js) |
-| `scanned-tree.json` | `server/scanned-tree.json` | `%APPDATA%/com.myanimedocker.app/scanned-tree.json` | Scan result tree (JSON only, managed by server.js) |
+| `config.json` | `server/config.json` | `%APPDATA%/com.myanimedocker.app/config.json` | Settings (JSON only, managed by lib/config.js) |
+| `scanned-tree.json` | `server/scanned-tree.json` | `%APPDATA%/com.myanimedocker.app/scanned-tree.json` | Scan result tree (JSON only, managed by lib/config.js) |
 | `anime-data.json` | (legacy) | (legacy) | **Removed**. Only used as migration fallback for scannedTree on first startup |
 | `covers/*.jpg` | `server/covers/` | `%APPDATA%/com.myanimedocker.app/covers/` | Downloaded cover images |
 | `thumbs/*.jpg` | `server/thumbs/` | `%APPDATA%/com.myanimedocker.app/thumbs/` | Video thumbnails (ffmpeg) |
@@ -63,7 +66,7 @@ server.js ⇒ init()
   ├─ 7. Start HTTP server (http.createServer, listen :3456)
   │
         └─ 8. Phase 5: Auto-import new folders (async, non-blocking)
-        autoImportNewFolders(data, config)  (server.js:2078)
+        autoImportNewFolders(data, config)  (defined inline in server.js)
         ├─ Scan mediaDir via scanMediaDir() → flat leaf array
         ├─ For each leaf with [bgmN] in folder name:
         │   ├─ Skip if already in data.library (by folderPath)
@@ -85,16 +88,16 @@ server.js ⇒ init()
 
 ### Read: `GET /api/config`
 ```
-server.js:handleRequest()
-  → /api/config (line ~360)
+server.js: route dispatch (routeTable)
+  → match: GET /api/config → routes/config.js:handleGetConfig()
   → jsonResp(res, 200, { ...config, dirValid })
     dirValid = fs.existsSync(config.mediaDir)
 ```
 
 ### Write: `POST /api/config`
 ```
-server.js:handleRequest()
-  → /api/config (line ~400)
+server.js: route dispatch (routeTable)
+  → match: POST /api/config → routes/config.js:handlePostConfig()
   → Read body (JSON)
   → Merge: config = { ...config, ...body }
   → Save: fs.writeFileSync(configPath, JSON.stringify(config, null, 2))
@@ -124,7 +127,7 @@ server.js:handleRequest()
 
 ```
 GET /api/browse?showExcluded
-  → server.js (line ~260)
+  → routes/discovery.js:handleBrowse()
   → scanner.scanMediaDirFlat(config.mediaDir)
       ├─ Recursively walk mediaDir
       ├─ For each folder containing video files (.mkv/.mp4/.avi/.mov):
@@ -148,7 +151,7 @@ GET /api/browse?showExcluded
 
 ```
 GET /api/scan
-  → server.js (line ~280)
+  → routes/discovery.js:handleScan()
   → Sets res.headers: Content-Type: text/event-stream, Cache-Control: no-cache
   → scanner.scanMediaDirFlat() with progress callback:
       write `data: ${JSON.stringify({ type: 'progress'|'done', ... })}\n\n`
@@ -161,7 +164,7 @@ GET /api/scan
 
 ```
 POST /api/import
-  → server.js (line ~310)
+  → routes/discovery.js:handleImport()
   → Body: { items: [{ path, name, parsedTitle, parsedSeason, specialSuffix, ... }] }
   → For each item:
       ├─ Generate animeId = `${parsedTitle}${parsedSeason ? '-Season '+parsedSeason : ''}`
@@ -176,7 +179,7 @@ POST /api/import
 ### Auto-Import (at startup, for [bgmN] folders)
 
 ```
-init() → autoImportNewFolders(data, config)  (server.js:2078)
+init() → autoImportNewFolders(data, config)  (inline in server.js)
   ├─ Called async after server starts listening
   ├─ scanMediaDir(config.mediaDir) → flat leaves
   ├─ For each leaf not already in library:
@@ -225,8 +228,8 @@ POST /api/bangumi/fetch (for library items)
 ### Dev mode (`server/covers/`):
 ```
 GET /covers/12345.jpg?w=400&q=75
-  → server.js (line ~970)
-  → serveImage(coverPath, req.url, res)
+  → server.js: handleCoverImage() (inline)
+  → lib/utils.js:serveImage(coverPath, req.url, res)
       ├─ If no ?w param: readFile + serve raw
       ├─ If ?w param present:
       │   ├─ Check cache: covers/.resized/thumb_W_Q_NAME
@@ -258,7 +261,7 @@ User must re-fetch metadata to download covers to AppData
 
 ```
 GET /api/thumbnail?path=VIDEO_PATH&time=60
-  → server.js (line ~915)
+  → routes/playback.js:handleThumbnail()
   → Validate videoPath exists
   → hash = MD5(videoPath + time)
   → thumbPath = DATA_DIR/thumbs/${hash}.jpg
@@ -275,7 +278,7 @@ GET /api/thumbnail?path=VIDEO_PATH&time=60
 
 ### ffmpeg Path Resolution
 ```
-server.js: const ffmpegPath = require('ffmpeg-static') || 'ffmpeg';
+lib/utils.js: const ffmpegPath = require('ffmpeg-static') || 'ffmpeg'; (module-level, settable via setFfmpegPath)
   → Dev: resolves to server/node_modules/ffmpeg-static/ffmpeg.exe
   → pkg: db.js sets process.env.FFMPEG_BIN → sidecar-modules/ffmpeg.exe
          (ffmpeg-static reads FFMPEG_BIN env var first)
@@ -287,7 +290,7 @@ server.js: const ffmpegPath = require('ffmpeg-static') || 'ffmpeg';
 ### Play Start
 ```
 POST /api/play
-  → server.js (line ~1403)
+  → routes/playback.js:handlePlay()
   → Body: { filePath, position }  // position = ep.progress, 0-1 float
   → Validate filePath exists (fs.existsSync)
   → Convert position to seconds:
@@ -328,7 +331,7 @@ POST /api/play
 ### Progress Update (manual via API)
 ```
 POST /api/progress
-  → server.js (line ~1535)
+  → routes/playback.js:handleProgress()
   → Body: { animeId, episodeNumber, progress, duration, watched }
   → Update ep.progress/duration/watched in memory
   → db.updateEpisodeProgress(animeId, epNumber, { progress, duration, watched })
@@ -338,7 +341,7 @@ POST /api/progress
 ### Watch Activity (stats page)
 ```
 GET /api/stats/watch-activity
-  → server.js (line ~1027)
+  → routes/stats.js:handleStatsWatchActivity()
   → Build last 6 months labels using LOCAL year-month
     (avoid toISOString() — UTC conversion shifts month in UTC+8 timezone)
   → For each playSession with endTime:
@@ -353,7 +356,7 @@ GET /api/stats/watch-activity
 ### Anime Sessions (detail page)
 ```
 GET /api/anime/:id/sessions
-  → server.js (line ~1052)
+  → routes/stats.js:handleAnimeSessions()
   → Filter playSessions by animeId + endTime truthy
   → Aggregate duration by LOCAL date
     (avoid toISOString() — UTC conversion shifts date in UTC+8 timezone)
@@ -367,7 +370,7 @@ GET /api/anime/:id/sessions
 ### List
 ```
 GET /api/memories
-  → server.js (line ~160)
+  → routes/mylist.js:handleGetMemories()
   → Return data.memories[] sorted by updatedAt desc
   → Frontend: memory-masonry grid (cards with cover + rating + thoughts)
 ```
@@ -375,7 +378,7 @@ GET /api/memories
 ### Create / Update
 ```
 POST /api/memories
-  → server.js (line ~170)
+  → routes/mylist.js:handlePostMemory()
   → Body: { animeId, title, coverLocal, coverUrl, rating, thoughts, notes,
              episodesWatched, totalEpisodes }
   → Upsert: find by animeId → update, or create new
@@ -388,7 +391,7 @@ POST /api/memories
 ### Status Change (manual)
 ```
 PUT /api/mylist/:id/status
-  → server.js (line ~1171)
+  → routes/mylist.js:handleUpdateMyListStatus()
   → Body: { status: 'watching'|'wish'|'completed'|'on_hold'|'dropped' }
   → Find MyList entry by animeId
   → Update status + updatedAt
@@ -417,7 +420,7 @@ DELETE /api/anime/:id
 ### Full Sync (Pull → Merge → Push)
 ```
 POST /api/bangumi/sync
-  → server.js (line ~1924)
+  → routes/bangumi.js:handleBangumiSync()
   → Body: { dryRun?: boolean }
   → bangumiSync.syncMyList(data, { dryRun })
       ├─ Pull: fetch user's Bangumi collection (anime + episodes)
@@ -557,7 +560,16 @@ http.createServer((req, res) => {
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| `server/server.js` | 2290 | HTTP server, routes, fine-grained saves, init, play sessions, cover serving, auto-import |
+| `server/server.js` | 430 | Initialization + route dispatch (http.createServer → routeTable → handler calls) |
+| `server/lib/config.js` | 87 | Path constants, config load/save, scannedTree load/save |
+| `server/lib/utils.js` | 177 | MIME, serveImage, jsonResp, readBody, ffmpeg cover helpers, cache cleanup |
+| `server/routes/config.js` | 77 | GET/POST /api/config, /api/health, /api/notifications |
+| `server/routes/discovery.js` | 329 | Browse, scan (SSE), import, discovery unlink/exclude/include/fetch-meta |
+| `server/routes/library.js` | 210 | Library list, anime detail/delete, library sync (batch + SSE stream) |
+| `server/routes/playback.js` | 179 | Play, progress, mpv-status, thumbnail |
+| `server/routes/mylist.js` | 216 | MyList CRUD, memories list/create, wishlist |
+| `server/routes/stats.js` | 131 | Dashboard stats, tags, seasons, ratings, watch-activity, anime sessions |
+| `server/routes/bangumi.js` | 162 | Bangumi search, fetch, sync, OAuth (auth status/url/callback/logout/creds/me) |
 | `server/db.js` | 732 | Prisma wrapper: saveLibrary, saveMemories, savePlaySessions, saveMyList, loadData, updateEpisodeProgress, updatePlaySession |
 | `public/js/stats.js` | 561 | Stats view: word cloud, activity/rating/season charts |
 | `server/scanner.js` | 404 | Media directory scanner, folder name parsing (anitomy) with extra video filtering, [bgmN] ID extraction |

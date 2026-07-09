@@ -1,0 +1,336 @@
+// server/routes/discovery.js — 浏览、扫描、导入、元数据匹配
+const path = require('path');
+const fs = require('fs');
+const { jsonResp, readBody, preGenerateCovers } = require('../lib/utils');
+const { saveScannedTree, DATA_DIR } = require('../lib/config');
+
+module.exports = {
+  handleBrowse(req, res, state) {
+    const { data, config, logger } = state;
+    if (!config.mediaDir) {
+      jsonResp(res, 200, { tree: [], mediaDir: '' });
+      return;
+    }
+    const params = new URL(req.url, 'http://localhost').searchParams;
+    const showExcluded = params.get('showExcluded') === 'true';
+    try {
+      let tree = JSON.parse(JSON.stringify(data.scannedTree || []));
+      // Migrate old tree format
+      if (tree.some(n => n.type === 'branch')) {
+        const flatten = (nodes) => {
+          const result = [];
+          for (const n of nodes) {
+            if (n.type === 'leaf') result.push(n);
+            else if (n.type === 'branch' && n.children) result.push(...flatten(n.children));
+          }
+          return result;
+        };
+        tree = flatten(tree);
+        data.scannedTree = tree;
+        saveScannedTree(data.scannedTree);
+      }
+      for (const n of tree) {
+        if (n.type === 'leaf' && n.parsedSeason === 1) n.parsedSeason = null;
+      }
+      const libraryPaths = new Set(data.library.map(a => a.folderPath));
+      for (const n of tree) {
+        if (n.type === 'leaf') {
+          n.alreadyImported = libraryPaths.has(n.path);
+          if (n.excluded === undefined) n.excluded = false;
+          if (n.bangumiMatched === undefined) n.bangumiMatched = false;
+        }
+      }
+      const filteredTree = showExcluded ? tree : tree.filter(n => !n.excluded);
+      jsonResp(res, 200, { tree: filteredTree, mediaDir: config.mediaDir });
+    } catch (e) {
+      jsonResp(res, 500, { error: e.message });
+    }
+  },
+
+  handleScan(req, res, state) {
+    const { data, config, logger, pendingNotifications } = state;
+    if (!config.mediaDir) {
+      jsonResp(res, 400, { error: 'Media directory not configured' });
+      return;
+    }
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+    });
+    const send = (obj) => res.write(`data: ${JSON.stringify(obj)}\n\n`);
+    try {
+      const { scanTopDir } = require('../scanner');
+      const entries = fs.readdirSync(config.mediaDir, { withFileTypes: true });
+      const dirs = entries.filter(e => e.isDirectory() && e.name !== 'covers');
+      const total = dirs.length;
+      const tree = [];
+      const libraryPaths = new Set(data.library.map(a => a.folderPath));
+      const existingNodes = new Map((data.scannedTree || []).map(n => [n.path, n]));
+      for (let i = 0; i < dirs.length; i++) {
+        const entry = dirs[i];
+        send({ type: 'progress', current: i + 1, total, folder: entry.name });
+        const node = scanTopDir(config.mediaDir, entry.name);
+        if (node) {
+          (function flatten(n) {
+            if (n.type === 'leaf') {
+              n.alreadyImported = libraryPaths.has(n.path);
+              const existing = existingNodes.get(n.path);
+              if (existing) {
+                n.excluded = existing.excluded || false;
+                n.bangumiMatched = existing.bangumiMatched || false;
+                n.bangumiId = existing.bangumiId;
+                n.bangumiTitle = existing.bangumiTitle;
+                n.bangumiTitleJp = existing.bangumiTitleJp;
+                n.summary = existing.summary;
+                n.coverUrl = existing.coverUrl;
+                n.localCover = existing.localCover;
+                n.rating = existing.rating;
+              } else {
+                n.excluded = false;
+                n.bangumiMatched = false;
+              }
+              tree.push(n);
+            } else if (n.type === 'branch' && n.children) {
+              n.children.forEach(flatten);
+            }
+          })(node);
+        }
+      }
+      data.scannedTree = tree;
+      saveScannedTree(data.scannedTree);
+      send({ type: 'done', tree });
+      // Background AniList prefetch
+      if (config.apiSources?.some(s => s.type === 'anilist')) {
+        const { registry, isPrimarilyRomaji } = require('../scrapers');
+        const { parseFolderName } = require('../scanner');
+        const anilist = registry.get('anilist');
+        if (anilist) {
+          const romajiKeywords = tree
+            .filter(n => n.type === 'leaf' && !n.alreadyImported)
+            .map(n => parseFolderName(n.name))
+            .filter(p => isPrimarilyRomaji(p.cleanTitle || p.title))
+            .map(p => p.cleanTitle)
+            .filter(Boolean)
+            .slice(0, 20);
+          if (romajiKeywords.length > 0) {
+            anilist.prefetch(romajiKeywords, registry, config)
+              .then(results => {
+                if (results && results.length > 0) {
+                  pendingNotifications.push({ type: 'anilist_prefetch', count: results.length });
+                }
+              })
+              .catch(() => {});
+          }
+        }
+      }
+    } catch (e) {
+      send({ type: 'error', message: e.message });
+    }
+    res.end();
+  },
+
+  async handleImport(req, res, state) {
+    const { data, config, db, bangumiSync, logger, pendingNotifications } = state;
+    try {
+      const body = await readBody(req);
+      const { items } = JSON.parse(body);
+      if (!Array.isArray(items) || items.length === 0) {
+        jsonResp(res, 400, { error: 'items array is required' });
+        return;
+      }
+      const { findVideos, isExtraVideo } = require('../scanner');
+      const { registry } = require('../scrapers');
+      const imported = [];
+      const metadataFetches = [];
+      for (const item of items) {
+        const { folderPath, folderName, parsedTitle, parsedSeason, specialSuffix } = item;
+        if (!folderPath || !folderName) continue;
+        const videos = findVideos(folderPath);
+        const episodeFiles = videos.filter(v => !isExtraVideo(v.name));
+        const scannedNode = data.scannedTree.find(n => n.path === folderPath);
+        const existing = data.library.find(a => a.folderPath === folderPath);
+        if (existing) {
+          if (existing.downloaded !== false) continue;
+          existing.downloaded = true;
+          existing.importedAt = new Date().toISOString();
+          existing.episodes = episodeFiles.map((v, i) => ({
+            number: i + 1, filePath: v.path, fileName: v.name, fileSize: v.size,
+            duration: null, watched: false, progress: 0,
+          }));
+          imported.push(existing.id);
+          if (scannedNode) scannedNode.excluded = false;
+          continue;
+        }
+        const anime = {
+          id: parsedTitle + (parsedSeason ? `-Season ${parsedSeason}` : ''),
+          folderPath, folderName, title: parsedTitle,
+          season: parsedSeason || null, specialSuffix: specialSuffix || null,
+          importedAt: new Date().toISOString(), downloaded: true,
+          bangumiId: scannedNode?.bangumiId || null,
+          bangumiTitle: scannedNode?.bangumiTitle || null,
+          bangumiTitleJp: scannedNode?.bangumiTitleJp || null,
+          summary: scannedNode?.summary || null,
+          coverUrl: scannedNode?.coverUrl || null,
+          localCover: scannedNode?.localCover || null,
+          rating: scannedNode?.rating || null,
+          tags: scannedNode?.tags || [],
+          episodes: episodeFiles.map((v, i) => ({
+            number: i + 1, filePath: v.path, fileName: v.name, fileSize: v.size,
+            duration: null, watched: false, progress: 0,
+          })),
+        };
+        data.library.push(anime);
+        imported.push(anime.id);
+        if (!data.myList) data.myList = [];
+        if (!data.myList.find(m => m.animeId === anime.id)) {
+          data.myList.push({ animeId: anime.id, status: 'wish', rating: null, thoughts: '', notes: '' });
+        }
+        if (anime.bangumiId) {
+          const wishIdx = data.myList.findIndex(m => !m.animeId && m.bangumiId === anime.bangumiId);
+          if (wishIdx !== -1) data.myList.splice(wishIdx, 1);
+        }
+        if (scannedNode) scannedNode.excluded = false;
+        if (anime.bangumiId && (!anime.tags || anime.tags.length === 0)) {
+          const coverDir = path.join(DATA_DIR, 'covers');
+          metadataFetches.push(
+            registry.fetchMetadata('bangumi', anime.title, coverDir, anime.bangumiId, config)
+              .then(meta => {
+                if (meta) {
+                  anime.tags = meta.tags || [];
+                  anime.bangumiTitle = meta.bangumiTitle || anime.bangumiTitle;
+                  anime.bangumiTitleJp = meta.bangumiTitleJp || anime.bangumiTitleJp;
+                  anime.summary = meta.summary || anime.summary;
+                  anime.coverUrl = meta.coverUrl || anime.coverUrl;
+                  anime.localCover = meta.localCover || anime.localCover;
+                  anime.rating = meta.rating || anime.rating;
+                  if (meta.localCover) preGenerateCovers(meta.localCover);
+                  return db.saveLibrary(data);
+                }
+              })
+              .catch(e => logger.warn(`Background metadata fetch failed for ${anime.id}: ${e.message}`))
+          );
+        }
+        if (anime.bangumiId) {
+          bangumiSync.pushStatusChange(anime.id, data);
+        }
+      }
+      Promise.all([db.saveLibrary(data), db.saveMyList(data), saveScannedTree(data.scannedTree)])
+        .then(() => Promise.all(metadataFetches))
+        .catch(e => logger.warn('Import/background save error: ' + e.message));
+      jsonResp(res, 200, { ok: true, imported });
+    } catch (e) {
+      jsonResp(res, 400, { error: 'Invalid request body' });
+    }
+  },
+
+  async handleDiscoveryUnlink(req, res, state) {
+    const { data, db } = state;
+    try {
+      const body = await readBody(req);
+      const { path: folderPath } = JSON.parse(body);
+      if (!folderPath) { jsonResp(res, 400, { error: 'path is required' }); return; }
+      const idx = data.library.findIndex(a => a.folderPath === folderPath);
+      if (idx === -1) { jsonResp(res, 404, { error: 'Anime not found in library' }); return; }
+      const removed = data.library.splice(idx, 1)[0];
+      if (data.myList) {
+        const myIdx = data.myList.findIndex(m => m.animeId === removed.id);
+        if (myIdx !== -1) data.myList.splice(myIdx, 1);
+      }
+      const scannedNode = data.scannedTree && data.scannedTree.find(n => n.path === folderPath);
+      if (scannedNode) {
+        scannedNode.alreadyImported = false;
+        scannedNode.bangumiMatched = false;
+        scannedNode.bangumiId = null;
+        scannedNode.bangumiTitle = null;
+        scannedNode.bangumiTitleJp = null;
+        scannedNode.bangumiTitleEn = null;
+        scannedNode.summary = null;
+        scannedNode.coverUrl = null;
+        scannedNode.localCover = null;
+        scannedNode.rating = null;
+        scannedNode.metadataSource = null;
+      }
+      saveScannedTree(data.scannedTree);
+      db.saveLibrary(data);
+      db.saveMyList(data);
+      jsonResp(res, 200, { ok: true });
+    } catch (e) {
+      jsonResp(res, 400, { error: 'Invalid request body' });
+    }
+  },
+
+  async handleDiscoveryExclude(req, res, state) {
+    const { data } = state;
+    try {
+      const body = await readBody(req);
+      const { path: folderPath } = JSON.parse(body);
+      if (!folderPath) { jsonResp(res, 400, { error: 'path is required' }); return; }
+      const node = data.scannedTree.find(n => n.path === folderPath);
+      if (!node) { jsonResp(res, 404, { error: 'Node not found in scanned tree' }); return; }
+      node.excluded = true;
+      saveScannedTree(data.scannedTree);
+      jsonResp(res, 200, { ok: true });
+    } catch (e) {
+      jsonResp(res, 400, { error: 'Invalid request body' });
+    }
+  },
+
+  async handleDiscoveryInclude(req, res, state) {
+    const { data } = state;
+    try {
+      const body = await readBody(req);
+      const { path: folderPath } = JSON.parse(body);
+      if (!folderPath) { jsonResp(res, 400, { error: 'path is required' }); return; }
+      const node = data.scannedTree.find(n => n.path === folderPath);
+      if (!node) { jsonResp(res, 404, { error: 'Node not found in scanned tree' }); return; }
+      node.excluded = false;
+      saveScannedTree(data.scannedTree);
+      jsonResp(res, 200, { ok: true });
+    } catch (e) {
+      jsonResp(res, 400, { error: 'Invalid request body' });
+    }
+  },
+
+  async handleDiscoveryFetchMeta(req, res, state) {
+    const { data, config, logger } = state;
+    try {
+      const body = await readBody(req);
+      const { path: folderPath, subjectId, source = 'bangumi' } = JSON.parse(body);
+      if (!folderPath) { jsonResp(res, 400, { error: 'path is required' }); return; }
+      const node = data.scannedTree.find(n => n.path === folderPath);
+      if (!node) { jsonResp(res, 404, { error: 'Node not found in scanned tree' }); return; }
+      const { registry, matchSeason } = require('../scrapers');
+      const { parseFolderName } = require('../scanner');
+      const coverDir = path.join(DATA_DIR, 'covers');
+      let subjectIdToUse = subjectId;
+      let sourceToUse = source;
+      if (!subjectIdToUse) {
+        const folderParsed = parseFolderName(node.name);
+        if (!folderParsed.cjkTitle && node.cjkTitle) folderParsed.cjkTitle = node.cjkTitle;
+        const videoCount = node.videoCount || 0;
+        const match = await matchSeason(registry, folderParsed.cleanTitle, folderParsed, videoCount, config);
+        if (!match) { jsonResp(res, 404, { error: '未找到匹配结果' }); return; }
+        subjectIdToUse = match.id;
+        sourceToUse = match.source;
+      }
+      const meta = await registry.fetchMetadata(sourceToUse, node.parsedTitle, coverDir, subjectIdToUse, config);
+      if (!meta) { jsonResp(res, 404, { error: '获取元数据失败' }); return; }
+      node.bangumiMatched = true;
+      node.bangumiId = meta.bangumiId || meta.tmdbId || null;
+      node.bangumiTitle = meta.bangumiTitle;
+      node.bangumiTitleJp = meta.bangumiTitleJp;
+      node.summary = meta.summary;
+      node.coverUrl = meta.coverUrl;
+      node.localCover = meta.localCover;
+      node.rating = meta.rating;
+      node.metadataSource = meta.source;
+      node.tags = meta.tags || [];
+      if (meta.localCover) preGenerateCovers(meta.localCover);
+      saveScannedTree(data.scannedTree);
+      jsonResp(res, 200, { ok: true, meta, node });
+    } catch (e) {
+      jsonResp(res, 500, { error: e.message });
+    }
+  },
+};

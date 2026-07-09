@@ -6,6 +6,7 @@ const VIDEO_EXTS = new Set(['.mkv', '.mp4', '.avi', '.mov', '.webm']);
 const anitomy = new Parser();
 
 // Non-episode video patterns: NCOP, NCED, PV, CM, Menu, Preview, Trailer
+// Note: \b requires word boundary, so NCOP1/NCED2 do not match — use "NCOP 1" instead
 const EXTRA_VIDEO_RE = /\b(NCOP|NCED|PV\s*\d*|CM[ \d]*|Menu\d*|Preview|Trailer)\b/i;
 
 function isExtraVideo(fileName) {
@@ -17,6 +18,8 @@ const CJK_RE = /[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]/g;
 function hasLatinLetters(str) {
   return (str || '').replace(/[^a-zA-Z]/g, '').length >= 3;
 }
+
+// ── File operations ────────────────────────────────────────────
 
 /**
  * Find all video files recursively in a directory
@@ -48,6 +51,8 @@ function hasDirectVideos(dir) {
   } catch (e) { return false; }
 }
 
+// ── Folder name parsing ───────────────────────────────────────
+
 /**
  * Parse folder name to extract structured anime info using anitomy.
  * Returns rich metadata for precise Bangumi matching.
@@ -58,6 +63,7 @@ function parseFolderName(name) {
   // Strip leading and all trailing bracket groups
   const base = name.replace(/^\[[^\]]+\]\s*/, '').replace(/(\s*\[[^\]]+\])*$/, '').trim();
 
+  // ── Phase 1: anitomy parsing + CJK detection ──
   // 1. Try anitomy on original name first (handles [Group] brackets natively)
   let parsed = {};
   try { parsed = anitomy.parse(name); } catch (e) {}
@@ -89,6 +95,7 @@ function parseFolderName(name) {
     }
   }
 
+  // ── Phase 2: Build structured result object ──
   // 5. Extract all useful fields from anitomy result
   const result = {
     title: anitomyTitle,
@@ -107,6 +114,7 @@ function parseFolderName(name) {
     _raw: parsed,
   };
 
+  // ── Phase 3: Season + title + metadata ──
   // 6. Season determination (priority: anitomy.season > anitomy.episode 2-20 > regex fallback)
   const isEpisodeRange = parsed.episode?.numberAlt != null;
   if (result.seasonRaw) {
@@ -171,138 +179,98 @@ function parseFolderName(name) {
   return result;
 }
 
+// ── Leaf building ──────────────────────────────────────────────
+
 /**
- * Build an anime entry from a directory path
+ * Check if a title is just a season/volume marker without anime name.
  */
-function buildAnimeEntry(fullPath, folderName) {
-  const allVideos = findVideos(fullPath);
-  if (allVideos.length === 0) return null;
-  const parsed = parseFolderName(folderName);
-  const hasCjk = CJK_RE.test(parsed.title);
-  if (!parsed.title || (!hasLatinLetters(parsed.title) && !hasCjk)) {
-    const vp = parseFolderName(allVideos[0].name);
-    if (vp.title) {
-      parsed.title = vp.title;
-      if (!parsed.season && vp.season) parsed.season = vp.season;
-    }
-  }
-  const videoCount = allVideos.filter(v => !isExtraVideo(v.name)).length;
-  return {
-    folderPath: fullPath,
-    folderName,
-    parsedTitle: parsed.title,
-    cjkTitle: parsed.cjkTitle || null,
-    parsedSeason: parsed.season,
-    specialSuffix: parsed.specialSuffix || null,
-    bangumiId: parsed.bangumiId || null,
-    videoCount,
-    totalVideoFiles: allVideos.length,
-    totalSize: allVideos.reduce((sum, v) => sum + v.size, 0),
-    // Include raw video list for auto-import episode creation
-    videos: allVideos.map(v => ({ path: v.path, name: v.name, size: v.size })),
-  };
+function isSeasonOnly(title) {
+  return /^(?:Season\s*\d+|S\d+|第\d+季)$/i.test(title.trim());
 }
 
 /**
- * Scan a media directory for anime folders
+ * Propagate bangumiId from ancestor folder names (parentName first, then chain).
+ * Used when the leaf folder itself has no [bgmN] identifier.
  */
-function scanMediaDir(mediaDir) {
-  const results = [];
-
-  try {
-    const entries = fs.readdirSync(mediaDir, { withFileTypes: true });
-    for (const entry of entries) {
-      if (!entry.isDirectory()) continue;
-      if (entry.name === 'covers') continue;
-
-      const fullPath = path.join(mediaDir, entry.name);
-
-      if (hasDirectVideos(fullPath)) {
-        const anime = buildAnimeEntry(fullPath, entry.name);
-        if (anime) results.push(anime);
-      } else {
-        const subEntries = fs.readdirSync(fullPath, { withFileTypes: true });
-        for (const sub of subEntries) {
-          if (!sub.isDirectory()) continue;
-          const subPath = path.join(fullPath, sub.name);
-          const anime = buildAnimeEntry(subPath, sub.name);
-          if (anime) results.push(anime);
-        }
-      }
-    }
-  } catch (e) {
-    throw new Error('Failed to scan media directory: ' + e.message);
+function propagateBgmIdFromChain(parentName, chain) {
+  const candidates = [parentName, ...(chain || [])].filter(Boolean);
+  for (const c of candidates) {
+    const id = extractBgmId(c);
+    if (id) return id;
   }
+  return null;
+}
 
-  return results;
+/**
+ * Fallback to first video filename for title/season when the folder
+ * name doesn't resolve to a valid title.
+ */
+function fallbackToVideoTitle(parsed, videos) {
+  if (!parsed.title || (!hasLatinLetters(parsed.title) && !CJK_RE.test(parsed.title))) {
+    const vp = parseFolderName(videos[0].name);
+    if (vp.title) {
+      parsed.title = vp.title;
+      if (!parsed.episode && vp.episode) parsed.episode = vp.episode;
+      if (!parsed.season && vp.season) parsed.season = vp.season;
+    }
+  }
+  return parsed;
 }
 
 /**
  * Build a leaf node for a folder that directly contains video files.
  * parentChain is an array of ancestor folder names from mediaDir to parent.
+ * parentName is the immediate parent folder name (may differ from chain[-1]).
  */
 function buildLeaf(dirPath, name, parentName, parentChain) {
   const allVideos = findVideos(dirPath);
   if (allVideos.length === 0) return null;
+
   let parsed = parseFolderName(name);
-  // If parsed title is just a season indicator, fall through to parent chain lookup
-  if (parsed.title && /^(?:Season\s*\d+|S\d+|第\d+季)$/i.test(parsed.title.trim())) {
+  const chain = parentChain || [];
+
+  // If parsed title is just a season indicator, clear it so parent chain fills in
+  if (parsed.title && isSeasonOnly(parsed.title)) {
     parsed.title = null;
   }
-  const chain = parentChain || [];
-  // Check parentName first (immediate parent, highest priority for CJK)
+
+  // Walk ancestors for title fallback and CJK discovery
   let nearestCjk = null;
+
+  // 1. Check parentName (immediate parent) — always checks CJK + title independently
   if (parentName) {
-    const parentParsed = parseFolderName(parentName);
-    if (parentParsed.cjkTitle) nearestCjk = parentParsed.cjkTitle;
-    if (!parsed.title && parentParsed.title) {
-      const isDuplicate = parentParsed.title === name;
-      parsed = { title: parentParsed.title, cjkTitle: parsed.cjkTitle || parentParsed.cjkTitle, season: parsed.season || parentParsed.season };
-      if (isDuplicate) parsed.season = parsed.season || parentParsed.season;
+    const pp = parseFolderName(parentName);
+    if (pp.cjkTitle) nearestCjk = pp.cjkTitle;
+    if (!parsed.title && pp.title && !isSeasonOnly(pp.title)) {
+      parsed = { ...parsed, title: pp.title, cjkTitle: parsed.cjkTitle || pp.cjkTitle, season: parsed.season || pp.season };
     }
   }
-  // Walk parentChain (closest first) for more distant ancestors
+
+  // 2. Walk parentChain (closest first) — CJK short-circuits further traversal
   for (let i = 0; i < chain.length; i++) {
-    const pParsed = parseFolderName(chain[i]);
-    if (pParsed.cjkTitle && !nearestCjk) { nearestCjk = pParsed.cjkTitle; break; }
-    if (!parsed.title && pParsed.title) {
-      const isDuplicate = pParsed.title === name || pParsed.title === parsed.title;
-      parsed = { title: pParsed.title, cjkTitle: parsed.cjkTitle || pParsed.cjkTitle, season: parsed.season || pParsed.season };
-      if (isDuplicate) parsed.season = parsed.season || pParsed.season;
+    const pp = parseFolderName(chain[i]);
+    if (pp.cjkTitle && !nearestCjk) { nearestCjk = pp.cjkTitle; break; }
+    if (!parsed.title && pp.title && !isSeasonOnly(pp.title)) {
+      parsed = { ...parsed, title: pp.title, cjkTitle: parsed.cjkTitle || pp.cjkTitle, season: parsed.season || pp.season };
       break;
     }
   }
-  // If leaf itself has no bangumiId, check parent chain for [bgmN]
-  // When propagation succeeds, the leaf's identity is resolved to parent —
-  // flatten parentChain so it displays like a single-season entry.
-  let flattenChain = false;
-  if (!parsed.bangumiId) {
-    if (parentName) {
-      const pBgm = extractBgmId(parentName);
-      if (pBgm) { parsed.bangumiId = pBgm; flattenChain = true; }
-    }
-    if (!parsed.bangumiId) {
-      for (let i = 0; i < chain.length; i++) {
-        const cBgm = extractBgmId(chain[i]);
-        if (cBgm) { parsed.bangumiId = cBgm; flattenChain = true; break; }
-      }
-    }
-  }
-  // If leaf title is Latin-only and ancestor has CJK, prefer ancestor's CJK
-  if (nearestCjk && parsed.title && !/[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]/.test(parsed.title)) {
+
+  // 3. Propagate bangumiId from ancestor (parentName → chain)
+  const bgmId = propagateBgmIdFromChain(parentName, chain);
+  const flattenChain = !parsed.bangumiId && !!bgmId;
+  if (!parsed.bangumiId) parsed.bangumiId = bgmId;
+
+  // 4. If leaf title is Latin-only and ancestor has CJK, prefer ancestor's CJK
+  if (nearestCjk && parsed.title && !CJK_RE.test(parsed.title)) {
     parsed.title = nearestCjk;
   }
   if (!parsed.cjkTitle && nearestCjk) parsed.cjkTitle = nearestCjk;
-  let episode = parsed.episode;
-  const hasCjkTitle = CJK_RE.test(parsed.title);
-  if (!parsed.title || (!hasLatinLetters(parsed.title) && !hasCjkTitle)) {
-    const vp = parseFolderName(allVideos[0].name);
-    if (vp.title) {
-      parsed.title = vp.title;
-      if (!episode && vp.episode) episode = vp.episode;
-      if (!parsed.season && vp.season) parsed.season = vp.season;
-    }
-  }
+
+  // 5. Fallback to first video filename if still no valid title
+  parsed = fallbackToVideoTitle(parsed, allVideos);
+
+  // 6. Build return object
   const videoCount = allVideos.filter(v => !isExtraVideo(v.name)).length;
   return {
     name,
@@ -321,10 +289,15 @@ function buildLeaf(dirPath, name, parentName, parentChain) {
   };
 }
 
+// ── Directory scanning ─────────────────────────────────────────
+
 /**
- * Recursively scan a directory's sub-directories for anime entries.
+ * Unified recursive directory walker.
+ * Returns a tree of branch/leaf nodes.
+ * When `collect` is provided, each discovered leaf is also pushed to the collector
+ * (enabling `scanMediaDirFlat` without a separate recursive implementation).
  */
-function scanDir(dirPath, chain) {
+function walkDirs(dirPath, chain, collect) {
   const children = [];
   const parentName = path.basename(dirPath);
   try {
@@ -334,16 +307,26 @@ function scanDir(dirPath, chain) {
       const fullPath = path.join(dirPath, entry.name);
       if (hasDirectVideos(fullPath)) {
         const leaf = buildLeaf(fullPath, entry.name, parentName, chain);
-        if (leaf) children.push(leaf);
+        if (leaf) {
+          if (collect) collect(leaf);
+          children.push(leaf);
+        }
       } else {
-        const sub = scanDir(fullPath, [...(chain || []), entry.name]);
+        const sub = walkDirs(fullPath, [...(chain || []), entry.name], collect);
         if (sub.length > 0) {
           children.push({ name: entry.name, path: fullPath, type: 'branch', children: sub });
         }
       }
     }
-  } catch (e) {}
+  } catch (e) { /* skip unreadable dirs */ }
   return children;
+}
+
+/**
+ * Recursively scan a directory's sub-directories for anime entries (tree).
+ */
+function scanDir(dirPath, chain) {
+  return walkDirs(dirPath, chain || [], null);
 }
 
 /**
@@ -362,50 +345,19 @@ function scanTopDir(mediaDir, dirName) {
 }
 
 /**
- * Scan media dir and return a tree of anime folders.
+ * Scan media dir and return a flat array of leaf nodes.
  */
-function scanMediaDirTree(mediaDir) {
+function scanMediaDirFlat(mediaDir) {
   const results = [];
   try {
-    const entries = fs.readdirSync(mediaDir, { withFileTypes: true });
-    const dirs = entries.filter(e => e.isDirectory() && e.name !== 'covers');
-    for (const entry of dirs) {
-      const node = scanTopDir(mediaDir, entry.name);
-      if (node) results.push(node);
-    }
+    walkDirs(mediaDir, [], l => results.push(l));
   } catch (e) {
     throw new Error('Failed to scan media directory: ' + e.message);
   }
   return results;
 }
 
-/**
- * Scan media dir and return a flat array of leaf nodes.
- */
-function scanMediaDirFlat(mediaDir) {
-  const results = [];
-  function walk(dir, chain) {
-    try {
-      const entries = fs.readdirSync(dir, { withFileTypes: true });
-      const dirs = entries.filter(e => e.isDirectory() && e.name !== 'covers');
-      for (const entry of dirs) {
-        const fullPath = path.join(dir, entry.name);
-        if (hasDirectVideos(fullPath)) {
-          const leaf = buildLeaf(fullPath, entry.name, null, chain);
-          if (leaf) results.push(leaf);
-        } else {
-          walk(fullPath, [...chain, entry.name]);
-        }
-      }
-    } catch (e) {}
-  }
-  try {
-    walk(mediaDir, []);
-  } catch (e) {
-    throw new Error('Failed to scan media directory: ' + e.message);
-  }
-  return results;
-}
+// ── Utilities ─────────────────────────────────────────────────
 
 /**
  * Extract Bangumi ID from folder name or path.
@@ -417,4 +369,4 @@ function extractBgmId(name) {
   return m ? parseInt(m[1]) : null;
 }
 
-module.exports = { scanMediaDir, scanMediaDirTree, scanMediaDirFlat, scanTopDir, parseFolderName, findVideos, hasDirectVideos, isExtraVideo, extractBgmId, VIDEO_EXTS };
+module.exports = { scanMediaDirFlat, scanTopDir, parseFolderName, findVideos, hasDirectVideos, isExtraVideo, extractBgmId, VIDEO_EXTS };

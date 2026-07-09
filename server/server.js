@@ -73,7 +73,7 @@ try {
   throw e;
 }
 bootLog('Loading scanner...');
-const { scanMediaDir, scanMediaDirFlat, extractBgmId, isExtraVideo, parseFolderName } = require('./scanner');
+const { scanMediaDirFlat, extractBgmId, isExtraVideo, parseFolderName } = require('./scanner');
 bootLog('Loading pinyin...');
 const pinyinModule = require('pinyin');
 const pinyinFn = pinyinModule.pinyin || pinyinModule.default || pinyinModule;
@@ -281,21 +281,21 @@ async function autoImportNewFolders(data, config) {
   const coverDir = path.join(DATA_DIR, 'covers');
 
   const importedPaths = new Set(data.library.map(a => a.folderPath));
-  const candidates = scanMediaDir(config.mediaDir);
+  const candidates = scanMediaDirFlat(config.mediaDir);
   let imported = 0;
 
   for (const item of candidates) {
-    if (importedPaths.has(item.folderPath)) continue;
-    const bgmId = item.bangumiId || extractBgmId(item.folderName) || extractBgmId(item.folderPath);
+    if (importedPaths.has(item.path)) continue;
+    const bgmId = item.bangumiId || extractBgmId(item.name) || extractBgmId(item.path);
     if (!bgmId) continue;
 
-    aiLog.info(`Auto-importing: ${item.folderName} (bgmId=${bgmId})`);
+    aiLog.info(`Auto-importing: ${item.name} (bgmId=${bgmId})`);
     try {
       const meta = await registry.fetchMetadata('bangumi', item.parsedTitle, coverDir, bgmId, config);
       const anime = {
         id: String(bgmId),
-        folderPath: item.folderPath,
-        folderName: item.folderName,
+        folderPath: item.path,
+        folderName: item.name,
         title: meta?.bangumiTitle || item.parsedTitle,
         season: item.parsedSeason || null,
         specialSuffix: item.specialSuffix || null,
@@ -314,7 +314,7 @@ async function autoImportNewFolders(data, config) {
         totalSeasons: null,
         episodes: item.videos.map((v, i) => ({
           number: i + 1,
-          filePath: path.join(item.folderPath, v.name) || v.path,
+          filePath: path.join(item.path, v.name) || v.path,
           fileName: v.name,
           fileSize: v.size || 0,
           duration: null,

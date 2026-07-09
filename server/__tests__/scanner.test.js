@@ -7,7 +7,7 @@ const os = require('os');
 const {
   parseFolderName, isExtraVideo, extractBgmId,
   findVideos, hasDirectVideos,
-  scanMediaDirFlat, scanMediaDir,
+  scanMediaDirFlat,
 } = require('../scanner');
 
 // ─── Pure Functions ────────────────────────────────────────────────
@@ -404,24 +404,6 @@ describe('Scanner — Filesystem Integration', { concurrency: false }, () => {
     });
   });
 
-  // ===== scanMediaDir (legacy tree) =====
-  describe('scanMediaDir', () => {
-    it('scans direct and one-level deep folders', () => {
-      fs.mkdirSync(path.join(rootDir, 'AnimeA'), { recursive: true });
-      touchVideo(rootDir, 'AnimeA/ep01.mkv');
-      fs.mkdirSync(path.join(rootDir, 'Group', 'AnimeB'), { recursive: true });
-      touchVideo(rootDir, 'Group/AnimeB/ep01.mkv');
 
-      const results = scanMediaDir(rootDir);
-      // AnimeA has direct videos → included
-      // Group has no direct videos but sub-folder AnimeB → Group included as... wait
-      // Actually scanMediaDir does:
-      //   hasDirectVideos(Group)? No → scan sub-dirs → find AnimeB → buildAnimeEntry → push
-      // So both are flat in results
-      assert.equal(results.length, 2);
-      assert.ok(results.some(r => r.folderName === 'AnimeA'));
-      assert.ok(results.some(r => r.folderName === 'AnimeB'));
-    });
-  });
 
 });

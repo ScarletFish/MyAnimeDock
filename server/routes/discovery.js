@@ -79,7 +79,8 @@ module.exports = {
               if (existing) {
                 n.excluded = existing.excluded || false;
                 n.bangumiMatched = existing.bangumiMatched || false;
-                n.bangumiId = existing.bangumiId;
+                // 扫描从文件夹名提取的 [bgmN] 优先于缓存值
+                if (n.bangumiId == null) n.bangumiId = existing.bangumiId;
                 n.bangumiTitle = existing.bangumiTitle;
                 n.bangumiTitleJp = existing.bangumiTitleJp;
                 n.summary = existing.summary;

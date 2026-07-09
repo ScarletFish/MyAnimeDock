@@ -31,6 +31,7 @@ Vanilla JS SPA + Node.js HTTP server. 自托管动漫媒体库管理器。
 
 - 数据相关改动 → `cd server && npm test`
 - 根据改动类型选择验证层级（见 Development Workflow — 四层验证）
+- 测试编写指南见 `.agents/docs/testing.md`
 
 ### Step 6: 审查
 
@@ -38,8 +39,7 @@ Vanilla JS SPA + Node.js HTTP server. 自托管动漫媒体库管理器。
 
 ### Step 7: 回归测试
 
-**修 bug 时**：先写一个能复现 bug 的测试（确认失败），再修代码让它通过。
-**新增数据持久化功能时**：测试必须覆盖"修改 → `loadData()` 重载 → 验证"路径，只测内存状态不够。
+新增功能/修 bug 时的具体测试要求见 [## Testing](#testing) 节。
 
 ### Step 8: 文档更新
 
@@ -51,6 +51,7 @@ Vanilla JS SPA + Node.js HTTP server. 自托管动漫媒体库管理器。
 | 修改数据模型（Prisma schema） | `.agents/docs/data-flow.md` — Save Function Taxonomy |
 | 新增/修改数据持久化路径 | `.agents/docs/data-flow.md` — 对应的数据流节 |
 | 新增 scraper/外部集成 | `.agents/docs/data-flow.md` — Metadata Fetch Flow |
+| 新增/修改测试约定 | `.agents/docs/testing.md` — 对应的节 |
 
 ### 技能速查
 
@@ -59,6 +60,7 @@ Vanilla JS SPA + Node.js HTTP server. 自托管动漫媒体库管理器。
 | 需求不明确 | `skill("req-implement-test")` | 任何新功能/改动 |
 | 数据流相关 | 读 `.agents/docs/data-flow.md` | 涉及 db.js / API / 数据模型 |
 | 探索代码 | 读 `.agents/docs/code-explorer.md` | 需要追踪执行路径 |
+| 测试编写 | 读 `.agents/docs/testing.md` | 编写/修改测试时 |
 | 新功能设计 | `skill("code-architect")` | 架构级实现方案 |
 | 代码审查 | `skill("code-reviewer")` | 完成实现后 |
 | 安全审查 | `skill("security-review")` | 涉及外部输入 |
@@ -387,13 +389,22 @@ npm run build:msi / build:nsis  # 仅安装器
 
 ## Testing
 
+测试指南见 `.agents/docs/testing.md`（模式惯例、已知行为、陷阱记录）。
+
 ```bash
-cd server && npm test    # 运行数据持久化集成测试（17 tests）
+cd server && npm test    # 全量测试（82 tests）
 ```
 
 | 文件 | 测试数 | 覆盖模块 |
 |------|--------|----------|
 | `server/__tests__/db.test.js` | 17 | `loadData`, `saveLibrary`, `saveMyList`, `updateEpisodesWatched`, 全生命周期（导入→播放→归档→删除） |
+| `server/__tests__/scanner.test.js` | 65 | `parseFolderName`(21), `isExtraVideo`(16), `extractBgmId`(7), `findVideos`(5), `hasDirectVideos`(5), `buildLeaf` via `scanMediaDirFlat`(5), `scanMediaDirFlat`(5), `scanMediaDir`(1) |
+
+### 修 bug / 新增功能
+
+- **修 bug 时**：先写一个能复现 bug 的测试（确认失败），再修代码让它通过
+- **新增数据持久化功能时**：测试必须覆盖"修改 → `loadData()` 重载 → 验证"路径，只测内存状态不够
+- **新增 scanner 类型功能时**：按 `scanner.test.js` 模式（纯函数 + 文件系统集成 + 已知行为记录）
 
 ## Available Skills
 

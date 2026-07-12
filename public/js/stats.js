@@ -55,6 +55,7 @@ function loadStats() {
   const emptyEl = document.getElementById('statsEmpty');
   const cardBody = document.querySelector('.stats-card--wordcloud .stats-card-body');
 
+  canvas.style.display = 'none';
   loadingEl.style.display = '';
   emptyEl.style.display = 'none';
   if (cardBody) cardBody.classList.remove('stats-card-body--loaded');

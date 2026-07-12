@@ -1122,6 +1122,8 @@ html[data-reduce-motion="true"] .ambient-orb { display: none !important; }
 }
 
 #wordCloudCanvas {
+  display: block;
+  margin: 0 auto;
   background: var(--bg-surface);
 }
 

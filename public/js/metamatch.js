@@ -79,7 +79,7 @@ async function mmLoadModalData() {
       title: a.title || a.folderName || a.bangumiTitle || '未知',
       folderName: a.folderName || a.title || '',
       specialSuffix: a.specialSuffix || null,
-      parsedSeason: a.parsedSeason || 1,
+      parsedSeason: a.parsedSeason || (a.specialSuffix ? null : 1),
       episodeCount: a.episodes ? a.episodes.length : 0,
       status: a.bangumiId ? 'matched' : 'pending',
       error: null,
@@ -229,11 +229,16 @@ function mmRenderList() {
       const mTitle = item.meta.bangumiTitle || '';
       const mJp = item.meta.bangumiTitleJp || '';
       const mRating = item.meta.rating ? `<span class="mm-row-rating">★ ${escHtml(String(item.meta.rating))}</span>` : '';
+      const metaParts = [];
+      if (mJp) metaParts.push(`<span class="mm-row-match-jp">${escHtml(mJp)}</span>`);
+      if (mRating) metaParts.push(mRating);
+      const metaLine = metaParts.length
+        ? `<div class="mm-row-match-meta">${metaParts.join('<span class="mm-row-match-sep">&middot;</span>')}</div>`
+        : '';
       matchPreview = `
         <div class="mm-row-match">
           <span class="mm-row-match-title">${escHtml(mTitle)}</span>
-          ${mJp ? `<span class="mm-row-match-jp">${escHtml(mJp)}</span>` : ''}
-          ${mRating}
+          ${metaLine}
         </div>`;
     } else if (item.status === 'failed') {
       matchPreview = `<div class="mm-row-match mm-row-match--error">${escHtml(item.error || '匹配失败')}</div>`;
@@ -567,61 +572,29 @@ function mmRenderPanel(item) {
   if (!content) return;
   content.style.display = 'flex';
 
-  const title = item.title || item.folderName || '—';
-
-  // Small cover for header
+  // Cover with status overlay
+  const coverAlt = escAttr(item.meta?.bangumiTitle || item.title || '作品封面');
   let coverHtml = '';
   if (item.meta?.coverUrl || item.coverUrl) {
     const src = escAttr(item.meta?.coverUrl || item.coverUrl);
-    coverHtml = `<img src="${src}" alt="" loading="lazy" decoding="async" onerror="this.outerHTML='<div class=mm-panel-cover-sm-fallback>${escHtml((item.title||'?')[0].toUpperCase())}</div>'">`;
+    coverHtml = `<img src="${src}" alt="${coverAlt}" loading="lazy" decoding="async" onerror="this.outerHTML='<div class=mm-panel-cover-sm-fallback>${escHtml((item.title||'?')[0].toUpperCase())}</div>'">`;
   } else {
     coverHtml = `<div class="mm-panel-cover-sm-fallback">${escHtml((item.title||'?')[0].toUpperCase())}</div>`;
   }
+  const statusLabels = { matched: '已匹配', failed: '失败', matching: '匹配中', pending: '待处理' };
+  const statusOverlay = `<div class="mm-panel-cover-status mm-panel-cover-status--${item.status}"><div class="mm-panel-status-dot"></div>${statusLabels[item.status]}</div>`;
 
-  // Meta tags
-  const metaParts = [];
-  if (item.parsedSeason) metaParts.push(`S${item.parsedSeason}`);
-  if (item.episodeCount) metaParts.push(`${item.episodeCount}集`);
-  if (item.meta?.rating) metaParts.push(`★ ${item.meta.rating}`);
-  if (item.meta?.metadataSource) metaParts.push(item.meta.metadataSource);
-  if (item.meta?.bangumiId) metaParts.push(`ID:${item.meta.bangumiId}`);
-
-  // Season chain info in header — only show for multi-season
-  let seasonChainTag = '';
-  if (item.matchedSeason != null && item.totalSeasons != null && item.totalSeasons > 1) {
-    const seasonMismatch = item.parsedSeason && item.matchedSeason !== item.parsedSeason;
-    if (item.matchedSeason !== 1 || seasonMismatch) {
-      seasonChainTag = `<span class="mm-panel-meta-tag${seasonMismatch ? ' mm-panel-meta-tag--warn' : ''}">S${item.matchedSeason} / 共${item.totalSeasons}季${seasonMismatch ? ' ⚠' : ''}</span>`;
-    }
-  } else if (item.totalSeasons != null && item.totalSeasons > 1) {
-    seasonChainTag = `<span class="mm-panel-meta-tag">共${item.totalSeasons}季</span>`;
+  // Season info
+  let seasonInfo = '';
+  if (item.parsedSeason || item.episodeCount) {
+    const parts = [];
+    if (item.parsedSeason) parts.push(`第${item.parsedSeason}季`);
+    if (item.episodeCount) parts.push(`${item.episodeCount}集`);
+    seasonInfo = parts.join(' · ');
   }
-
-  // Status
-  const statusLabels = { matched: '已匹配', failed: '匹配失败', matching: '匹配中...', pending: '待处理' };
-  const statusHtml = `<div class="mm-panel-status mm-panel-status--${item.status}"><div class="mm-panel-status-dot"></div>${statusLabels[item.status]}</div>`;
-
-  // Comparison — vertical stack
-  let compareHtml = '';
-  if (item.status === 'matched' && item.meta) {
-    compareHtml = `
-      <div class="mm-compare">
-        <div class="mm-compare-side mm-compare-side--left">
-          <div class="mm-compare-label">原始解析</div>
-          <div class="mm-compare-title">${escHtml(item.title)}</div>
-          <div class="mm-compare-sub">${escHtml(item.parsedSeason ? '第' + item.parsedSeason + '季' : '—')} · ${escHtml(String(item.episodeCount) + '集')}</div>
-          <div class="mm-compare-sub" style="margin-top:4px;font-family:var(--font-mono);font-size:0.625rem;word-break:break-all;opacity:0.6">${escHtml(item.folderName || '')}</div>
-        </div>
-        <div class="mm-compare-arrow">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>
-        </div>
-        <div class="mm-compare-side mm-compare-side--right">
-          <div class="mm-compare-label">匹配结果</div>
-          <div class="mm-compare-title">${escHtml(item.meta.bangumiTitle || '—')}</div>
-          <div class="mm-compare-sub">${escHtml(item.meta.bangumiTitleJp || '—')}</div>
-          ${item.meta.rating ? `<div class="mm-compare-rating">★ ${escHtml(String(item.meta.rating))}</div>` : ''}
-        </div>
-      </div>`;
+  let seasonChain = '';
+  if (item.matchedSeason != null && item.totalSeasons != null && item.totalSeasons > 1) {
+    seasonChain = `S${item.matchedSeason}/${item.totalSeasons}`;
   }
 
   // Summary
@@ -664,26 +637,26 @@ function mmRenderPanel(item) {
   let actionsHtml = '';
   if (!mmSyncInProgress) {
     if (item.status === 'matched') {
-      actionsHtml = `<button class="btn" style="font-size:0.8125rem" onclick="mmStartResearch('${item.animeId}')">
+      actionsHtml = `<button class="btn mm-panel-action-btn" onclick="mmStartResearch('${item.animeId}')">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
         重新搜索</button>`;
     } else if (item.status === 'failed') {
-      actionsHtml = `<button class="btn" style="font-size:0.8125rem" onclick="mmStartResearch('${item.animeId}')">
+      actionsHtml = `<button class="btn mm-panel-action-btn" onclick="mmStartResearch('${item.animeId}')">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
         重试匹配</button>`;
     }
   }
 
-  // Fix search
+  // Fix search — only for non-matched (pending/failed)
   let fixHtml = '';
-  if (!mmSyncInProgress) {
+  if (!mmSyncInProgress && item.status !== 'matched') {
     const defaultKeyword = (item.specialSuffix || item.title || item.folderName || '').replace(/[~～]/g, '').trim();
     fixHtml = `
       <div class="mm-fix-section">
         <div class="mm-panel-label">手动搜索修正</div>
         <div class="mm-fix-search">
           <input type="text" id="mmFixKeyword" placeholder="输入搜索词..." value="${escAttr(defaultKeyword)}" onkeydown="if(event.key==='Enter')mmSearchForFix('${item.animeId}')">
-          <button class="btn btn-primary" style="padding:7px 12px;font-size:0.8125rem" onclick="mmSearchForFix('${item.animeId}')">
+          <button class="btn btn-primary mm-fix-search-btn" onclick="mmSearchForFix('${item.animeId}')">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
           </button>
         </div>
@@ -693,22 +666,22 @@ function mmRenderPanel(item) {
 
   content.innerHTML = `
     <div class="mm-panel-header-area">
-      <div class="mm-panel-cover-sm">${coverHtml}</div>
-      <div class="mm-panel-header-info">
-        <div class="mm-panel-title">${escHtml(item.meta?.bangumiTitle || title)}</div>
-        <div class="mm-panel-meta-row">
-          ${metaParts.map(p => `<span class="mm-panel-meta-tag">${escHtml(p)}</span>`).join('')}
-          ${seasonChainTag}
-        </div>
-        ${statusHtml}
+      <div class="mm-panel-cover-sm">
+        ${coverHtml}
+        ${statusOverlay}
       </div>
+      ${seasonChain || seasonInfo ? `
+      <div class="mm-panel-key-info">
+        ${seasonChain ? `<span class="mm-panel-key-badge">${seasonChain}</span>` : ''}
+        <span class="mm-panel-key-text">${seasonInfo}</span>
+      </div>
+      ` : ''}
     </div>
     <div class="mm-panel-scroll">
-      ${compareHtml}
       ${summaryHtml}
       ${errorHtml}
       ${keywordsHtml}
-      ${actionsHtml ? `<div style="display:flex;gap:var(--space-2);flex-wrap:wrap">${actionsHtml}</div>` : ''}
+      ${actionsHtml ? `<div class="mm-panel-actions">${actionsHtml}</div>` : ''}
       ${fixHtml}
     </div>`;
 }

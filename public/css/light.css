@@ -249,16 +249,10 @@
 :is([data-theme="light"], [data-theme-mode="light"]) .detail-episodes-header { border-color: rgba(var(--accent-secondary-rgb), 0.12); }
 
 /* ─── Discovery ─── */
-:is([data-theme="light"], [data-theme-mode="light"]) .discovery-hero { border-color: rgba(0, 0, 0, 0.06); }
-:is([data-theme="light"], [data-theme-mode="light"]) .discovery-hero-bg {
-  background:
-    radial-gradient(ellipse 70% 80% at 50% 30%, rgba(var(--accent-rgb), 0.04) 0%, transparent 60%),
-    var(--bg-elevated);
-}
+/* discovery hero replaced by view-header — no light override needed */
 :is([data-theme="light"], [data-theme-mode="light"]) .discovery-hero-path { color: var(--fg-muted); }
-:is([data-theme="light"], [data-theme-mode="light"]) .discovery-stat {
+:is([data-theme="light"], [data-theme-mode="light"]) .stat-pill {
   background: var(--bg-card);
-  border-color: rgba(0, 0, 0, 0.06);
 }
 :is([data-theme="light"], [data-theme-mode="light"]) .discovery-actions {
   background: var(--bg-card);
@@ -349,7 +343,7 @@
 :is([data-theme="light"], [data-theme-mode="light"]) .mm-panel { background: var(--bg-elevated); }
 :is([data-theme="light"], [data-theme-mode="light"]) .mm-panel-header-area { background: var(--bg-card); }
 :is([data-theme="light"], [data-theme-mode="light"]) .mm-panel-cover-sm { background: var(--bg-card); }
-:is([data-theme="light"], [data-theme-mode="light"]) .mm-compare-side { background: var(--bg-card); }
+:is([data-theme="light"], [data-theme-mode="light"]) .mm-panel-cover-status { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
 :is([data-theme="light"], [data-theme-mode="light"]) .mm-panel-summary { background: var(--bg-card); }
 :is([data-theme="light"], [data-theme-mode="light"]) .mm-fix-search input { background: var(--bg-card); }
 :is([data-theme="light"], [data-theme-mode="light"]) .mm-list-search { background: var(--bg-elevated); }

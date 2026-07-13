@@ -874,7 +874,7 @@ html.theme-transitioning .theme-dock {
 /* ─── Responsive ─── */
 @media (max-width: 1100px) {
   .view { padding: 1.5rem; }
-  .discovery-hero { padding: var(--space-8) var(--space-6); }
+  /* discovery hero replaced by view-header — no hero padding needed */
 }
 
 @media (max-width: 768px) {
@@ -889,13 +889,8 @@ html.theme-transitioning .theme-dock {
   .watch-card-content { flex-wrap: wrap; }
   .watch-card-btn { width: 100%; justify-content: center; }
   .watch-card-progress { max-width: 100%; }
-  .discovery-hero { padding: var(--space-6) var(--space-4); min-height: 140px; }
-  .discovery-hero-title { font-size: calc(1.35rem * var(--scale)); }
-  .discovery-hero-content { flex-direction: column; gap: var(--space-4); align-items: flex-start; }
+  /* discovery hero replaced by view-header — responsive handled by .view-header rule above */
   .discovery-stats { flex-wrap: wrap; gap: var(--space-2); }
-  .discovery-stat { padding: var(--space-3) var(--space-4); min-width: 80px; }
-  .discovery-stat-num { font-size: calc(1.2rem * var(--scale)); }
-  .discovery-stats-right { margin-left: auto; }
   .discovery-actions { flex-wrap: wrap; }
   .detail-nav-left { width: 30px; }
   .detail-nav-right { width: 30px; }
@@ -920,7 +915,7 @@ html.theme-transitioning .theme-dock {
 @media (prefers-reduced-motion: reduce) {
   .mm-row { animation: none !important; }
   .mm-bento-pulse { animation: none !important; }
-  .mm-panel-status--matching .mm-panel-status-dot { animation: none !important; }
+  .mm-panel-cover-status--matching .mm-panel-status-dot { animation: none !important; }
   .mm-batch-bar { animation: none !important; }
   .anime-card { animation: none !important; }
   #detailView.detail-enter-active { animation: none !important; }
@@ -964,7 +959,7 @@ html.theme-transitioning .theme-dock {
 /* ─── Manual reduced-motion toggle (mirrors @media block above) ─── */
 html[data-reduce-motion="true"] .mm-row,
 html[data-reduce-motion="true"] .mm-bento-pulse,
-html[data-reduce-motion="true"] .mm-panel-status--matching .mm-panel-status-dot,
+html[data-reduce-motion="true"] .mm-panel-cover-status--matching .mm-panel-status-dot,
 html[data-reduce-motion="true"] .mm-batch-bar,
 html[data-reduce-motion="true"] .anime-card,
 html[data-reduce-motion="true"] #detailView.detail-enter-active,

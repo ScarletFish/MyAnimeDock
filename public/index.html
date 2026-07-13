@@ -121,12 +121,15 @@
 
   <!-- Discovery View -->
   <section class="view hidden" id="discoveryView">
-    <div class="discovery-hero" id="discoveryHero">
-      <div class="discovery-hero-bg"></div>
-      <div class="discovery-hero-content">
-        <div class="discovery-hero-title-wrap">
-          <h1 class="discovery-hero-title">媒体目录</h1>
-          <p class="discovery-hero-path" id="discoveryPath">未配置媒体目录</p>
+    <div class="view-header" id="discoveryHero">
+      <div>
+        <h1>媒体目录</h1>
+        <p class="discovery-hero-path" id="discoveryPath">未配置媒体目录</p>
+      </div>
+      <div class="view-header-right">
+        <div class="discovery-stats-pills" id="discoveryStats" style="display:none">
+          <span class="stat-pill"><span id="statAnime">0</span> 部动漫</span>
+          <span class="stat-pill"><span id="statImported">0</span> 已导入</span>
         </div>
         <button class="btn btn-outline discovery-scan-btn" id="discoveryScanBtn" onclick="startScan()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -137,18 +140,8 @@
       </div>
     </div>
 
-    <div class="discovery-stats" id="discoveryStats" style="display:none">
-      <div class="discovery-stats-left">
-        <div class="discovery-stat discovery-stat--accent">
-          <span class="discovery-stat-num" id="statAnime">0</span>
-          <span class="discovery-stat-label">识别为动漫</span>
-        </div>
-        <div class="discovery-stat">
-          <span class="discovery-stat-num" id="statImported">0</span>
-          <span class="discovery-stat-label">已导入</span>
-        </div>
-      </div>
-      <div class="discovery-stats-right" id="discoveryToolbar">
+    <div class="discovery-stats" id="discoveryToolbar" style="display:none">
+      <div class="discovery-stats-right">
         <div class="filter-group">
           <button class="filter-btn filter-btn--active" data-filter="all" onclick="setFilter('all')">全部</button>
           <button class="filter-btn" data-filter="unimported" onclick="setFilter('unimported')">未导入</button>

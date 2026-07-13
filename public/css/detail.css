@@ -467,6 +467,8 @@
 .search-result-item:hover {
   background: var(--bg-surface);
   border-color: var(--accent);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .search-result-cover {

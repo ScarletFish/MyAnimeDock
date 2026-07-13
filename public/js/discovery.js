@@ -2,6 +2,7 @@ let discoveryData = [];
 let checkedPaths = new Set();
 let isScanning = false;
 let filterMode = 'all';
+let stickObserver = null;
 
 async function loadDiscovery() {
   const grid = document.getElementById('discoveryGrid');
@@ -133,6 +134,20 @@ function renderDiscovery() {
 
   const hasNew = discoveryData.some(n => !n.alreadyImported && !n.excluded);
   actions.style.display = hasNew ? '' : 'none';
+
+  // Sticky action bar: observe sentinel above the bar
+  if (stickObserver) stickObserver.disconnect();
+  const sentinel = document.getElementById('discoveryActionsSentinel');
+  if (sentinel) {
+    stickObserver = new IntersectionObserver(
+      ([e]) => {
+        if (actions.style.display === 'none') return;
+        actions.classList.toggle('discovery-actions--stuck', !e.isIntersecting);
+      },
+      { threshold: [0] }
+    );
+    stickObserver.observe(sentinel);
+  }
 
   let displayData = discoveryData;
   if (filterMode === 'unimported') {
@@ -349,7 +364,7 @@ async function importSelected() {
   try {
     const result = await API.post('/api/import', { items });
     showToast(`已导入 ${result.imported.length} 部动漫`, 'success');
-    showToast('已自动添加到追番列表', 'silent');
+    showToast('已自动添加到我的列表', 'silent');
     loadDiscovery();
     loadLibrary();
   } catch (e) {

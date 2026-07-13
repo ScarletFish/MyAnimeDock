@@ -478,6 +478,9 @@
 }
 
 /* Discovery Actions Bar */
+.discovery-actions-sentinel {
+  height: 1px;
+}
 .discovery-actions {
   display: flex;
   gap: var(--space-3);
@@ -486,6 +489,12 @@
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.discovery-actions--stuck {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
 }
 
 /* ─── Discovery Cards (Flat List) ─── */
@@ -594,10 +603,10 @@
   width: 20px;
   height: 20px;
   border-radius: 4px;
-  border: 2px solid var(--border);
+  border: 2px solid rgba(var(--accent-rgb), 0.25);
   flex-shrink: 0;
   transition: all var(--duration-fast) var(--ease-spring);
-  background: transparent;
+  background: rgba(var(--accent-rgb), 0.04);
 }
 
 .discovery-cb-visual svg {
@@ -608,6 +617,7 @@
 
 .discovery-card-row:hover .discovery-cb-visual {
   border-color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.08);
 }
 
 .discovery-cb:checked ~ .discovery-cb-visual {

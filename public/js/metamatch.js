@@ -70,7 +70,7 @@ async function mmLoadModalData() {
 
     const libData = await API.get('/api/library');
     if (!libData || libData.length === 0) {
-      mmShowEmpty('资料库为空，请先导入动漫');
+      mmShowEmpty('动漫库为空，请先导入动漫');
       return;
     }
 
@@ -106,8 +106,8 @@ async function mmLoadModalData() {
     mmUpdateBatchBar();
 } catch (e) {
       if (window.location.origin !== 'http://localhost:3456') return;
-      showToast('加载资料库失败: ' + e.message, 'error');
-      mmShowEmpty('加载资料库失败: ' + e.message + ' · 请检查服务器是否运行');
+      showToast('加载动漫库失败: ' + e.message, 'error');
+      mmShowEmpty('加载动漫库失败: ' + e.message + ' · 请检查服务器是否运行');
     }
 }
 
@@ -183,7 +183,7 @@ function mmRenderList() {
       empty.style.display = 'flex';
       const p = empty.querySelector('p');
       if (p) {
-        p.textContent = mmItems.length === 0 ? '资料库为空' :
+        p.textContent = mmItems.length === 0 ? '动漫库为空' :
           (mmFilter === 'all' ? '没有条目' :
             `没有 ${ { matched: '已匹配', failed: '失败', pending: '待处理' }[mmFilter] || '' } 的条目`);
       }

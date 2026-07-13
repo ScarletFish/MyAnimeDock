@@ -79,7 +79,7 @@ async function loadLibrary(soft = false) {
   } catch (e) {
     // Tauri 初始加载时（frontendDist，非 server 源）静默失败
     if (window.location.origin !== 'http://localhost:3456') return;
-    showToast('加载资料库失败: ' + e.message, 'error');
+    showToast('加载动漫库失败: ' + e.message, 'error');
   }
 }
 
@@ -320,10 +320,6 @@ function showContextMenu(e, animeId) {
       '<span>标记状态</span>' +
     '</div>' +
     '<div class="context-menu-divider"></div>' +
-    '<div class="context-menu-item" id="ctxArchive">' +
-      '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>' +
-      '<span>归档</span>' +
-    '</div>' +
     '<div class="context-menu-item context-menu-danger" id="ctxDelete">' +
       '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>' +
       '<span>移除</span>' +
@@ -331,7 +327,6 @@ function showContextMenu(e, animeId) {
 
   // Bind event listeners
   document.getElementById('ctxDelete').addEventListener('click', contextDeleteAnime);
-  document.getElementById('ctxArchive').addEventListener('click', contextArchiveAnime);
   document.getElementById('ctxCopyTitle').addEventListener('click', contextCopyTitle);
   if (bangumiId) {
     document.getElementById('ctxOpenBgm').addEventListener('click', contextOpenBgm);
@@ -419,31 +414,6 @@ document.addEventListener('contextmenu', (e) => {
 });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideContextMenu(); });
 document.getElementById('ctxDelete').addEventListener('click', contextDeleteAnime);
-document.getElementById('ctxArchive').addEventListener('click', contextArchiveAnime);
-
-async function contextArchiveAnime() {
-  const animeId = contextMenuAnimeId;
-  hideContextMenu();
-  if (!animeId) return;
-  const anime = libraryData.find(a => a.id === animeId);
-  const title = anime ? anime.title : animeId;
-  if (!(await showConfirm(`将「${title}」归档到收藏？<br>条目将从资料库移除，在归档页保留记录。`))) return;
-  try {
-    // Create memory entry first, then delete from library
-    await API.post('/api/memories', {
-      animeId,
-      rating: null,
-      thoughts: '',
-      notes: '',
-    });
-    await API.del(`/api/anime/${encodeURIComponent(animeId)}`);
-    showToast('已归档', 'success');
-    loadLibrary();
-    if (typeof loadMyList === 'function') loadMyList();
-  } catch (e) {
-    showToast('归档失败: ' + e.message, 'error');
-  }
-}
 
 function navigateToDetail(id, cardEl) {
   const img = cardEl.querySelector('img');

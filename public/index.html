@@ -161,6 +161,7 @@
       </div>
     </div>
 
+    <div class="discovery-actions-sentinel" id="discoveryActionsSentinel"></div>
     <div class="discovery-actions" id="discoveryActions" style="display:none">
       <button class="btn btn-ghost" id="selectAllBtn" onclick="selectAllCandidates()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8Z"/><path d="M15 3v4a2 2 0 0 0 2 2h4"/></svg>
@@ -328,7 +329,7 @@
   <section class="view hidden" id="detailView">
     <!-- Nav overlay: invisible edge hot zones -->
     <div class="detail-nav-overlay" id="detailNavOverlay">
-      <div class="detail-nav-zone detail-nav-back" id="navBack" title="返回资料库"></div>
+      <div class="detail-nav-zone detail-nav-back" id="navBack" title="返回动漫库"></div>
       <div class="detail-nav-zone detail-nav-top" id="navTop">
         <svg class="detail-nav-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </div>
@@ -514,7 +515,7 @@
         <div class="mm-list-empty" id="mmEmpty" style="display:none">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
           <p>没有需要匹配的条目</p>
-          <p class="empty-hint">所有条目已有元数据，或资料库为空</p>
+          <p class="empty-hint">所有条目已有元数据，或动漫库为空</p>
         </div>
       </div>
       <div class="mm-panel" id="mmPanel">
@@ -751,7 +752,7 @@
       <div class="settings-panel" id="tab-dashboard">
         <div class="form-group">
           <label>仪表盘布局</label>
-          <p class="form-hint" style="margin-top:0">勾选要在资料库首页显示的模块，用箭头调整顺序</p>
+          <p class="form-hint" style="margin-top:0">勾选要在动漫库首页显示的模块，用箭头调整顺序</p>
           <div class="dashboard-layout-list" id="dashboardLayoutList"></div>
         </div>
       </div>
@@ -782,15 +783,6 @@ function switchSettingsTab(btn, tab) {
 
 <!-- Context Menu -->
 <div class="context-menu" id="contextMenu">
-  <div class="context-menu-item" id="ctxArchive">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M21 8v13H3V8"></path>
-      <path d="M1 3h22v5H1z"></path>
-      <path d="M10 12h4"></path>
-    </svg>
-    归档
-  </div>
-  <div class="context-menu-divider"></div>
   <div class="context-menu-item context-menu-danger" id="ctxDelete">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M3 6h18"></path>

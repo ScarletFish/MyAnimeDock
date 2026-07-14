@@ -1,4 +1,4 @@
-# MyAnimeDocker
+# MyAnimeDock
 
 Vanilla JS SPA + Node.js HTTP server. 自托管动漫媒体库管理器。
 
@@ -294,7 +294,7 @@ mpv 模式下自动记录播放进度到 SQLite。
 
 ## Gotchas
 
-- **DATA_DIR 差异**：dev 模式 DATA_DIR = `server/`；pkg/MSI 模式 DATA_DIR = `%APPDATA%/com.myanimedocker.app`
+- **DATA_DIR 差异**：dev 模式 DATA_DIR = `server/`；pkg/MSI 模式 DATA_DIR = `%APPDATA%/com.myanimedock.app`
 - **退出行为**：`/api/quit` 不调 `server.close()`（避免 keep-alive 阻塞响应），延迟 1.5s 后 `process.exit(0)`；Rust 监控线程检测 sidecar 退出后自动关闭 Tauri 窗口
 - **封面路径**：`localCover` 存储为绝对路径，迁移 DATA_DIR 后文件可能不存在，`init()` 中验证文件存在性，缺失则清空字段
 - **Prisma 引擎路径**：pkg 模式下通过 `PRISMA_QUERY_ENGINE_LIBRARY` 环境变量指定引擎 DLL 路径，`NODE_PATH` 指向 `sidecar-modules/`
@@ -405,30 +405,3 @@ cd server && npm test    # 全量测试（82 tests）
 - **修 bug 时**：先写一个能复现 bug 的测试（确认失败），再修代码让它通过
 - **新增数据持久化功能时**：测试必须覆盖"修改 → `loadData()` 重载 → 验证"路径，只测内存状态不够
 - **新增 scanner 类型功能时**：按 `scanner.test.js` 模式（纯函数 + 文件系统集成 + 已知行为记录）
-
-## Available Skills
-
-| Skill | Load with | Purpose |
-|-------|-----------|---------|
-| **req-implement-test** | `skill("req-implement-test")` | 需求规范化：结构化提问提炼完整需求（功能描述、数据来源、边界情况、验收标准、非目标），确认后再实现 |
-| **code-architect** | `skill("code-architect")` | Design feature architecture by analyzing existing codebase patterns, produce implementation blueprint |
-| **code-reviewer** | `skill("code-reviewer")` | Review code for bugs, logic errors, security vulnerabilities, code quality |
-| **feature-dev** | `skill("feature-dev")` | Guide a feature through a structured 7-phase workflow with codebase understanding, architecture, and review |
-| **frontend-design** | `skill("frontend-design")` | Create distinctive, production-grade frontend interfaces with high design quality |
-| **security-review** | `skill("security-review")` | Focused security review of pending git changes |
-| **gsap-core** | `skill("gsap-core")` | GSAP core API — gsap.to(), from(), fromTo(), easing, duration, stagger, matchMedia |
-| **web-design-guidelines** | `skill("web-design-guidelines")` | Review UI code for Web Interface Guidelines compliance |
-| **gsap-timeline** | `skill("gsap-timeline")` | Timeline sequencing, position parameter, nesting, playback |
-| **gsap-scrolltrigger** | `skill("gsap-scrolltrigger")` | Scroll-linked animations, pinning, scrub, triggers |
-| **gsap-plugins** | `skill("gsap-plugins")` | GSAP plugins: Flip, Draggable, ScrollTrigger, SplitText, ScrollSmoother |
-| **gsap-react** | `skill("gsap-react")` | GSAP with React/Next.js — useGSAP hook, refs, cleanup |
-| **gsap-frameworks** | `skill("gsap-frameworks")` | GSAP with Vue, Svelte, and other non-React frameworks |
-| **gsap-performance** | `skill("gsap-performance")` | Performance optimizations: transforms, will-change, layout avoidance |
-| **gsap-utils** | `skill("gsap-utils")` | gsap.utils utilities: clamp, mapRange, random, snap, wrap, toArray |
-
-## Reference Docs
-
-| Doc | Location | Purpose |
-|-----|----------|---------|
-| **data-flow** | `.agents/docs/data-flow.md` | Complete data flow reference: 14 major flows with file:line references. Read before making data path changes. |
-| **code-explorer** | `.agents/docs/code-explorer.md` | Code analysis guide: trace execution paths, map architecture layers, document dependencies. |

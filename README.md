@@ -1,4 +1,4 @@
-<h1 align="center">MyAnimeDocker</h1>
+<h1 align="center">MyAnimeDock</h1>
 
 <p align="center">
   <b>本地优先的动漫收藏管理工具</b><br>
@@ -38,12 +38,12 @@
 
 ## 简介
 
-**MyAnimeDocker** 是一款以 Windows 为主力的本地动漫媒体库管理器。它面向既有追新番习惯、也常下载补档的动漫爱好者，提供从文件入库到完结记录的全周期管理。
+**MyAnimeDock** 是一款以 Windows 为主力的本地动漫媒体库管理器。它面向既有追新番习惯、也常下载补档的动漫爱好者，提供从文件入库到完结记录的全周期管理。
 
-你只需将动漫文件夹交给它，MyAnimeDocker 会完成剩余工作：自动扫描视频文件、使用 [anitomy](https://github.com/Scinath/node-anitomy) 解析标题与季度、从 [Bangumi](https://bgm.tv) 拉取元数据（封面、简介、评分、角色信息）、通过 mpv 播放器追踪每集进度，并在完结时记录评分与感想。
+你只需将动漫文件夹交给它，MyAnimeDock 会完成剩余工作：自动扫描视频文件、使用 [anitomy](https://github.com/Scinath/node-anitomy) 解析标题与季度、从 [Bangumi](https://bgm.tv) 拉取元数据（封面、简介、评分、角色信息）、通过 mpv 播放器追踪每集进度，并在完结时记录评分与感想。
 
 > [!IMPORTANT]
-> **需要 [mpv](https://mpv.io) 播放器**。MyAnimeDocker 本身不含播放器，需自行安装 mpv。推荐 [hooke007/MPV_lazy](https://github.com/hooke007/MPV_lazy) Windows 整合包，开箱即用。
+> **需要 [mpv](https://mpv.io) 播放器**。MyAnimeDock 本身不含播放器，需自行安装 mpv。推荐 [hooke007/MPV_lazy](https://github.com/hooke007/MPV_lazy) Windows 整合包，开箱即用。
 >
 > 所有数据（资料库、播放记录、配置）全部存储在本地 SQLite 数据库中，不依赖任何外部云服务。桌面壳基于 Tauri v2（Rust sidecar），当前仅支持 Windows 10+。
 
@@ -53,7 +53,7 @@
 
 ## 设计思路
 
-市面上的动漫管理工具要么过于臃肿，要么深度依赖在线服务。MyAnimeDocker 围绕以下原则设计：
+市面上的动漫管理工具要么过于臃肿，要么深度依赖在线服务。MyAnimeDock 围绕以下原则设计：
 
 | 原则 | 说明 |
 |------|------|
@@ -198,14 +198,14 @@ MyList 是独立的完整管理视图，覆盖动漫消费周期的所有状态�
 
 ### 安装（推荐）
 
-从 [Releases](https://github.com/user/MyAnimeDocker/releases) 下载 MSI 或 NSIS 安装包，双击安装。需要 Windows 10+（WebView2 已内置）。
+从 [Releases](https://github.com/user/MyAnimeDock/releases) 下载 MSI 或 NSIS 安装包，双击安装。需要 Windows 10+（WebView2 已内置）。
 
 ### 从源码运行
 
 ```bash
 # 前置要求：Node.js 18+、Rust MSVC toolchain、mpv（仅支持 mpv）
-git clone https://github.com/user/MyAnimeDocker.git
-cd MyAnimeDocker
+git clone https://github.com/user/MyAnimeDock.git
+cd MyAnimeDock
 npm install
 cd server && npm install && cd ..
 npm run prisma:generate
@@ -263,7 +263,7 @@ npm run dev
 
 ### 配置文件
 
-以下文件位于服务器数据目录下（开发模式在 `server/`，生产模式在 `%APPDATA%/com.myanimedocker.app/`）：
+以下文件位于服务器数据目录下（开发模式在 `server/`，生产模式在 `%APPDATA%/com.myanimedock.app/`）：
 
 | 文件 | 说明 |
 |------|------|
@@ -338,7 +338,7 @@ media/
 ## 项目结构
 
 ```
-MyAnimeDocker/
+MyAnimeDock/
 ├── server/                      # Node.js 后端（Tauri sidecar）
 │   ├── server.js                # HTTP 服务器 + REST API（:3456）
 │   ├── db.js                    # Prisma/SQLite 数据层封装
@@ -452,7 +452,7 @@ __debug.snapshot(label)       // 快照：view, scrollTop, 数据长度等
 每个 API 端点只写入实际修改的表（`saveLibrary()` / `saveMyList()` / `savePlaySessions()` / `updateEpisodeProgress()`），避免全量 `saveData()` 导致 nodemon 误重启。
 
 > [!IMPORTANT]
-> 开发模式 DATA_DIR = `server/`，生产模式 DATA_DIR = `%APPDATA%/com.myanimedocker.app`。Prisma 引擎路径通过 `PRISMA_QUERY_ENGINE_LIBRARY` 环境变量指定。
+> 开发模式 DATA_DIR = `server/`，生产模式 DATA_DIR = `%APPDATA%/com.myanimedock.app`。Prisma 引擎路径通过 `PRISMA_QUERY_ENGINE_LIBRARY` 环境变量指定。
 
 ---
 
@@ -480,7 +480,7 @@ npm run build:exe
 | 产物 | 路径 |
 |------|------|
 | Node.js sidecar | `src-tauri/server-x86_64-pc-windows-msvc.exe` |
-| Tauri EXE | `src-tauri/target/release/myanimedocker.exe` |
+| Tauri EXE | `src-tauri/target/release/myanimedock.exe` |
 | MSI 安装器 | `src-tauri/target/release/bundle/msi/` |
 | NSIS 安装器 | `src-tauri/target/release/bundle/nsis/` |
 

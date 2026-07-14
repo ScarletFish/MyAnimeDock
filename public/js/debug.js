@@ -11,7 +11,7 @@
  * Persisted: localStorage.getItem('debug') === '1'
  */
 (function () {
-  var KEY = 'myanimedocker_debug';
+  var KEY = 'myanimedock_debug';
 
   window.__debug = {
     _enabled: localStorage.getItem(KEY) === '1',

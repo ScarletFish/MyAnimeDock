@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MyAnimeDocker</title>
+<title>MyAnimeDock</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=Noto+Sans+SC:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -23,7 +23,7 @@
 <aside class="sidebar">
   <div class="sidebar-brand">
     <div class="sidebar-brand-icon">
-      <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="MyAnimeDocker"><path d="M8 0C5.5 0 3 1.5 2 4c-.5 1.5 0 3 .5 4 .5 1 1.5 2 2 2.5S6 11.5 6 13v3h4v-3c0-1.5 1-2 1.5-2.5s1.5-1.5 2-2.5.5-2.5 0-4C13 1.5 10.5 0 8 0z"/></svg>
+      <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="MyAnimeDock"><path d="M8 0C5.5 0 3 1.5 2 4c-.5 1.5 0 3 .5 4 .5 1 1.5 2 2 2.5S6 11.5 6 13v3h4v-3c0-1.5 1-2 1.5-2.5s1.5-1.5 2-2.5.5-2.5 0-4C13 1.5 10.5 0 8 0z"/></svg>
     </div>
   </div>
   <nav class="sidebar-nav">
@@ -638,12 +638,17 @@
 <div class="modal-overlay" id="settingsModal">
   <div class="modal modal--settings">
     <div class="settings-header">
-      <h2>设置</h2>
+      <div class="settings-header-top">
+        <h2>设置</h2>
+        <button class="btn-icon" onclick="closeModal('settingsModal'); openVisualDock()" title="主题与视觉设置" aria-label="主题与视觉设置">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="2"/><path d="M8 2v1"/><path d="M8 13v1"/><path d="M2 8h1"/><path d="M13 8h1"/></svg>
+        </button>
+      </div>
       <nav class="settings-tabs" role="tablist">
         <button class="settings-tab active" data-tab="basic" role="tab" aria-selected="true" onclick="switchSettingsTab(this, 'basic')">基本</button>
         <button class="settings-tab" data-tab="playback" role="tab" aria-selected="false" onclick="switchSettingsTab(this, 'playback')">播放</button>
         <button class="settings-tab" data-tab="scraper" role="tab" aria-selected="false" onclick="switchSettingsTab(this, 'scraper')">刮削</button>
-        <button class="settings-tab" data-tab="dashboard" role="tab" aria-selected="false" onclick="switchSettingsTab(this, 'dashboard')">仪表盘</button>
+        <button class="settings-tab" data-tab="dashboard" role="tab" aria-selected="false" onclick="switchSettingsTab(this, 'dashboard')">动漫库</button>
       </nav>
     </div>
 
@@ -658,12 +663,7 @@
           </div>
           <p class="form-hint">动漫文件夹所在的根目录</p>
         </div>
-        <div class="settings-visual-trigger">
-          <button class="btn btn-outline" onclick="openVisualDock()" style="width:100%">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="2"/><path d="M8 2v1"/><path d="M8 13v1"/><path d="M2 8h1"/><path d="M13 8h1"/></svg>
-            视觉设置
-          </button>
-        </div>
+
       </div>
 
       <!-- Tab: 播放 -->
@@ -700,7 +700,9 @@
             </div>
           </div>
         </div>
-        <div class="form-group">
+        <!-- Bangumi 个人绑定已隐藏（bgm.tv 国内不可达，OAuth 无法完成）
+             后端代码完整保留，未来网络环境改善后取消 display:none 即可恢复 -->
+        <div class="form-group" style="display:none">
           <label>Bangumi 个人绑定</label>
           <div class="api-source-card api-source-card--fixed">
             <div class="api-source-body">
@@ -741,11 +743,11 @@
         </div>
       </div>
 
-      <!-- Tab: 仪表盘 -->
+      <!-- Tab: 动漫库 -->
       <div class="settings-panel" id="tab-dashboard">
         <div class="form-group">
-          <label>仪表盘布局</label>
-          <p class="form-hint" style="margin-top:0">勾选要在动漫库首页显示的模块，用箭头调整顺序</p>
+          <label>动漫库模块</label>
+          <p class="form-hint" style="margin-top:0">勾选要在首页显示的模块，拖拽或点击箭头调整顺序</p>
           <div class="dashboard-layout-list" id="dashboardLayoutList"></div>
         </div>
       </div>

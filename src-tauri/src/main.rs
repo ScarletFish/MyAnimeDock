@@ -147,7 +147,7 @@ fn main() {
 fn get_sidecar_path(handle: &tauri::AppHandle) -> Result<PathBuf, Box<dyn std::error::Error>> {
     let resource_dir = handle.path().resource_dir()?;
     // 注意: executable_dir() 返回的是用户数据目录，不是安装目录。
-    // 需要 current_exe() 获取 MyAnimeDocker.exe 的实际位置。
+    // 需要 current_exe() 获取 MyAnimeDock.exe 的实际位置。
     let exe_dir = std::env::current_exe()?.parent().unwrap().to_path_buf();
     // Tauri v2 将 externalBin "server" 解析为 server-x86_64-pc-windows-msvc.exe 作为源文件名，
     // 最终安装为 server.exe（自动追加 .exe）

@@ -32,7 +32,7 @@ if (process.pkg) {
     const log = (msg) => logStream.write(`[${new Date().toISOString()}] ${msg}\n`);
     console.log = (...args) => log(args.map(a => typeof a === 'string' ? a : JSON.stringify(a)).join(' '));
     console.error = (...args) => log('ERROR: ' + args.map(a => typeof a === 'string' ? a : JSON.stringify(a)).join(' '));
-    console.log('=== MyAnimeDocker Sidecar started ===');
+    console.log('=== MyAnimeDock Sidecar started ===');
     bootLog('Log redirect OK');
   } catch (e) {
     bootLog('Log redirect FAILED: ' + (e?.message || e));
@@ -208,9 +208,9 @@ const routeTable = [
   { method: 'GET', path: '/api/mylist', handler: H.handleGetMyList },
   { method: 'PUT', pattern: /^\/api\/mylist\/([^/]+)\/status$/, handler: H.handleUpdateMyListStatus },
   { method: 'PUT', pattern: /^\/api\/mylist\/([^/]+)$/, handler: H.handleUpdateMyListItem },
-	{ method: 'DELETE', pattern: /^\/api\/mylist\/([^/]+)$/, handler: H.handleDeleteMyListItem },
-	// Wishlist
-	{ method: 'GET', path: '/api/wishlist', handler: H.handleGetWishlist },
+  { method: 'DELETE', pattern: /^\/api\/mylist\/([^/]+)$/, handler: H.handleDeleteMyListItem },
+  // Wishlist
+  { method: 'GET', path: '/api/wishlist', handler: H.handleGetWishlist },
   { method: 'POST', path: '/api/wishlist', handler: H.handlePostWishlist },
   { method: 'DELETE', pattern: /^\/api\/wishlist\/([^/]+)$/, handler: H.handleDeleteWishlistItem },
   // Stats

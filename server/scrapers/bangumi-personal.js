@@ -8,7 +8,7 @@ const logger = require('../logger').child('[BANGUMI-P]');
 const AUTH_ENDPOINT = 'https://bgm.tv/oauth/authorize';
 const TOKEN_ENDPOINT = 'https://bgm.tv/oauth/access_token';
 const API_BASE = 'https://api.bgm.tv';
-const UA = 'MyAnimeDocker/1.0 (github.com/ScarletFish/MyAnimeDocker)';
+const UA = 'MyAnimeDock/1.0 (github.com/ScarletFish/MyAnimeDock)';
 
 // ─── 状态映射（Bangumi type ↔ 本地 MyList status） ───
 // Bangumi: 1=想看 2=看过 3=在看 4=搁置 5=抛弃

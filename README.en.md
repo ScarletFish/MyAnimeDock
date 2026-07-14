@@ -1,4 +1,4 @@
-<h1 align="center">MyAnimeDocker</h1>
+<h1 align="center">MyAnimeDock</h1>
 
 <p align="center">
   <b>A Local-First Anime Collection Manager</b><br>
@@ -38,12 +38,12 @@
 
 ## Introduction
 
-**MyAnimeDocker** is a Windows-first local anime media library manager. Built for anime enthusiasts who follow seasonal simulcasts while also maintaining a local archive of completed series, it covers the full lifecycle from file import to completion records.
+**MyAnimeDock** is a Windows-first local anime media library manager. Built for anime enthusiasts who follow seasonal simulcasts while also maintaining a local archive of completed series, it covers the full lifecycle from file import to completion records.
 
-Just point it to your anime folders — MyAnimeDocker handles the rest: automatic video file scanning, title and season parsing via [anitomy](https://github.com/Scinath/node-anitomy), metadata fetching from [Bangumi](https://bgm.tv) (covers, synopses, ratings, cast), episode progress tracking via the mpv player, and completion notes with ratings.
+Just point it to your anime folders — MyAnimeDock handles the rest: automatic video file scanning, title and season parsing via [anitomy](https://github.com/Scinath/node-anitomy), metadata fetching from [Bangumi](https://bgm.tv) (covers, synopses, ratings, cast), episode progress tracking via the mpv player, and completion notes with ratings.
 
 > [!IMPORTANT]
-> **Requires [mpv](https://mpv.io) player**. MyAnimeDocker does not include a built-in player — you need to install mpv separately. We recommend the [hooke007/MPV_lazy](https://github.com/hooke007/MPV_lazy) Windows integration pack for a ready-to-use setup.
+> **Requires [mpv](https://mpv.io) player**. MyAnimeDock does not include a built-in player — you need to install mpv separately. We recommend the [hooke007/MPV_lazy](https://github.com/hooke007/MPV_lazy) Windows integration pack for a ready-to-use setup.
 >
 > All data (library, play records, configuration) is stored locally in SQLite — no cloud dependency. The desktop shell runs on Tauri v2 (Rust sidecar), currently supporting Windows 10+ only.
 
@@ -53,7 +53,7 @@ Just point it to your anime folders — MyAnimeDocker handles the rest: automati
 
 ## Design Philosophy
 
-Most anime management tools are either bloated or heavily cloud-dependent. MyAnimeDocker is built around these principles:
+Most anime management tools are either bloated or heavily cloud-dependent. MyAnimeDock is built around these principles:
 
 | Principle | Description |
 |-----------|-------------|
@@ -199,14 +199,14 @@ The frontend searches across `title`, `bangumiTitle`, and `pinyinTitle` simultan
 
 ### Installation (Recommended)
 
-Download the MSI or NSIS installer from [Releases](https://github.com/user/MyAnimeDocker/releases) and double-click to install. Requires Windows 10+ (WebView2 is built-in).
+Download the MSI or NSIS installer from [Releases](https://github.com/user/MyAnimeDock/releases) and double-click to install. Requires Windows 10+ (WebView2 is built-in).
 
 ### Running from Source
 
 ```bash
 # Prerequisites: Node.js 18+, Rust MSVC toolchain, mpv
-git clone https://github.com/user/MyAnimeDocker.git
-cd MyAnimeDocker
+git clone https://github.com/user/MyAnimeDock.git
+cd MyAnimeDock
 npm install
 cd server && npm install && cd ..
 npm run prisma:generate
@@ -264,7 +264,7 @@ After finishing, the MyList status auto-switches to `completed`, where you can w
 
 ### Config Files
 
-The following files reside in the server data directory (`server/` in development mode, `%APPDATA%/com.myanimedocker.app/` in production):
+The following files reside in the server data directory (`server/` in development mode, `%APPDATA%/com.myanimedock.app/` in production):
 
 | File | Description |
 |------|-------------|
@@ -339,7 +339,7 @@ Unlimited folder nesting — leaf nodes (directories directly containing video f
 ## Project Structure
 
 ```
-MyAnimeDocker/
+MyAnimeDock/
 ├── server/                      # Node.js backend (Tauri sidecar)
 │   ├── server.js                # HTTP server + REST API (:3456)
 │   ├── db.js                    # Prisma/SQLite data layer
@@ -452,7 +452,7 @@ User action → API endpoint → targeted write to SQLite table → db.js wrappe
 Each API endpoint writes only the modified table (`saveLibrary()` / `saveMyList()` / `savePlaySessions()` / `updateEpisodeProgress()`), avoiding the full `saveData()` that would trigger unnecessary nodemon restarts.
 
 > [!IMPORTANT]
-> Development mode DATA_DIR = `server/`, production mode DATA_DIR = `%APPDATA%/com.myanimedocker.app`. The Prisma engine path is specified via the `PRISMA_QUERY_ENGINE_LIBRARY` environment variable.
+> Development mode DATA_DIR = `server/`, production mode DATA_DIR = `%APPDATA%/com.myanimedock.app`. The Prisma engine path is specified via the `PRISMA_QUERY_ENGINE_LIBRARY` environment variable.
 
 ---
 
@@ -480,7 +480,7 @@ npm run build:exe
 | Artifact | Path |
 |----------|------|
 | Node.js sidecar | `src-tauri/server-x86_64-pc-windows-msvc.exe` |
-| Tauri EXE | `src-tauri/target/release/myanimedocker.exe` |
+| Tauri EXE | `src-tauri/target/release/myanimedock.exe` |
 | MSI installer | `src-tauri/target/release/bundle/msi/` |
 | NSIS installer | `src-tauri/target/release/bundle/nsis/` |
 

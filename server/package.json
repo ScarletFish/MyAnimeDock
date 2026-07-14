@@ -1,7 +1,7 @@
 {
   "name": "anime-manager-server",
   "version": "1.0.0",
-  "description": "MyAnimeDocker backend server",
+  "description": "MyAnimeDock backend server",
   "main": "server.js",
   "bin": "server.js",
   "scripts": {

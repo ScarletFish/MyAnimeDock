@@ -1,12 +1,12 @@
 @echo off
 setlocal enabledelayedexpansion
-title MyAnimeDocker Launcher
+title MyAnimeDock Launcher
 pushd "%~dp0"
 
 :MENU
 cls
 echo +------------------------------------------+
-echo :            MyAnimeDocker                  :
+echo :            MyAnimeDock                    :
 echo +------------------------------------------+
 echo :
 echo :  [1] Tauri Dev One-click   (server + Tauri)

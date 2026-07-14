@@ -1,4 +1,4 @@
-# MyAnimeDocker — 测试指南
+# MyAnimeDock — 测试指南
 
 > 测试流程标准、模式惯例、已知行为和陷阱记录。
 

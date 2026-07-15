@@ -536,8 +536,7 @@
   border-radius: 2px;
   background: var(--accent);
 }
-/* Utility modals get secondary color to differentiate from content modals */
-#settingsModal h2::before,
+/* Utility modals — memory modal uses secondary accent for its heading bar */
 #memoryModal h2::before {
   background: var(--accent-secondary);
 }
@@ -598,13 +597,59 @@
   padding: var(--space-6) var(--space-6) 0;
 }
 
-.settings-header h2 {
+.settings-header {
+  padding: var(--space-6) var(--space-6) 0;
+}
+
+.settings-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: var(--space-4);
-  font-size: calc(1.15rem * var(--scale));
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  opacity: 0.6;
-  font-weight: 600;
+}
+
+.settings-header-top h2 {
+  margin: 0;
+  padding-left: 12px;
+  font-family: var(--font-display);
+  font-size: calc(1.2rem * var(--scale));
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--fg-primary);
+  position: relative;
+}
+.settings-header-top h2::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 2px;
+  bottom: 2px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--accent-secondary);
+}
+
+.settings-header-top .btn-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--fg-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+.settings-header-top .btn-icon:hover {
+  color: var(--fg-primary);
+  border-color: var(--border-hover);
+  background: var(--bg-surface);
+}
+.settings-header-top .btn-icon:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .settings-tabs {
@@ -663,7 +708,7 @@
 .settings-panels {
   position: relative;
   padding: var(--space-5) var(--space-6) 0;
-  min-height: 220px;
+  min-height: 320px;
 }
 
 .settings-panel {
@@ -673,6 +718,12 @@
 
 .settings-panel.active {
   display: block;
+}
+
+/* 表单分组视觉分隔：同一个 panel 内相邻 form-group 之间加细线 */
+.settings-panel .form-group + .form-group {
+  padding-top: 0.25rem;
+  border-top: 1px solid var(--border);
 }
 
 @keyframes settings-fade-in {
@@ -686,21 +737,23 @@
   }
 }
 
-/* ─── Visual Settings Trigger (in settings modal) ─── */
-.settings-visual-trigger {
-  margin-top: 0.25rem;
-}
-.settings-visual-trigger .btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  font-size: calc(0.8125rem * var(--scale));
-}
-
 /* ─── Settings Form Elements ─── */
 .form-group {
   margin-bottom: 1.25rem;
+  position: relative;
+}
+
+/* 设置页内输入框聚焦时左侧装饰线 */
+.settings-panel .form-group:focus-within::before {
+  content: '';
+  position: absolute;
+  left: -16px;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+  opacity: 0.35;
 }
 
 .form-group label {
@@ -731,16 +784,18 @@
 .form-group select:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: rgba(var(--accent-rgb), 0.35);
-  box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.06);
+  border-color: rgba(var(--accent-rgb), 0.4);
+  box-shadow:
+    inset 0 1px 0 rgba(var(--accent-rgb), 0.03),
+    0 0 0 3px rgba(var(--accent-rgb), 0.07);
+  background: var(--bg-elevated);
 }
 
 .form-group input:hover,
 .form-group select:hover,
 .form-group textarea:hover {
-  border-color: rgba(var(--accent-rgb), 0.25);
+  border-color: rgba(var(--accent-rgb), 0.2);
   background: var(--bg-elevated);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .form-group textarea {
@@ -1431,15 +1486,37 @@ input[type="range"]::-webkit-slider-thumb {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.625rem 0.75rem;
+  padding: 0.625rem 0.75rem 0.625rem 0.5rem;
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   cursor: grab;
   transition: background 0.15s var(--ease-out), border-color 0.15s var(--ease-out), transform 0.15s var(--ease-out);
+  position: relative;
+}
+/* 左侧装饰竖条 — 起/禁用态颜色不同 */
+.dashboard-layout-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--fg-muted);
+  opacity: 0.3;
+  transition: background 0.15s var(--ease-out), opacity 0.15s var(--ease-out);
+}
+.dashboard-layout-item:has(.toggle-switch input:checked)::before {
+  background: var(--accent);
+  opacity: 0.7;
 }
 .dashboard-layout-item:active {
   cursor: grabbing;
+}
+.dashboard-layout-item:hover {
+  border-color: var(--border-hover);
+  background: var(--bg-elevated);
 }
 .dashboard-layout-item.dragging {
   opacity: 0.4;
@@ -1451,19 +1528,26 @@ input[type="range"]::-webkit-slider-thumb {
 }
 .dashboard-layout-drag-handle {
   color: var(--fg-muted);
-  opacity: 0.5;
+  opacity: 0.3;
   flex-shrink: 0;
   display: flex;
   align-items: center;
+  padding: 2px;
+  border-radius: 4px;
+  transition: opacity 0.15s var(--ease-out), background 0.15s var(--ease-out);
 }
 .dashboard-layout-item:hover .dashboard-layout-drag-handle {
-  opacity: 0.8;
+  opacity: 0.7;
+  background: rgba(var(--accent-rgb), 0.06);
 }
 .dashboard-layout-label {
   flex: 1;
   font-size: calc(0.8125rem * var(--scale));
   color: var(--fg-primary);
   font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 .dashboard-layout-arrows {
   display: flex;

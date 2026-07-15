@@ -671,14 +671,37 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 });
 
-// ─── Dashboard Layout Settings ───
+// ─── Dashboard Layout (动漫库页面模块排序与开关) ───
+
+/** 默认布局配置 */
+function defaultDashboardLayout() {
+  return [
+    { id: 'stats', enabled: true },
+    { id: 'continueWatch', enabled: true },
+    { id: 'localLibrary', enabled: true }
+  ];
+}
+
+/** 从 localStorage 读取布局配置，不存在则返回默认 */
+function getDashboardLayout() {
+  try {
+    var saved = JSON.parse(localStorage.getItem('myAnimDock_layout'));
+    if (saved && Array.isArray(saved) && saved.length > 0) return saved;
+  } catch (e) {}
+  return defaultDashboardLayout();
+}
+
+/** 保存布局配置到 localStorage */
+function saveDashboardLayout(layout) {
+  localStorage.setItem('myAnimDock_layout', JSON.stringify(layout));
+}
 
 function renderDashboardLayoutSettings() {
   var list = document.getElementById('dashboardLayoutList');
   if (!list) return;
   if (typeof getDashboardLayout !== 'function') return;
   var layout = getDashboardLayout();
-  var defs = { stats: '统计概览', continueWatch: '继续观看', allAnime: '本地动漫' };
+  var defs = { stats: '统计概览', continueWatch: '继续观看', localLibrary: '本地动漫' };
   list.innerHTML = layout.map(function(s, i) {
     var label = defs[s.id] || s.id;
     return '<div class="dashboard-layout-item" data-id="' + s.id + '">' +
@@ -763,6 +786,7 @@ function renderDashboardLayoutSettings() {
     layout.splice(toIdx, 0, moved);
     saveDashboardLayout(layout);
     renderDashboardLayoutSettings();
+    if (typeof renderDashboard === 'function') renderDashboard();
   }
 
   document.addEventListener('pointerdown', onPointerDown);

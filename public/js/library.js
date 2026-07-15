@@ -95,26 +95,49 @@ function renderDashboard() {
   const container = document.getElementById('libraryDashboard');
   if (!container) return;
 
-  container.innerHTML =
-    '<div class="dashboard-section" data-section="stats">' +
-      '<div class="dashboard-section-header"><span class="dashboard-section-title">统计概览</span></div>' +
-      '<div class="dashboard-section-body" id="dashSection-stats"></div>' +
-    '</div>' +
-    '<div class="dashboard-section" data-section="continueWatch">' +
-      '<div class="dashboard-section-header"><span class="dashboard-section-title">继续观看</span></div>' +
-      '<div class="dashboard-section-body" id="dashSection-continueWatch"></div>' +
-    '</div>' +
-    '<div class="dashboard-section" data-section="localLibrary">' +
-      '<div class="dashboard-section-header"><span class="dashboard-section-title">本地动漫</span></div>' +
-      '<div class="dashboard-section-body" id="dashSection-localLibrary"></div>' +
-    '</div>';
+  // 从 localStorage 读取布局配置（过滤禁用项 + 按顺序渲染）
+  var layout = (typeof getDashboardLayout === 'function')
+    ? getDashboardLayout()
+    : [{ id: 'stats', enabled: true }, { id: 'continueWatch', enabled: true }, { id: 'localLibrary', enabled: true }];
+
+  var sectionHTML = '';
+  var sectionIds = [];
+  layout.forEach(function(s) {
+    if (!s.enabled) return;
+    switch (s.id) {
+      case 'stats':
+        sectionIds.push('stats');
+        sectionHTML += '<div class="dashboard-section" data-section="stats">' +
+          '<div class="dashboard-section-header"><span class="dashboard-section-title">统计概览</span></div>' +
+          '<div class="dashboard-section-body" id="dashSection-stats"></div></div>';
+        break;
+      case 'continueWatch':
+        sectionIds.push('continueWatch');
+        sectionHTML += '<div class="dashboard-section" data-section="continueWatch">' +
+          '<div class="dashboard-section-header"><span class="dashboard-section-title">继续观看</span></div>' +
+          '<div class="dashboard-section-body" id="dashSection-continueWatch"></div></div>';
+        break;
+      case 'localLibrary':
+        sectionIds.push('localLibrary');
+        sectionHTML += '<div class="dashboard-section" data-section="localLibrary">' +
+          '<div class="dashboard-section-header"><span class="dashboard-section-title">本地动漫</span></div>' +
+          '<div class="dashboard-section-body" id="dashSection-localLibrary"></div></div>';
+        break;
+    }
+  });
+
+  container.innerHTML = sectionHTML;
 
   // Render sections
   const promises = [];
-  var statsBody = document.getElementById('dashSection-stats');
-  if (statsBody) promises.push(renderStatsSection(libraryData, statsBody));
-  var contBody = document.getElementById('dashSection-continueWatch');
-  if (contBody) renderContinueSection(libraryData, contBody);
+  if (sectionIds.indexOf('stats') !== -1) {
+    var statsBody = document.getElementById('dashSection-stats');
+    if (statsBody) promises.push(renderStatsSection(libraryData, statsBody));
+  }
+  if (sectionIds.indexOf('continueWatch') !== -1) {
+    var contBody = document.getElementById('dashSection-continueWatch');
+    if (contBody) renderContinueSection(libraryData, contBody);
+  }
   renderStatusGrids(libraryData);
   return Promise.all(promises);
 }

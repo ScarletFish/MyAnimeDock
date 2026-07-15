@@ -1922,3 +1922,71 @@ input[type="range"]::-webkit-slider-thumb {
   font-size: calc(0.85rem * var(--scale));
 }
 }
+
+/* ─── Library Empty State ─── */
+.library-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  text-align: center;
+  padding: var(--space-8);
+  gap: var(--space-4);
+}
+
+.library-empty-icon {
+  width: 80px;
+  height: 80px;
+  color: var(--accent);
+  opacity: 0.25;
+  margin-bottom: var(--space-2);
+}
+
+.library-empty-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.library-empty-title {
+  font-family: var(--font-display);
+  font-size: calc(1.25rem * var(--scale));
+  font-weight: 700;
+  color: var(--fg-primary);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.library-empty-desc {
+  font-size: calc(0.875rem * var(--scale));
+  color: var(--fg-secondary);
+  line-height: 1.7;
+  max-width: 360px;
+  margin: 0;
+}
+
+.library-empty-actions {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.library-empty-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 9px 22px;
+  font-size: calc(0.8125rem * var(--scale));
+}
+
+/* 手机端按钮堆叠 */
+@media (max-width: 480px) {
+  .library-empty-actions {
+    flex-direction: column;
+    width: 100%;
+    max-width: 260px;
+  }
+  .library-empty-actions .btn {
+    justify-content: center;
+  }
+}

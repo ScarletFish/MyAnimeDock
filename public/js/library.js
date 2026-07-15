@@ -95,6 +95,38 @@ function renderDashboard() {
   const container = document.getElementById('libraryDashboard');
   if (!container) return;
 
+  // Empty state
+  if (libraryData.length === 0) {
+    container.innerHTML = '';
+    const emptyState = document.createElement('div');
+    emptyState.className = 'library-empty-state';
+    emptyState.innerHTML =
+      '<div class="library-empty-icon">' +
+        '<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
+          '<rect x="8" y="14" width="48" height="40" rx="4" stroke-opacity="0.6"/>' +
+          '<path d="M8 26h48" stroke-opacity="0.3"/>' +
+          '<rect x="16" y="34" width="12" height="14" rx="1" fill="currentColor" fill-opacity="0.06" stroke-opacity="0.5"/>' +
+          '<rect x="32" y="34" width="12" height="14" rx="1" fill="currentColor" fill-opacity="0.06" stroke-opacity="0.5"/>' +
+          '<path d="M22 40l4-2v4l-4-2z" fill="currentColor" fill-opacity="0.3" stroke="none"/>' +
+          '<path d="M38 40l4-2v4l-4-2z" fill="currentColor" fill-opacity="0.3" stroke="none"/>' +
+        '</svg>' +
+      '</div>' +
+      '<h2 class="library-empty-title">还没有导入动漫</h2>' +
+      '<p class="library-empty-desc">先去发现页扫描你的动漫文件夹，<br>然后导入到资料库开始管理吧</p>' +
+      '<div class="library-empty-actions">' +
+        '<button class="btn btn-primary" onclick="showView(\'discovery\')">' +
+          '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>' +
+          '去发现页' +
+        '</button>' +
+        '<button class="btn" onclick="loadSettings()">' +
+          '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>' +
+          '设置媒体目录' +
+        '</button>' +
+      '</div>';
+    container.appendChild(emptyState);
+    return;
+  }
+
   // 从 localStorage 读取布局配置（过滤禁用项 + 按顺序渲染）
   var layout = (typeof getDashboardLayout === 'function')
     ? getDashboardLayout()

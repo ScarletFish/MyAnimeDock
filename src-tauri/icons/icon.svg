@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <clipPath id="squircle">
+      <rect x="20" y="20" width="984" height="984" rx="180" ry="180"/>
+    </clipPath>
+  </defs>
+  <!-- Background -->
+  <rect x="20" y="20" width="984" height="984" rx="180" ry="180" fill="#1e1e26" stroke="#32323c" stroke-width="4"/>
+  <!-- D letter -->
+  <text x="512" y="588" font-family="Georgia, 'Times New Roman', serif" font-weight="700" font-size="480" fill="#e13a5a" text-anchor="middle">D</text>
+</svg>

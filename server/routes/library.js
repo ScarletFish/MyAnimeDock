@@ -2,7 +2,7 @@
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
-const { jsonResp, readBody, preGenerateCovers, serveImage } = require('../lib/utils');
+const { jsonResp, readBody, serveImage } = require('../lib/utils');
 const { saveScannedTree, DATA_DIR } = require('../lib/config');
 
 // Shared helper: resolve folder parsed for structural folders
@@ -122,7 +122,7 @@ module.exports = {
           const meta = await registry.fetchMetadata(match.source, folderParsed.cleanTitle, coverDir, match.id, config, match._detail);
           if (!meta) return { animeId, success: false, error: '获取元数据失败' };
           Object.assign(anime, meta);
-          if (anime.localCover) preGenerateCovers(anime.localCover);
+            // Cover resize removed — browser handles display scaling
           if (match.matchedSeason != null) anime.matchedSeason = match.matchedSeason;
           if (match.totalSeasons != null) anime.totalSeasons = match.totalSeasons;
           return { animeId, success: true, meta, matchedSeason: match.matchedSeason, totalSeasons: match.totalSeasons };
@@ -194,7 +194,7 @@ module.exports = {
             if (timedOut) return;
             if (!meta) { send('progress', { animeId, success: false, error: '获取元数据失败' }); return; }
             Object.assign(anime, meta);
-            if (anime.localCover) preGenerateCovers(anime.localCover);
+          // Cover resize removed — browser handles display scaling
             if (match.matchedSeason != null) anime.matchedSeason = match.matchedSeason;
             if (match.totalSeasons != null) anime.totalSeasons = match.totalSeasons;
             send('progress', { animeId, success: true, meta, matchedSeason: match.matchedSeason, totalSeasons: match.totalSeasons });

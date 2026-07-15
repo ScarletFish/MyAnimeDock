@@ -45,12 +45,10 @@ module.exports = {
         source = match.source;
         matchInfo = match;
       }
-      const { preGenerateCovers } = require('../lib/utils');
       const meta = await registry.fetchMetadata(source, anime.title, coverDir, subjectId, config);
       if (!meta) { jsonResp(res, 404, { error: '获取元数据失败' }); return; }
       const hadBangumiId = !!anime.bangumiId;
       Object.assign(anime, meta);
-      if (anime.localCover) preGenerateCovers(anime.localCover);
       if (matchInfo) {
         if (matchInfo.matchedSeason != null) anime.matchedSeason = matchInfo.matchedSeason;
         if (matchInfo.totalSeasons != null) anime.totalSeasons = matchInfo.totalSeasons;

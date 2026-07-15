@@ -271,7 +271,7 @@ function renderContinueSection(data, container) {
         thumbUrl = '/api/thumbnail?path=' + encodeURIComponent(ep.filePath) + '&time=' + thumbTime;
       }
       var coverSrc = a.localCover
-        ? '/covers/' + path.basename(a.localCover) + '?w=540&q=80'
+        ? '/covers/' + path.basename(a.localCover)
         : (a.coverUrl || '');
       var bgStyle = thumbUrl ? ' style="background-image:url(' + escAttr(thumbUrl) + ')"' :
         (coverSrc ? ' style="background-image:url(' + escAttr(coverSrc) + ')"' : '');

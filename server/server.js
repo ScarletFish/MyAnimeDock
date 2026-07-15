@@ -14,7 +14,7 @@ const {
   loadConfig, saveConfig, loadScannedTree, saveScannedTree,
 } = require('./lib/config');
 const {
-  mime, setFfmpegPath, preGenerateCovers, serveImage, serveRaw, readBody, jsonResp, cleanupOldCache,
+  mime, setFfmpegPath, serveImage, serveRaw, readBody, jsonResp, cleanupOldCache,
 } = require('./lib/utils');
 
 // ── 引导日志 ──
@@ -335,7 +335,7 @@ async function autoImportNewFolders(data, config) {
         anime.eps = meta.eps || null;
         anime.totalEpisodes = meta.totalEpisodes || null;
       }
-      if (meta?.localCover) preGenerateCovers(meta.localCover);
+      // Cover resize removed — browser handles display scaling
 
       data.library.push(anime);
       if (!data.myList) data.myList = [];

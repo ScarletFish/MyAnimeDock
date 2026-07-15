@@ -1,7 +1,7 @@
 // server/routes/discovery.js — 浏览、扫描、导入、元数据匹配
 const path = require('path');
 const fs = require('fs');
-const { jsonResp, readBody, preGenerateCovers } = require('../lib/utils');
+const { jsonResp, readBody } = require('../lib/utils');
 const { saveScannedTree, DATA_DIR } = require('../lib/config');
 
 module.exports = {
@@ -205,7 +205,7 @@ module.exports = {
                   anime.coverUrl = meta.coverUrl || anime.coverUrl;
                   anime.localCover = meta.localCover || anime.localCover;
                   anime.rating = meta.rating || anime.rating;
-                  if (meta.localCover) preGenerateCovers(meta.localCover);
+                  // Cover resize removed — browser handles display scaling
                   return db.saveLibrary(data);
                 }
               })
@@ -327,7 +327,7 @@ module.exports = {
       node.rating = meta.rating;
       node.metadataSource = meta.source;
       node.tags = meta.tags || [];
-      if (meta.localCover) preGenerateCovers(meta.localCover);
+      // Cover resize removed — browser handles display scaling
       saveScannedTree(data.scannedTree);
       jsonResp(res, 200, { ok: true, meta, node });
     } catch (e) {

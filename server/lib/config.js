@@ -7,9 +7,9 @@ const BOOT_LOG = path.join(process.env.TEMP || process.env.TMP || '.', 'myanimed
 const bootLog = (msg) => { try { fs.appendFileSync(BOOT_LOG, `[${new Date().toISOString()}] ${msg}\n`); } catch (e) {} };
 
 // ── 用户数据目录 ──
-// pkg 模式：%APPDATA%/com.myanimedock.app（可写），开发模式：本模块上级 server/
+// pkg 模式：%APPDATA%/MyAnimeDock（可写），开发模式：本模块上级 server/
 const DATA_DIR = process.pkg
-  ? path.join(process.env.APPDATA || process.env.HOME || '.', 'com.myanimedock.app')
+  ? path.join(process.env.APPDATA || process.env.HOME || '.', 'MyAnimeDock')
   : path.join(__dirname, '..');
 const ASSET_DIR = path.join(__dirname, '..', '..'); // 前端静态资源根
 const CONFIG_PATH = path.join(DATA_DIR, 'config.json');

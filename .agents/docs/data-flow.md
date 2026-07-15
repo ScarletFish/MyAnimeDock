@@ -31,12 +31,12 @@
 
 | File | Location (dev) | Location (MSI/pkg) | Purpose |
 |------|---------------|-------------------|---------|
-| `anime.db` | `prisma/anime.db` | `%APPDATA%/com.myanimedock.app/anime.db` | SQLite — primary store for library, memories, playSessions |
-| `config.json` | `server/config.json` | `%APPDATA%/com.myanimedock.app/config.json` | Settings (JSON only, managed by lib/config.js) |
-| `scanned-tree.json` | `server/scanned-tree.json` | `%APPDATA%/com.myanimedock.app/scanned-tree.json` | Scan result tree (JSON only, managed by lib/config.js) |
+| `anime.db` | `prisma/anime.db` | `%APPDATA%/MyAnimeDock/anime.db` | SQLite — primary store for library, memories, playSessions |
+| `config.json` | `server/config.json` | `%APPDATA%/MyAnimeDock/config.json` | Settings (JSON only, managed by lib/config.js) |
+| `scanned-tree.json` | `server/scanned-tree.json` | `%APPDATA%/MyAnimeDock/scanned-tree.json` | Scan result tree (JSON only, managed by lib/config.js) |
 | `anime-data.json` | (legacy) | (legacy) | **Removed**. Only used as migration fallback for scannedTree on first startup |
-| `covers/*.jpg` | `server/covers/` | `%APPDATA%/com.myanimedock.app/covers/` | Downloaded cover images |
-| `thumbs/*.jpg` | `server/thumbs/` | `%APPDATA%/com.myanimedock.app/thumbs/` | Video thumbnails (ffmpeg) |
+| `covers/*.jpg` | `server/covers/` | `%APPDATA%/MyAnimeDock/covers/` | Downloaded cover images |
+| `thumbs/*.jpg` | `server/thumbs/` | `%APPDATA%/MyAnimeDock/thumbs/` | Video thumbnails (ffmpeg) |
 
 ## 1. Startup Init Flow
 
@@ -244,7 +244,7 @@ GET /covers/12345.jpg?w=400&q=75
 
 ### MSI/pkg mode:
 ```
-DATA_DIR = %APPDATA%/com.myanimedock.app
+DATA_DIR = %APPDATA%/MyAnimeDock
 coverPath = path.join(DATA_DIR, 'covers/12345.jpg')
   → Same serveImage() pipeline
   → Resized cache at DATA_DIR/covers/.resized/
@@ -595,7 +595,7 @@ http.createServer((req, res) => {
 3. **bangumiId as primary key**: Anime records use `String(bangumiId)` as their `id` field. This means anime identity is stable across folder renames. Manual imports (no `[bgmN]`) still use `parsedTitle + Season` scheme for backward compatibility.
 4. **Fetch in pkg**: Global `fetch()` is unavailable in pkg-bundled Node.js. `node-fetch.js` polyfill with http/https native modules replaces it in scrapers.
 5. **ffmpeg path**: Dev mode uses `require('ffmpeg-static')` from server/node_modules. pkg mode sets `FFMPEG_BIN` env var → `sidecar-modules/ffmpeg.exe` (copied during build by copy-sidecar-deps.js).
-6. **DATA_DIR differs**: Dev = `server/`, pkg/MSI = `%APPDATA%/com.myanimedock.app`. File paths (config.json, scanned-tree.json, covers/, thumbs/) all resolve through DATA_DIR.
+6. **DATA_DIR differs**: Dev = `server/`, pkg/MSI = `%APPDATA%/MyAnimeDock`. File paths (config.json, scanned-tree.json, covers/, thumbs/) all resolve through DATA_DIR.
 7. **covers/ migration**: Covers downloaded in dev mode go to `server/covers/`. After MSI install, covers must be re-fetched (new AppData path). `init()` validates localCover existence and clears missing ones → gray placeholder shown.
 8. **Play sessions**: `activePlays` Map is in-memory only (lost on server restart). Persisted playSessions survive in SQLite.
 9. **CSS zoom** (`uiScale`): Applied via `--scale` CSS variable (`applyZoom()` in `app.js:180`). All scalable sizes use `calc(X * var(--scale))`. **禁止使用 CSS `zoom` 属性**（导致 GSAP Flip 断裂、fixed 元素错位）。

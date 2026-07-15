@@ -8,9 +8,9 @@ const fs = require('fs');
 const { PrismaClient } = require('@prisma/client');
 const logger = require('./logger').child('[DB]');
 
-// 数据目录：pkg 模式在 %APPDATA%/com.myanimedock.app（可写），开发模式在项目根
+// 数据目录：pkg 模式在 %APPDATA%/MyAnimeDock（可写），开发模式在项目根
 const DATA_DIR = process.pkg
-  ? path.join(process.env.APPDATA || process.env.HOME || '.', 'com.myanimedock.app')
+  ? path.join(process.env.APPDATA || process.env.HOME || '.', 'MyAnimeDock')
   : path.join(__dirname, '..');
 
 // 确保数据目录存在
@@ -20,7 +20,7 @@ if (!fs.existsSync(DATA_DIR)) {
 }
 
 // 开发模式：DB 在 prisma/anime.db（迁移已有）
-// 生产模式：DB 在 %APPDATA%/com.myanimedock.app/anime.db（可写）
+// 生产模式：DB 在 %APPDATA%/MyAnimeDock/anime.db（可写）
 // 使用绝对路径 + 正斜杠，因为 Prisma 将相对路径解析为相对 schema 目录
 const DB_PATH = process.pkg
   ? `file:${path.join(DATA_DIR, 'anime.db').replace(/\\/g, '/')}`

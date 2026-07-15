@@ -2,68 +2,32 @@
 
 Vanilla JS SPA + Node.js HTTP server. 自托管动漫媒体库管理器。
 
-## Agent Instructions — 工作流程
+> **设计理念**: 本地优先（数据全在本地 SQLite，无需注册账号）| 播放器中转站（播放体验由 mpv 决定）| 低成本刮削（自动识别文件夹，无需严格重命名）| 全生命周期覆盖 | 单机体验优先（桌面原生，打开即用）
 
-用户提出任务时，按以下流程执行。**禁止跳过需求确认直接写代码。**
+## Agent Instructions
 
-### Step 1: 需求规范化
+**禁止跳过需求确认直接写代码。**
 
-加载 `skill("req-implement-test")`，用结构化提问提炼完整需求表（功能描述、数据来源、边界情况、验收标准、非目标），用户确认后再进入下一步。
-
-### Step 2: 理解数据流
-
-**任何涉及数据持久化、API 端点、或数据模型改动的任务**，必须先读 `.agents/docs/data-flow.md`，理解数据在系统中的完整流转路径（scan → import → metadata → SQLite → frontend）。
-
-这一步决定你的改动影响哪些文件、哪些 API、哪些数据表。
-
-### Step 3: 架构探索
-
-根据任务复杂度选择：
-- **小改动**（单文件/纯函数）→ 直接读代码
-- **跨模块改动** → 读 `.agents/docs/code-explorer.md` 按指南追踪执行路径
-- **新功能** → 加载 `skill("code-architect")` 设计实现蓝图
-
-### Step 4: 实现
-
-按项目规范编码（见 Key Patterns、Frontend Conventions、CSS 缩放标准）。
-
-### Step 5: 验证
-
-- 数据相关改动 → `cd server && npm test`
-- 根据改动类型选择验证层级（见 Development Workflow — 四层验证）
-- 测试编写指南见 `.agents/docs/testing.md`
-
-### Step 6: 审查
-
-重要改动加载 `skill("code-reviewer")` 做代码审查；涉及外部输入/API 调用时加载 `skill("security-review")`。
-
-### Step 7: 回归测试
-
-新增功能/修 bug 时的具体测试要求见 [## Testing](#testing) 节。
-
-### Step 8: 文档更新
-
-涉及以下改动时，**必须**同步更新 `.agents/docs/` 中的参考文档：
-
-| 改动类型 | 更新文档 |
-|----------|----------|
-| 新增/修改 API 端点 | `.agents/docs/data-flow.md` — 对应的数据流节 |
-| 修改数据模型（Prisma schema） | `.agents/docs/data-flow.md` — Save Function Taxonomy |
-| 新增/修改数据持久化路径 | `.agents/docs/data-flow.md` — 对应的数据流节 |
-| 新增 scraper/外部集成 | `.agents/docs/data-flow.md` — Metadata Fetch Flow |
-| 新增/修改测试约定 | `.agents/docs/testing.md` — 对应的节 |
+1. **需求确认** → `skill("req-implement-test")` 提炼需求表，用户确认
+2. **理解数据流** → 涉及数据/API/模型改动时先读 `.agents/docs/data-flow.md`
+3. **架构探索** → 小改动读代码，跨模块读 `.agents/docs/code-explorer.md`，新功能 `skill("code-architect")`
+4. **实现** → 按项目规范（Key Patterns / CSS 缩放）
+5. **验证** → 数据相关 `cd server && npm test`；测试编写见 `.agents/docs/testing.md`
+6. **审查** → `skill("code-reviewer")`；外部输入时加 `skill("security-review")`
+7. **回归测试** → 见 [Testing](#testing) 节
+8. **文档更新** → 改 API/数据模型/持久化时同步更新 `.agents/docs/` 对应文档
 
 ### 技能速查
 
-| 场景 | 加载技能/文档 | 时机 |
-|------|--------------|------|
-| 需求不明确 | `skill("req-implement-test")` | 任何新功能/改动 |
-| 数据流相关 | 读 `.agents/docs/data-flow.md` | 涉及 db.js / API / 数据模型 |
-| 探索代码 | 读 `.agents/docs/code-explorer.md` | 需要追踪执行路径 |
-| 测试编写 | 读 `.agents/docs/testing.md` | 编写/修改测试时 |
-| 新功能设计 | `skill("code-architect")` | 架构级实现方案 |
-| 代码审查 | `skill("code-reviewer")` | 完成实现后 |
-| 安全审查 | `skill("security-review")` | 涉及外部输入 |
+| 场景 | 加载 |
+|------|------|
+| 需求不明确 | `skill("req-implement-test")` |
+| 数据流/API/模型 | 读 `.agents/docs/data-flow.md` |
+| 探索代码路径 | 读 `.agents/docs/code-explorer.md` |
+| 新功能设计 | `skill("code-architect")` |
+| 代码审查 | `skill("code-reviewer")` |
+| 安全审查（外部输入） | `skill("security-review")` |
+| 测试编写 | 读 `.agents/docs/testing.md` |
 
 ## Commands
 
@@ -85,50 +49,10 @@ npm run prisma:studio    # Open Prisma Studio (SQLite browser)
 node scripts/migrate-to-sqlite.js  # 从 JSON 迁移数据到 SQLite（一次性）
 start.bat             # Windows 菜单：开发/构建/清理/prisma 操作
 # 测试命令
-cd server && npm test    # 运行数据持久化集成测试（17 tests）
+cd server && npm test    # 全量测试（81 tests）
 ```
 
-## API Endpoints
-
-```bash
-GET  /api/config              # Get config (+ dirValid)
-POST /api/config              # Update config (mediaDir, playerMode, mpvPath, theme, apiSources)
-GET  /api/browse?showExcluded # List scanned tree (flat leaves)
-GET  /api/scan                # SSE scan progress
-POST /api/import              # Import selected items
-POST /api/discovery/unlink    # Remove from library, keep in scannedTree
-POST /api/discovery/exclude   # Mark node excluded from scan
-POST /api/discovery/include   # Remove excluded mark
-POST /api/discovery/fetch-meta# Fetch metadata (Bangumi/TMDB)
-GET  /api/library             # List library
-GET  /api/anime/:id           # Anime detail
-DELETE /api/anime/:id         # Remove from library (archive to memories)
-GET  /api/anime/:id/sessions  # Watch stats (90 days)
-POST /api/play                # Play video (system/mpv)
-POST /api/progress            # Update episode progress
-POST /api/bangumi/search      # Search all enabled scrapers
-POST /api/bangumi/fetch       # Fetch metadata for library item
-GET  /api/mylist              # List MyList (library + wishlist, merged)
-PUT  /api/mylist/:id/status   # Update MyList status (watching/wish/completed/on_hold/dropped)
-GET  /api/mpv-status          # Active mpv sessions
-GET  /api/stats               # Dashboard stats (watching/completed/total/episodes/fileSize/fileCount/watchTime)
-GET  /api/recommendations     # Bangumi current-season random picks (6 items)
-POST /api/quit                # Shutdown server
-GET  /api/health              # Tauri readiness polling
-GET  /api/thumbnail?path=&time # Video thumbnail (ffmpeg)
-GET  /covers/xxx.jpg?w=&q=    # Dynamic cover resize (ffmpeg)
-POST /api/library/sync        # Batch metadata sync (JSON)
-GET  /api/library/sync/stream # SSE batch sync (流式，支持取消)
-GET  /api/memories            # List memories
-POST /api/memories            # Create/update memory
-GET  /api/bangumi/auth/status # Bangumi OAuth 状态
-GET  /api/bangumi/auth/url    # 获取 Bangumi OAuth 授权 URL
-GET  /api/bangumi/auth/callback?code=xxx  # OAuth 回调（自动处理）
-POST /api/bangumi/auth/logout # 清除 Bangumi 令牌
-POST /api/bangumi/auth/creds  # 保存 Bangumi Client ID/Secret
-GET  /api/bangumi/me          # 当前 Bangumi 用户信息
-POST /api/bangumi/sync        # MyList 全量同步（Pull→Merge→Push）
-```
+完整 API 端点参考见 `.agents/docs/data-flow.md`（14 个主要数据流，40+ 端点）。
 
 ## Architecture
 
@@ -138,85 +62,30 @@ POST /api/bangumi/sync        # MyList 全量同步（Pull→Merge→Push）
 ```
 server/            → Tauri sidecar (Node.js backend)
 ├── server.js      → HTTP server + REST API (@ :3456)
-├── db.js          → Prisma 封装层（loadData / syncToSqlite / shutdown）
-├── scanner.js     → 扫描媒体目录，解析文件夹名（anitomy 增强）
-│   ├── scanMediaDirFlat() → 返回扁平 leaf 数组（含 parentChain）
-│   ├── buildLeaf()        → 单条目构造（parentChain 回溯处理 Season 文件夹）
-│   ├── parseFolderName()  → 使用 anitomy 提取标题和季号，回退到正则清洗
-│   └── extractBgmId()     → 从文件夹名提取 [bgmN] 数字 ID
-├── mpv-controller.js → mpv 进度追踪（spawn + --term-status-msg，final 标记）
-├── logger.js      → 结构化日志（debug/info/warn/error + [TAG] 前缀，LOG_LEVEL 环境变量控制）
-├── bangumi-sync.js→ Bangumi 同步编排（Pull→Merge→Push，OAuth 终态推送）
-├── scrapers/      → 多源刮削架构
-│   ├── index.js   → ScraperRegistry（统一注册、优先级、批量搜索 + Sorensen-Dice 模糊匹配 + 搜索结果缓存 5min TTL）
-│   ├── node-fetch.js → pkg 兼容的 fetch polyfill（http/https 原生模块）
-│   ├── bangumi.js → Bangumi API（curl fallback）
-│   ├── bangumi-personal.js → Bangumi 个人 OAuth + 收藏管理 API
-│   ├── anilist.js → AniList GraphQL API（仅用于罗马音标题 + seasonChain 提取，非元数据来源）
-│   └── tmdb.js    → TMDB API（需配置 API Key）
-└── package.json   → Sidecar dependencies (pkg target)
+├── db.js          → Prisma 封装层
+├── scanner.js     → 扫描媒体目录，解析文件夹名（anitomy + [bgmN] 提取）
+├── mpv-controller.js → IPC 进度追踪
+├── logger.js      → [TAG] 结构化日志
+├── bangumi-sync.js→ Pull→Merge→Push 同步
+└── scrapers/      → Bangumi 主源 + AniList(罗马音) + TMDB(可选)
 src-tauri/         → Tauri v2 desktop shell (Rust)
 ├── src/main.rs    → Sidecar spawning + window management
-├── tauri.conf.json → Window config, externalBin, capabilities (v2)
-├── capabilities/  → v2 permissions (fs.json, shell.json)
-└── icons/         → App icons (ico, png)
-prisma/            → SQLite schema + migrations
-├── schema.prisma  → Anime, Episode, PlaySession, Memory, ScannedTree, Config
-├── anime.db       → SQLite database file
-└── migrations/    → Versioned migration history
-public/            → 前端静态文件（无构建步骤）
-├── index.html
-├── styles.css
-└── js/
-    ├── api.js         → fetch() 封装
-    ├── app.js         → 路由、主题、toast、设置页
-    ├── discovery.js   → 发现/扫描视图（扁平卡片列表 + 兄弟组连续竖线 + 内联操作按钮）
-    ├── library.js     → 资料库网格
-    ├── detail.js      → 详情 + GSAP Flip Hero 动画 + 右侧 3 模块
-    │                   （继续播放卡片 / 剧集热力图 / 观看统计图表）
-    ├── metamatch.js   → MetaMatch 批量元数据匹配工作台（列表+右侧滑入面板，SSE 流式同步）
-    ├── mylist.js      → MyList 视图（当前观看/计划中/已完成/搁置/抛弃状态管理）
-    └── memory.js      → 观看记录
-scripts/            → 构建/迁移工具
-├── copy-sidecar-deps.js   → pkg 打包后复制原生模块（Prisma 引擎 + ffmpeg）
-└── migrate-to-sqlite.js   → JSON → SQLite 数据迁移（一次性）
-.agents/            → Agent 规则/技能/文档
-├── skills/         → 行为指令（req-implement-test, feature-dev, code-reviewer 等）
-└── docs/           → 参考文档（data-flow, code-explorer）
-opencode.json       → OpenCode 配置（插件声明）
+└── tauri.conf.json + capabilities/ + icons/
+prisma/            → SQLite (Prisma ORM) — anime.db + schema.prisma + migrations/
+public/            → 无构建前端
+├── index.html + styles.css
+└── js/            → api.js, app.js, library.js, detail.js, discovery.js, mylist.js, stats.js, metamatch.js, ui.js, state.js, utils.js
+scripts/           → copy-sidecar-deps.js, migrate-to-sqlite.js
+.agents/           → 规则/技能/文档
 ```
 
 **数据持久化**: SQLite (Prisma ORM)，规范化表 (Anime, Episode, PlaySession, Memory) + JSON 文件 (ScannedTree)。
 细粒度写入：每个 API 端点只写入实际修改的表——`db.saveLibrary()` / `db.saveMemories()` / `db.savePlaySessions()` / `db.updateEpisodeProgress()`。
 `saveScannedTree()` 同步写入 `scanned-tree.json`。`saveData()` 为全量组合函数（多类型数据同时变更时使用）。
 
-**scannedTree 叶子节点字段**：
-```json
-{
-  "name": "文件夹名",
-  "path": "完整路径",
-  "type": "leaf",
-  "parsedTitle": "解析出的标题",
-  "parsedSeason": 1,
-  "videoCount": 12,
-  "totalSize": 123456789,
-  "videos": [{"name": "ep01.mkv", "size": 12345678}],
-  "parentChain": ["父文件夹"],
-  "alreadyImported": true,
-  "excluded": false,
-  "bangumiMatched": true,
-  "bangumiId": 12345,
-  "bangumiTitle": "中文标题",
-  "bangumiTitleJp": "日文标题",
-  "summary": "简介",
-  "coverUrl": "https://...",
-  "localCover": "covers/12345.jpg",
-  "rating": 8.7,
-  "metadataSource": "bangumi"
-}
-```
-
 **视图切换**: CSS `hidden` class toggle，无客户端路由器。
+
+**scannedTree 叶子节点字段**见 `.agents/docs/data-flow.md`（Scan / Discovery Flow 节）。
 
 **网格卡片尺寸基准**: `GRID_BASE_SIZE = 207`（`library.js:10`），实际渲染尺寸 = `207 × gridZoom × --scale`。122% gridZoom + 125% --scale = 315px 宽度。仪表盘各模块以此为锚点对齐。
 
@@ -258,39 +127,11 @@ opencode.json       → OpenCode 配置（插件声明）
 
 定义于 `server/config.example.json`（同级目录），复制为 `server/config.json` 使用。
 
-| 字段 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `mediaDir` | string | `""` | 动漫文件夹根目录 |
-| `playerMode` | string | `"mpv"` | 播放器模式，固定为 `"mpv"`（mpv + IPC 进度追踪） |
-| `mpvPath` | string | `"mpv"` | mpv 可执行文件路径 |
-| `theme` | string | `"default"` | 色彩主题：`"default"`（玫红）、`"amber"`（琥珀）、`"ocean"`（海洋）、`"sakura"`（樱花）、`"emerald"`（翡翠）、`"violet"`（紫罗兰） |
-| `themeMode` | string | `"dark"` | `"dark"` 或 `"light"`，与色彩主题独立 |
-| `autoMarkWatched` | bool | `true` | 播放完成后自动标记为已看 |
-| `uiScale` | number | `1.25` | UI 缩放倍数（前端以 % 显示，范围 75-150，前端除 100 后存储） |
-| `apiSources` | array | `[{type:"bangumi",...}]` | 元数据源列表，每项含 `type`/`url`/`key` |
-
 ## Play Sessions（播放会话追踪）
 
-mpv 模式下自动记录播放进度到 SQLite。
+mpv 模式下自动记录播放进度到 SQLite。`activePlays` Map（内存）每 10s 精细化更新 SQLite，mpv 关闭时 `final: true` 标记触发最终保存和 Map 清理。
 
-```json
-{
-  "playSessions": [
-    {
-      "animeId": "string",
-      "episodeNumber": 1,
-      "sessionId": "timestamp-random",
-      "startTime": "ISO 8601",
-      "endTime": "ISO 8601",
-      "duration": 600,       // 内容进度秒数 (endPos - startPos)
-      "clockTime": 620,      // 挂钟秒数 (endTime - startTime)
-      "progressStart": 0
-    }
-  ]
-}
-```
-
-**服务器内存**: `activePlays` Map（`filePath → {sessionId, episode, anime}`），`onProgress` 回调通过此 Map 直接修改剧集引用，每 10 秒落盘。mpv 关闭时 `final: true` 标记触发最终保存和 Map 清理。
+Play Session 字段定义见 `.agents/docs/data-flow.md`（Play Session Flow 节）。
 
 ## Gotchas
 
@@ -313,9 +154,6 @@ mpv 模式下自动记录播放进度到 SQLite。
 
 ## Frontend Conventions
 
-- `camelCase` 命名，2 空格缩进
-- 默认启动视图为 library（`app.js` 中 `showView('library')`）
-- HTML 事件用 `onclick` 属性（除 `settingsPlayerMode.change` 和热力方格动态渲染用 `addEventListener`）
 - GSAP 已注册全局 `gsap.registerPlugin(Flip)`
 - 操作 DOM 前检查元素存在性（非当前页面时 `getElementById` 返回 null）
 - 局部刷新只更新内容区域，不重建父容器（避免搜索框失焦、排序状态丢失）
@@ -338,9 +176,7 @@ UI 缩放使用 CSS 自定义属性 `--scale` 实现，**禁止使用 CSS `zoom`
 
 ## Debug Diagnostic System
 
-`public/js/debug.js` — 前端诊断系统，默认关闭，全环境可用。
-
-**设计原则**：调试工具跟随代码，不跟随环境。不区分 dev/prod，只区分"需不需要"。默认零开销，需要时 F12 启用。
+`public/js/debug.js` — 前端诊断系统，默认关闭（F12 启用），全环境可用。遇到滚动/视图切换/数据不一致时先开日志复现。
 
 ```js
 __debug.toggle()              // 启用/关闭（localStorage 持久化）
@@ -348,51 +184,23 @@ __debug.log(tag, ...args)     // 带标签的 console.log，关闭时不输出
 __debug.snapshot(label)       // 快照：view, scrollTop, scrollHeight, 数据长度等
 ```
 
-**何时用**：遇到前端状态类 bug（滚动、视图切换、数据不一致）时，先用 `__debug.toggle()` 打开日志，复现一遍，看锚点输出定位问题，而不是直接猜原因。
-
-**埋点位置**（遇到新 bug 时应在相关代码追加 snapshot/log）：
-
-| 位置 | 文件:行 | 记录内容 |
-|------|---------|----------|
-| `showView()` 前后 | `app.js:24-28` | view 切换 + scrollTop 变化 |
-| `loadLibrary()` 软/硬路径 | `library.js:144-155` | soft判定 + ID 对比结果 |
-| `restoreLibraryScroll()` | `library.js:169-173` | 实际设的 scrollTop + max scrollable |
-
-**误区预防**：过去调试 scroll 恢复花了很长时间（6 次尝试），根本原因是`showView()`中 scrollTop 保存**晚于**视图切换，导致坐标空间错误。如果 debug 日志当时就位，一次 snapshot 就能发现——`libraryScrollTop` 的值在 library→detail 时就已经是 detail 空间的值了。
+**埋点位置**（遇到新 bug 时追加 snapshot/log）：`showView()`（app.js:24-28，view 切换 + scrollTop）、`loadLibrary()`（library.js:144-155，soft 判定）、`restoreLibraryScroll()`（library.js:169-173，实际 scrollTop）。
 
 ## Development Workflow — 四层验证
 
-### Tier 0 — Rust 类型检查（~20 秒）
-```bash
-npm run check:rust           # cargo check，只检查类型不编译
-```
-
-### Tier 1 — JS 改动（秒级）
-```bash
-npm run dev:server:watch   # nodemon 自动监听 server/ + public/，修改后立即重启
-```
-后端改动 → nodemon 自动重启；前端改动 → F5 刷新浏览器/Tauri 窗口。
-
-### Tier 2 — Rust 改动（~1 分钟）
-```bash
-npm run dev:server:watch    # 终端 1：后端
-npm run dev:tauri           # 终端 2：Tauri 窗口
-# 或
-npm run dev:prod            # 生产流程模拟（sidecar 自启，visible:false → 轮询 → 显示）
-```
-
-### Tier 3 — 最终打包（~5 分钟）
-```bash
-npm run build                # pkg sidecar → tauri build (MSI + NSIS)
-npm run build:msi / build:nsis  # 仅安装器
-```
+| 层级 | 耗时 | 命令 | 场景 |
+|------|------|------|------|
+| Tier 0 | ~20s | `npm run check:rust` | Rust 类型检查（cargo check） |
+| Tier 1 | 秒级 | `npm run dev:server:watch` | JS 改动，nodemon 自动重启 |
+| Tier 2 | ~1min | `npm run dev:server:watch` + `npm run dev:tauri` | Rust 改动，Tauri 开发窗口 |
+| Tier 3 | ~5min | `npm run build` | 最终打包 MSI/NSIS |
 
 ## Testing
 
 测试指南见 `.agents/docs/testing.md`（模式惯例、已知行为、陷阱记录）。
 
 ```bash
-cd server && npm test    # 全量测试（82 tests）
+cd server && npm test    # 全量测试（81 tests）
 ```
 
 | 文件 | 测试数 | 覆盖模块 |

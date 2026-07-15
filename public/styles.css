@@ -577,19 +577,16 @@ body {
 .sidebar-brand-icon {
   width: 1.75rem;
   height: 1.75rem;
-  background: var(--accent-gradient);
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 0 20px var(--accent-glow);
 }
 
 .sidebar-brand-icon svg {
-  width: 1rem;
-  height: 1rem;
-  fill: white;
+  width: 1.25rem;
+  height: 1.25rem;
 }
 
 .sidebar-nav {

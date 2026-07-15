@@ -11,7 +11,8 @@ echo +------------------------------------------+
 echo :
 echo :  [1] Tauri Dev One-click   (server + Tauri)
 echo :  [2] Dev Server Only       (browser test)
-echo :  [3] Build NSIS Installer
+echo :  [3] Build MSI Installer
+echo :  [4] Build NSIS Installer
 echo :  [C] Clean Cache
 echo :  [Q] Quit
 echo :
@@ -21,7 +22,8 @@ set /p "choice=Select: "
 
 if /i "%choice%"=="1" goto DEV_ALL
 if /i "%choice%"=="2" goto DEV_SERVER
-if /i "%choice%"=="3" goto BUILD_NSIS
+if /i "%choice%"=="3" goto BUILD_MSI
+if /i "%choice%"=="4" goto BUILD_NSIS
 if /i "%choice%"=="C" goto CLEAN
 if /i "%choice%"=="Q" goto EXIT
 goto MENU
@@ -51,12 +53,60 @@ echo.
 pause
 goto MENU
 
+:SET_VERSION
+:: Read + prompt + update version in Cargo.toml (single source of truth)
+:: Returns: sets VERSION env var
+for /f %%a in ('powershell -NoProfile -Command "Select-String -Path 'src-tauri\Cargo.toml' -Pattern '^version = \"(.+)\"' | ForEach-Object { $_.Matches.Groups[1].Value }"') do set "CUR_VER=%%a"
+echo Current version: !CUR_VER!
+set /p "NEW_VER=New version (Enter to keep): "
+if "!NEW_VER!"=="" set "NEW_VER=!CUR_VER!"
+if "!NEW_VER!"=="!CUR_VER!" (
+    set "VERSION=!CUR_VER!"
+    echo [OK] Version unchanged: !VERSION!
+    goto :EOF
+)
+powershell -NoProfile -Command "(Get-Content 'src-tauri\Cargo.toml') -replace '^version = \".+\"', 'version = \"%NEW_VER%\"' | Set-Content 'src-tauri\Cargo.toml'"
+if %ERRORLEVEL% equ 0 (
+    echo [OK] Version updated to !NEW_VER!
+    set "VERSION=!NEW_VER!"
+) else (
+    echo [FAIL] Version update failed
+    pause
+    exit /b 1
+)
+goto :EOF
+
+:BUILD_MSI
+cls
+echo --- Build MSI Installer ---
+echo.
+call :SET_VERSION
+if %ERRORLEVEL% neq 0 goto MENU
+echo.
+echo Building MSI installer for v!VERSION! ...
+echo.
+call npm run build:msi
+if %ERRORLEVEL% neq 0 (
+    echo.
+    echo [FAIL] Build error (code: %ERRORLEVEL%)
+    pause
+    goto MENU
+)
+echo.
+echo [Done] MSI installer built successfully
+set "DIR=%~dp0src-tauri\target\release\bundle\msi"
+if exist "!DIR!" start "" "!DIR!"
+pause
+goto MENU
+
 :BUILD_NSIS
 cls
 echo --- Build NSIS Installer ---
 echo.
-echo 1. pkg sidecar
-echo 2. Tauri build (NSIS)
+call :SET_VERSION
+if %ERRORLEVEL% neq 0 goto MENU
+echo.
+echo Building NSIS installer for v!VERSION! ...
 echo.
 call npm run build:nsis
 if %ERRORLEVEL% neq 0 (

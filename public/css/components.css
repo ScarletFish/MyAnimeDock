@@ -652,6 +652,24 @@
   outline-offset: 2px;
 }
 
+.settings-header-top .visual-settings-btn {
+  gap: 6px;
+  padding: 0 10px;
+  width: auto;
+  font-size: calc(0.75rem * var(--scale));
+  font-weight: 500;
+  font-family: var(--font-body);
+  color: var(--fg-secondary);
+}
+.settings-header-top .visual-settings-btn svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+.settings-header-top .visual-settings-btn span {
+  line-height: 1;
+}
+
 .settings-tabs {
   display: flex;
   gap: 0;

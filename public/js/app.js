@@ -180,6 +180,15 @@ function openVisualDock() {
   openThemeDock();
 }
 
+function toggleThemeDock() {
+  const dock = document.getElementById('themeDock');
+  if (dock.classList.contains('open')) {
+    closeThemeDock();
+  } else {
+    openThemeDock();
+  }
+}
+
 // Zoom via CSS --scale variable (GSAP-safe, fixed-position-friendly)
 function applyZoom(scale) {
   const s = parseFloat(scale) || 1;
@@ -828,7 +837,7 @@ function moveDashboardSection(id, dir) {
   var tip = document.getElementById('sidebarTooltip');
   if (!tip) return;
   var textEl = document.getElementById('sidebarTooltipText');
-  var btns = document.querySelectorAll('.sidebar-nav .nav-btn, .sidebar-bottom .nav-btn');
+  var btns = document.querySelectorAll('.sidebar-brand, .sidebar-nav .nav-btn, .sidebar-bottom .nav-btn');
   var hideTimer = null;
   var showTimer = null;
 

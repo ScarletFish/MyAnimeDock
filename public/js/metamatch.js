@@ -555,6 +555,8 @@ function mmRowClick(event, animeId) {
 function mmShowPanelEmpty() {
   mmHideSyncLog();
   mmClosePanel(() => {
+    // 如果动画期间已选择了新条目，不覆盖
+    if (mmPanelOpen) return;
     const empty = document.getElementById('mmPanelEmpty');
     const content = document.getElementById('mmPanelContent');
     if (empty) empty.style.display = 'flex';

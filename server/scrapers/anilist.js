@@ -272,6 +272,9 @@ class AniListScraper {
       buffer = Buffer.from(await res.arrayBuffer());
     }
     fs.writeFileSync(filepath, buffer);
+    if (ext.match(/\.(jpg|jpeg|png|webp)$/i)) {
+      try { require('../lib/utils').preGenerateCovers(filepath); } catch (_) {}
+    }
     return filepath;
   }
 

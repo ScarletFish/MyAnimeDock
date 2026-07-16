@@ -214,7 +214,7 @@ function renderDetail() {
   // ─── Cover ───
   const coverEl = document.getElementById('detailCover');
   if (anime.localCover) {
-    coverEl.innerHTML = `<img src="/covers/${path.basename(anime.localCover)}" alt="${escAttr(anime.title)}">`;
+    coverEl.innerHTML = `<img src="/covers/${path.basename(anime.localCover)}?w=540&q=80" alt="${escAttr(anime.title)}">`;
   } else if (anime.coverUrl) {
     coverEl.innerHTML = `<img src="${escAttr(anime.coverUrl)}" alt="${escAttr(anime.title)}">`;
   } else {
@@ -532,7 +532,7 @@ function renderWatchCard(anime) {
   };
   img.onerror = () => {
     if (version === watchCardVersion && anime.localCover) {
-      bgEl.style.backgroundImage = `url(/covers/${path.basename(anime.localCover)})`;
+      bgEl.style.backgroundImage = `url(/covers/${path.basename(anime.localCover)}?w=540&q=80)`;
     }
   };
   img.src = thumbUrl;

@@ -51,7 +51,6 @@ function goPrev() {
     const prevIdx = idx === 0 ? mylistData.length - 1 : idx - 1;
     const prev = mylistData[prevIdx];
 if (prev) {
-        showToast(`← ${prev.bangumiTitle || prev.title}`, 'info');
         slideToAnime(prev.id, 'prev');
       }
       return;
@@ -61,7 +60,6 @@ if (prev) {
     const prevIdx = idx === 0 ? libraryData.length - 1 : idx - 1;
     const prev = libraryData[prevIdx];
     if (prev) {
-      showToast(`← ${prev.bangumiTitle || prev.title}`, 'info');
       slideToAnime(prev.id, 'prev');
     }
 }
@@ -74,7 +72,6 @@ function goNext() {
     const nextIdx = idx === mylistData.length - 1 ? 0 : idx + 1;
     const next = mylistData[nextIdx];
 if (next) {
-        showToast(`${next.bangumiTitle || next.title} →`, 'info');
         slideToAnime(next.id, 'next');
       }
       return;
@@ -84,7 +81,6 @@ if (next) {
     const nextIdx = idx === libraryData.length - 1 ? 0 : idx + 1;
     const next = libraryData[nextIdx];
     if (next) {
-      showToast(`${next.bangumiTitle || next.title} →`, 'info');
       slideToAnime(next.id, 'next');
     }
 }
@@ -92,26 +88,62 @@ if (next) {
 async function slideToAnime(id, direction) {
   if (isSliding) return;
   isSliding = true;
-  document.body.style.pointerEvents = 'none';
 
   const layout = document.querySelector('.detail-layout');
+  const navOverlay = document.getElementById('detailNavOverlay');
+  if (navOverlay) navOverlay.style.pointerEvents = 'none';
 
-  // 1. Exit animation: slide + fade out
-  if (layout) {
-    await new Promise(resolve => {
-      gsap.to(layout, {
-        x: direction === 'prev' ? 60 : -60,
-        opacity: 0,
-        duration: 0.15,
-        ease: 'power2.in',
-        onComplete: resolve
-      });
-    });
-  }
-
-  // 2. Load new data and re-render
+  // Parallel: start data fetch + exit animation at same time
   resetDetailEnter();
   stopDetailRefresh();
+  const loadPromise = loadAnimeData(id);
+  const exitPromise = layout ? new Promise(resolve => {
+    gsap.to(layout, {
+      x: direction === 'prev' ? 60 : -60,
+      opacity: 0,
+      duration: 0.15,
+      ease: 'power2.in',
+      onComplete: resolve
+    });
+  }) : Promise.resolve();
+
+  const [loadOk] = await Promise.all([loadPromise, exitPromise]);
+  if (!loadOk) return; // error already handled in loadAnimeData
+
+  // Re-render
+  renderDetail();
+  showView('detail');
+  const wrap = document.getElementById('detailCover');
+  if (wrap) {
+    wrap.style.opacity = '1';
+    wrap.style.transform = 'scale(1)';
+  }
+  document.getElementById('headerTitle').textContent = currentAnime.bangumiTitle || currentAnime.title;
+  if (!isWishlistMode) startDetailRefresh();
+
+  // Enter animation: slide + fade in from opposite direction
+  if (layout) {
+    gsap.set(layout, {
+      x: direction === 'prev' ? -50 : 50,
+      opacity: 0
+    });
+    gsap.to(layout, {
+      x: 0,
+      opacity: 1,
+      duration: 0.2,
+      ease: 'power2.out',
+      onComplete: () => {
+        isSliding = false;
+        if (navOverlay) navOverlay.style.pointerEvents = '';
+      }
+    });
+  } else {
+    isSliding = false;
+    if (navOverlay) navOverlay.style.pointerEvents = '';
+  }
+}
+
+async function loadAnimeData(id) {
   try {
     if (detailSourceView === 'mylist' && typeof mylistData !== 'undefined') {
       const item = mylistData.find(i => i.id === id);
@@ -141,41 +173,13 @@ async function slideToAnime(id, direction) {
       currentAnime = await API.get(`/api/anime/${encodeURIComponent(id)}`);
       AppState.set('currentAnime', currentAnime);
     }
-    renderDetail();
-    showView('detail');
-    const wrap = document.getElementById('detailCover');
-    if (wrap) {
-      wrap.style.opacity = '1';
-      wrap.style.transform = 'scale(1)';
-    }
-    document.getElementById('headerTitle').textContent = currentAnime.bangumiTitle || currentAnime.title;
-    if (!isWishlistMode) startDetailRefresh();
+    return true;
   } catch (e) {
     showToast('加载详情失败: ' + e.message, 'error');
     isSliding = false;
-    document.body.style.pointerEvents = '';
-    return;
-  }
-
-  // 3. Enter animation: slide + fade in from opposite direction
-  if (layout) {
-    gsap.set(layout, {
-      x: direction === 'prev' ? -50 : 50,
-      opacity: 0
-    });
-    gsap.to(layout, {
-      x: 0,
-      opacity: 1,
-      duration: 0.2,
-      ease: 'power2.out',
-      onComplete: () => {
-        isSliding = false;
-        document.body.style.pointerEvents = '';
-      }
-    });
-  } else {
-    isSliding = false;
-    document.body.style.pointerEvents = '';
+    const navOverlay = document.getElementById('detailNavOverlay');
+    if (navOverlay) navOverlay.style.pointerEvents = '';
+    return false;
   }
 }
 

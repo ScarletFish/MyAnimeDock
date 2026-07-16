@@ -1,7 +1,7 @@
 let discoveryData = [];
 let checkedPaths = new Set();
 let isScanning = false;
-let filterMode = 'unimported';
+let filterMode = 'all';
 let stickObserver = null;
 
 async function loadDiscovery() {
@@ -156,6 +156,13 @@ function renderDiscovery() {
     displayData = discoveryData.filter(n => n.excluded);
   } else if (filterMode === 'all') {
     displayData = discoveryData.filter(n => !n.excluded);
+    // 未导入排前
+    displayData.sort((a, b) => {
+      if (a.alreadyImported !== b.alreadyImported) {
+        return a.alreadyImported ? 1 : -1;
+      }
+      return 0;
+    });
   }
 
   const parentCounts = {};

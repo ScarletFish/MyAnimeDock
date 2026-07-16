@@ -433,6 +433,8 @@
 }
 .discovery-actions {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: var(--space-3);
   margin-bottom: var(--space-6);
   padding: var(--space-3) var(--space-4);
@@ -445,6 +447,12 @@
 }
 .discovery-actions--stuck {
   box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+}
+.discovery-actions-left,
+.discovery-actions-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 /* ─── Discovery Cards (Flat List) ─── */
@@ -528,10 +536,6 @@
   transition: background var(--duration-fast) var(--ease-out);
 }
 
-.discovery-card-row:hover {
-  background: var(--bg-surface);
-}
-
 .discovery-card--imported .discovery-card-row:hover {
   background: none;
 }
@@ -553,10 +557,10 @@
   width: 20px;
   height: 20px;
   border-radius: 4px;
-  border: 2px solid rgba(var(--accent-rgb), 0.4);
+  border: 2px solid rgba(var(--accent-rgb), 0.55);
   flex-shrink: 0;
   transition: all var(--duration-fast) var(--ease-spring);
-  background: rgba(var(--accent-rgb), 0.08);
+  background: rgba(var(--accent-rgb), 0.15);
 }
 
 .discovery-cb-visual svg {
@@ -567,7 +571,7 @@
 
 .discovery-card-row:hover .discovery-cb-visual {
   border-color: var(--accent);
-  background: rgba(var(--accent-rgb), 0.08);
+  background: rgba(var(--accent-rgb), 0.22);
 }
 
 .discovery-cb:checked ~ .discovery-cb-visual {

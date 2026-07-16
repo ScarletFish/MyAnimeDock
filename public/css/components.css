@@ -618,16 +618,6 @@
   color: var(--fg-primary);
   position: relative;
 }
-.settings-header-top h2::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 2px;
-  bottom: 2px;
-  width: 3px;
-  border-radius: 2px;
-  background: var(--accent-secondary);
-}
 
 .settings-header-top .btn-icon {
   width: 32px;

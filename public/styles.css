@@ -535,10 +535,117 @@ body {
   font-size: calc(0.938rem * var(--scale));
   line-height: 1.65;
   font-weight: 400;
-  min-height: 100vh;
-  overflow-x: hidden;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Body Wrapper (flex row: sidebar + main) ─── */
+.body-wrapper {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* ─── Title Bar ─── */
+#titlebar {
+  position: relative;
+  z-index: 200;
+  width: 100%;
+  height: 34px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0 0 14px;
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border-bottom: 1px solid var(--border);
+  user-select: none;
+  --scale: 1; /* fixed, not affected by zoom */
+}
+
+/* Subtle top-edge highlight */
+#titlebar::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(255,255,255,0.04) 20%,
+    rgba(255,255,255,0.06) 50%,
+    rgba(255,255,255,0.04) 80%,
+    transparent 100%
+  );
+}
+
+/* Accent glow line below title bar */
+#titlebar::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(var(--accent-rgb), 0.12) 30%,
+    rgba(var(--accent-rgb), 0.2) 50%,
+    rgba(var(--accent-rgb), 0.12) 70%,
+    transparent 100%
+  );
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.titlebar__brand {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  color: var(--fg-muted);
+  line-height: 1;
+}
+
+.titlebar__controls {
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+.titlebar__btn {
+  width: 46px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--fg-muted);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.titlebar__btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--fg-secondary);
+}
+
+.titlebar__btn--close:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+.titlebar__btn svg {
+  width: 14px;
+  height: 14px;
 }
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -559,12 +666,9 @@ body {
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  position: fixed;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  z-index: 100;
+  flex-shrink: 0;
   overflow: hidden;
+  height: 100%;
 }
 
 .sidebar-brand {
@@ -736,8 +840,7 @@ html {
 }
 
 .main-content {
-  margin-left: 3.75rem;
-  height: 100vh;
+  flex: 1;
   overflow-y: auto;
   overflow-anchor: auto;
   scrollbar-width: none;

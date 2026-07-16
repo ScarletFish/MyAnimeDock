@@ -1,0 +1,18 @@
+{
+  "$schema": "https://schema.tauri.app/config/2/capability.json",
+  "identifier": "core-window",
+  "description": "Core window operations for custom title bar",
+  "windows": ["main"],
+  "remote": {
+    "urls": ["http://localhost:3456"]
+  },
+  "permissions": [
+    "core:default",
+    "core:window:default",
+    "core:window:allow-minimize",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-close",
+    "core:window:allow-start-dragging",
+    "core:window:allow-is-maximized"
+  ]
+}

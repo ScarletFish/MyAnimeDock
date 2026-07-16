@@ -605,6 +605,14 @@ body {
   pointer-events: none;
 }
 
+.titlebar__left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  min-width: 0;
+}
+
 .titlebar__brand {
   font-family: var(--font-body);
   font-size: 12px;
@@ -612,6 +620,58 @@ body {
   letter-spacing: 0.03em;
   color: var(--fg-muted);
   line-height: 1;
+  white-space: nowrap;
+}
+
+.titlebar__detail-context {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 100%;
+  min-width: 0;
+}
+
+.titlebar__detail-context.hidden {
+  display: none !important;
+}
+
+.titlebar__back {
+  width: 34px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--fg-secondary);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+  padding: 0;
+  flex-shrink: 0;
+  border-radius: 4px;
+  margin: 4px 2px;
+}
+
+.titlebar__back:hover {
+  color: rgb(var(--accent-rgb));
+  background: rgba(var(--accent-rgb), 0.08);
+}
+
+.titlebar__back svg {
+  width: 16px;
+  height: 16px;
+}
+
+.titlebar__title {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 450;
+  color: var(--fg-primary);
+  line-height: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .titlebar__controls {
@@ -1032,7 +1092,6 @@ html.theme-transitioning .theme-dock {
   }
   .view { animation: none !important; }
   .detail-nav-arrow { transition-duration: 0.01ms !important; }
-  .detail-nav-close { transition-duration: 0.01ms !important; }
   /* Card hover effects */
   .anime-card:hover { transform: none !important; }
   .anime-card:hover img { transform: none !important; }
@@ -1075,7 +1134,6 @@ html[data-reduce-motion="true"] .view { animation: none !important; }
 html[data-reduce-motion="true"] .detail-enter-active .detail-info-panel,
 html[data-reduce-motion="true"] .detail-enter-active .detail-right,
 html[data-reduce-motion="true"] .detail-nav-arrow,
-html[data-reduce-motion="true"] .detail-nav-close,
 html[data-reduce-motion="true"] .anime-card .overlay,
 html[data-reduce-motion="true"] .anime-card::after,
 html[data-reduce-motion="true"] .heatmap-cell::after { transition-duration: 0.01ms !important; }

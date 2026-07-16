@@ -64,7 +64,7 @@
     if (!tauriWin) return;
     // Only primary button, skip interactive elements
     if (e.button !== 0) return;
-    if (e.target.closest('.titlebar__btn, input, select, textarea, a')) return;
+    if (e.target.closest('button, input, select, textarea, a')) return;
     tauriWin.startDragging();
   });
 
@@ -75,6 +75,31 @@
     if (e.target.closest('.titlebar__btn')) return;
     tauriWin.toggleMaximize().then(function () { updateMaximizeIcon(); });
   });
+
+  // ── Back button (detail view) ──
+  var btnBack = document.getElementById('titlebarBack');
+  if (btnBack) {
+    btnBack.addEventListener('click', function () {
+      if (typeof window.goBack === 'function') window.goBack();
+    });
+  }
+
+  // ── Expose context switcher for app.js / detail.js ──
+  window.setTitlebarContext = function (mode, title) {
+    var brand = document.getElementById('titlebarBrand');
+    var detailCtx = document.getElementById('titlebarDetailContext');
+    var titleEl = document.getElementById('titlebarTitle');
+    if (!brand || !detailCtx || !titleEl) return;
+
+    if (mode === 'detail') {
+      brand.classList.add('hidden');
+      detailCtx.classList.remove('hidden');
+      titleEl.textContent = title || '';
+    } else {
+      brand.classList.remove('hidden');
+      detailCtx.classList.add('hidden');
+    }
+  };
 
   // ── Initial icon state ──
   updateMaximizeIcon();

@@ -22,7 +22,15 @@
 
 <!-- Title Bar -->
 <div id="titlebar">
-  <span class="titlebar__brand">MyAnimeDock</span>
+  <div class="titlebar__left">
+    <span class="titlebar__brand" id="titlebarBrand">MyAnimeDock</span>
+    <div class="titlebar__detail-context hidden" id="titlebarDetailContext">
+      <button class="titlebar__back" id="titlebarBack" title="返回">
+        <svg viewBox="0 0 16 16"><polyline points="10 4 6 8 10 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <span class="titlebar__title" id="titlebarTitle"></span>
+    </div>
+  </div>
   <div class="titlebar__controls">
     <button class="titlebar__btn" id="titlebarMinimize" title="最小化">
       <svg viewBox="0 0 14 14"><line x1="3" y1="7" x2="11" y2="7" stroke="currentColor" stroke-width="1.5"/></svg>
@@ -344,10 +352,6 @@
   <section class="view hidden" id="detailView">
     <!-- Nav overlay: invisible edge hot zones -->
     <div class="detail-nav-overlay" id="detailNavOverlay">
-      <div class="detail-nav-zone detail-nav-back" id="navBack" title="返回动漫库"></div>
-      <div class="detail-nav-zone detail-nav-top" id="navTop">
-        <svg class="detail-nav-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </div>
       <div class="detail-nav-zone detail-nav-left" id="navLeft">
         <svg class="detail-nav-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
       </div>

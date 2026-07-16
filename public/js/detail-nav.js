@@ -7,14 +7,6 @@ function initDetailNav() {
   detailNavReady = true;
 
   const navOverlay = document.getElementById('detailNavOverlay');
-  document.getElementById('navBack')?.addEventListener('click', (e) => {
-    createRipple(e, e.currentTarget);
-    goBack();
-  });
-  document.getElementById('navTop')?.addEventListener('click', (e) => {
-    createRipple(e, e.currentTarget);
-    goBack();
-  });
   document.getElementById('navLeft')?.addEventListener('click', (e) => {
     createRipple(e, e.currentTarget);
     goPrev();

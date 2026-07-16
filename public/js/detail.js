@@ -204,6 +204,11 @@ function animateHeroCoverFlip(fromRect, fromSrc) {
 function renderDetail() {
   if (!currentAnime) return;
 
+  // Update title bar with anime title
+  if (typeof setTitlebarContext === 'function') {
+    setTitlebarContext('detail', currentAnime.bangumiTitle || currentAnime.title || '');
+  }
+
   const anime = currentAnime;
 
   // ─── Cover ───

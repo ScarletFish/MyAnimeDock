@@ -38,6 +38,8 @@ function showView(view) {
   if (view !== 'detail') {
     resetDetailEnter();
     if (typeof stopDetailRefresh === 'function') stopDetailRefresh();
+    // Reset title bar to brand text
+    if (typeof setTitlebarContext === 'function') setTitlebarContext('default');
   }
 
   // Load data for view

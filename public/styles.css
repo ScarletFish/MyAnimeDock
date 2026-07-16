@@ -21,8 +21,7 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
 
   --accent-rgb: 225, 58, 90;
   --accent-secondary-rgb: 255, 107, 138;
-  --orb-opacity-1: 0.06;
-  --orb-opacity-2: 0.05;
+
 
   --success: #22c55e;
   --warning: #f59e0b;
@@ -84,8 +83,7 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
 
   --accent-glow: rgba(var(--accent-rgb), 0.15);
 
-  --orb-opacity-1: 0;
-  --orb-opacity-2: 0;
+
 
   --border: rgba(0, 0, 0, 0.06);
   --border-hover: rgba(0, 0, 0, 0.12);
@@ -118,8 +116,7 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
 
   --accent-rgb: 212, 160, 23;
   --accent-secondary-rgb: 201, 123, 42;
-  --orb-opacity-1: 0.06;
-  --orb-opacity-2: 0.05;
+
 
   --success: #22c55e;
   --warning: #f59e0b;
@@ -152,8 +149,7 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
 
   --accent-glow: rgba(212, 160, 23, 0.15);
 
-  --orb-opacity-1: 0;
-  --orb-opacity-2: 0;
+
 
   --border: rgba(0, 0, 0, 0.06);
   --border-hover: rgba(0, 0, 0, 0.12);
@@ -186,8 +182,7 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
 
   --accent-rgb: 14, 165, 233;
   --accent-secondary-rgb: 59, 130, 246;
-  --orb-opacity-1: 0.06;
-  --orb-opacity-2: 0.05;
+
 
   --success: #22c55e;
   --warning: #f59e0b;
@@ -219,8 +214,7 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
   --fg-muted: #4a6a7a;
 
   --accent-glow: rgba(14, 165, 233, 0.15);
-  --orb-opacity-1: 0;
-  --orb-opacity-2: 0;
+
 
   --border: rgba(0, 0, 0, 0.06);
   --border-hover: rgba(0, 0, 0, 0.12);
@@ -252,8 +246,7 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
   --accent-secondary: #a855f7;
   --accent-rgb: 236, 72, 153;
   --accent-secondary-rgb: 168, 85, 247;
-  --orb-opacity-1: 0.06;
-  --orb-opacity-2: 0.05;
+
 
   --success: #22c55e;
   --warning: #f59e0b;
@@ -285,8 +278,7 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
   --fg-muted: #5a4050;
 
   --accent-glow: rgba(236, 72, 153, 0.15);
-  --orb-opacity-1: 0;
-  --orb-opacity-2: 0;
+
 
   --border: rgba(0, 0, 0, 0.06);
   --border-hover: rgba(0, 0, 0, 0.12);
@@ -318,8 +310,7 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
   --accent-secondary: #0ea5e9;
   --accent-rgb: 5, 150, 105;
   --accent-secondary-rgb: 14, 165, 233;
-  --orb-opacity-1: 0.06;
-  --orb-opacity-2: 0.05;
+
 
   --success: #22c55e;
   --warning: #f59e0b;
@@ -351,8 +342,7 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
   --fg-muted: #4a6a58;
 
   --accent-glow: rgba(5, 150, 105, 0.15);
-  --orb-opacity-1: 0;
-  --orb-opacity-2: 0;
+
 
   --border: rgba(0, 0, 0, 0.06);
   --border-hover: rgba(0, 0, 0, 0.12);
@@ -384,8 +374,7 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
   --accent-secondary: #a78bfa;
   --accent-rgb: 124, 58, 237;
   --accent-secondary-rgb: 167, 139, 250;
-  --orb-opacity-1: 0.06;
-  --orb-opacity-2: 0.05;
+
 
   --success: #22c55e;
   --warning: #f59e0b;
@@ -418,8 +407,7 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
 
   --accent-glow: rgba(124, 58, 237, 0.12);
 
-  --orb-opacity-1: 0;
-  --orb-opacity-2: 0;
+
 
   --border: rgba(0, 0, 0, 0.06);
   --border-hover: rgba(0, 0, 0, 0.12);
@@ -439,8 +427,8 @@ body::before {
   inset: 0;
   z-index: -2;
   background:
-    radial-gradient(ellipse 80% 60% at 0% 20%, rgba(var(--accent-rgb), 0.10) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 50% at 100% 80%, rgba(var(--accent-rgb), 0.04) 0%, transparent 50%),
+    radial-gradient(ellipse 80% 60% at 0% 20%, rgba(var(--accent-rgb), 0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 100% 80%, rgba(var(--accent-secondary-rgb), 0.04) 0%, transparent 50%),
     var(--bg-deep);
 }
 
@@ -456,44 +444,10 @@ body::after {
   pointer-events: none;
 }
 
-.ambient-orb {
-  position: fixed;
-  border-radius: 50%;
-  filter: blur(80px);
-  pointer-events: none;
-  z-index: -1;
-  animation: orbFloat 20s ease-in-out infinite alternate;
-}
 
-.ambient-orb--1 {
-  width: 500px;
-  height: 500px;
-  background: rgba(var(--accent-rgb), var(--orb-opacity-1));
-  top: -10%;
-  left: -5%;
-  animation-duration: 25s;
-}
-
-.ambient-orb--2 {
-  width: 400px;
-  height: 400px;
-  background: rgba(var(--accent-secondary-rgb), var(--orb-opacity-2));
-  bottom: -8%;
-  right: -5%;
-  animation-duration: 20s;
-  animation-delay: -8s;
-}
-
-@keyframes orbFloat {
-  0% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(40px, -30px) scale(1.1); }
-  66% { transform: translate(-20px, 40px) scale(0.95); }
-  100% { transform: translate(30px, -20px) scale(1.05); }
-}
 
 /* ─── Light Theme Adjustments ─── */
-/* Hide ambient orbs in light mode — overall tint is enough */
-/* Background: overall tint with one large soft glow */
+/* Body background: flat in light mode (override in light.css) */
 /* Sidebar: light glass morphism */
 /* Nav buttons: subtle dark hover on light glass */
 /* Tooltip: adapt for light bg */
@@ -1118,8 +1072,6 @@ html.theme-transitioning .theme-dock {
   .heatmap-cell::after { transition-duration: 0.01ms !important; }
   .heatmap-cell { animation: none !important; }
   .settings-panel { animation: none !important; }
-  /* Decorative ambient orbs */
-  .ambient-orb { display: none !important; }
 }
 
 /* ─── Manual reduced-motion toggle (mirrors @media block above) ─── */
@@ -1164,8 +1116,6 @@ html[data-reduce-motion="true"] .status-dd-menu {
 
 html[data-reduce-motion="true"] .heatmap-cell { animation: none !important; }
 html[data-reduce-motion="true"] .settings-panel { animation: none !important; }
-
-html[data-reduce-motion="true"] .ambient-orb { display: none !important; }
 
 /* ─── Stats View ─── */
 

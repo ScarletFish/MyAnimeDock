@@ -7,7 +7,6 @@
    ═══════════════════════════════════════ */
 
 /* ─── Atmosphere & Layout ─── */
-:is([data-theme="light"], [data-theme-mode="light"]) .ambient-orb { display: none; }
 :is([data-theme="light"], [data-theme-mode="light"]) body::before {
   background: var(--bg-deep);
 }

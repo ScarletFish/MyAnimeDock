@@ -167,11 +167,22 @@
       </div>
     </div>
 
-    <div class="discovery-stats" id="discoveryToolbar" style="display:none">
-      <div class="discovery-stats-right">
+    <div class="discovery-actions-sentinel" id="discoveryActionsSentinel"></div>
+    <div class="discovery-actions" id="discoveryActions" style="display:none">
+      <div class="discovery-actions-left">
+        <button class="btn btn-ghost" id="selectAllBtn" onclick="selectAllCandidates()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8Z"/><path d="M15 3v4a2 2 0 0 0 2 2h4"/></svg>
+          全选
+        </button>
+        <button class="btn btn-outline" onclick="importSelected()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+          导入选中 (<span id="importCount">0</span>)
+        </button>
+      </div>
+      <div class="discovery-actions-right">
         <div class="filter-group">
-          <button class="filter-btn filter-btn--active" data-filter="all" onclick="setFilter('all')">全部</button>
-          <button class="filter-btn" data-filter="unimported" onclick="setFilter('unimported')">未导入</button>
+          <button class="filter-btn" data-filter="all" onclick="setFilter('all')">全部</button>
+          <button class="filter-btn filter-btn--active" data-filter="unimported" onclick="setFilter('unimported')">未导入</button>
           <button class="filter-btn" data-filter="excluded" onclick="setFilter('excluded')">已排除</button>
         </div>
         <div class="filter-group">
@@ -179,18 +190,6 @@
           <button class="filter-btn" onclick="collapseAll()">折叠全部</button>
         </div>
       </div>
-    </div>
-
-    <div class="discovery-actions-sentinel" id="discoveryActionsSentinel"></div>
-    <div class="discovery-actions" id="discoveryActions" style="display:none">
-      <button class="btn btn-ghost" id="selectAllBtn" onclick="selectAllCandidates()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8Z"/><path d="M15 3v4a2 2 0 0 0 2 2h4"/></svg>
-        全选
-      </button>
-      <button class="btn btn-outline" onclick="importSelected()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
-        导入选中 (<span id="importCount">0</span>)
-      </button>
     </div>
 
     <div class="discovery-grid" id="discoveryGrid"></div>

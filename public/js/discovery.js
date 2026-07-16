@@ -1,7 +1,7 @@
 let discoveryData = [];
 let checkedPaths = new Set();
 let isScanning = false;
-let filterMode = 'all';
+let filterMode = 'unimported';
 let stickObserver = null;
 
 async function loadDiscovery() {
@@ -127,9 +127,8 @@ function renderDiscovery() {
   document.getElementById('statAnime').textContent = total;
   document.getElementById('statImported').textContent = imported;
   stats.style.display = '';
-  document.getElementById('discoveryToolbar').style.display = '';
 
-  document.querySelectorAll('#discoveryToolbar .filter-btn[data-filter]').forEach(b => {
+  document.querySelectorAll('.discovery-actions .filter-btn[data-filter]').forEach(b => {
     b.classList.toggle('filter-btn--active', b.dataset.filter === filterMode);
   });
 

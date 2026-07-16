@@ -127,6 +127,7 @@ function renderDiscovery() {
   document.getElementById('statAnime').textContent = total;
   document.getElementById('statImported').textContent = imported;
   stats.style.display = '';
+  document.getElementById('discoveryToolbar').style.display = '';
 
   document.querySelectorAll('#discoveryToolbar .filter-btn[data-filter]').forEach(b => {
     b.classList.toggle('filter-btn--active', b.dataset.filter === filterMode);

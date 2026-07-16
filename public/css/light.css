@@ -257,7 +257,7 @@
 :is([data-theme="light"], [data-theme-mode="light"]) .discovery-sibling-group::before { opacity: 0.5; }
 :is([data-theme="light"], [data-theme-mode="light"]) .discovery-card:hover { border-color: rgba(var(--accent-rgb), 0.15); }
 :is([data-theme="light"], [data-theme-mode="light"]) .discovery-card-toggle:hover { background: rgba(0, 0, 0, 0.03); }
-:is([data-theme="light"], [data-theme-mode="light"]) .discovery-card-row:hover { background: rgba(var(--accent-rgb), 0.02); }
+:is([data-theme="light"], [data-theme-mode="light"]) .discovery-card-row:hover { background: var(--bg-surface); }
 :is([data-theme="light"], [data-theme-mode="light"]) .discovery-card-file:hover { background: rgba(0, 0, 0, 0.04); }
 :is([data-theme="light"], [data-theme-mode="light"]) .discovery-card-action { border-color: rgba(0, 0, 0, 0.10); }
 :is([data-theme="light"], [data-theme-mode="light"]) .discovery-card-unlink:hover {

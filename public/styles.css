@@ -2,11 +2,13 @@
 input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: auto; }
 
 :root {
-  --bg-deep: #0a0a0a;
-  --bg-elevated: #141414;
-  --bg-surface: #1a1a1a;
+  --bg-deep: #050505;
+  --bg-base: #080808;
+  --bg-elevated: #0e0e0e;
+  --bg-surface: #121212;
   --bg-card: #121212;
   --bg-rgb: 18, 18, 18;
+  --bg-canvas: var(--bg-surface);
 
   --fg-primary: #ede8e2;
   --fg-secondary: #9c9187;
@@ -21,7 +23,6 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
 
   --accent-rgb: 225, 58, 90;
   --accent-secondary-rgb: 255, 107, 138;
-
 
   --success: #22c55e;
   --warning: #f59e0b;
@@ -60,6 +61,12 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
   --font-accent: 'Playfair Display', serif;
   --font-mono: 'JetBrains Mono', monospace;
 
+  --fw-normal: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+  --fw-extrabold: 800;
+
   --heatmap-unwatched: #1e1e2a;
 
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -72,10 +79,12 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
 [data-theme="light"],
 [data-theme-mode="light"] {
   --bg-deep: #f0ede8;
+  --bg-base: #f0ede8;
   --bg-elevated: #ffffff;
   --bg-surface: #e8e5e0;
   --bg-card: #ffffff;
   --bg-rgb: 255, 255, 255;
+  --bg-canvas: var(--bg-surface);
 
   --fg-primary: #1a1816;
   --fg-secondary: #5a5550;
@@ -98,11 +107,13 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
 
 /* ─── Amber Theme ─── */
 [data-theme="amber"] {
-  --bg-deep: #0a0908;
-  --bg-elevated: #14120f;
-  --bg-surface: #1a1714;
-  --bg-card: #12100e;
-  --bg-rgb: 18, 16, 14;
+  --bg-deep: #050403;
+  --bg-base: #080706;
+  --bg-elevated: #0e0c09;
+  --bg-surface: #12100d;
+  --bg-card: #12100d;
+  --bg-rgb: 18, 16, 13;
+  --bg-canvas: var(--bg-surface);
 
   --fg-primary: #f5e6c8;
   --fg-secondary: #b8a88a;
@@ -118,12 +129,6 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
   --accent-secondary-rgb: 201, 123, 42;
 
 
-  --success: #22c55e;
-  --warning: #f59e0b;
-  --error: #ef4444;
-  --info: #a78bfa;
-  --info-rgb: 167, 139, 250;
-
   --border: rgba(212, 160, 23, 0.08);
   --border-hover: rgba(212, 160, 23, 0.16);
 
@@ -138,10 +143,12 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
 
 [data-theme="amber"][data-theme-mode="light"] {
   --bg-deep: #f0efed;
+  --bg-base: #f0efed;
   --bg-elevated: #ffffff;
   --bg-surface: #e8e7e4;
   --bg-card: #ffffff;
   --bg-rgb: 255, 255, 255;
+  --bg-canvas: var(--bg-surface);
 
   --fg-primary: #1a1814;
   --fg-secondary: #5a5248;
@@ -164,11 +171,13 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
 
 /* ─── Ocean Theme ─── */
 [data-theme="ocean"] {
-  --bg-deep: #0a0a0a;
-  --bg-elevated: #121212;
-  --bg-surface: #181818;
-  --bg-card: #101010;
-  --bg-rgb: 16, 16, 16;
+  --bg-deep: #050505;
+  --bg-base: #080808;
+  --bg-elevated: #0d0d0d;
+  --bg-surface: #111111;
+  --bg-card: #111111;
+  --bg-rgb: 17, 17, 17;
+  --bg-canvas: var(--bg-surface);
 
   --fg-primary: #dce8f0;
   --fg-secondary: #8a9ca8;
@@ -184,12 +193,6 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
   --accent-secondary-rgb: 59, 130, 246;
 
 
-  --success: #22c55e;
-  --warning: #f59e0b;
-  --error: #ef4444;
-  --info: #a78bfa;
-  --info-rgb: 167, 139, 250;
-
   --border: rgba(14, 165, 233, 0.08);
   --border-hover: rgba(14, 165, 233, 0.16);
 
@@ -204,10 +207,12 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
 
 [data-theme="ocean"][data-theme-mode="light"] {
   --bg-deep: #f0f2f5;
+  --bg-base: #f0f2f5;
   --bg-elevated: #ffffff;
   --bg-surface: #e8eaf0;
   --bg-card: #ffffff;
   --bg-rgb: 255, 255, 255;
+  --bg-canvas: var(--bg-surface);
 
   --fg-primary: #0f2030;
   --fg-secondary: #3a5a70;
@@ -229,11 +234,13 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
 
 /* ─── Sakura Theme ─── */
 [data-theme="sakura"] {
-  --bg-deep: #0c080a;
-  --bg-elevated: #161014;
-  --bg-surface: #1c161a;
-  --bg-card: #130e12;
-  --bg-rgb: 19, 14, 18;
+  --bg-deep: #060305;
+  --bg-base: #090608;
+  --bg-elevated: #0f0a0d;
+  --bg-surface: #141014;
+  --bg-card: #141014;
+  --bg-rgb: 20, 16, 20;
+  --bg-canvas: var(--bg-surface);
 
   --fg-primary: #f0e2e8;
   --fg-secondary: #a08a94;
@@ -247,12 +254,6 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
   --accent-rgb: 236, 72, 153;
   --accent-secondary-rgb: 168, 85, 247;
 
-
-  --success: #22c55e;
-  --warning: #f59e0b;
-  --error: #ef4444;
-  --info: #a78bfa;
-  --info-rgb: 167, 139, 250;
 
   --border: rgba(236, 72, 153, 0.08);
   --border-hover: rgba(236, 72, 153, 0.16);
@@ -268,10 +269,12 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
 
 [data-theme="sakura"][data-theme-mode="light"] {
   --bg-deep: #f5eff2;
+  --bg-base: #f5eff2;
   --bg-elevated: #ffffff;
   --bg-surface: #f0eaed;
   --bg-card: #ffffff;
   --bg-rgb: 255, 255, 255;
+  --bg-canvas: var(--bg-surface);
 
   --fg-primary: #201018;
   --fg-secondary: #604050;
@@ -293,11 +296,13 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
 
 /* ─── Emerald Theme ─── */
 [data-theme="emerald"] {
-  --bg-deep: #080c0a;
-  --bg-elevated: #101612;
-  --bg-surface: #161c18;
-  --bg-card: #0e1410;
-  --bg-rgb: 14, 20, 16;
+  --bg-deep: #030603;
+  --bg-base: #060906;
+  --bg-elevated: #0a100c;
+  --bg-surface: #101410;
+  --bg-card: #101410;
+  --bg-rgb: 16, 20, 16;
+  --bg-canvas: var(--bg-surface);
 
   --fg-primary: #e0f0e8;
   --fg-secondary: #8aa094;
@@ -311,12 +316,6 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
   --accent-rgb: 5, 150, 105;
   --accent-secondary-rgb: 14, 165, 233;
 
-
-  --success: #22c55e;
-  --warning: #f59e0b;
-  --error: #ef4444;
-  --info: #a78bfa;
-  --info-rgb: 167, 139, 250;
 
   --border: rgba(5, 150, 105, 0.08);
   --border-hover: rgba(5, 150, 105, 0.16);
@@ -332,10 +331,12 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
 
 [data-theme="emerald"][data-theme-mode="light"] {
   --bg-deep: #eff5f2;
+  --bg-base: #eff5f2;
   --bg-elevated: #ffffff;
   --bg-surface: #e8f0ec;
   --bg-card: #ffffff;
   --bg-rgb: 255, 255, 255;
+  --bg-canvas: var(--bg-surface);
 
   --fg-primary: #0f2018;
   --fg-secondary: #3a5a48;
@@ -357,11 +358,13 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
 
 /* ─── Violet Theme ─── */
 [data-theme="violet"] {
-  --bg-deep: #0a0a0a;
-  --bg-elevated: #141414;
-  --bg-surface: #1a1a1a;
+  --bg-deep: #050505;
+  --bg-base: #080808;
+  --bg-elevated: #0e0e0e;
+  --bg-surface: #121212;
   --bg-card: #121212;
   --bg-rgb: 18, 18, 18;
+  --bg-canvas: var(--bg-surface);
 
   --fg-primary: #e8e0f0;
   --fg-secondary: #a098b0;
@@ -375,12 +378,6 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
   --accent-rgb: 124, 58, 237;
   --accent-secondary-rgb: 167, 139, 250;
 
-
-  --success: #22c55e;
-  --warning: #f59e0b;
-  --error: #ef4444;
-  --info: #a78bfa;
-  --info-rgb: 167, 139, 250;
 
   --border: rgba(124, 58, 237, 0.08);
   --border-hover: rgba(124, 58, 237, 0.16);
@@ -396,10 +393,12 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
 
 [data-theme="violet"][data-theme-mode="light"] {
   --bg-deep: #f5f0ff;
+  --bg-base: #f5f0ff;
   --bg-elevated: #ffffff;
   --bg-surface: #ece4f8;
   --bg-card: #ffffff;
   --bg-rgb: 255, 255, 255;
+  --bg-canvas: var(--bg-surface);
 
   --fg-primary: #1a1030;
   --fg-secondary: #4a3868;
@@ -488,7 +487,7 @@ body {
   font-family: var(--font-body);
   font-size: calc(0.938rem * var(--scale));
   line-height: 1.65;
-  font-weight: 400;
+  font-weight: var(--fw-normal);
   width: 100%;
   height: 100vh;
   overflow: hidden;
@@ -570,7 +569,7 @@ body {
 .titlebar__brand {
   font-family: var(--font-body);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: var(--fw-medium);
   letter-spacing: 0.03em;
   color: var(--fg-muted);
   line-height: 1;
@@ -797,7 +796,7 @@ body {
   padding: 4px 10px;
   border-radius: var(--radius-sm);
   font-size: calc(0.781rem * var(--scale));
-  font-weight: 500;
+  font-weight: var(--fw-medium);
   white-space: nowrap;
   border: 1px solid var(--border);
   opacity: 0;
@@ -829,7 +828,7 @@ body {
   border-radius: var(--radius-sm);
   padding: 5px 12px;
   font-size: calc(0.8125rem * var(--scale));
-  font-weight: 500;
+  font-weight: var(--fw-medium);
   color: var(--fg-primary);
   white-space: nowrap;
   box-shadow: 0 4px 16px rgba(0,0,0,0.25);
@@ -914,7 +913,7 @@ html {
 .view-header h1 {
   font-family: var(--font-display);
   font-size: calc(clamp(1.3rem, 2.2vw, 1.6rem) * var(--scale));
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   letter-spacing: -0.02em;
   color: var(--fg-primary);
 }
@@ -928,7 +927,7 @@ html {
 .dashboard-section-title {
   font-family: var(--font-display);
   font-size: calc(1.15rem * var(--scale));
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   letter-spacing: -0.01em;
   color: var(--fg-primary);
 }
@@ -958,12 +957,12 @@ html {
 }
 .status-section-title {
   font-size: calc(0.9375rem * var(--scale));
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   color: var(--fg-muted);
 }
 .status-section-count {
   font-size: calc(0.75rem * var(--scale));
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   color: var(--fg-muted);
   background: var(--bg-surface);
   padding: 2px 10px;
@@ -1147,7 +1146,7 @@ html[data-reduce-motion="true"] .settings-panel { animation: none !important; }
 .stats-card-header h2 {
   font-family: var(--font-display);
   font-size: calc(1.1rem * var(--scale));
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   color: var(--fg-primary);
   letter-spacing: -0.01em;
   margin: 0;

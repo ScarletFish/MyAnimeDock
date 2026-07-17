@@ -102,9 +102,9 @@ module.exports = {
       data.scannedTree = tree;
       saveScannedTree(data.scannedTree);
       send({ type: 'done', tree });
-      // Background AniList prefetch
+      // Background AniList prefetch: cache + store matched IDs on scanned nodes
       if (config.apiSources?.some(s => s.type === 'anilist')) {
-        const { registry, isPrimarilyRomaji } = require('../scrapers');
+        const { registry, isPrimarilyRomaji, pickBestBySimilarity, sorensenDice } = require('../scrapers');
         const { parseFolderName } = require('../scanner');
         const anilist = registry.get('anilist');
         if (anilist) {
@@ -117,9 +117,28 @@ module.exports = {
             .slice(0, 20);
           if (romajiKeywords.length > 0) {
             anilist.prefetch(romajiKeywords, registry, config)
-              .then(results => {
-                if (results && results.length > 0) {
-                  pendingNotifications.push({ type: 'anilist_prefetch', count: results.length });
+              .then(() => {
+                // Match cached results to scanned nodes, store anilistId
+                let matched = 0;
+                for (const n of tree) {
+                  if (n.type !== 'leaf' || n.alreadyImported || n.anilistId) continue;
+                  const parsed = parseFolderName(n.name);
+                  const title = isPrimarilyRomaji(parsed.cleanTitle || parsed.title)
+                    ? (parsed.cleanTitle || parsed.title) : null;
+                  if (!title) continue;
+                  const cached = registry._searchCache?.get(title);
+                  if (!cached?.results?.length) continue;
+                  const bestItem = pickBestBySimilarity(title, cached.results);
+                  if (!bestItem) continue;
+                  const matchTitle = bestItem.name_cn || bestItem.name || '';
+                  if (sorensenDice(title, matchTitle) >= 0.5) {
+                    n.anilistId = bestItem.id;
+                    matched++;
+                  }
+                }
+                if (matched > 0) {
+                  saveScannedTree(data.scannedTree);
+                  pendingNotifications.push({ type: 'anilist_prefetch', count: matched });
                 }
               })
               .catch(() => {});
@@ -169,6 +188,7 @@ module.exports = {
           folderPath, folderName, title: parsedTitle,
           season: parsedSeason || null, specialSuffix: specialSuffix || null,
           importedAt: new Date().toISOString(), downloaded: true,
+          anilistId: scannedNode?.anilistId || null,
           bangumiId: scannedNode?.bangumiId || null,
           bangumiTitle: scannedNode?.bangumiTitle || null,
           bangumiTitleJp: scannedNode?.bangumiTitleJp || null,

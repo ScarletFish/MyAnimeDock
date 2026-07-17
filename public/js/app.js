@@ -171,10 +171,16 @@ function handleDockEsc(e) {
   if (e.key === 'Escape') closeThemeDock();
 }
 
+let _dockZoomTimer = null;
 function handleDockZoom(input) {
   const scale = parseInt(input.value) / 100;
   applyZoom(scale);
   document.getElementById('dockZoomLabel').textContent = input.value + '%';
+  // Debounce: persist to server config
+  clearTimeout(_dockZoomTimer);
+  _dockZoomTimer = setTimeout(async () => {
+    try { await API.post('/api/config', { uiScale: scale }); } catch (_) {}
+  }, 300);
 }
 
 function openVisualDock() {

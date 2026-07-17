@@ -5,6 +5,7 @@
   "theme": "default",
   "themeMode": "dark",
   "autoMarkWatched": true,
+  "uiScale": 1,
   "reduceMotion": false,
   "apiSources": [
     { "type": "bangumi", "url": "https://api.bangumi.lol", "key": "" }

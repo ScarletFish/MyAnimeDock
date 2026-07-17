@@ -890,7 +890,7 @@
   display: block;
 }
 
-/* ─── New Banner Layout ─── */
+/* ─── Banner Layout ─── */
 .detail-banner {
   display: grid;
   grid-template-columns: calc(240px * var(--scale)) 1fr;
@@ -915,8 +915,7 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  filter: blur(28px) brightness(0.4) saturate(1.2);
-  transform: scale(1.2);
+  opacity: 0.55;
 }
 
 .detail-banner-bg::after {
@@ -924,8 +923,15 @@
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.45) 100%),
-    linear-gradient(to right, rgba(0, 0, 0, 0.35) 0%, transparent 50%);
+    /* Left-to-right: darken behind cover & left info for text readability */
+    linear-gradient(to right,
+      rgba(0, 0, 0, 0.5) 0%,
+      rgba(0, 0, 0, 0.18) 45%,
+      transparent 70%),
+    /* Bottom fade: blend banner into page background */
+    linear-gradient(to bottom,
+      transparent 55%,
+      var(--bg-canvas) 100%);
   pointer-events: none;
 }
 
@@ -948,22 +954,6 @@
   gap: 1rem;
 }
 
-/* Two-column layout below banner */
-.detail-below-banner {
-  display: grid;
-  grid-template-columns: calc(240px * var(--scale)) 1fr;
-  gap: calc(clamp(1.5rem, 3vw, 3rem) * var(--scale));
-  align-items: start;
-}
-
-.detail-left-col {
-  min-width: 0;
-}
-
-.detail-right-col {
-  min-width: 0;
-}
-
 /* Alias styling */
 .detail-alias {
   font-size: calc(0.875rem * var(--scale));
@@ -972,9 +962,9 @@
   margin-top: calc(-0.5rem * var(--scale));
 }
 
-/* Info line: fixed width */
+/* Info line: max width */
 .detail-banner-right .detail-info-line {
-  width: 400px;
+  max-width: 400px;
 }
 
 /* Summary: full width, truncate after 5 lines */

@@ -7,7 +7,7 @@
 .detail-content {
   max-width: calc(92rem * var(--scale));
   margin: 0 auto;
-  padding: calc(clamp(4.5rem, 8.5vw, 12rem) * var(--scale)) calc(0.75rem * var(--scale)) 0;
+  padding: calc(clamp(4.5rem, 8.5vw, 12rem) * var(--scale)) calc(1.5rem * var(--scale)) 0;
 }
 
 /* Two-column layout */
@@ -916,6 +916,10 @@
   z-index: 0;
   pointer-events: none;
   overflow: hidden;
+  /* Bottom fade: mask the banner image to transparent toward bottom edge,
+     naturally revealing #detailView bg-canvas without a fake box-shadow layer */
+  mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
 }
 
 .detail-banner-bg-img {
@@ -934,11 +938,7 @@
     linear-gradient(to right,
       rgba(0, 0, 0, 0.35) 0%,
       rgba(0, 0, 0, 0.1) 40%,
-      transparent 65%),
-    /* Bottom fade: blend banner into page background */
-    linear-gradient(to bottom,
-      transparent 55%,
-      var(--bg-canvas) 100%);
+      transparent 65%);
   pointer-events: none;
 }
 

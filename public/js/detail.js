@@ -223,6 +223,17 @@ function renderDetail() {
 
   document.getElementById('detailTitle').textContent = anime.bangumiTitle || anime.title;
 
+  // ─── Alias (Japanese/Romaji) ───
+  const aliasEl = document.getElementById('detailAlias');
+  const aliases = [];
+  if (anime.title && anime.bangumiTitle && anime.title !== anime.bangumiTitle) {
+    aliases.push(anime.title);
+  }
+  if (anime.romajiTitle) aliases.push(anime.romajiTitle);
+  if (anime.japaneseTitle) aliases.push(anime.japaneseTitle);
+  aliasEl.textContent = aliases.join(' / ') || '';
+  aliasEl.style.display = aliases.length ? '' : 'none';
+
   // ─── Info panel ───
   const infoLine = document.getElementById('detailInfoLine');
   const leftParts = [];
@@ -323,8 +334,8 @@ function canAutoExpand(wrap) {
   const detailView = document.getElementById('detailView');
   if (detailView && detailView.classList.contains('hidden')) return false;
 
-  const left = document.querySelector('.detail-left');
-  const right = document.querySelector('.detail-right');
+  const left = document.querySelector('.detail-left-col');
+  const right = document.querySelector('.detail-right-col');
   if (!left || !right) return false;
 
   return true;
@@ -332,8 +343,8 @@ function canAutoExpand(wrap) {
 
 function measureAndBalance(wrap) {
   const grid = wrap.querySelector('.detail-char-grid');
-  const left = document.querySelector('.detail-left');
-  const right = document.querySelector('.detail-right');
+  const left = document.querySelector('.detail-left-col');
+  const right = document.querySelector('.detail-right-col');
 
   const rowH = getCharGridRowHeight();
   const totalItems = grid.children.length;

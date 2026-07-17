@@ -417,6 +417,107 @@ const registry = new ScraperRegistry();
 registry.register(new BangumiScraper());
 registry.register(new AniListScraper());
 
+/**
+ * Extract the first Latin/Romaji alias from Bangumi infobox.
+ * Bangumi infobox entries have `key` + `value`, where aliases look like:
+ *   { key: "别名", value: [{ v: "容易对付的恶魔大人" }, { v: "Kanan-sama wa Akumade Choroi" }] }
+ */
+function extractRomajiTitle(infobox) {
+  if (!Array.isArray(infobox)) return null;
+  const aliasEntry = infobox.find(e => e.key === '别名');
+  if (!aliasEntry) return null;
+  const values = Array.isArray(aliasEntry.value) ? aliasEntry.value : [];
+  for (const v of values) {
+    const t = typeof v === 'object' ? v.v || v.value : v;
+    if (t && /^[\x20-\x7E]/.test(t)) return t; // first Latin-printable alias
+  }
+  return null;
+}
+
+/**
+ * Sync AniList metadata for an anime: search → match → fetch → download banner → apply.
+ * Modifies `anime` in place. Returns applied fields or null.
+ */
+async function syncAnilist(anime, config, bannerDir, coverDir) {
+  if (!anime) return null;
+  // Already attempted and not found
+  if (anime.anilistId === -1) return null;
+
+  const anilist = registry.get('anilist');
+  if (!anilist || !anilist.enabled(config)) return null;
+  const source = config.apiSources?.find(s => s.type === 'anilist');
+
+  let anilistId = anime.anilistId;
+
+  // Search by title if we don't have an ID yet
+  if (!anilistId) {
+    const romaji = extractRomajiTitle(anime.infobox);
+    const searchTitles = [
+      romaji,                  // 罗马音 → AniList 拉丁文字搜索最准
+      anime.bangumiTitleJp,    // 日文原名
+      anime.bangumiTitleEn,    // 英文标题
+      anime.title,             // 中文标题
+      anime.bangumiTitle,      // Bangumi 主标题
+    ].filter(Boolean);
+    // Deduplicate
+    const seen = new Set();
+    const unique = searchTitles.filter(t => { const k = t.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; });
+
+    for (const t of unique) {
+      try {
+        const results = await anilist.search(t, source);
+        if (results.length === 0) continue;
+        const bestItem = pickBestBySimilarity(t, results);
+        if (bestItem) {
+          const matchTitle = bestItem.name_cn || bestItem.name || '';
+          const score = sorensenDice(t, matchTitle);
+          if (score >= 0.5) {
+            anilistId = bestItem.id;
+            break;
+          }
+        }
+      } catch (e) {
+        logger.warn(`AniList search failed for "${t}": ${e.message}`);
+      }
+    }
+
+    if (!anilistId) {
+      anime.anilistId = -1; // Mark as attempted
+      logger.info(`syncAnilist: no match for "${anime.title}" (bgmId=${anime.bangumiId})`);
+      return null;
+    }
+  }
+
+  // Fetch full AniList metadata
+  let meta;
+  try {
+    meta = await anilist.fetchMetadata(anime.title || '', coverDir, anilistId);
+  } catch (e) {
+    logger.error(`syncAnilist: fetchMetadata failed for id=${anilistId}: ${e.message}`);
+    return null;
+  }
+  if (!meta) return null;
+
+  // Download banner
+  let localBanner = null;
+  if (meta.bannerImage) {
+    try {
+      localBanner = await anilist.downloadBanner(meta.bannerImage, bannerDir, anilistId);
+    } catch (e) {
+      logger.warn(`syncAnilist: banner download failed for id=${anilistId}: ${e.message}`);
+    }
+  }
+
+  // Apply to anime object
+  anime.anilistId = anilistId;
+  if (localBanner) anime.anilistBanner = localBanner;
+  if (meta.anilistTitleEn) anime.anilistTitleEn = meta.anilistTitleEn;
+  if (meta.seasonChain) anime.seasonChain = meta.seasonChain;
+
+  logger.info(`syncAnilist: done for id=${anime.id} → anilistId=${anilistId}${localBanner ? ' +banner' : ''}`);
+  return { anilistId, localBanner, anilistTitleEn: meta.anilistTitleEn };
+}
+
 module.exports = {
   registry,
   ScraperRegistry,
@@ -432,6 +533,8 @@ module.exports = {
   detectSpecialType,
   extractBaseAndSuffix,
   parallelMap,
+  syncAnilist,
+  extractRomajiTitle,
   isPrimarilyRomaji,
   truncateSummary: BangumiScraper.truncateSummary,
 };

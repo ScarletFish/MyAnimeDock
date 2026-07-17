@@ -2,6 +2,7 @@
 const path = require('path');
 const { jsonResp, readBody } = require('../lib/utils');
 const { saveConfig, DATA_DIR } = require('../lib/config');
+const { syncAnilist } = require('../scrapers');
 
 module.exports = {
   async handleBangumiSearch(req, res, state) {
@@ -53,6 +54,12 @@ module.exports = {
         if (matchInfo.matchedSeason != null) anime.matchedSeason = matchInfo.matchedSeason;
         if (matchInfo.totalSeasons != null) anime.totalSeasons = matchInfo.totalSeasons;
       }
+      // AniList 双源同步（手动同步时重置 -1 重新搜索）
+      const bannerDir = path.join(DATA_DIR, 'banners');
+      if (anime.anilistId === -1) anime.anilistId = null;
+      syncAnilist(anime, config, bannerDir, coverDir).then(() => {
+        db.saveLibrary(data);
+      }).catch(e => logger.error('AniList sync failed:', e.message));
       if (!hadBangumiId && anime.bangumiId) {
         bangumiSync.pushStatusChange(anime.id, data);
       }

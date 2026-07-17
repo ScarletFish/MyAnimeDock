@@ -36,6 +36,7 @@
 | `scanned-tree.json` | `server/scanned-tree.json` | `%APPDATA%/MyAnimeDock/scanned-tree.json` | Scan result tree (JSON only, managed by lib/config.js) |
 | `anime-data.json` | (legacy) | (legacy) | **Removed**. Only used as migration fallback for scannedTree on first startup |
 | `covers/*.jpg` | `server/covers/` | `%APPDATA%/MyAnimeDock/covers/` | Downloaded cover images |
+| `banners/*.jpg` | `server/banners/` | `%APPDATA%/MyAnimeDock/banners/` | AniList banner images (downloaded to local, filename `al-{id}.jpg`) |
 | `thumbs/*.jpg` | `server/thumbs/` | `%APPDATA%/MyAnimeDock/thumbs/` | Video thumbnails (ffmpeg) |
 
 ## 1. Startup Init Flow
@@ -191,6 +192,8 @@ init() → autoImportNewFolders(data, config)  (inline in server.js)
   │   ├─ Create MyList entry (status: 'watching')
   │   ├─ db.saveLibrary(data) + db.saveMyList(data) (sequential, FK safety)
   │   └─ Bangumi sync (async fire-and-forget)
+  │   └─ AniList 双源同步 (async, fire-and-forget):
+  │       syncAnilist(anime, config, bannerDir, coverDir) → saves anilistId/anilistBanner/etc
   ├─ Set autoImportResult = { count, message }
   └─ Frontend consumes via first GET /api/config → showToast()
 ```
@@ -221,6 +224,15 @@ POST /api/bangumi/fetch (for library items)
                      summary, coverUrl, localCover, rating }
   → Update node/anime metadata fields
   → db.saveLibrary(data) + saveScannedTree(scannedTree)
+  → AniList 双源同步 (async, fire-and-forget):
+      syncAnilist(anime, config, bannerDir, coverDir)
+      ├─ 如果已有 anilistId → 直接用 ID 调 fetchMetadata 刷新
+      ├─ 如果 anilistId === -1 → 跳过（之前搜过但没找到）
+      ├─ 如果无 anilistId → 按标题优先级搜 AniList（Jp→Cn→En）
+      │   ├─ Sørensen-Dice ≥ 0.5 匹配成功 → fetchMetadata + downloadBanner
+      │   └─ 匹配失败 → 标记 anilistId = -1
+      ├─ 下载 banner 到 DATA_DIR/banners/ 目录
+      └─ db.saveLibrary(data) — 写 anilistId/anilistBanner/anilistTitleEn/seasonChain
 ```
 
 ## 6. Cover Serving Flow
@@ -549,8 +561,9 @@ http.createServer((req, res) => {
   │   │   │   ├─ db.updatePlaySession() — single session update
   │   │   │   └─ saveScannedTree() — scanned tree JSON
   │   │   └─ jsonResp(res, status, payload)
-  │   └─ Cover/thumbnail routes:
+  │   └─ Cover/banner/thumbnail routes:
   │       ├─ /covers/* → serveImage() → ffmpeg resize pipeline
+  │       ├─ /banners/* → serveImage()
   │       └─ /api/thumbnail → ffmpeg extract → serveImage()
   └─ 404 fallback
 })
@@ -565,7 +578,7 @@ http.createServer((req, res) => {
 | `server/lib/utils.js` | 177 | MIME, serveImage, jsonResp, readBody, ffmpeg cover helpers, cache cleanup |
 | `server/routes/config.js` | 77 | GET/POST /api/config, /api/health, /api/notifications |
 | `server/routes/discovery.js` | 329 | Browse, scan (SSE), import, discovery unlink/exclude/include/fetch-meta |
-| `server/routes/library.js` | 210 | Library list, anime detail/delete, library sync (batch + SSE stream) |
+| `server/routes/library.js` | 240 | Library list, anime detail/delete, library sync (batch + SSE stream), AniList backfill |
 | `server/routes/playback.js` | 179 | Play, progress, mpv-status, thumbnail |
 | `server/routes/mylist.js` | 216 | MyList CRUD, memories list/create, wishlist |
 | `server/routes/stats.js` | 131 | Dashboard stats, tags, seasons, ratings, watch-activity, anime sessions |
@@ -575,7 +588,8 @@ http.createServer((req, res) => {
 | `server/scanner.js` | 404 | Media directory scanner, folder name parsing (anitomy) with extra video filtering, [bgmN] ID extraction |
 | `server/mpv-controller.js` | 178 | mpv process spawn, IPC progress tracking, error/crash reporting |
 | `server/bangumi-sync.js` | 206 | Bangumi sync orchestration: Pull→Merge→Push, OAuth status push |
-| `server/scrapers/index.js` | 436 | ScraperRegistry: multi-source metadata aggregation |
+| `server/scrapers/index.js` | 470 | ScraperRegistry: multi-source metadata aggregation, syncAnilist() helper |
+| `server/scrapers/anilist.js` | — | Anilist GraphQL client: search, fetchMetadata, downloadBanner, season chain extraction |
 | `server/scrapers/bangumi.js` | — | Bangumi API client + cover download |
 | `server/scrapers/tmdb.js` | — | TMDB API client + cover download |
 | `server/scrapers/node-fetch.js` | — | Node.js http/https fetch polyfill (pkg-compatible) |
@@ -607,4 +621,7 @@ http.createServer((req, res) => {
 15. **Auto-mark requires DB save**: When auto-marking previous episodes as watched on play start, `db.updateEpisodesWatched()` must be called to persist to SQLite. Without this, the watched state is only in memory and lost on server restart.
 16. **Persistence testing rule**: Any code that modifies in-memory state MUST be followed by a DB save call. When adding new persistence code, always write a test that verifies: (1) save to SQLite, (2) `loadData()` reload, (3) state matches expected. Testing only in-memory state catches nothing.
 17. **UTC/local time in stats APIs**: `watch-activity` and `sessions` APIs compare time-series data (session startTime against current date). Use LOCAL year/month/day via `getFullYear()/getMonth()/getDate()` — never `toISOString().slice()` which converts to UTC and shifts dates in UTC+8 timezones. Session startTime is stored as UTC ISO string from `new Date().toISOString()`, parse it as `new Date()` then use local accessors for matching.
+18. **AniList sync is fire-and-forget**: `syncAnilist()` runs async after the main response is sent. It mutates the anime object in place and calls `db.saveLibrary()` on completion. This means the frontend won't see AniList fields until the next page refresh after the async call completes.
+19. **Banner path conversion**: `anilistBanner` stores the absolute filesystem path (e.g., `C:\Users\...\banners\al-12345.jpg`). The frontend converts this to a URL path `/banners/al-12345.jpg` via `path.basename()` + `/banners/` prefix, matched by `handleBannerImage` in server.js.
+20. **Backfill endpoint**: `POST /api/library/sync-anilist-backfill` iterates all library items without `anilistId`, calls `syncAnilist()` on each with batch save every 5 items. Returns `{ total, succeeded, failed, skipped }`. Non-blocking but slow for large libraries.
 18. **ep.progress is always 0-1**: The Episode model has `progress Float @default(0) // 0-1`. mpv IPC reports time-pos in seconds; the `onProgress` callback normalizes via `Math.min(1, Math.max(0, timePos / duration))` before storing. When resuming, convert 0-1 progress to seconds using `ep.duration * progress` for `--start` and `progressStart`.

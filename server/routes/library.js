@@ -31,6 +31,44 @@ function resolveFolderParsed(anime) {
   return fp;
 }
 
+/**
+ * POST /api/library/sync-anilist-backfill
+ * 为所有缺 anilistId 的已有库条目回填 AniList 元数据。
+ * 每处理 5 部落盘一次，返回处理结果统计。
+ */
+async function runAnilistBackfill(state) {
+  const { data, config, db, logger } = state;
+  const { syncAnilist } = require('../scrapers');
+  const bannerDir = path.join(DATA_DIR, 'banners');
+  const coverDir = path.join(DATA_DIR, 'covers');
+
+  const candidates = data.library.filter(a => a.anilistId == null && a.anilistId !== -1);
+  let succeeded = 0, failed = 0, skipped = 0;
+
+  logger.info(`AniList backfill: ${candidates.length} candidates`);
+  for (let i = 0; i < candidates.length; i++) {
+    const anime = candidates[i];
+    try {
+      const result = await syncAnilist(anime, config, bannerDir, coverDir);
+      if (result) {
+        succeeded++;
+        logger.info(`Backfill [${i+1}/${candidates.length}]: ${anime.title} → anilistId=${result.anilistId}`);
+      } else {
+        skipped++;
+        logger.info(`Backfill [${i+1}/${candidates.length}]: ${anime.title} → skipped (no match)`);
+      }
+    } catch (e) {
+      failed++;
+      logger.error(`Backfill [${i+1}/${candidates.length}]: ${anime.title} → ${e.message}`);
+    }
+    // 每 5 部落盘一次
+    if ((i + 1) % 5 === 0 || i === candidates.length - 1) {
+      await db.saveLibrary(data);
+    }
+  }
+  return { total: candidates.length, succeeded, failed, skipped };
+}
+
 module.exports = {
   handleGetLibrary(req, res, state) {
     const { data, config, logger } = state;
@@ -216,5 +254,14 @@ module.exports = {
       send('done', { ok: true });
       res.end();
     })();
+  },
+
+  async handleAnilistBackfill(req, res, state) {
+    try {
+      const result = await runAnilistBackfill(state);
+      jsonResp(res, 200, result);
+    } catch (e) {
+      jsonResp(res, 500, { error: e.message });
+    }
   },
 };

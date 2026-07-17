@@ -81,6 +81,7 @@ query ($search: String!, $type: MediaType) {
   Page(perPage: 10) {
     media(search: $search, type: $type, sort: POPULARITY_DESC) {
       id
+      bannerImage
       title { romaji english native }
       coverImage { large medium }
       meanScore
@@ -211,6 +212,7 @@ class AniListScraper {
       });
       return (data?.Page?.media || []).map(m => ({
         id: m.id,
+        bannerImage: m.bannerImage || null,
         name: m.title.romaji || m.title.english,
         name_cn: m.title.native || m.title.romaji,
         original_name: m.title.native,
@@ -278,6 +280,30 @@ class AniListScraper {
     return filepath;
   }
 
+  async downloadBanner(imageUrl, bannerDir, subjectId) {
+    if (!imageUrl) return null;
+    if (!fs.existsSync(bannerDir)) fs.mkdirSync(bannerDir, { recursive: true });
+
+    const ext = '.jpg';
+    const filename = `al-${subjectId}${ext}`;
+    const filepath = path.join(bannerDir, filename);
+
+    if (fs.existsSync(filepath)) return filepath;
+
+    let buffer;
+    if (useCurlFallback) {
+      const result = spawnSync('curl', ['-s', '--max-time', String(TIMEOUT/1000), imageUrl], { timeout: TIMEOUT });
+      if (result.error) throw new Error(`Banner download failed: ${result.error.message}`);
+      buffer = result.stdout;
+    } else {
+      const res = await fetchWithTimeout(imageUrl);
+      if (!res.ok) throw new Error(`Banner download failed: ${res.status}`);
+      buffer = Buffer.from(await res.arrayBuffer());
+    }
+    fs.writeFileSync(filepath, buffer);
+    return filepath;
+  }
+
   async fetchMetadata(title, coverDir, subjectId) {
     const detail = await this.getDetail(subjectId);
     if (!detail) return null;
@@ -301,6 +327,7 @@ class AniListScraper {
       summary: detail.description || null,
       coverUrl: detail.coverImage?.large || null,
       localCover,
+      bannerImage: detail.bannerImage || null,
       rating: detail.meanScore ? Number((detail.meanScore / 10).toFixed(1)) : null,
       episodes: detail.episodes,
       genres: detail.genres || [],
@@ -310,6 +337,12 @@ class AniListScraper {
         title: e.node.title.romaji,
         title_native: e.node.title.native,
       })),
+      seasonChain: (() => {
+        try {
+          const sc = this.extractSeasonChain(detail);
+          return sc.size > 0 ? JSON.stringify(Object.fromEntries(sc)) : null;
+        } catch (_) { return null; }
+      })(),
     };
   }
 

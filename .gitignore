@@ -6,6 +6,7 @@ scanned-tree.json
 .migrated-to-sqlite
 server_*.txt
 covers/
+banners/
 test-media/
 config.json
 skills-lock.json

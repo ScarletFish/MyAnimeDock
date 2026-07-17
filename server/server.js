@@ -151,6 +151,12 @@ function handleCoverImage(req, res, _state) {
   serveImage(coverPath, req.url, res);
 }
 
+function handleBannerImage(req, res, _state) {
+  const urlPath = new URL(req.url, 'http://localhost').pathname;
+  const bannerPath = path.join(DATA_DIR, decodeURIComponent(urlPath));
+  serveImage(bannerPath, req.url, res);
+}
+
 function handleStaticFiles(req, res, _state) {
   const urlPath = new URL(req.url, 'http://localhost').pathname;
   let filePath = path.join(ASSET_DIR, 'public', decodeURIComponent(urlPath));
@@ -186,6 +192,7 @@ const routeTable = [
   { method: 'POST', path: '/api/discovery/fetch-meta', handler: H.handleDiscoveryFetchMeta },
   // Library
   { method: 'GET', path: '/api/library', handler: H.handleGetLibrary },
+  { method: 'POST', path: '/api/library/sync-anilist-backfill', handler: H.handleAnilistBackfill },
   { method: 'POST', path: '/api/library/sync', handler: H.handleLibrarySync },
   { method: 'GET', path: '/api/library/sync/stream', handler: H.handleLibrarySyncStream },
   { method: 'OPTIONS', path: '/api/library/sync/stream', handler: (req, res) => {
@@ -233,6 +240,8 @@ const routeTable = [
   { method: 'POST', path: '/api/quit', handler: handleQuit },
   // Covers
   { method: 'GET', prefix: '/covers/', handler: handleCoverImage },
+  // Banners
+  { method: 'GET', prefix: '/banners/', handler: handleBannerImage },
 ];
 
 // ── HTTP 服务器 ──
@@ -277,7 +286,7 @@ server = http.createServer((req, res) => {
 async function autoImportNewFolders(data, config) {
   if (!config.mediaDir || !fs.existsSync(config.mediaDir)) return;
   const aiLog = logger.child('[AUTOIMPORT]');
-  const { registry } = require('./scrapers');
+  const { registry, syncAnilist } = require('./scrapers');
   const coverDir = path.join(DATA_DIR, 'covers');
 
   const importedPaths = new Set(data.library.map(a => a.folderPath));
@@ -349,6 +358,13 @@ async function autoImportNewFolders(data, config) {
 
       await db.saveLibrary(data);
       await db.saveMyList(data);
+
+      // AniList 双源同步（异步，不阻塞导入流程）
+      const bannerDir = path.join(DATA_DIR, 'banners');
+      syncAnilist(anime, config, bannerDir, coverDir).then(() => {
+        db.saveLibrary(data);
+      }).catch(e => aiLog.error('AniList sync failed:', e.message));
+
       imported++;
 
       try {

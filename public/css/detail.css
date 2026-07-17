@@ -899,6 +899,41 @@
   margin-bottom: calc(2rem * var(--scale));
   padding-bottom: calc(2rem * var(--scale));
   border-bottom: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+
+/* ─── AniList Banner Background ─── */
+.detail-banner-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.detail-banner-bg-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(28px) brightness(0.4) saturate(1.2);
+  transform: scale(1.2);
+}
+
+.detail-banner-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.45) 100%),
+    linear-gradient(to right, rgba(0, 0, 0, 0.35) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+/* Ensure banner content sits above background */
+.detail-banner-left,
+.detail-banner-right {
+  position: relative;
+  z-index: 1;
 }
 
 .detail-banner-left {

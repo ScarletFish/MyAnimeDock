@@ -229,10 +229,10 @@ function renderDetail() {
   }
 
   // ─── AniList Banner Background (full-width, top of view) ───
-  const existingBg = document.querySelector('.detail-banner-bg');
+  const detailView = document.getElementById('detailView');
+  const existingBg = detailView.querySelector('.detail-banner-bg');
   if (existingBg) existingBg.remove();
   if (anime.anilistBanner) {
-    const viewEl = document.getElementById('detailView');
     const bannerBg = document.createElement('div');
     bannerBg.className = 'detail-banner-bg';
     const bannerImg = document.createElement('img');
@@ -240,8 +240,9 @@ function renderDetail() {
     bannerImg.src = `/banners/${path.basename(anime.anilistBanner)}`;
     bannerImg.alt = '';
     bannerBg.appendChild(bannerImg);
-    viewEl.insertBefore(bannerBg, viewEl.querySelector('.detail-content'));
+    detailView.insertBefore(bannerBg, detailView.querySelector('.detail-content'));
   }
+  detailView.classList.toggle('detail-no-banner', !anime.anilistBanner);
 
   document.getElementById('detailTitle').textContent = anime.bangumiTitle || anime.title;
 

@@ -10,6 +10,11 @@
   padding: calc(clamp(4.5rem, 8.5vw, 12rem) * var(--scale)) calc(1.5rem * var(--scale)) 0;
 }
 
+/* No banner: compact top padding, cover sits near top edge */
+.detail-no-banner .detail-content {
+  padding-top: calc(clamp(0.75rem, 2vw, 1.5rem) * var(--scale));
+}
+
 /* Two-column layout */
 .detail-layout {
   display: grid;

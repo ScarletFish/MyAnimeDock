@@ -228,11 +228,11 @@ function renderDetail() {
     coverEl.innerHTML = `<div class="gray-cover"><svg viewBox="0 0 24 24" width="64" height="64" fill="#555"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8 12.5v-9l6 4.5-6 4.5z"/></svg></div>`;
   }
 
-  // ─── AniList Banner Background ───
-  const bannerEl = document.querySelector('.detail-banner');
-  const existingBg = bannerEl?.querySelector('.detail-banner-bg');
+  // ─── AniList Banner Background (full-width, top of view) ───
+  const existingBg = document.querySelector('.detail-banner-bg');
   if (existingBg) existingBg.remove();
-  if (anime.anilistBanner && bannerEl) {
+  if (anime.anilistBanner) {
+    const viewEl = document.getElementById('detailView');
     const bannerBg = document.createElement('div');
     bannerBg.className = 'detail-banner-bg';
     const bannerImg = document.createElement('img');
@@ -240,7 +240,7 @@ function renderDetail() {
     bannerImg.src = `/banners/${path.basename(anime.anilistBanner)}`;
     bannerImg.alt = '';
     bannerBg.appendChild(bannerImg);
-    bannerEl.insertBefore(bannerBg, bannerEl.firstChild);
+    viewEl.insertBefore(bannerBg, viewEl.querySelector('.detail-content'));
   }
 
   document.getElementById('detailTitle').textContent = anime.bangumiTitle || anime.title;

@@ -326,6 +326,11 @@ function animeToLegacy(a) {
     pinyinTitle: a.pinyinTitle,
     matchedSeason: a.matchedSeason,
     totalSeasons: a.totalSeasons,
+    anilistId: a.anilistId,
+    anilistBanner: a.anilistBanner,
+    anilistCover: a.anilistCover,
+    anilistTitleEn: a.anilistTitleEn,
+    seasonChain: a.seasonChain,
     // Spread persisted extras (characters, persons, tags, date, platform,
     // ratingRank, ratingTotal, infobox, collection, eps, totalEpisodes, specialSuffix)
     ...metadataExtra,
@@ -474,6 +479,11 @@ async function saveLibrary(data) {
           metadata: metadataStr,
           matchedSeason: a.matchedSeason ?? null,
           totalSeasons: a.totalSeasons ?? null,
+          anilistId: a.anilistId ?? null,
+          anilistBanner: a.anilistBanner ?? null,
+          anilistCover: a.anilistCover ?? null,
+          anilistTitleEn: a.anilistTitleEn ?? null,
+          seasonChain: a.seasonChain ?? null,
         };
 
         // Check bangumiId uniqueness — skip if another anime already owns it

@@ -1,8 +1,13 @@
 /* ─── Detail View ─── */
+#detailView.view {
+  padding: 0;
+  position: relative;
+}
+
 .detail-content {
   max-width: calc(92rem * var(--scale));
   margin: 0 auto;
-  padding: 0 calc(0.75rem * var(--scale));
+  padding: calc(clamp(4.5rem, 8.5vw, 12rem) * var(--scale)) calc(0.75rem * var(--scale)) 0;
 }
 
 /* Two-column layout */
@@ -486,7 +491,7 @@
   background: var(--bg-elevated);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
-  padding: calc(1rem * var(--scale)) calc(1.25rem * var(--scale));
+  padding: calc(0.75rem * var(--scale)) calc(1.25rem * var(--scale));
   margin-bottom: calc(1rem * var(--scale));
 }
 
@@ -896,19 +901,21 @@
   grid-template-columns: calc(240px * var(--scale)) 1fr;
   gap: calc(clamp(1.5rem, 3vw, 3rem) * var(--scale));
   align-items: start;
-  margin-bottom: calc(2rem * var(--scale));
-  padding-bottom: calc(2rem * var(--scale));
-  border-bottom: 1px solid var(--border);
+  margin-bottom: 0;
+  padding-bottom: calc(1rem * var(--scale));
   position: relative;
-  overflow: hidden;
 }
 
-/* ─── AniList Banner Background ─── */
+/* ─── AniList Banner Background (full-width hero behind cover+info) ─── */
 .detail-banner-bg {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: calc(300px * var(--scale));
   z-index: 0;
   pointer-events: none;
+  overflow: hidden;
 }
 
 .detail-banner-bg-img {
@@ -923,11 +930,11 @@
   position: absolute;
   inset: 0;
   background:
-    /* Left-to-right: darken behind cover & left info for text readability */
+    /* Left-to-right: subtle darkening for text readability */
     linear-gradient(to right,
-      rgba(0, 0, 0, 0.5) 0%,
-      rgba(0, 0, 0, 0.18) 45%,
-      transparent 70%),
+      rgba(0, 0, 0, 0.35) 0%,
+      rgba(0, 0, 0, 0.1) 40%,
+      transparent 65%),
     /* Bottom fade: blend banner into page background */
     linear-gradient(to bottom,
       transparent 55%,

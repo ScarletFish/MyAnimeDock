@@ -999,5 +999,49 @@
   display: block;
 }
 
+/* ─── New Banner Layout ─── */
+.detail-banner {
+  display: grid;
+  grid-template-columns: clamp(calc(12rem * var(--scale)), 20vw, calc(18rem * var(--scale))) 1fr;
+  gap: calc(clamp(1.5rem, 3vw, 3rem) * var(--scale));
+  align-items: start;
+  margin-bottom: calc(2rem * var(--scale));
+  padding-bottom: calc(2rem * var(--scale));
+  border-bottom: 1px solid var(--border);
+}
 
+.detail-banner-left {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.detail-banner-right {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Two-column layout below banner */
+.detail-below-banner {
+  display: grid;
+  grid-template-columns: clamp(calc(12rem * var(--scale)), 20vw, calc(18rem * var(--scale))) 1fr;
+  gap: calc(clamp(1.5rem, 3vw, 3rem) * var(--scale));
+  align-items: start;
+}
+
+.detail-left-col {
+  /* For tags or additional info */
+}
+
+.detail-right-col {
+  min-width: 0;
+}
+
+/* Alias styling */
+.detail-alias {
+  font-size: calc(0.875rem * var(--scale));
+  color: var(--fg-secondary);
+  font-style: italic;
+}
 

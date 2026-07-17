@@ -205,6 +205,13 @@ class AniListScraper {
 
   async search(keyword, source) {
     if (source) this.setSource(source);
+    // Check prefetch cache first
+    if (this._registry) {
+      const cached = this._registry._searchCache?.get(keyword);
+      if (cached && Date.now() - cached.timestamp < this._registry._cacheTTL) {
+        return cached.results;
+      }
+    }
     try {
       const data = await this.graphqlRequest(SEARCH_QUERY, {
         search: keyword,

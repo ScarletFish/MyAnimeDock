@@ -320,6 +320,7 @@ class ScraperRegistry {
     if (!scraper.name || !scraper.search || !scraper.fetchMetadata || !scraper.downloadCover) {
       throw new Error('Scraper must implement: name, search, fetchMetadata, downloadCover');
     }
+    scraper._registry = this; // Allow scraper to access search cache
     this.scrapers.push(scraper);
     this.scrapers.sort((a, b) => {
       const ai = this.defaultOrder.indexOf(a.name);

@@ -189,7 +189,6 @@ const routeTable = [
   { method: 'POST', path: '/api/discovery/unlink', handler: H.handleDiscoveryUnlink },
   { method: 'POST', path: '/api/discovery/exclude', handler: H.handleDiscoveryExclude },
   { method: 'POST', path: '/api/discovery/include', handler: H.handleDiscoveryInclude },
-  { method: 'POST', path: '/api/discovery/fetch-meta', handler: H.handleDiscoveryFetchMeta },
   // Library
   { method: 'GET', path: '/api/library', handler: H.handleGetLibrary },
   { method: 'POST', path: '/api/library/sync-anilist-backfill', handler: H.handleAnilistBackfill },

@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const { jsonResp, readBody } = require('../lib/utils');
 const { saveScannedTree, DATA_DIR } = require('../lib/config');
+const { syncAnilist } = require('../scrapers');
 
 module.exports = {
   handleBrowse(req, res, state) {
@@ -216,8 +217,20 @@ module.exports = {
           bangumiSync.pushStatusChange(anime.id, data);
         }
       }
+      const bannerDir = path.join(DATA_DIR, 'banners');
+      const coverDir = path.join(DATA_DIR, 'covers');
       Promise.all([db.saveLibrary(data), db.saveMyList(data), saveScannedTree(data.scannedTree)])
         .then(() => Promise.all(metadataFetches))
+        .then(() => {
+          imported.forEach(id => {
+            const anime = data.library.find(a => a.id === id);
+            if (anime && anime.bangumiId) {
+              syncAnilist(anime, config, bannerDir, coverDir)
+                .then(() => db.saveLibrary(data))
+                .catch(e => logger.warn(`AniList sync failed for ${id}: ${e.message}`));
+            }
+          });
+        })
         .catch(e => logger.warn('Import/background save error: ' + e.message));
       jsonResp(res, 200, { ok: true, imported });
     } catch (e) {
@@ -290,48 +303,6 @@ module.exports = {
       jsonResp(res, 200, { ok: true });
     } catch (e) {
       jsonResp(res, 400, { error: 'Invalid request body' });
-    }
-  },
-
-  async handleDiscoveryFetchMeta(req, res, state) {
-    const { data, config, logger } = state;
-    try {
-      const body = await readBody(req);
-      const { path: folderPath, subjectId, source = 'bangumi' } = JSON.parse(body);
-      if (!folderPath) { jsonResp(res, 400, { error: 'path is required' }); return; }
-      const node = data.scannedTree.find(n => n.path === folderPath);
-      if (!node) { jsonResp(res, 404, { error: 'Node not found in scanned tree' }); return; }
-      const { registry, matchSeason } = require('../scrapers');
-      const { parseFolderName } = require('../scanner');
-      const coverDir = path.join(DATA_DIR, 'covers');
-      let subjectIdToUse = subjectId;
-      let sourceToUse = source;
-      if (!subjectIdToUse) {
-        const folderParsed = parseFolderName(node.name);
-        if (!folderParsed.cjkTitle && node.cjkTitle) folderParsed.cjkTitle = node.cjkTitle;
-        const videoCount = node.videoCount || 0;
-        const match = await matchSeason(registry, folderParsed.cleanTitle, folderParsed, videoCount, config);
-        if (!match) { jsonResp(res, 404, { error: '未找到匹配结果' }); return; }
-        subjectIdToUse = match.id;
-        sourceToUse = match.source;
-      }
-      const meta = await registry.fetchMetadata(sourceToUse, node.parsedTitle, coverDir, subjectIdToUse, config);
-      if (!meta) { jsonResp(res, 404, { error: '获取元数据失败' }); return; }
-      node.bangumiMatched = true;
-      node.bangumiId = meta.bangumiId || meta.tmdbId || null;
-      node.bangumiTitle = meta.bangumiTitle;
-      node.bangumiTitleJp = meta.bangumiTitleJp;
-      node.summary = meta.summary;
-      node.coverUrl = meta.coverUrl;
-      node.localCover = meta.localCover;
-      node.rating = meta.rating;
-      node.metadataSource = meta.source;
-      node.tags = meta.tags || [];
-      // Cover resize removed — browser handles display scaling
-      saveScannedTree(data.scannedTree);
-      jsonResp(res, 200, { ok: true, meta, node });
-    } catch (e) {
-      jsonResp(res, 500, { error: e.message });
     }
   },
 };

@@ -244,8 +244,8 @@ class BangumiScraper {
         name: p.name,
         nameCn: p.name_cn || '',
         image: p.images?.grid || p.images?.small || null,
-        roleName: p.role_name || '',
-        jobs: p.jobs || [],
+        roleName: p.role_name || p.relation || '',
+        jobs: p.jobs || p.career || [],
       })),
     };
   }

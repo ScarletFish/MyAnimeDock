@@ -176,18 +176,17 @@
     0 8px 24px rgba(0, 0, 0, 0.06);
 }
 
-/* ─── Episodes ─── */
-:is([data-theme="light"], [data-theme-mode="light"]) .episode-item {
-  background: var(--bg-card);
-  border-color: rgba(0, 0, 0, 0.06);
+/* ─── Episodes (light mode overrides for episode-card) ─── */
+:is([data-theme="light"], [data-theme-mode="light"]) .episode-card {
+  border-color: rgba(0, 0, 0, 0.08);
 }
-:is([data-theme="light"], [data-theme-mode="light"]) .episode-item:hover {
-  background: var(--bg-elevated);
-  border-color: rgba(0, 0, 0, 0.12);
+:is([data-theme="light"], [data-theme-mode="light"]) .episode-card:hover {
+  border-color: rgba(var(--accent-rgb), 0.15);
 }
-:is([data-theme="light"], [data-theme-mode="light"]) .episode-status.unwatched { background: rgba(0, 0, 0, 0.04); }
-:is([data-theme="light"], [data-theme-mode="light"]) .episode-status.watching { background: rgba(255, 170, 0, 0.1); }
-:is([data-theme="light"], [data-theme-mode="light"]) .episode-progress-wrap { background: rgba(0, 0, 0, 0.08); }
+:is([data-theme="light"], [data-theme-mode="light"]) .episode-card-num,
+:is([data-theme="light"], [data-theme-mode="light"]) .episode-card-duration {
+  background: rgba(0, 0, 0, 0.5);
+}
 
 /* ─── Memory Card ─── */
 :is([data-theme="light"], [data-theme-mode="light"]) .memory-card:hover {

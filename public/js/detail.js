@@ -62,6 +62,13 @@ function toggleExpand(wrapId) {
     if (wrapId === 'detailCharWrap') checkToggleOverflow(wrap, '.detail-char-grid', '.detail-char-toggle');
   }, 50);
 }
+
+function expandTags() {
+  const tagsEl = document.getElementById('detailTags');
+  const allTags = tagsEl._allTags;
+  if (!allTags) return;
+  tagsEl.innerHTML = `<div class="detail-tags-list">${allTags.map(t => `<span class="detail-tag">${escHtml(t)}</span>`).join('')}</div>`;
+}
 let detailSourceView = 'library';
 
 // Sync from AppState for cross-module state
@@ -226,11 +233,8 @@ function renderDetail() {
   // ─── Alias (Japanese/Romaji) ───
   const aliasEl = document.getElementById('detailAlias');
   const aliases = [];
-  if (anime.title && anime.bangumiTitle && anime.title !== anime.bangumiTitle) {
-    aliases.push(anime.title);
-  }
+  if (anime.bangumiTitleJp) aliases.push(anime.bangumiTitleJp);
   if (anime.romajiTitle) aliases.push(anime.romajiTitle);
-  if (anime.japaneseTitle) aliases.push(anime.japaneseTitle);
   aliasEl.textContent = aliases.join(' / ') || '';
   aliasEl.style.display = aliases.length ? '' : 'none';
 
@@ -261,18 +265,32 @@ function renderDetail() {
 
   // ─── Tags ───
   const tagsEl = document.getElementById('detailTags');
-  const tags = (anime.tags || []).filter(t => {
+  let tags = (anime.tags || []).filter(t => {
     if (anime.platform && t === anime.platform) return false;
     if (/\d{4}(年|年\d{1,2}月|\-\d{2})/.test(t)) return false;
     if (/^\d{1,2}月$/.test(t)) return false;
     return true;
   });
+  // Sort: production company first (contains 制作 or common studio names)
+  const studioKeywords = ['制作', '动画', 'studio', 'Production', 'Works'];
+  tags.sort((a, b) => {
+    const aIsStudio = studioKeywords.some(k => a.toLowerCase().includes(k.toLowerCase()));
+    const bIsStudio = studioKeywords.some(k => b.toLowerCase().includes(k.toLowerCase()));
+    if (aIsStudio && !bIsStudio) return -1;
+    if (!aIsStudio && bIsStudio) return 1;
+    return 0;
+  });
   if (tags.length) {
-    tagsEl.innerHTML = `<div class="detail-tags-list">${tags.map(t => `<span class="detail-tag">${escHtml(t)}</span>`).join('')}</div>` +
-      `<button class="detail-tag-toggle" onclick="toggleExpand('detailTags')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>`;
-    tagsEl.classList.remove('expanded');
+    const MAX_TAGS = 4;
+    const shown = tags.slice(0, MAX_TAGS);
+    const remaining = tags.length - MAX_TAGS;
+    let html = shown.map(t => `<span class="detail-tag">${escHtml(t)}</span>`).join('');
+    if (remaining > 0) {
+      html += `<span class="detail-tag detail-tag--more" onclick="expandTags()">+${remaining}</span>`;
+    }
+    tagsEl.innerHTML = `<div class="detail-tags-list">${html}</div>`;
     tagsEl.style.display = '';
-    tagsEl._checkOverflow = () => checkToggleOverflow(tagsEl, '.detail-tags-list', '.detail-tag-toggle');
+    tagsEl._allTags = tags;
   } else {
     tagsEl.style.display = 'none';
   }
@@ -289,16 +307,17 @@ function renderDetail() {
   if (fetchBtn) { fetchBtn.style.display = 'inline-flex'; fetchBtn.disabled = false; }
   if (deleteBtn) deleteBtn.style.display = 'inline-flex';
 
+  // ─── Cover play button ───
+  renderPlayButton(anime);
+
   // ─── Right column modules ───
   if (isWishlistMode) {
     renderWishlistDetail(anime);
   } else {
     document.getElementById('archiveDetail').style.display = 'none';
-    document.getElementById('watchCard').style.display = '';
     document.getElementById('episodeHeatmap').style.display = '';
     document.getElementById('detailCharacters').style.display = '';
     document.getElementById('watchStats').style.display = '';
-    renderWatchCard(anime);
     renderEpisodeHeatmap(anime);
     renderCharacters(anime);
   }
@@ -316,61 +335,28 @@ function renderDetail() {
 
 function autoExpandCharacters() {
   const charWrap = document.getElementById('detailCharWrap');
-  if (!canAutoExpand(charWrap)) return;
+  if (!charWrap) return;
+  if (charWrap.dataset.userToggled === 'true') return;
   measureAndBalance(charWrap);
   updateToggleVisibility(charWrap);
 }
 
-function canAutoExpand(wrap) {
-  if (!wrap) return false;
-  if (wrap.dataset.userToggled === 'true') return false;
-
-  const grid = wrap.querySelector('.detail-char-grid');
-  if (!grid || grid.children.length <= 6) return false;
-
-  const charWrapEl = wrap.closest('.detail-characters');
-  if (!charWrapEl || charWrapEl.style.display === 'none') return false;
-
-  const detailView = document.getElementById('detailView');
-  if (detailView && detailView.classList.contains('hidden')) return false;
-
-  const left = document.querySelector('.detail-left-col');
-  const right = document.querySelector('.detail-right-col');
-  if (!left || !right) return false;
-
-  return true;
-}
-
 function measureAndBalance(wrap) {
   const grid = wrap.querySelector('.detail-char-grid');
-  const left = document.querySelector('.detail-left-col');
-  const right = document.querySelector('.detail-right-col');
-
   const rowH = getCharGridRowHeight();
   const totalItems = grid.children.length;
   const maxRows = Math.ceil(totalItems / 3);
-
-  // 无损测量：用 grid.clientHeight（渲染盒高度）替代 scrollHeight，
-  // 因为 right.scrollHeight 只包含 grid 的渲染盒高度，与 clientHeight 同坐标系。
-  const gridRendered = grid.clientHeight;
-  const rightFull = right.scrollHeight;
-  const nonGridHeight = rightFull - gridRendered;
-  const leftH = left.scrollHeight;
-
-  const availableRows = (leftH - nonGridHeight) / rowH;
-  const targetRows = Math.max(2, Math.min(Math.round(availableRows), maxRows));
+  const targetRows = Math.min(3, maxRows);
 
   if (targetRows >= maxRows) {
     wrap.classList.add('expanded');
     grid.style.overflow = '';
+    grid.style.maxHeight = MAX_GRID_HEIGHT + 'px';
   } else {
     wrap.classList.remove('expanded');
     grid.style.overflow = 'hidden';
+    grid.style.maxHeight = (rowH * targetRows) + 'px';
   }
-
-  const targetHeight = targetRows >= maxRows ? MAX_GRID_HEIGHT : rowH * targetRows;
-  // Use CSS transition for max-height animation (GSAP CSSPlugin fails to set maxHeight on grid elements)
-  grid.style.maxHeight = targetHeight + 'px';
 }
 
 
@@ -405,7 +391,6 @@ window.addEventListener('resize', () => {
 
 function renderWishlistDetail(anime) {
   // Hide interactive modules
-  document.getElementById('watchCard').style.display = 'none';
   document.getElementById('episodeHeatmap').style.display = 'none';
   document.getElementById('detailCharacters').style.display = 'none';
   document.getElementById('watchStats').style.display = 'none';
@@ -566,7 +551,7 @@ function renderWatchCard(anime) {
 }
 
 // ─── Key staff roles to display (filtered) ───
-const KEY_STAFF_ROLES = ['原作', '监督', '导演', '系列构成', '脚本', '音乐', '动画制作', '角色设计', '人物设定', '制作', '製作'];
+const KEY_STAFF_ROLES = ['原作', '监督', '导演', '系列构成', '脚本', '音乐', '动画制作', '角色设计', '人物设定', '制作', '製作', 'author', 'editor', 'producer', 'storyboard', 'director'];
 
 function renderCharacters(anime) {
   const container = document.getElementById('detailCharacters');
@@ -574,73 +559,70 @@ function renderCharacters(anime) {
   const staffSection = document.getElementById('detailStaffSection');
   const staffList = document.getElementById('detailStaffList');
 
-  if (!grid) return;
   const chars = anime.characters || [];
   const persons = anime.persons || [];
 
+  // Render characters
+  if (!grid) return;
   if (!chars.length) {
     container.style.display = 'none';
-    return;
-  }
+  } else {
+    container.style.display = '';
 
-  container.style.display = '';
+    grid.innerHTML = chars.slice(0, 24).map(c => {
+      const name = escHtml(c.nameCn || c.name);
+      const cv = c.actors && c.actors[0]
+        ? escHtml(c.actors[0].nameCn || c.actors[0].name)
+        : null;
+      const img = c.image
+        ? `<img class="detail-char-avatar" src="${escAttr(c.image)}" alt="" loading="lazy" decoding="async">`
+        : `<div class="detail-char-avatar-placeholder">${name.charAt(0)}</div>`;
+      return `<div class="detail-char-card">
+        ${img}
+        <div class="detail-char-info">
+          <div class="detail-char-name">${name}</div>
+          ${cv ? `<div class="detail-char-cv">${cv}</div>` : ''}
+        </div>
+      </div>`;
+    }).join('');
 
-  grid.innerHTML = chars.slice(0, 24).map(c => {
-    const name = escHtml(c.nameCn || c.name);
-    const cv = c.actors && c.actors[0]
-      ? escHtml(c.actors[0].nameCn || c.actors[0].name)
-      : null;
-    const img = c.image
-      ? `<img class="detail-char-avatar" src="${escAttr(c.image)}" alt="" loading="lazy" decoding="async">`
-      : `<div class="detail-char-avatar-placeholder">${name.charAt(0)}</div>`;
-    return `<div class="detail-char-card">
-      ${img}
-      <div class="detail-char-info">
-        <div class="detail-char-name">${name}</div>
-        ${cv ? `<div class="detail-char-cv">${cv}</div>` : ''}
-      </div>
-    </div>`;
-  }).join('');
-
-  // 小网格（≤6 项 = ≤2 行）：不需要截断，让它们自然渲染
-  // 大网格（>6 项）：锁定初始高度，后续由 auto-expand 计算平衡行数
-  const needsClipping = grid.children.length > 6;
-  if (needsClipping) {
-    grid.style.maxHeight = grid.scrollHeight + 'px';
-  }
-
-  // 等待角色头像加载完成后重新校准
-  waitForCharImages(grid).then(() => {
-    const detailView = document.getElementById('detailView');
-    if (detailView && detailView.classList.contains('hidden')) return;
-    const wrap = document.getElementById('detailCharWrap');
-    if (!wrap || wrap.dataset.userToggled === 'true') return;
-
+    const needsClipping = grid.children.length > 6;
     if (needsClipping) {
-      autoExpandCharacters();
-    } else {
-      // 小网格：移除可能的 max-height 残留，确保完整显示
-      grid.style.maxHeight = '';
-      grid.style.overflow = '';
+      grid.style.maxHeight = grid.scrollHeight + 'px';
     }
-  });
 
-  // Render staff (filtered by key roles)
-  const filtered = persons.filter(p =>
-    p.jobs && p.jobs.some(j => KEY_STAFF_ROLES.includes(j))
-  );
-  const deduped = [];
-  const seen = new Set();
-  for (const p of filtered) {
-    const name = p.nameCn || p.name;
-    if (seen.has(name)) continue;
-    seen.add(name);
-    deduped.push(p);
+    waitForCharImages(grid).then(() => {
+      const detailView = document.getElementById('detailView');
+      if (detailView && detailView.classList.contains('hidden')) return;
+      const wrap = document.getElementById('detailCharWrap');
+      if (!wrap || wrap.dataset.userToggled === 'true') return;
+
+      if (needsClipping) {
+        autoExpandCharacters();
+      } else {
+        grid.style.maxHeight = '';
+        grid.style.overflow = '';
+      }
+    });
   }
-  const keyJobs = deduped.sort((a, b) => {
-    const ai = KEY_STAFF_ROLES.indexOf(a.jobs[0]);
-    const bi = KEY_STAFF_ROLES.indexOf(b.jobs[0]);
-    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+
+  // Render staff (skip if elements don't exist)
+  if (!staffSection || !staffList) return;
+
+  const filtered = persons.filter(p =>
+    (p.roleName && p.roleName !== '出版社') || (p.jobs && p.jobs.length > 0)
+  );
+  // Deduplicate by role (each role appears once)
+  const roleMap = new Map();
+  for (const p of filtered) {
+    const role = p.roleName || p.jobs[0] || '';
+    if (!role || roleMap.has(role)) continue;
+    roleMap.set(role, p);
+  }
+  const keyJobs = Array.from(roleMap.values()).sort((a, b) => {
+    const aRole = a.roleName || a.jobs[0] || '';
+    const bRole = b.roleName || b.jobs[0] || '';
+    return aRole.localeCompare(bRole);
   });
 
   const hasStaff = keyJobs.length > 0;
@@ -648,13 +630,78 @@ function renderCharacters(anime) {
   if (!hasStaff) return;
 
   staffList.innerHTML = keyJobs.map(p => {
-    const role = escHtml(p.jobs[0]);
+    const role = escHtml(p.roleName || p.jobs[0] || '职员');
     const name = escHtml(p.nameCn || p.name);
     return `<span class="detail-staff-role">${role}</span><span class="detail-staff-name">${name}</span>`;
   }).join('');
 }
 
+function renderPlayButton(anime) {
+  const btn = document.getElementById('btnPlayAnime');
+  const textEl = document.getElementById('btnPlayText');
+  if (!btn || !textEl) return;
 
+  // Hide in wishlist mode or no episodes
+  if (isWishlistMode || !anime.episodes || anime.episodes.length === 0) {
+    btn.style.display = 'none';
+    return;
+  }
+
+  btn.style.display = 'inline-flex';
+
+  // Find target episode: in-progress → first unwatched → first episode (replay)
+  let targetEp = null;
+  let allWatched = false;
+
+  for (const ep of anime.episodes) {
+    if (!ep.watched && ep.progress > 0) { targetEp = ep; break; }
+  }
+  if (!targetEp) {
+    for (const ep of anime.episodes) {
+      if (!ep.watched) { targetEp = ep; break; }
+    }
+  }
+  if (!targetEp) {
+    targetEp = anime.episodes[0];
+    allWatched = true;
+  }
+
+  // Set button text
+  if (allWatched) {
+    textEl.textContent = '重新播放';
+  } else if (targetEp.progress > 0) {
+    textEl.textContent = '继续播放';
+  } else {
+    textEl.textContent = '开始播放';
+  }
+
+  // Store target for onclick handler (avoids inline JS string escaping)
+  btn.dataset.path = targetEp.filePath;
+  btn.dataset.pos = targetEp.progress || 0;
+  btn.dataset.epIdx = anime.episodes.indexOf(targetEp);
+}
+
+function playEpisodeFromCover() {
+  const btn = document.getElementById('btnPlayAnime');
+  if (!btn || !btn.dataset.path) return;
+  playEpisode(btn.dataset.path, parseFloat(btn.dataset.pos) || 0);
+
+  // Scroll episode list to show target at the left edge
+  const epIdx = parseInt(btn.dataset.epIdx);
+  if (!isNaN(epIdx)) {
+    const grid = document.getElementById('episodeHeatmapGrid');
+    if (grid) {
+      const card = grid.querySelector(`.episode-card[data-index="${epIdx}"]`);
+      if (card) {
+        const cs = getComputedStyle(grid);
+        const gap = parseFloat(cs.gap) || parseFloat(cs.columnGap) || 14;
+        const step = card.offsetWidth + gap;
+        const targetScroll = Math.max(0, epIdx * step);
+        grid.scrollTo({ left: targetScroll, behavior: 'smooth' });
+      }
+    }
+  }
+}
 
 async function playEpisode(filePath, position = 0) {
   try {
@@ -671,7 +718,7 @@ async function toggleWatched(animeId, epNumber, watched) {
     if (currentAnime) {
       const ep = currentAnime.episodes.find(e => e.number === epNumber);
       if (ep) { ep.watched = result.episode.watched; ep.progress = result.episode.progress; }
-      renderWatchCard(currentAnime);
+      renderPlayButton(currentAnime);
       renderEpisodeHeatmap(currentAnime, false);
       renderWatchStats(currentAnime);
     }

@@ -357,95 +357,78 @@
     </div>
     <div class="detail-content">
       <div id="headerTitle" style="display:none"></div>
-      <div class="detail-layout">
-        <div class="detail-left">
-          <div class="detail-sidebar">
-            <div class="detail-cover-wrap" id="detailCover"></div>
-              <div class="detail-info-panel">
-                <h1 id="detailTitle"></h1>
-                <div class="detail-info-line" id="detailInfoLine"></div>
-                <div class="detail-tags" id="detailTags"></div>
-                <p id="detailSummary" class="detail-summary"></p>
-              <div class="detail-actions">
-                <button class="btn" id="btnFetchBangumi" onclick="syncBangumiMetadata()">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M17 2.1 4 15l-1 1-1 6 6-1 1-1L21.9 7a2 2 0 0 0 0-2.8l-1.1-1.1a2 2 0 0 0-2.8 0z"></path>
-                    <path d="M15 5.5 18.5 9"></path>
-                  </svg>
-                  同步
-                </button>
-                <button class="btn btn-danger" id="btnDeleteAnime" onclick="deleteAnime()">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M3 6h18"></path>
-                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                  </svg>
-                  移除
-                </button>
-              </div>
-              <!-- Modal-based sync replaces inline search -->
-            </div>
+
+      <!-- Banner Section: Cover + Title Info -->
+      <div class="detail-banner">
+        <div class="detail-banner-left">
+          <div class="detail-cover-wrap" id="detailCover"></div>
+          <div class="detail-actions">
+            <button class="btn btn-primary" id="btnPlayAnime" onclick="playEpisodeFromCover()">
+              <span id="btnPlayText">播放</span>
+            </button>
+            <button class="btn" id="btnFetchBangumi" onclick="syncBangumiMetadata()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 2.1 4 15l-1 1-1 6 6-1 1-1L21.9 7a2 2 0 0 0 0-2.8l-1.1-1.1a2 2 0 0 0-2.8 0z"></path>
+                <path d="M15 5.5 18.5 9"></path>
+              </svg>
+              同步
+            </button>
+            <button class="btn btn-danger" id="btnDeleteAnime" onclick="deleteAnime()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 6h18"></path>
+                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+              </svg>
+              移除
+            </button>
           </div>
         </div>
-        <div class="detail-right">
-          <!-- Module 1: Continue Watch Card -->
-          <div class="watch-card" id="watchCard">
-            <div class="watch-card-bg" id="watchCardBg"></div>
-            <div class="watch-card-overlay"></div>
-            <div class="watch-card-content">
-              <div class="watch-card-info">
-                <div class="watch-card-label" id="watchCardLabel"></div>
-                <div class="watch-card-title" id="watchCardTitle"></div>
-                <div class="watch-card-progress" id="watchCardProgressWrap">
-                  <div class="watch-card-progress-bar" id="watchCardProgressBar"></div>
-                </div>
-              </div>
-              <button class="watch-card-btn" id="watchCardBtn">
-                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-                <span id="watchCardBtnText"></span>
-              </button>
-            </div>
-          </div>
+        <div class="detail-banner-right">
+          <h1 id="detailTitle"></h1>
+          <div id="detailAlias" class="detail-alias"></div>
+          <div class="detail-info-line" id="detailInfoLine"></div>
+          <div class="detail-tags" id="detailTags"></div>
+          <p id="detailSummary" class="detail-summary"></p>
+        </div>
+      </div>
 
-          <!-- Module 2: Episode Heatmap -->
-          <div class="episode-heatmap" id="episodeHeatmap">
-            <div class="episode-heatmap-header">
-              <h3>剧集列表</h3>
-            </div>
-            <div class="episode-heatmap-legend" id="heatmapLegend">
-              <span class="heatmap-legend-item"><span class="heatmap-swatch unwatched"></span>未观看</span>
-              <span class="heatmap-legend-item"><span class="heatmap-swatch watching"></span>观看中</span>
-              <span class="heatmap-legend-item"><span class="heatmap-swatch watched"></span>已观看</span>
-            </div>
-            <div class="episode-heatmap-grid" id="episodeHeatmapGrid"></div>
+      <!-- Below Banner: Episode List (full-width) -->
+      <div class="episode-list-section" id="episodeHeatmap">
+        <div class="episode-list-header">
+          <div class="episode-header-left">
+            <h3>剧集列表</h3>
+            <span class="episode-count" id="episodeCount"></span>
           </div>
+        </div>
+        <div class="episode-list-scroll" id="episodeHeatmapGrid"></div>
+      </div>
 
-          <!-- Archive Magazine (shown instead of watch card + ep heatmap in archive mode) -->
-          <div class="archive-magazine" id="archiveDetail" style="display:none">
-            <div class="archive-magazine-essay">
-              <div class="archive-magazine-thoughts" id="archiveThoughts"></div>
-            </div>
-            <div class="archive-magazine-meta">
-              <div class="archive-magazine-stat">
-                <span class="archive-magazine-stat-value" id="archiveRating"></span>
-                <span class="archive-magazine-stat-label">评分</span>
-              </div>
-              <div class="archive-magazine-stat">
-                <span class="archive-magazine-stat-value" id="archiveDate"></span>
-                <span class="archive-magazine-stat-label">观看日期</span>
-              </div>
-              <div class="archive-magazine-stat">
-                <span class="archive-magazine-stat-value" id="archiveEpisodes">—</span>
-                <span class="archive-magazine-stat-label">集数</span>
-              </div>
-            </div>
-            <div class="archive-magazine-notes" id="archiveNotes" style="display:none">
-              <div class="archive-magazine-notes-label">笔记</div>
-              <div class="archive-magazine-notes-content" id="archiveNotesContent"></div>
-            </div>
+      <!-- Archive Magazine (shown instead of episode list in archive mode) -->
+      <div class="archive-magazine" id="archiveDetail" style="display:none">
+        <div class="archive-magazine-essay">
+          <div class="archive-magazine-thoughts" id="archiveThoughts"></div>
+        </div>
+        <div class="archive-magazine-meta">
+          <div class="archive-magazine-stat">
+            <span class="archive-magazine-stat-value" id="archiveRating"></span>
+            <span class="archive-magazine-stat-label">评分</span>
           </div>
+          <div class="archive-magazine-stat">
+            <span class="archive-magazine-stat-value" id="archiveDate"></span>
+            <span class="archive-magazine-stat-label">观看日期</span>
+          </div>
+          <div class="archive-magazine-stat">
+            <span class="archive-magazine-stat-value" id="archiveEpisodes">—</span>
+            <span class="archive-magazine-stat-label">集数</span>
+          </div>
+        </div>
+        <div class="archive-magazine-notes" id="archiveNotes" style="display:none">
+          <div class="archive-magazine-notes-label">笔记</div>
+          <div class="archive-magazine-notes-content" id="archiveNotesContent"></div>
+        </div>
+      </div>
 
-          <!-- Module 3: Characters & Staff -->
+          <!-- Module 3: Characters -->
           <div class="detail-characters" id="detailCharacters" style="display:none">
             <div class="detail-section-header">
               <h3>角色·声优</h3>
@@ -454,27 +437,21 @@
               <div class="detail-char-grid" id="detailCharGrid"></div>
               <button class="detail-char-toggle" onclick="toggleExpand('detailCharWrap')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
             </div>
-            <div class="detail-staff-section" id="detailStaffSection" style="display:none">
-              <div class="detail-section-header" style="margin-top:1rem">
-                <h3>主要制作人员</h3>
-              </div>
-              <div class="detail-staff-list" id="detailStaffList"></div>
-            </div>
           </div>
 
+          <!-- Module 4: Watch Stats (full-width within column) -->
+          <div class="watch-stats" id="watchStats">
+            <div class="watch-stats-header">
+              <h3>观看统计</h3>
+            </div>
+            <div class="watch-stats-chart-wrap">
+              <canvas class="watch-stats-chart" id="watchStatsChart" width="1200" height="320"></canvas>
+              <div class="watch-stats-empty" id="watchStatsEmpty"></div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- Module 4: Watch Stats (full-width) -->
-      <div class="watch-stats" id="watchStats">
-        <div class="watch-stats-header">
-          <h3>观看统计</h3>
-        </div>
-        <div class="watch-stats-chart-wrap">
-          <canvas class="watch-stats-chart" id="watchStatsChart" width="1200" height="320"></canvas>
-          <div class="watch-stats-empty" id="watchStatsEmpty"></div>
-        </div>
-      </div>
     </div>
   </section>
 

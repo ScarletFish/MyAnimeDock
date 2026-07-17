@@ -1071,6 +1071,13 @@ html.theme-transitioning .theme-dock {
   .heatmap-cell::after { transition-duration: 0.01ms !important; }
   .heatmap-cell { animation: none !important; }
   .settings-panel { animation: none !important; }
+  /* Episode card hover effects */
+  .episode-card,
+  .episode-card:hover { transition: none !important; transform: none !important; }
+  .episode-card:hover .episode-card-bg { transform: none !important; }
+  .episode-card-play { transition: opacity 0.01ms !important; transform: translate(-50%, -50%) !important; }
+  .episode-card:hover .episode-card-play { opacity: 1 !important; }
+  .episode-dot { transition: none !important; }
 }
 
 /* ─── Manual reduced-motion toggle (mirrors @media block above) ─── */
@@ -1115,6 +1122,26 @@ html[data-reduce-motion="true"] .status-dd-menu {
 
 html[data-reduce-motion="true"] .heatmap-cell { animation: none !important; }
 html[data-reduce-motion="true"] .settings-panel { animation: none !important; }
+
+/* ─── Episode card reduced motion ─── */
+html[data-reduce-motion="true"] .episode-card,
+html[data-reduce-motion="true"] .episode-card:hover {
+  transition: none !important;
+  transform: none !important;
+}
+html[data-reduce-motion="true"] .episode-card:hover .episode-card-bg {
+  transform: none !important;
+}
+html[data-reduce-motion="true"] .episode-card-play {
+  transition: opacity 0.01ms !important;
+  transform: translate(-50%, -50%) !important;
+}
+html[data-reduce-motion="true"] .episode-card:hover .episode-card-play {
+  opacity: 1 !important;
+}
+html[data-reduce-motion="true"] .episode-dot {
+  transition: none !important;
+}
 
 /* ─── Stats View ─── */
 

@@ -1,39 +1,156 @@
-// ─── Episode Heatmap ───
+// ─── Episode List (full-width horizontal scroll) ───
 
 let watchStatsVersion = 0;
 
 function renderEpisodeHeatmap(anime, animate) {
   const grid = document.getElementById('episodeHeatmapGrid');
-  const header = document.querySelector('.episode-heatmap-header h3');
+  const header = document.querySelector('.episode-list-header h3');
+  const countEl = document.getElementById('episodeCount');
+  const dotsContainer = document.getElementById('episodeDots');
+
   if (!anime.episodes || anime.episodes.length === 0) {
-    grid.innerHTML = '<p class="heatmap-empty">暂无剧集信息</p>';
+    grid.innerHTML = '<p style="color:var(--fg-muted);padding:1rem;text-align:center">暂无剧集信息</p>';
     header.textContent = '剧集列表';
+    if (countEl) countEl.textContent = '';
+    if (dotsContainer) dotsContainer.innerHTML = '';
     return;
   }
+
   const localCount = anime.episodes.length;
   const totalCount = anime.totalEpisodes || anime.eps;
-  header.innerHTML = totalCount
-    ? `剧集列表 · <span class="ep-count">${localCount} /${totalCount}集</span>`
-    : `剧集列表 · <span class="ep-count">${localCount} 集</span>`;
+  header.textContent = '剧集列表';
+  if (countEl) countEl.textContent = totalCount ? `${localCount} / ${totalCount}集` : `${localCount} 集`;
 
-  const cols = window.innerWidth < 768 ? 5 : 10;
-  grid.innerHTML = anime.episodes.map((ep, i) => {
-    let cls = 'unwatched', tip = `第${ep.number}集 · 未观看`;
-    if (ep.watched) { cls = 'watched'; tip = `第${ep.number}集 · 已观看`; }
-    else if (ep.progress > 0) { cls = 'watching'; tip = `第${ep.number}集 · 观看中 ${ep.duration > 0 ? Math.round(ep.progress / ep.duration * 100) + '%' : ''}`; }
-    const animAttr = animate !== false ? ` style="--i:${i}"` : '';
-    return `<button class="heatmap-cell ${cls}"${animAttr} data-tip="${tip}" data-ep="${ep.number}" data-path="${escAttr(ep.filePath)}" data-pos="${ep.progress}" tabindex="0"></button>`;
+  // Build all episode cards in horizontal scroll (clean, no watched/status indicators)
+  grid.innerHTML = anime.episodes.map((ep, idx) => {
+    const title = ep.fileName || `第${ep.number}集`;
+    const thumbUrl = `/api/thumbnail?path=${encodeURIComponent(ep.filePath)}&time=mid`;
+    const epNum = String(ep.number).padStart(2, '0');
+
+    return `<div class="episode-card" data-index="${idx}" data-ep="${ep.number}" data-path="${escAttr(ep.filePath)}" data-pos="${ep.progress || 0}">
+      <div class="episode-card-thumb">
+        <div class="episode-card-bg" style="background-image:url('${escAttr(thumbUrl)}')"></div>
+        <div class="episode-card-overlay"></div>
+        <div class="episode-card-num">${epNum}</div>
+        <button class="episode-card-play" data-path="${escAttr(ep.filePath)}" data-pos="${ep.progress || 0}" onclick="event.stopPropagation();playEpisode(this.dataset.path, parseFloat(this.dataset.pos) || 0)">
+          <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+        </button>
+      </div>
+      <div class="episode-card-info">
+        <div class="episode-card-title" title="${escAttr(title)}">${escHtml(title)}</div>
+      </div>
+    </div>`;
   }).join('');
+  // Reset scroll immediately (prevents inheriting previous anime's scroll position)
+  grid.scrollLeft = 0;
 
-  grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+  // ─── Sliding-window dot navigation ───
 
-  grid.querySelectorAll('.heatmap-cell').forEach(el => {
+  const VISIBLE_COUNT = 4;
+
+  // Create dots container if not exists
+  if (!dotsContainer) {
+    const headerEl = document.querySelector('.episode-list-header');
+    const dotsEl = document.createElement('div');
+    dotsEl.className = 'episode-pagination-dots';
+    dotsEl.id = 'episodeDots';
+    headerEl.appendChild(dotsEl);
+  }
+
+  const dotsEl = document.getElementById('episodeDots');
+  const totalEps = anime.episodes.length;
+  // Each dot represents a window start position: [0..VISIBLE_COUNT-1], [1..VISIBLE_COUNT], ...
+  // Total dots = totalEps - VISIBLE_COUNT + 1 (minimum 1)
+  const dotCount = Math.max(1, totalEps - VISIBLE_COUNT + 1);
+
+  if (dotCount <= 1) {
+    dotsEl.innerHTML = '';
+  } else {
+    dotsEl.innerHTML = Array.from({ length: dotCount }, (_, i) => {
+      const label = `${i + 1}-${Math.min(i + VISIBLE_COUNT, totalEps)}`;
+      return `<button class="episode-dot${i === 0 ? ' active' : ''}" data-index="${i}" aria-label="第${label}集"></button>`;
+    }).join('');
+  }
+
+  // Compute the pixel step between window positions (card width + gap)
+  function getCardStep() {
+    const card = grid.querySelector('.episode-card');
+    if (!card) return 300;
+    const cs = getComputedStyle(grid);
+    const gap = parseFloat(cs.gap) || parseFloat(cs.columnGap) || 14;
+    return card.offsetWidth + gap;
+  }
+
+  // Scroll tracking: map scroll position → nearest window index
+  let scrollTicking = false;
+  function updateActiveDot() {
+    if (dotCount <= 1) return;
+    const step = getCardStep();
+    if (!step) return;
+    const scrollLeft = grid.scrollLeft;
+    const nearestIdx = Math.round(scrollLeft / step);
+    const clampedIdx = Math.max(0, Math.min(dotCount - 1, nearestIdx));
+
+    dotsEl.querySelectorAll('.episode-dot').forEach(d => {
+      d.classList.toggle('active', parseInt(d.dataset.index) === clampedIdx);
+    });
+  }
+
+  // Throttled scroll handler
+  grid.addEventListener('scroll', () => {
+    if (!scrollTicking) {
+      requestAnimationFrame(() => { updateActiveDot(); scrollTicking = false; });
+      scrollTicking = true;
+    }
+  }, { passive: true });
+
+  // Dot click → scroll to window start + highlight target card
+  dotsEl.onclick = (e) => {
+    const dot = e.target.closest('.episode-dot');
+    if (!dot) return;
+    const idx = parseInt(dot.dataset.index);
+    const step = getCardStep();
+    const scrollTarget = idx * step;
+
+    grid.scrollTo({ left: scrollTarget, behavior: 'smooth' });
+
+    // Force dot active immediately (before scroll event fires)
+    dotsEl.querySelectorAll('.episode-dot').forEach(d => {
+      d.classList.toggle('active', parseInt(d.dataset.index) === idx);
+    });
+  };
+
+  // Initialize active dot
+  requestAnimationFrame(updateActiveDot);
+
+  // Restore scroll to last-viewed episode (align to left edge)
+  const lastEp = [...anime.episodes].reverse().find(ep => ep.progress > 0);
+  if (lastEp) {
+    const lastIdx = anime.episodes.indexOf(lastEp);
+    const card = grid.querySelector(`.episode-card[data-index="${lastIdx}"]`);
+    if (card) {
+      requestAnimationFrame(() => {
+        const step = getCardStep();
+        const targetScroll = Math.max(0, lastIdx * step);
+        grid.scrollLeft = targetScroll;
+        if (dotCount > 1) {
+          const nearestIdx = Math.round(grid.scrollLeft / step);
+          const clampedIdx = Math.max(0, Math.min(dotCount - 1, nearestIdx));
+          dotsEl.querySelectorAll('.episode-dot').forEach(d => {
+            d.classList.toggle('active', parseInt(d.dataset.index) === clampedIdx);
+          });
+        }
+      });
+    }
+  }
+
+  // Bind card events
+  grid.querySelectorAll('.episode-card').forEach(el => {
     el.addEventListener('click', () => {
       const path = el.dataset.path;
       const pos = parseFloat(el.dataset.pos) || 0;
       playEpisode(path, pos);
     });
-    // Right-click to toggle watched status
     el.addEventListener('contextmenu', (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -45,17 +162,6 @@ function renderEpisodeHeatmap(anime, animate) {
     });
   });
 }
-
-// ─── Window resize → reflow heatmap ───
-let heatmapResizeTimer = null;
-window.addEventListener('resize', () => {
-  clearTimeout(heatmapResizeTimer);
-  heatmapResizeTimer = setTimeout(() => {
-    if (currentAnime && document.getElementById('detailView').classList.contains('hidden') === false) {
-      renderEpisodeHeatmap(currentAnime, false);
-    }
-  }, 200);
-});
 
 // ─── Watch Stats (Canvas Bar Chart) ───
 

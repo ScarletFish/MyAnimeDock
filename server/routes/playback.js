@@ -6,6 +6,74 @@ const { spawn } = require('child_process');
 const { jsonResp, readBody, serveImage, getFfmpegPath } = require('../lib/utils');
 const { DATA_DIR, MAX_PLAY_SESSIONS } = require('../lib/config');
 
+// ─── Thumbnail helpers (module-scoped, not on exports — avoids `this` issues) ───
+
+const _durCache = new Map();
+
+function _probeDuration(videoPath, cb) {
+  const cached = _durCache.get(videoPath);
+  if (cached !== undefined) { cb(cached); return; }
+  const ffmpegPath = getFfmpegPath();
+  if (!ffmpegPath) { cb(null); return; }
+  // Use ffmpeg itself (not ffprobe — ffmpeg-static ships only ffmpeg)
+  const ff = spawn(ffmpegPath, ['-i', videoPath]);
+  let stderr = '';
+  let done = false;
+  ff.stderr.on('data', d => { stderr += d.toString(); });
+  const finish = () => {
+    if (done) return; done = true;
+    // Parse "Duration: HH:MM:SS.ml" from ffmpeg stderr
+    const m = stderr.match(/Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/);
+    if (m) {
+      const secs = parseInt(m[1]) * 3600 + parseInt(m[2]) * 60 + parseFloat(m[3]);
+      _durCache.set(videoPath, secs);
+      cb(secs);
+    } else {
+      cb(null);
+    }
+  };
+  ff.on('close', finish);
+  ff.on('error', () => { if (!done) { done = true; cb(null); } });
+  setTimeout(() => { if (!done) { done = true; ff.kill(); cb(null); } }, 10000);
+}
+
+function _generateThumb(videoPath, time, cacheKey, req, res) {
+  const hash = crypto.createHash('md5').update(videoPath + cacheKey).digest('hex');
+  const thumbDir = path.join(DATA_DIR, 'thumbs');
+  const thumbPath = path.join(thumbDir, hash + '.jpg');
+  if (fs.existsSync(thumbPath)) { serveImage(thumbPath, req.url, res); return; }
+  let responded = false;
+  try {
+    if (!fs.existsSync(thumbDir)) fs.mkdirSync(thumbDir, { recursive: true });
+    const ffmpegPath = getFfmpegPath();
+    if (!ffmpegPath) { jsonResp(res, 500, { error: 'ffmpeg not available' }); return; }
+    const ff = spawn(ffmpegPath, [
+      '-ss', String(time), '-i', videoPath,
+      '-vframes', '1', '-q:v', '5', '-y', thumbPath, '-loglevel', 'error',
+    ]);
+    const timeout = setTimeout(() => {
+      if (responded) return;
+      responded = true; ff.kill();
+      jsonResp(res, 500, { error: 'timeout' });
+    }, 60000);
+    ff.on('close', (code) => {
+      clearTimeout(timeout);
+      if (responded) return;
+      responded = true;
+      if (code === 0 && fs.existsSync(thumbPath)) { serveImage(thumbPath, req.url, res); }
+      else { jsonResp(res, 500, { error: 'ffmpeg failed' }); }
+    });
+    ff.on('error', () => {
+      clearTimeout(timeout);
+      if (responded) return;
+      responded = true;
+      jsonResp(res, 500, { error: 'ffmpeg not available' });
+    });
+  } catch (e) {
+    if (!responded) { responded = true; jsonResp(res, 500, { error: e.message }); }
+  }
+}
+
 module.exports = {
   async handlePlay(req, res, state) {
     const { data, config, db, activePlays, bangumiSync, logger } = state;
@@ -144,40 +212,17 @@ module.exports = {
   handleThumbnail(req, res, state) {
     const params = new URL(req.url, 'http://localhost').searchParams;
     const videoPath = params.get('path');
-    const time = parseFloat(params.get('time')) || 60;
+    const timeRaw = params.get('time');
     if (!videoPath || !fs.existsSync(videoPath)) { jsonResp(res, 404, { error: 'File not found' }); return; }
-    const hash = crypto.createHash('md5').update(videoPath + time).digest('hex');
-    const thumbDir = path.join(DATA_DIR, 'thumbs');
-    const thumbPath = path.join(thumbDir, hash + '.jpg');
-    if (fs.existsSync(thumbPath)) { serveImage(thumbPath, req.url, res); return; }
-    let responded = false;
-    try {
-      if (!fs.existsSync(thumbDir)) fs.mkdirSync(thumbDir, { recursive: true });
-      const ffmpegPath = getFfmpegPath();
-      const ff = spawn(ffmpegPath, [
-        '-ss', String(time), '-i', videoPath,
-        '-vframes', '1', '-q:v', '5', '-y', thumbPath, '-loglevel', 'error',
-      ]);
-      const timeout = setTimeout(() => {
-        if (responded) return;
-        responded = true; ff.kill();
-        jsonResp(res, 500, { error: 'timeout' });
-      }, 60000);
-      ff.on('close', (code) => {
-        clearTimeout(timeout);
-        if (responded) return;
-        responded = true;
-        if (code === 0 && fs.existsSync(thumbPath)) { serveImage(thumbPath, req.url, res); }
-        else { jsonResp(res, 500, { error: 'ffmpeg failed' }); }
+
+    if (timeRaw === 'mid') {
+      _probeDuration(videoPath, (dur) => {
+        const time = dur ? Math.floor(dur / 2) : 60;
+        _generateThumb(videoPath, time, 'mid', req, res);
       });
-      ff.on('error', (err) => {
-        clearTimeout(timeout);
-        if (responded) return;
-        responded = true;
-        jsonResp(res, 500, { error: 'ffmpeg not available' });
-      });
-    } catch (e) {
-      if (!responded) { responded = true; jsonResp(res, 500, { error: e.message }); }
+    } else {
+      const time = parseFloat(timeRaw) || 60;
+      _generateThumb(videoPath, time, String(time), req, res);
     }
   },
 };

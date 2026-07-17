@@ -25,7 +25,7 @@ const DEFAULT_CONFIG = {
   theme: 'default',
   themeMode: 'dark',
   autoMarkWatched: true,
-  uiScale: 1.25,
+  uiScale: 1.0,
   apiSources: [
     { type: 'bangumi', url: 'https://api.bangumi.lol', key: '' },
   ],

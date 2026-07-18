@@ -54,11 +54,9 @@
   border: none;
   color: white;
   font-weight: var(--fw-semibold);
-  box-shadow: 0 0 24px rgba(var(--accent-rgb), 0.25);
 }
 
 .btn-primary:hover {
-  box-shadow: 0 0 40px rgba(var(--accent-rgb), 0.40);
   color: white;
   background: var(--accent-gradient);
   border: none;
@@ -223,24 +221,6 @@
     border-color 0.25s var(--ease-out);
   will-change: transform;
 }
-
-.anime-card::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: var(--radius-lg);
-  padding: 1px;
-  background: linear-gradient(135deg, transparent 40%, rgba(var(--accent-rgb), 0.3) 100%);
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  opacity: 0;
-  transition: opacity 0.4s var(--ease-out);
-  pointer-events: none;
-}
-
-.anime-card:hover::after { opacity: 1; }
 
 .anime-card:hover {
   transform: translateY(-6px) scale(1.02);

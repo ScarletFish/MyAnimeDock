@@ -1418,7 +1418,8 @@
   font-size: calc(2.5rem * var(--scale));
   font-family: var(--font-accent);
   font-weight: var(--fw-bold);
-  opacity: 0.12;
+  opacity: 0.5;
+  background: rgba(var(--accent-rgb), 0.03);
 }
 .mm-panel-cover-status {
   position: absolute;
@@ -1495,7 +1496,7 @@
 }
 .mm-panel-error {
   padding: var(--space-3);
-  background: rgba(239, 68, 68, 0.06);
+  background: var(--bg-surface);
   border-radius: var(--radius-sm);
   border-left: 2px solid var(--error);
 }
@@ -1513,6 +1514,10 @@
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
+  background: var(--bg-surface);
+  border-radius: var(--radius-sm);
+  border-left: 2px solid rgba(var(--accent-rgb), 0.3);
+  padding: var(--space-3);
 }
 .mm-panel-keyword {
   font-size: calc(0.6875rem * var(--scale));

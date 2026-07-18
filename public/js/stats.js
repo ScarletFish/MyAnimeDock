@@ -112,7 +112,7 @@ function renderWordCloud(canvas, list) {
   canvas.height = h;
   canvas.style.cssText = 'width:' + w + 'px;height:' + h + 'px;display:block;max-width:100%;border-radius:var(--radius-md)';
 
-  const fontFamily = "'Noto Sans SC', 'DM Sans', sans-serif";
+  const fontFamily = "'Noto Sans SC', 'Noto Sans JP', 'DM Sans', sans-serif";
 
   WordCloud(canvas, {
     list: list,

@@ -56,9 +56,9 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
   --radius-lg: calc(1rem * var(--scale));
   --radius-xl: calc(1.5rem * var(--scale));
 
-  --font-display: 'Playfair Display', 'Noto Sans SC', serif;
-  --font-body: 'DM Sans', 'Noto Sans SC', sans-serif;
-  --font-accent: 'Playfair Display', serif;
+  --font-display: 'Playfair Display', 'Noto Sans SC', 'Noto Sans JP', serif;
+  --font-body: 'DM Sans', 'Noto Sans SC', 'Noto Sans JP', sans-serif;
+  --font-accent: 'Playfair Display', 'Noto Sans SC', 'Noto Sans JP', serif;
   --font-mono: 'JetBrains Mono', monospace;
 
   --fw-normal: 400;

@@ -1526,7 +1526,7 @@
   background: var(--bg-surface);
   border-radius: 4px;
   color: var(--fg-secondary);
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   border: 1px solid var(--border);
 }
 .mm-panel-scroll {

@@ -259,7 +259,7 @@ function renderWatchStats(anime) {
 
     // Y-axis labels
     ctx.fillStyle = isLight ? 'rgba(44,36,24,0.4)' : 'rgba(237,232,226,0.4)';
-    ctx.font = '11px DM Sans, Noto Sans SC, sans-serif';
+    ctx.font = '11px DM Sans, Noto Sans SC, Noto Sans JP, sans-serif';
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
     for (let i = 0; i <= gridLines; i++) {
@@ -295,7 +295,7 @@ function renderWatchStats(anime) {
 
       // Y labels
       ctx.fillStyle = isLight ? 'rgba(44,36,24,0.4)' : 'rgba(237,232,226,0.4)';
-      ctx.font = '11px DM Sans, Noto Sans SC, sans-serif';
+      ctx.font = '11px DM Sans, Noto Sans SC, Noto Sans JP, sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'middle';
       for (let i = 0; i <= gridLines; i++) {
@@ -355,7 +355,7 @@ function renderWatchStats(anime) {
           const d = sortedWeeks[i].start;
           const label = (d.getMonth() + 1) + '/' + d.getDate();
           ctx.fillStyle = isLight ? 'rgba(44,36,24,0.35)' : 'rgba(237,232,226,0.35)';
-          ctx.font = '10px DM Sans, Noto Sans SC, sans-serif';
+          ctx.font = '10px DM Sans, Noto Sans SC, Noto Sans JP, sans-serif';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'top';
           ctx.fillText(label, x, H - PAD.bottom + 8);

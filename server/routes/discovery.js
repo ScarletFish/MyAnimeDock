@@ -239,9 +239,12 @@ module.exports = {
       }
       const bannerDir = path.join(DATA_DIR, 'banners');
       const coverDir = path.join(DATA_DIR, 'covers');
-      Promise.all([db.saveLibrary(data), db.saveMyList(data), saveScannedTree(data.scannedTree)])
-        .then(() => Promise.all(metadataFetches))
-        .then(() => {
+      (async () => {
+        try {
+          await db.saveLibrary(data);
+          await db.saveMyList(data);
+          saveScannedTree(data.scannedTree);
+          await Promise.all(metadataFetches);
           imported.forEach(id => {
             const anime = data.library.find(a => a.id === id);
             if (anime && anime.bangumiId) {
@@ -250,8 +253,10 @@ module.exports = {
                 .catch(e => logger.warn(`AniList sync failed for ${id}: ${e.message}`));
             }
           });
-        })
-        .catch(e => logger.warn('Import/background save error: ' + e.message));
+        } catch (e) {
+          logger.warn('Import/background save error: ' + e.message);
+        }
+      })();
       jsonResp(res, 200, { ok: true, imported });
     } catch (e) {
       jsonResp(res, 400, { error: 'Invalid request body' });

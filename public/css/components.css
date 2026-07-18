@@ -205,7 +205,7 @@
 .grid-container {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(9.375rem, 1fr));
-  gap: clamp(0.85rem, 1.2vw, 1.25rem);
+  gap: calc(1.25rem * var(--scale));
 }
 
 .anime-card {
@@ -216,7 +216,6 @@
   background: var(--bg-card);
   aspect-ratio: 3/4;
   width: 100%;
-  max-width: calc(240px * var(--scale));
   border: 1px solid var(--border);
   transition:
     transform 0.35s var(--ease-spring),

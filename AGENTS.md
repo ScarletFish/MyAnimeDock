@@ -87,7 +87,7 @@ scripts/           → copy-sidecar-deps.js, migrate-to-sqlite.js
 
 **scannedTree 叶子节点字段**见 `.agents/docs/data-flow.md`（Scan / Discovery Flow 节）。
 
-**网格卡片尺寸基准**: `GRID_BASE_SIZE = 207`（`library.js:10`），实际渲染尺寸 = `207 × gridZoom × --scale`。122% gridZoom + 125% --scale = 315px 宽度。仪表盘各模块以此为锚点对齐。
+**网格卡片尺寸基准**: `GRID_BASE_SIZE = 207`（`library.js`），实际渲染尺寸 = `GRID_BASE_SIZE × --scale`。125% --scale = 259px 宽度。仪表盘各模块以此为锚点对齐。
 
 ## Key Patterns
 

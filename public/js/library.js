@@ -5,34 +5,16 @@ let contextMenuCard = null;
 let cardScrollTrigger = null;
 let cardTween = null;
 
-// Grid zoom
-const GRID_ZOOM_MIN = 0.5;
-const GRID_ZOOM_MAX = 2.0;
+// Grid card sizing
 const GRID_BASE_SIZE = 207;
-let gridZoom = parseFloat(localStorage.getItem('gridZoom') || '1');
 
 function applyGridZoom() {
   const scale = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--scale')) || 1;
-  const size = Math.round(GRID_BASE_SIZE * gridZoom * scale);
-  document.documentElement.style.setProperty('--grid-zoom-size', size + 'px');
+  const size = Math.round(GRID_BASE_SIZE * scale);
   // Apply to all library and mylist grids
   document.querySelectorAll('#libraryDashboard .grid-container, #mylistView .grid-container').forEach(g => {
     g.style.gridTemplateColumns = `repeat(auto-fill, minmax(${size}px, 1fr))`;
   });
-}
-
-function showZoomLevel() {
-  let el = document.getElementById('zoomLevel');
-  if (!el) {
-    el = document.createElement('div');
-    el.id = 'zoomLevel';
-    el.className = 'zoom-level';
-    document.querySelector('.main-content').appendChild(el);
-  }
-  el.textContent = Math.round(gridZoom * 100) + '%';
-  el.classList.add('show');
-  clearTimeout(el._hideTimer);
-  el._hideTimer = setTimeout(() => el.classList.remove('show'), 1000);
 }
 
 gsap.registerPlugin(ScrollTrigger);
@@ -485,26 +467,5 @@ function navigateToDetail(id, cardEl) {
 // --- Library Sync ---
 let syncInProgress = false;
 
-// --- Grid Zoom: wheel listener (delta-proportional) ---
-// 监听在滚动容器 .main-content 上，避免 Chromium 合成器滚动拦截 preventDefault()
-document.querySelector('.main-content').addEventListener('wheel', function(e) {
-  if (!e.ctrlKey && !e.metaKey) return;
-  // Check if the target is inside any library or mylist grid
-  var inLibraryGrid = e.target.closest('#libraryDashboard .grid-container');
-  var inMyListGrid = e.target.closest('#mylistView .grid-container');
-  if (!inLibraryGrid && !inMyListGrid) return;
-  e.preventDefault();
-  // deltaY proportional: mouse notch ~100px → 0.08, trackpad light ~10px → 0.008
-  const absDelta = Math.min(Math.abs(e.deltaY), 300);
-  const zoomDelta = absDelta * 0.0008 * (e.deltaY > 0 ? -1 : 1);
-  const newZoom = Math.max(GRID_ZOOM_MIN, Math.min(GRID_ZOOM_MAX, gridZoom + zoomDelta));
-  if (newZoom !== gridZoom) {
-    gridZoom = newZoom;
-    localStorage.setItem('gridZoom', gridZoom);
-    applyGridZoom();
-    showZoomLevel();
-  }
-}, { passive: false });
-
-// Apply persisted zoom on load
+// Apply grid sizing on load
 applyGridZoom();

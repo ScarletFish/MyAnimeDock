@@ -47,8 +47,8 @@ function renderMyList() {
     renderFilteredTab(filtered);
   }
 
-  // Apply grid zoom to match library
-  if (typeof applyGridZoom === 'function') applyGridZoom();
+  // Apply grid sizing to match library
+  applyGridZoom();
 
   // Card reveal animation
   document.querySelectorAll('#mylistView .anime-card').forEach(card => {

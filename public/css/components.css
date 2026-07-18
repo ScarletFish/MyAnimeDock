@@ -1297,6 +1297,34 @@
 .toast:hover { border-color: var(--border-hover); }
 .toast:hover .toast-progress { animation-play-state: paused; }
 
+/* ─── Zoom Indicator ─── */
+.zoom-level {
+  position: fixed;
+  bottom: 2rem;
+  left: calc(50% + 30px);
+  transform: translateX(-50%) scale(0.9);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--fg-primary);
+  padding: 6px 16px;
+  border-radius: 100px;
+  font-size: calc(0.8125rem * var(--scale));
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s var(--ease-out), transform 0.2s var(--ease-out);
+  z-index: 200;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-sm);
+}
+
+.zoom-level.show {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+
 /* ─── Range Slider ─── */
 input[type="range"] {
   -webkit-appearance: none;

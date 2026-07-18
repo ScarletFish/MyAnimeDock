@@ -6,11 +6,11 @@ let cardScrollTrigger = null;
 let cardTween = null;
 
 // Grid card sizing — fixed pixel width, unaffected by --scale
-const GRID_CARD_SIZE = 275;
+const GRID_CARD_SIZE = 300;
 
 function applyGridZoom() {
   document.querySelectorAll('#libraryDashboard .grid-container, #mylistView .grid-container').forEach(g => {
-    g.style.gridTemplateColumns = `repeat(auto-fill, minmax(${GRID_CARD_SIZE}px, 1fr))`;
+    g.style.gridTemplateColumns = `repeat(auto-fill, ${GRID_CARD_SIZE}px)`;
   });
 }
 

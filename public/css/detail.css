@@ -5,14 +5,12 @@
 }
 
 .detail-content {
-  max-width: calc(92rem * var(--scale));
-  margin: 0 auto;
-  padding: calc(clamp(4.5rem, 8.5vw, 12rem) * var(--scale)) calc(1.5rem * var(--scale)) 0;
+  padding: calc(10rem * var(--scale)) calc(3rem * var(--scale)) 0;
 }
 
 /* No banner: compact top padding, cover sits near top edge */
 .detail-no-banner .detail-content {
-  padding-top: calc(clamp(0.75rem, 2vw, 1.5rem) * var(--scale));
+  padding-top: calc(1.5rem * var(--scale));
 }
 
 /* Two-column layout */
@@ -906,6 +904,7 @@
   grid-template-columns: calc(240px * var(--scale)) 1fr;
   gap: calc(clamp(1.5rem, 3vw, 3rem) * var(--scale));
   align-items: start;
+  max-width: calc(90rem * var(--scale));
   margin-bottom: 0;
   padding-bottom: calc(1rem * var(--scale));
   position: relative;

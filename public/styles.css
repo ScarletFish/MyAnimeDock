@@ -897,7 +897,7 @@ html {
 
 /* ─── View Transitions ─── */
 .view {
-  padding: calc(clamp(1.5rem, 2.5vw, 3rem) * var(--scale));
+  padding: calc(3rem * var(--scale));
   animation: fadeSlideUp 0.4s var(--ease-out);
 }
 
@@ -992,7 +992,7 @@ html.theme-transitioning .theme-dock {
 }
 
 /* ─── Responsive ─── */
-@media (max-width: 1100px) {
+@media (max-width: 1023px) {
   .view { padding: 1.5rem; }
   /* discovery hero replaced by view-header — no hero padding needed */
 }

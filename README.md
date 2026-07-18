@@ -39,7 +39,7 @@
 > [!IMPORTANT]
 > **需要 [mpv](https://mpv.io) 播放器**。MyAnimeDock 不内置播放器，请自行安装；推荐 [hooke007/MPV_lazy](https://github.com/hooke007/MPV_lazy) 整合包，开箱即用。
 
-![资料库主页](images/README/library.png)
+![效果图](images/README/library.png)
 
 ---
 
@@ -49,7 +49,7 @@ MyAnimeDock 围绕以下原则设计：
 
 | 原则 | 说明 |
 |------|------|
-| **本地优先** | 数据全部留在本地 SQLite，无需注册账号，不依赖云同步 |
+| **本地优先** | 数据全部留在本地 SQLite，不强制依赖实时网络环境 |
 | **播放器中转站** | 播放体验完全由播放器本身决定,目前仅支持 mpv，未来可能集成更多外部播放器 |
 | **低成本刮削** | 自动识别本地动漫文件夹匹配元数据，无需严格重命名文件夹 |
 | **全生命周期覆盖** | 计划中、进行中、已完结、搁置、抛弃状态全覆盖 |
@@ -82,7 +82,7 @@ Anime Title/Season 1
 Anime Title [bgm12345]/
 ```
 
-- 含 `[bgmN]` 的文件夹会精准匹配对应 Bangumi 条目，无需手动搜索
+- 含 `[bgmN]` 的文件夹会精准匹配对应 Bangumi 条目，支持自动导入
 - `NCOP` / `NCED` / `PV` 等非正片视频自动排除，不计入剧集
 
 ---
@@ -91,7 +91,7 @@ Anime Title [bgm12345]/
 
 ### 安装（推荐）
 
-从 [Releases](https://github.com/ScarletFish/MyAnimeDock/releases) 下载 MSI 或 NSIS 安装包，双击安装。需要 Windows 10+（WebView2 已内置）。
+从 [Releases](https://github.com/ScarletFish/MyAnimeDock/releases) 下载 MSI 或 NSIS 安装包，双击安装。仅支持Windows 10+
 
 ---
 

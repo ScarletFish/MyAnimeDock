@@ -354,7 +354,7 @@
   background: rgba(var(--accent-rgb), 0.06) !important;
   box-shadow: inset 3px 0 0 var(--accent);
 }
-:is([data-theme="light"], [data-theme-mode="light"]) .mm-panel { background: var(--bg-elevated); }
+
 :is([data-theme="light"], [data-theme-mode="light"]) .mm-panel-header-area { background: var(--bg-card); }
 :is([data-theme="light"], [data-theme-mode="light"]) .mm-panel-cover-sm { background: var(--bg-card); }
 :is([data-theme="light"], [data-theme-mode="light"]) .mm-panel-cover-status { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }

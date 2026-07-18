@@ -1354,8 +1354,9 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  background: var(--bg-elevated);
+  background: var(--bg-surface);
   border-left: 1px solid var(--border);
+  box-shadow: -3px 0 12px rgba(0, 0, 0, 0.12);
 }
 .mm-panel.open {
   margin-right: 0;

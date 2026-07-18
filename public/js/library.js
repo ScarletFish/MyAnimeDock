@@ -5,15 +5,12 @@ let contextMenuCard = null;
 let cardScrollTrigger = null;
 let cardTween = null;
 
-// Grid card sizing
-const GRID_BASE_SIZE = 240;
+// Grid card sizing — fixed pixel width, unaffected by --scale
+const GRID_CARD_SIZE = 300;
 
 function applyGridZoom() {
-  const scale = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--scale')) || 1;
-  const size = Math.round(GRID_BASE_SIZE * scale);
-  // Apply to all library and mylist grids
   document.querySelectorAll('#libraryDashboard .grid-container, #mylistView .grid-container').forEach(g => {
-    g.style.gridTemplateColumns = `repeat(auto-fill, minmax(${size}px, 1fr))`;
+    g.style.gridTemplateColumns = `repeat(auto-fill, minmax(${GRID_CARD_SIZE}px, 1fr))`;
   });
 }
 

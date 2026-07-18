@@ -1356,7 +1356,7 @@
   flex-direction: column;
   background: var(--bg-surface);
   border-left: 1px solid var(--border);
-  box-shadow: -3px 0 12px rgba(0, 0, 0, 0.12);
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.3);
 }
 .mm-panel.open {
   margin-right: 0;

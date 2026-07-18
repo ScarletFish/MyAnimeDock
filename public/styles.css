@@ -3,16 +3,16 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
 
 :root {
   --bg-deep: #050505;
-  --bg-base: #080808;
-  --bg-elevated: #0e0e0e;
-  --bg-surface: #121212;
-  --bg-card: #121212;
-  --bg-rgb: 18, 18, 18;
+  --bg-base: #0f0f0f;
+  --bg-elevated: #1e1e1e;
+  --bg-surface: #161616;
+  --bg-card: #161616;
+  --bg-rgb: 22, 22, 22;
   --bg-canvas: var(--bg-surface);
 
-  --fg-primary: #ede8e2;
+  --fg-primary: #ccc8c0;
   --fg-secondary: #9c9187;
-  --fg-muted: #6b6056;
+  --fg-muted: #8a7a70;
 
   --accent: #e13a5a;
   --accent-soft: #ff6b8a;
@@ -114,7 +114,7 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
 [data-theme="amber"] {
   --bg-deep: #050403;
   --bg-base: #080706;
-  --bg-elevated: #0e0c09;
+  --bg-elevated: #1c1a17;
   --bg-surface: #12100d;
   --bg-card: #12100d;
   --bg-rgb: 18, 16, 13;
@@ -183,7 +183,7 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
 [data-theme="ocean"] {
   --bg-deep: #050505;
   --bg-base: #080808;
-  --bg-elevated: #0d0d0d;
+  --bg-elevated: #1c1c1c;
   --bg-surface: #111111;
   --bg-card: #111111;
   --bg-rgb: 17, 17, 17;
@@ -252,7 +252,7 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
 [data-theme="sakura"] {
   --bg-deep: #060305;
   --bg-base: #090608;
-  --bg-elevated: #0f0a0d;
+  --bg-elevated: #1e1a1e;
   --bg-surface: #141014;
   --bg-card: #141014;
   --bg-rgb: 20, 16, 20;
@@ -320,7 +320,7 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
 [data-theme="emerald"] {
   --bg-deep: #030603;
   --bg-base: #060906;
-  --bg-elevated: #0a100c;
+  --bg-elevated: #1c201c;
   --bg-surface: #101410;
   --bg-card: #101410;
   --bg-rgb: 16, 20, 16;
@@ -386,9 +386,9 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
 
 /* ─── Violet Theme ─── */
 [data-theme="violet"] {
-  --bg-deep: #050505;
-  --bg-base: #080808;
-  --bg-elevated: #0e0e0e;
+  --bg-deep: #060508;
+  --bg-base: #08080a;
+  --bg-elevated: #1e1e1e;
   --bg-surface: #121212;
   --bg-card: #121212;
   --bg-rgb: 18, 18, 18;

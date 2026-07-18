@@ -6,7 +6,7 @@ let cardScrollTrigger = null;
 let cardTween = null;
 
 // Grid card sizing — matches detail cover size (240px × --scale)
-const GRID_CARD_BASE = 240;
+const GRID_CARD_BASE = 220;
 
 function applyGridZoom() {
   const scale = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--scale')) || 1;

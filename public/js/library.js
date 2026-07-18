@@ -6,7 +6,7 @@ let cardScrollTrigger = null;
 let cardTween = null;
 
 // Grid card sizing
-const GRID_CARD_BASE = 180;
+const GRID_CARD_BASE = 190;
 const GRID_ZOOM_MIN = 0.5;
 const GRID_ZOOM_MAX = 2.0;
 let gridZoom = parseFloat(localStorage.getItem('gridZoom') || '1');

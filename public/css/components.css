@@ -205,7 +205,7 @@
 .grid-container {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(9.375rem, 1fr));
-  gap: calc(1.875rem * var(--scale));
+  gap: clamp(0.85rem, 1.2vw, 1.25rem);
 }
 
 .anime-card {

@@ -969,7 +969,7 @@ async function mmSyncViaSSE(animeIds) {
       if (mmSyncCancelled) return;
       try {
         const data = JSON.parse(e.data);
-        mmAddSyncLogEntry(data.animeId, data.searchTerm, 'searching', null);
+        mmAddSyncLogEntry(data.animeId, data.searchTerm, 'searching', '正在搜索匹配…');
       } catch (_) {}
     });
 

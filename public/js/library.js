@@ -6,7 +6,7 @@ let cardScrollTrigger = null;
 let cardTween = null;
 
 // Grid card sizing
-const GRID_BASE_SIZE = 207;
+const GRID_BASE_SIZE = 240;
 
 function applyGridZoom() {
   const scale = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--scale')) || 1;

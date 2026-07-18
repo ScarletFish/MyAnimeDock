@@ -283,13 +283,13 @@
   height: 100%;
 }
 
-.anime-card .gray-cover svg {
-  width: 40px;
-  height: 40px;
-  stroke: var(--fg-muted);
-  fill: none;
-  stroke-width: 1.5;
-  opacity: 0.3;
+.anime-card .gray-cover-text {
+  font-family: var(--font-display);
+  font-size: calc(1.8rem * var(--scale));
+  font-weight: var(--fw-bold);
+  color: var(--fg-muted);
+  opacity: 0.4;
+  line-height: 1;
 }
 
 /* ─── Badges ─── */

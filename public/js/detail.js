@@ -225,7 +225,8 @@ function renderDetail() {
   } else if (anime.coverUrl) {
     coverEl.innerHTML = `<img src="${escAttr(anime.coverUrl)}" alt="${escAttr(anime.title)}">`;
   } else {
-    coverEl.innerHTML = `<div class="gray-cover"><svg viewBox="0 0 24 24" width="64" height="64" fill="#555"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8 12.5v-9l6 4.5-6 4.5z"/></svg></div>`;
+    const initial = (anime.bangumiTitle || anime.title || '?')[0].toUpperCase();
+    coverEl.innerHTML = `<div class="gray-cover"><span class="gray-cover-text">${escHtml(initial)}</span></div>`;
   }
 
   // ─── AniList Banner Background (full-width, top of view) ───

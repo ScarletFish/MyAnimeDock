@@ -10,7 +10,7 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
   --bg-rgb: 22, 22, 22;
   --bg-canvas: var(--bg-surface);
 
-  --fg-primary: #ccc8c0;
+  --fg-primary: #e0dbd4;
   --fg-secondary: #9c9187;
   --fg-muted: #8a7a70;
 

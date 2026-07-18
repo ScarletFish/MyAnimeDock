@@ -362,6 +362,15 @@
   justify-content: center;
   background: var(--bg-elevated);
 }
+#detailCover .gray-cover-text {
+  font-family: var(--font-display);
+  font-size: calc(2.5rem * var(--scale));
+  font-weight: var(--fw-bold);
+  color: var(--fg-muted);
+  opacity: 0.5;
+  line-height: 1;
+  text-align: center;
+}
 
 /* ─── Hero transition animation ─── */
 #detailView.detail-enter-active {

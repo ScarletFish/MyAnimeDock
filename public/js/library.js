@@ -6,7 +6,7 @@ let cardScrollTrigger = null;
 let cardTween = null;
 
 // Grid card sizing — fixed pixel width, unaffected by --scale
-const GRID_CARD_SIZE = 300;
+const GRID_CARD_SIZE = 275;
 
 function applyGridZoom() {
   document.querySelectorAll('#libraryDashboard .grid-container, #mylistView .grid-container').forEach(g => {

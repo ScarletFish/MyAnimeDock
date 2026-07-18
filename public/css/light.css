@@ -344,6 +344,7 @@
   background: var(--bg-elevated);
   border-color: rgba(var(--accent-rgb), 0.15);
 }
+:is([data-theme="light"], [data-theme-mode="light"]) .mm-left { background: var(--bg-base); }
 :is([data-theme="light"], [data-theme-mode="light"]) .mm-row:hover { background: var(--bg-elevated); }
 :is([data-theme="light"], [data-theme-mode="light"]) .mm-row--selected {
   background: rgba(var(--accent-rgb), 0.06) !important;

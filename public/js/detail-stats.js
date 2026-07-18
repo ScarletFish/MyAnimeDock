@@ -46,7 +46,14 @@ function renderEpisodeHeatmap(anime, animate) {
 
   // ─── Sliding-window dot navigation ───
 
-  const VISIBLE_COUNT = 4;
+  // Detect visible card count from actual rendered layout (CSS media query driven)
+  function getVisibleCount() {
+    const card = grid.querySelector('.episode-card');
+    if (!card) return 4;
+    const gap = parseFloat(getComputedStyle(grid).gap) || 14;
+    return Math.round(grid.clientWidth / (card.offsetWidth + gap)) || 4;
+  }
+  let VISIBLE_COUNT = getVisibleCount();
 
   // Create dots container if not exists
   if (!dotsContainer) {
@@ -59,18 +66,25 @@ function renderEpisodeHeatmap(anime, animate) {
 
   const dotsEl = document.getElementById('episodeDots');
   const totalEps = anime.episodes.length;
-  // Each dot represents a window start position: [0..VISIBLE_COUNT-1], [1..VISIBLE_COUNT], ...
-  // Total dots = totalEps - VISIBLE_COUNT + 1 (minimum 1)
-  const dotCount = Math.max(1, totalEps - VISIBLE_COUNT + 1);
 
-  if (dotCount <= 1) {
-    dotsEl.innerHTML = '';
-  } else {
-    dotsEl.innerHTML = Array.from({ length: dotCount }, (_, i) => {
-      const label = `${i + 1}-${Math.min(i + VISIBLE_COUNT, totalEps)}`;
-      return `<button class="episode-dot${i === 0 ? ' active' : ''}" data-index="${i}" aria-label="第${label}集"></button>`;
-    }).join('');
+  let dotCount = 0;
+  function rebuildDots() {
+    // Each dot represents a window start position: [0..VISIBLE_COUNT-1], [1..VISIBLE_COUNT], ...
+    // Total dots = totalEps - VISIBLE_COUNT + 1 (minimum 1)
+    const newCount = Math.max(1, totalEps - VISIBLE_COUNT + 1);
+    if (newCount === dotCount) return;
+    dotCount = newCount;
+
+    if (dotCount <= 1) {
+      dotsEl.innerHTML = '';
+    } else {
+      dotsEl.innerHTML = Array.from({ length: dotCount }, (_, i) => {
+        const label = `${i + 1}-${Math.min(i + VISIBLE_COUNT, totalEps)}`;
+        return `<button class="episode-dot${i === 0 ? ' active' : ''}" data-index="${i}" aria-label="第${label}集"></button>`;
+      }).join('');
+    }
   }
+  rebuildDots();
 
   // Compute the pixel step between window positions (card width + gap)
   function getCardStep() {
@@ -84,6 +98,12 @@ function renderEpisodeHeatmap(anime, animate) {
   // Scroll tracking: map scroll position → nearest window index
   let scrollTicking = false;
   function updateActiveDot() {
+    // Check if card count changed (responsive layout switch via CSS media query)
+    const newCount = getVisibleCount();
+    if (newCount !== VISIBLE_COUNT) {
+      VISIBLE_COUNT = newCount;
+      rebuildDots();
+    }
     if (dotCount <= 1) return;
     const step = getCardStep();
     if (!step) return;

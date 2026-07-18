@@ -646,7 +646,13 @@
   transition: opacity 0.3s var(--ease-out);
 }
 
-
+/* ─── Episode Card Responsive: shrink visible count ─── */
+@media (max-width: 1439px) {
+  .episode-card { width: calc((100% - 0.875rem * 2 * var(--scale)) / 3); }
+}
+@media (max-width: 799px) {
+  .episode-card { width: calc((100% - 0.875rem * 1 * var(--scale)) / 2); }
+}
 
 /* ─── Episode Number — small badge top-left ─── */
 .episode-card-num {

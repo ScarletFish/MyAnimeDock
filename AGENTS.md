@@ -49,7 +49,7 @@ npm run prisma:studio    # Open Prisma Studio (SQLite browser)
 node scripts/migrate-to-sqlite.js  # 从 JSON 迁移数据到 SQLite（一次性）
 start.bat             # Windows 菜单：开发/构建/清理/prisma 操作
 # 测试命令
-cd server && npm test    # 全量测试（81 tests）
+cd server && npm test    # 全量测试（90 tests）
 ```
 
 完整 API 端点参考见 `.agents/docs/data-flow.md`（14 个主要数据流，40+ 端点）。
@@ -74,14 +74,14 @@ src-tauri/         → Tauri v2 desktop shell (Rust)
 prisma/            → SQLite (Prisma ORM) — anime.db + schema.prisma + migrations/
 public/            → 无构建前端
 ├── index.html + styles.css
-└── js/            → api.js, app.js, library.js, detail.js, discovery.js, mylist.js, stats.js, metamatch.js, ui.js, state.js, utils.js
+└── js/            → api.js, app.js, library.js, detail.js, detail-nav.js, detail-stats.js, discovery.js, mylist.js, stats.js, metamatch.js, ui.js, state.js, titlebar.js, utils.js, debug.js
 scripts/           → copy-sidecar-deps.js, migrate-to-sqlite.js
 .agents/           → 规则/技能/文档
 ```
 
-**数据持久化**: SQLite (Prisma ORM)，规范化表 (Anime, Episode, PlaySession, Memory) + JSON 文件 (ScannedTree)。
-细粒度写入：每个 API 端点只写入实际修改的表——`db.saveLibrary()` / `db.saveMemories()` / `db.savePlaySessions()` / `db.updateEpisodeProgress()`。
-`saveScannedTree()` 同步写入 `scanned-tree.json`。`saveData()` 为全量组合函数（多类型数据同时变更时使用）。
+**数据持久化**: SQLite (Prisma ORM)，规范化表 (Anime, Episode, PlaySession, MyList, ScannedTree, Config, MigrationLog) + JSON 文件 (ScannedTree)。
+细粒度写入：每个 API 端点只写入实际修改的表——`db.saveLibrary()` / `db.saveMemories()` / `db.savePlaySessions()` / `db.saveMyList()` / `db.updateEpisodeProgress()` / `db.updateEpisodesWatched()`。
+`saveScannedTree()` 同步写入 `scanned-tree.json`。`saveAll()` 为全量组合函数（多类型数据同时变更时使用）。
 
 **视图切换**: CSS `hidden` class toggle，无客户端路由器。
 
@@ -107,6 +107,7 @@ scripts/           → copy-sidecar-deps.js, migrate-to-sqlite.js
 - **MyList 状态管理**: 导入时自动创建 MyList 条目（默认 `watching`），删除动画时自动标记 `completed`
 - **Modal 弹窗模式**: `.modal-overlay` 包裹 `.modal`，overlay `onclick` 支持点击遮罩层关闭；右上角 `.modal-close-btn` 显式关闭
 - **详情页封面不能加 `decoding="async"`**：`renderDetail()` 中封面 `<img>` 必须 eager 加载，否则 GSAP Flip 动画完成时封面尚未解码，露出空白框架闪白
+- **Episode 集标题来源**：元数据匹配/导入后通过 `scraper.getEpisodes(bangumiId)` 从 Bangumi 获取 episode list（`[{number, name}]`），按 number 合并到 `ep.name`。前端显示 `ep.name || ep.fileName`。若 getEpisodes 失败（网络问题/无数据），ep.name 保持 null，回落为文件名。
 
 ## Config
 
@@ -151,6 +152,7 @@ Play Session 字段定义见 `.agents/docs/data-flow.md`（Play Session Flow 节
 - **Cargo mirror**：清华源配置在 `src-tauri/.cargo/config.toml`
 - **无认证/授权**：局域网内 `/api/quit` 可关闭服务器
 - **视频缩略图依赖 ffmpeg**：PATH 中可用，生成时缓存到 `thumbs/`，首次请求可能延迟
+- **db.js schema 从 DMMF 自举**：`ensureSchema()` 通过 `@prisma/client` 的 DMMF 运行时元信息动态生成 CREATE TABLE / ALTER TABLE。改 Prisma schema 加字段后只需 `prisma migrate dev` + `prisma generate`，无需手动同步 `INIT_SQL`（该数组已删除）。改 schema.prisma 后删了 add 列要同步 `server/db.js` 中的 `TYPE_MAP` 映射。
 
 ## Frontend Conventions
 
@@ -200,7 +202,7 @@ __debug.snapshot(label)       // 快照：view, scrollTop, scrollHeight, 数据�
 测试指南见 `.agents/docs/testing.md`（模式惯例、已知行为、陷阱记录）。
 
 ```bash
-cd server && npm test    # 全量测试（81 tests）
+cd server && npm test    # 全量测试（90 tests）
 ```
 
 | 文件 | 测试数 | 覆盖模块 |

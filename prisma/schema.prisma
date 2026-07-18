@@ -48,6 +48,7 @@ model Episode {
   id          String   @id @default(cuid())
   animeId     String
   number      Int
+  name        String?  // 剧集标题（从 Bangumi 获取）
   filePath    String   @unique
   fileName    String
   fileSize    BigInt

@@ -85,38 +85,108 @@ if (process.pkg) {
   }
 }
 
-// ─── 首次启动自动建表 SQL ───
-// 首次启动时 anime.db 不存在，PrismaClient 连接后自动创建空文件，
-// 但不会创建表。以下 SQL 在首次启动时自建制表（CREATE TABLE IF NOT EXISTS）。
-const INIT_SQL = [
-  `CREATE TABLE IF NOT EXISTS "Anime" ("id" TEXT NOT NULL PRIMARY KEY, "folderPath" TEXT NOT NULL, "folderName" TEXT NOT NULL, "title" TEXT NOT NULL, "season" INTEGER, "importedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "downloaded" BOOLEAN NOT NULL DEFAULT true, "bangumiId" INTEGER, "bangumiTitle" TEXT, "bangumiTitleJp" TEXT, "summary" TEXT, "coverUrl" TEXT, "localCover" TEXT, "rating" REAL, "source" TEXT, "pinyinTitle" TEXT, "matchedSeason" INTEGER, "totalSeasons" INTEGER, "metadata" TEXT, "anilistId" INTEGER, "anilistBanner" TEXT, "anilistCover" TEXT, "anilistTitleEn" TEXT, "seasonChain" TEXT)`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS "Anime_folderPath_key" ON "Anime"("folderPath")`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS "Anime_bangumiId_key" ON "Anime"("bangumiId")`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS "Anime_anilistId_key" ON "Anime"("anilistId")`,
-  `CREATE INDEX IF NOT EXISTS "Anime_bangumiId_idx" ON "Anime"("bangumiId")`,
-  `CREATE INDEX IF NOT EXISTS "Anime_title_idx" ON "Anime"("title")`,
-  `CREATE INDEX IF NOT EXISTS "Anime_pinyinTitle_idx" ON "Anime"("pinyinTitle")`,
-  `CREATE TABLE IF NOT EXISTS "Episode" ("id" TEXT NOT NULL PRIMARY KEY, "animeId" TEXT NOT NULL REFERENCES "Anime"("id") ON DELETE CASCADE, "number" INTEGER NOT NULL, "filePath" TEXT NOT NULL, "fileName" TEXT NOT NULL, "fileSize" BIGINT NOT NULL, "duration" INTEGER, "watched" BOOLEAN NOT NULL DEFAULT false, "progress" REAL NOT NULL DEFAULT 0, "watchedAt" DATETIME)`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS "Episode_filePath_key" ON "Episode"("filePath")`,
-  `CREATE INDEX IF NOT EXISTS "Episode_animeId_idx" ON "Episode"("animeId")`,
-  `CREATE INDEX IF NOT EXISTS "Episode_filePath_idx" ON "Episode"("filePath")`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS "Episode_animeId_number_key" ON "Episode"("animeId", "number")`,
-  `CREATE TABLE IF NOT EXISTS "PlaySession" ("id" TEXT NOT NULL PRIMARY KEY, "animeId" TEXT NOT NULL REFERENCES "Anime"("id") ON DELETE CASCADE, "episodeNumber" INTEGER NOT NULL, "sessionId" TEXT NOT NULL, "startTime" DATETIME NOT NULL, "endTime" DATETIME, "duration" INTEGER NOT NULL DEFAULT 0, "clockTime" INTEGER NOT NULL DEFAULT 0, "progressStart" INTEGER NOT NULL DEFAULT 0)`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS "PlaySession_sessionId_key" ON "PlaySession"("sessionId")`,
-  `CREATE INDEX IF NOT EXISTS "PlaySession_animeId_idx" ON "PlaySession"("animeId")`,
-  `CREATE INDEX IF NOT EXISTS "PlaySession_sessionId_idx" ON "PlaySession"("sessionId")`,
-  `CREATE INDEX IF NOT EXISTS "PlaySession_startTime_idx" ON "PlaySession"("startTime")`,
-  `CREATE TABLE IF NOT EXISTS "MyList" ("id" TEXT NOT NULL PRIMARY KEY, "animeId" TEXT REFERENCES "Anime"("id") ON DELETE CASCADE, "bangumiId" INTEGER, "title" TEXT NOT NULL DEFAULT '', "bangumiTitle" TEXT, "coverUrl" TEXT, "summary" TEXT, "status" TEXT NOT NULL DEFAULT 'watching', "rating" REAL, "thoughts" TEXT, "notes" TEXT, "startedAt" DATETIME, "completedAt" DATETIME, "progress" INTEGER, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" DATETIME NOT NULL)`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS "MyList_animeId_key" ON "MyList"("animeId")`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS "MyList_bangumiId_key" ON "MyList"("bangumiId")`,
-  `CREATE INDEX IF NOT EXISTS "MyList_animeId_idx" ON "MyList"("animeId")`,
-  `CREATE INDEX IF NOT EXISTS "MyList_bangumiId_idx" ON "MyList"("bangumiId")`,
-  `CREATE INDEX IF NOT EXISTS "MyList_status_idx" ON "MyList"("status")`,
-  `CREATE TABLE IF NOT EXISTS "ScannedTree" ("id" TEXT NOT NULL PRIMARY KEY DEFAULT 'current', "data" TEXT NOT NULL, "updatedAt" DATETIME NOT NULL)`,
-  `CREATE TABLE IF NOT EXISTS "Config" ("id" TEXT NOT NULL PRIMARY KEY DEFAULT 'singleton', "data" TEXT NOT NULL, "updatedAt" DATETIME NOT NULL)`,
-  `CREATE TABLE IF NOT EXISTS "MigrationLog" ("id" TEXT NOT NULL PRIMARY KEY, "version" TEXT NOT NULL, "appliedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "description" TEXT)`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS "MigrationLog_version_key" ON "MigrationLog"("version")`,
-];
+// ─── 从 Prisma DMMF 动态生成建表 SQL ───
+// 使用 @prisma/client 运行时元信息生成 CREATE TABLE / INDEX，
+// 与 schema.prisma 保持单源一致，消除手动同步 INIT_SQL 的维护负担。
+const { Prisma } = require('@prisma/client');
+const dmmf = Prisma.dmmf;
+
+const TYPE_MAP = {
+  String: 'TEXT',
+  Int: 'INTEGER',
+  Float: 'REAL',
+  Boolean: 'BOOLEAN',
+  BigInt: 'BIGINT',
+  DateTime: 'DATETIME',
+};
+
+function defaultToSQL(d) {
+  if (d == null) return '';
+  // Function defaults (cuid, uuid, autoincrement, now)
+  if (typeof d === 'object' && d !== null && d.name) {
+    if (d.name === 'now') return 'DEFAULT CURRENT_TIMESTAMP';
+    return ''; // cuid/uuid/autoincrement → SQLite default not applicable
+  }
+  if (typeof d === 'boolean') return `DEFAULT ${d ? 1 : 0}`;
+  if (typeof d === 'number') return `DEFAULT ${d}`;
+  // String default with SQL-escaped single quotes
+  return `DEFAULT '${String(d).replace(/'/g, "''")}'`;
+}
+
+function buildColumnDef(field, model) {
+  let def = `"${field.name}" ${TYPE_MAP[field.type] || 'TEXT'}`;
+  if (field.isRequired) def += ' NOT NULL';
+  if (field.isId) def += ' PRIMARY KEY';
+  if (field.hasDefaultValue) {
+    const d = defaultToSQL(field.default);
+    if (d) def += ` ${d}`;
+  }
+  // Foreign key: find the object field that references this FK scalar
+  if (field.relationFromFields?.length && field.relationFromFields[0] === field.name) {
+    const objField = model.fields.find(f =>
+      f.kind === 'object' && f.relationFromFields?.[0] === field.name
+    );
+    if (objField) {
+      const refCol = field.relationToFields?.[0] || 'id';
+      def += ` REFERENCES "${objField.type}"("${refCol}") ON DELETE CASCADE`;
+    }
+  }
+  return def;
+}
+
+function generateInitSQL() {
+  const sql = [];
+  // Tables (model order respects FK dependency from DMMF)
+  for (const model of dmmf.datamodel.models) {
+    const scalarFields = model.fields.filter(f => f.kind === 'scalar');
+    const colDefs = scalarFields.map(f => buildColumnDef(f, model));
+    sql.push(`CREATE TABLE IF NOT EXISTS "${model.name}" (${colDefs.join(', ')})`);
+  }
+  // Single-field unique indexes (@unique)
+  for (const model of dmmf.datamodel.models) {
+    for (const field of model.fields.filter(f => f.kind === 'scalar' && f.isUnique)) {
+      sql.push(`CREATE UNIQUE INDEX IF NOT EXISTS "${model.name}_${field.name}_key" ON "${model.name}"("${field.name}")`);
+    }
+  }
+  // Compound unique indexes (@@unique)
+  for (const model of dmmf.datamodel.models) {
+    if (model.uniqueFields) {
+      for (const uf of model.uniqueFields) {
+        if (uf.length > 0) {
+          const name = uf.join('_');
+          const cols = uf.map(c => `"${c}"`).join(', ');
+          sql.push(`CREATE UNIQUE INDEX IF NOT EXISTS "${model.name}_${name}_key" ON "${model.name}"(${cols})`);
+        }
+      }
+    }
+  }
+  // Non-unique indexes (@@index) — DMMF doesn't expose these, kept as stable list
+  const NON_UNIQUE_INDEXES = [
+    `CREATE INDEX IF NOT EXISTS "Anime_bangumiId_idx" ON "Anime"("bangumiId")`,
+    `CREATE INDEX IF NOT EXISTS "Anime_title_idx" ON "Anime"("title")`,
+    `CREATE INDEX IF NOT EXISTS "Anime_pinyinTitle_idx" ON "Anime"("pinyinTitle")`,
+    `CREATE INDEX IF NOT EXISTS "Episode_animeId_idx" ON "Episode"("animeId")`,
+    `CREATE INDEX IF NOT EXISTS "Episode_filePath_idx" ON "Episode"("filePath")`,
+    `CREATE INDEX IF NOT EXISTS "PlaySession_animeId_idx" ON "PlaySession"("animeId")`,
+    `CREATE INDEX IF NOT EXISTS "PlaySession_sessionId_idx" ON "PlaySession"("sessionId")`,
+    `CREATE INDEX IF NOT EXISTS "PlaySession_startTime_idx" ON "PlaySession"("startTime")`,
+    `CREATE INDEX IF NOT EXISTS "MyList_animeId_idx" ON "MyList"("animeId")`,
+    `CREATE INDEX IF NOT EXISTS "MyList_bangumiId_idx" ON "MyList"("bangumiId")`,
+    `CREATE INDEX IF NOT EXISTS "MyList_status_idx" ON "MyList"("status")`,
+  ];
+  return sql.concat(NON_UNIQUE_INDEXES);
+}
+
+/** Build table definitions from DMMF for column-missing detection */
+function getTableDefs() {
+  return dmmf.datamodel.models.map(m => ({
+    name: m.name,
+    columns: m.fields.filter(f => f.kind === 'scalar').map(f => ({
+      name: f.name,
+      def: buildColumnDef(f, m),
+    })),
+  }));
+}
 
 let prisma = null;
 
@@ -155,7 +225,7 @@ async function ensureSchema() {
     if (tableNames.size === 0) {
       // 全新数据库 — 全量建表
       logger.info('Initializing database schema (fresh)...');
-      for (const sql of INIT_SQL) {
+      for (const sql of generateInitSQL()) {
         await p.$executeRawUnsafe(sql);
       }
       logger.info('Database schema initialized.');
@@ -163,25 +233,13 @@ async function ensureSchema() {
     }
 
     // 2. 已有表：先 CREATE TABLE IF NOT EXISTS（新增表），再检查缺少的列
-    for (const sql of INIT_SQL) {
+    const initSQL = generateInitSQL();
+    for (const sql of initSQL) {
       await p.$executeRawUnsafe(sql);
     }
 
-    // 3. 对每个预定义表，检查并补充缺少的列
-    const tableDefs = INIT_SQL
-      .filter(sql => sql.startsWith('CREATE TABLE IF NOT EXISTS'))
-      .map(sql => {
-        const m = sql.match(/CREATE TABLE IF NOT EXISTS "(\w+)"\s*\(([\s\S]+)\)/);
-        if (!m) return null;
-        const tableName = m[1];
-        // 解析列定义：每列格式  "colName" TYPE ...
-        const colDefs = m[2].split(',').map(s => s.trim()).filter(Boolean);
-        const columns = colDefs.map(s => {
-          const cm = s.match(/^"(\w+)"/);
-          return cm ? { name: cm[1], def: s } : null;
-        }).filter(Boolean);
-        return { name: tableName, columns };
-      }).filter(Boolean);
+    // 3. 从 DMMF 获取表列定义，检查并补充缺少的列
+    const tableDefs = getTableDefs();
 
     for (const table of tableDefs) {
       // 仅处理存在于 sqlite_master 中的表（跳过 CREATE TABLE IF NOT EXISTS 已处理的）
@@ -510,6 +568,7 @@ async function saveLibrary(data) {
             data: a.episodes.map(e => ({
               animeId: a.id,
               number: e.number,
+              name: e.name ?? null,
               filePath: e.filePath,
               fileName: e.fileName,
               fileSize: BigInt(e.fileSize || 0),

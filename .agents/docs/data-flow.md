@@ -167,17 +167,19 @@ GET /api/scan
 POST /api/import
   → routes/discovery.js:handleImport()
   → Body: { items: [{ path, name, parsedTitle, parsedSeason, specialSuffix, ... }] }
-  → For each item:
-      ├─ Generate animeId = `${parsedTitle}${parsedSeason ? '-Season '+parsedSeason : ''}`
-      ├─ Build anime + episodes in data.library[]:
-      │   { id, title, folderName, folderPath, season, specialSuffix,
-      │     episodes: [{ animeId, episodeNumber, filePath, fileName, fileSize }] }
-      ├─ If has bangumiId and no tags → queue background metadata fetch
-      ├─ Mark node.alreadyImported = true in scannedTree
-      └─ db.saveLibrary(data) + saveScannedTree(scannedTree)
-  → After all items saved + metadata fetches complete:
-      └─ For each imported item with bangumiId → syncAnilist() async fire-and-forget
-  → jsonResp(res, 200, { count: N })
+   → For each item:
+       ├─ Generate animeId = `${parsedTitle}${parsedSeason ? '-Season '+parsedSeason : ''}`
+       ├─ Build anime + episodes in data.library[]:
+       │   { id, title, folderName, folderPath, season, specialSuffix,
+       │     episodes: [{ animeId, episodeNumber, filePath, fileName, fileSize }] }
+       ├─ If has bangumiId and no tags → queue background metadata fetch
+       │   └─ After metadata fetch: also fetch episode titles via scraper.getEpisodes()
+       │       and assign to anime.episodes[].name by episode number
+       ├─ Mark node.alreadyImported = true in scannedTree
+       └─ db.saveLibrary(data) + saveScannedTree(scannedTree)
+   → After all items saved + metadata fetches complete:
+       └─ For each imported item with bangumiId → syncAnilist() async fire-and-forget
+   → jsonResp(res, 200, { count: N })
 ```
 
 ### Auto-Import (at startup, for [bgmN] folders)
@@ -186,12 +188,13 @@ POST /api/import
 init() → autoImportNewFolders(data, config)  (inline in server.js)
   ├─ Called async after server starts listening
   ├─ scanMediaDir(config.mediaDir) → flat leaves
-  ├─ For each leaf not already in library:
-  │   ├─ extractBgmId(folderName) → numeric bangumiId
-  │   ├─ registry.fetchMetadata('bangumi', title, coverDir, bangumiId, config)
-  │   ├─ Build anime record with id = String(bangumiId) (NOT parsedTitle)
-  │   ├─ Assign episodes from folder's video files
-  │   ├─ Push to data.library
+   ├─ For each leaf not already in library:
+   │   ├─ extractBgmId(folderName) → numeric bangumiId
+   │   ├─ registry.fetchMetadata('bangumi', title, coverDir, bangumiId, config)
+   │   ├─ Fetch episode titles: scraper.getEpisodes(bangumiId) → assign to episodes[].name
+   │   ├─ Build anime record with id = String(bangumiId) (NOT parsedTitle)
+   │   ├─ Assign episodes from folder's video files
+   │   ├─ Push to data.library
   │   ├─ Create MyList entry (status: 'watching')
   │   ├─ db.saveLibrary(data) + db.saveMyList(data) (sequential, FK safety)
   │   └─ Bangumi sync (async fire-and-forget)
@@ -234,19 +237,23 @@ POST /api/bangumi/fetch (for library items — already imported)
       │   └─ tmdb.js:
       │       ├─ Same pattern (TMDB image base + seriesId)
       │       └─ Requires tmdbApiKey in config
-      └─ Returns: { source, bangumiId, bangumiTitle, bangumiTitleJp,
-                     summary, coverUrl, localCover, rating }
-  → Object.assign(anime, meta) — update library anime record
-  → AniList 双源同步 (async, fire-and-forget):
-      syncAnilist(anime, config, bannerDir, coverDir)
-      ├─ 如果已有 anilistId → 直接用 ID 调 fetchMetadata 刷新
-      ├─ 如果 anilistId === -1 → 重置为 null 重新搜索（手动同步可重试）
-      ├─ 如果无 anilistId → 按标题优先级搜 AniList（Jp→Cn→En）
-      │   ├─ Sørensen-Dice ≥ 0.5 匹配成功 → fetchMetadata + downloadBanner
-      │   └─ 匹配失败 → 标记 anilistId = -1
-      ├─ 下载 banner 到 DATA_DIR/banners/ 目录
-      └─ db.saveLibrary(data) — 写 anilistId/anilistBanner/anilistTitleEn/seasonChain
-  → db.saveLibrary(data) + saveScannedTree(data.scannedTree)
+       └─ Returns: { source, bangumiId, bangumiTitle, bangumiTitleJp,
+                      summary, coverUrl, localCover, rating }
+   → Object.assign(anime, meta) — update library anime record
+   → Fetch episode titles from Bangumi (only in sync pipeline, not fetch-meta):
+       if anime.bangumiId and anime.episodes:
+         scraper.getEpisodes(bangumiId) → [{ number, name }, ...]
+         for each ep in anime.episodes: ep.name = matching name || existing
+   → AniList 双源同步 (async, fire-and-forget):
+       syncAnilist(anime, config, bannerDir, coverDir)
+       ├─ 如果已有 anilistId → 直接用 ID 调 fetchMetadata 刷新
+       ├─ 如果 anilistId === -1 → 重置为 null 重新搜索（手动同步可重试）
+       ├─ 如果无 anilistId → 按标题优先级搜 AniList（Jp→Cn→En）
+       │   ├─ Sørensen-Dice ≥ 0.5 匹配成功 → fetchMetadata + downloadBanner
+       │   └─ 匹配失败 → 标记 anilistId = -1
+       ├─ 下载 banner 到 DATA_DIR/banners/ 目录
+       └─ db.saveLibrary(data) — 写 anilistId/anilistBanner/anilistTitleEn/seasonChain
+   → db.saveLibrary(data) + saveScannedTree(data.scannedTree)
 ```
 
 ## 6. Cover Serving Flow
@@ -604,7 +611,7 @@ http.createServer((req, res) => {
 | `server/bangumi-sync.js` | 206 | Bangumi sync orchestration: Pull→Merge→Push, OAuth status push |
 | `server/scrapers/index.js` | 470 | ScraperRegistry: multi-source metadata aggregation, syncAnilist() helper |
 | `server/scrapers/anilist.js` | — | Anilist GraphQL client: search, fetchMetadata, downloadBanner, season chain extraction |
-| `server/scrapers/bangumi.js` | — | Bangumi API client + cover download |
+| `server/scrapers/bangumi.js` | — | Bangumi API client + cover download + `getEpisodes(subjectId)` for episode titles |
 | `server/scrapers/tmdb.js` | — | TMDB API client + cover download |
 | `server/scrapers/node-fetch.js` | — | Node.js http/https fetch polyfill (pkg-compatible) |
 | `scripts/copy-sidecar-deps.js` | — | Build: copies Prisma engine + ffmpeg.exe to sidecar-modules/ |
@@ -651,3 +658,5 @@ http.createServer((req, res) => {
 19. **Banner path conversion**: `anilistBanner` stores the absolute filesystem path (e.g., `C:\Users\...\banners\al-12345.jpg`). The frontend converts this to a URL path `/banners/al-12345.jpg` via `path.basename()` + `/banners/` prefix, matched by `handleBannerImage` in server.js.
 20. **Backfill endpoint**: `POST /api/library/sync-anilist-backfill` iterates all library items without `anilistId`, calls `syncAnilist()` on each with batch save every 5 items. Returns `{ total, succeeded, failed, skipped }`. Non-blocking but slow for large libraries.
 18. **ep.progress is always 0-1**: The Episode model has `progress Float @default(0) // 0-1`. mpv IPC reports time-pos in seconds; the `onProgress` callback normalizes via `Math.min(1, Math.max(0, timePos / duration))` before storing. When resuming, convert 0-1 progress to seconds using `ep.duration * progress` for `--start` and `progressStart`.
+
+21. **Episode titles from Bangumi**: Episode model now has `name? String` for real episode titles. Populated in three paths: (1) library sync (`handleLibrarySync` / `handleLibrarySyncStream`) after metadata fetch, (2) auto-import (`autoImportNewFolders`) after metadata fetch, (3) manual import (`handleImport`) background metadata fetch. The Bangumi endpoint `GET /v0/episodes` returns episode data with `name_cn` (Chinese) and `name` (Japanese) — Chinese title is preferred. Fallback in frontend: `ep.name || ep.fileName`. If `getEpisodes` fails (network error, no Bangumi data), episodes keep their file name as display.

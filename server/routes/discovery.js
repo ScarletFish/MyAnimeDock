@@ -216,8 +216,9 @@ module.exports = {
         if (anime.bangumiId && (!anime.tags || anime.tags.length === 0)) {
           const coverDir = path.join(DATA_DIR, 'covers');
           metadataFetches.push(
-            registry.fetchMetadata('bangumi', anime.title, coverDir, anime.bangumiId, config)
-              .then(meta => {
+            (async () => {
+              try {
+                const meta = await registry.fetchMetadata('bangumi', anime.title, coverDir, anime.bangumiId, config);
                 if (meta) {
                   anime.tags = meta.tags || [];
                   anime.bangumiTitle = meta.bangumiTitle || anime.bangumiTitle;
@@ -227,10 +228,21 @@ module.exports = {
                   anime.localCover = meta.localCover || anime.localCover;
                   anime.rating = meta.rating || anime.rating;
                   // Cover resize removed — browser handles display scaling
-                  return db.saveLibrary(data);
                 }
-              })
-              .catch(e => logger.warn(`Background metadata fetch failed for ${anime.id}: ${e.message}`))
+                // Fetch episode titles from Bangumi
+                const scraper = registry.get('bangumi');
+                if (scraper && anime.episodes?.length) {
+                  const epList = await scraper.getEpisodes(anime.bangumiId).catch(() => []);
+                  for (const ep of anime.episodes) {
+                    const m = epList.find(e => e.number === ep.number);
+                    if (m?.name) ep.name = m.name;
+                  }
+                }
+                return db.saveLibrary(data);
+              } catch (e) {
+                logger.warn(`Background metadata fetch failed for ${anime.id}: ${e.message}`);
+              }
+            })()
           );
         }
         if (anime.bangumiId) {

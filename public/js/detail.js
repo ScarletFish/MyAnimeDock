@@ -560,7 +560,7 @@ function renderWatchCard(anime) {
     labelEl.textContent = `开始播放 第 ${ep.number} 集`;
     btnText.textContent = '开始播放';
   }
-  titleEl.textContent = ep.fileName;
+  titleEl.textContent = ep.name || ep.fileName;
   progressWrap.style.display = 'block';
   progressBar.style.width = pct + '%';
   btn.style.display = 'inline-flex';

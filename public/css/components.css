@@ -216,6 +216,7 @@
   background: var(--bg-card);
   aspect-ratio: 3/4;
   width: 100%;
+  max-width: calc(240px * var(--scale));
   border: 1px solid var(--border);
   transition:
     transform 0.35s var(--ease-spring),

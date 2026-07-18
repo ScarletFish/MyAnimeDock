@@ -12,7 +12,8 @@ function applyGridZoom() {
   const scale = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--scale')) || 1;
   const size = Math.round(GRID_CARD_BASE * scale);
   document.querySelectorAll('#libraryDashboard .grid-container, #mylistView .grid-container').forEach(g => {
-    g.style.gridTemplateColumns = `repeat(auto-fill, minmax(${size}px, 1fr))`;
+    g.style.gridTemplateColumns = `repeat(auto-fill, ${size}px)`;
+    g.style.justifyContent = 'center';
   });
 }
 

@@ -594,27 +594,25 @@
   width: calc((100% - 0.875rem * 3 * var(--scale)) / 4);
   scroll-snap-align: start;
   border-radius: var(--radius-lg);
+  overflow: hidden;
   cursor: pointer;
   background: var(--bg-card);
   border: 1px solid var(--border);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   transition:
-    transform 0.35s var(--ease-spring),
-    border-color 0.3s var(--ease-out),
-    box-shadow 0.4s var(--ease-out);
-  will-change: transform;
+    box-shadow 0.25s var(--ease-out),
+    border-color 0.25s var(--ease-out);
 }
 
 .episode-card:hover {
-  transform: translateY(-4px) scale(1.02);
   border-color: rgba(var(--accent-rgb), 0.25);
   box-shadow:
     0 12px 40px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(var(--accent-rgb), 0.08),
     0 0 60px rgba(var(--accent-rgb), 0.06);
 }
 
 .episode-card:active {
-  transform: translateY(-1px) scale(0.99);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   transition-duration: 0.1s;
 }
 

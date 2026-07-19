@@ -215,17 +215,15 @@
   aspect-ratio: 3/4;
   width: 100%;
   border: 1px solid var(--border);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   transition:
-    transform 0.35s var(--ease-spring),
-    box-shadow 0.4s var(--ease-out),
+    box-shadow 0.25s var(--ease-out),
     border-color 0.25s var(--ease-out);
-  will-change: transform;
 }
 
 .anime-card:hover {
-  transform: translateY(-6px) scale(1.02);
   box-shadow:
-    0 12px 48px rgba(0, 0, 0, 0.5),
+    0 12px 40px rgba(0, 0, 0, 0.5),
     0 0 60px rgba(var(--accent-rgb), 0.08);
   border-color: rgba(var(--accent-rgb), 0.2);
 }

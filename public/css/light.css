@@ -118,12 +118,11 @@
 
 /* ─── Anime Card ─── */
 :is([data-theme="light"], [data-theme-mode="light"]) .anime-card {
-  box-shadow: none;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
   border-color: var(--border);
 }
 :is([data-theme="light"], [data-theme-mode="light"]) .anime-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
   border-color: var(--accent);
 }
 :is([data-theme="light"], [data-theme-mode="light"]) .anime-card .overlay {
@@ -188,7 +187,9 @@
 }
 :is([data-theme="light"], [data-theme-mode="light"]) .episode-card:hover {
   border-color: rgba(var(--accent-rgb), 0.15);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.1),
+    0 0 40px rgba(var(--accent-rgb), 0.04);
 }
 :is([data-theme="light"], [data-theme-mode="light"]) .episode-card-play:hover {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);

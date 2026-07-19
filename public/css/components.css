@@ -517,11 +517,6 @@
   border-radius: 2px;
   background: var(--accent);
 }
-/* Utility modals — memory modal uses secondary accent for its heading bar */
-#memoryModal h2::before {
-  background: var(--accent-secondary);
-}
-
 /* ─── Bangumi Search Modal ─── */
 .modal--large {
   max-width: 720px;

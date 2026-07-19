@@ -1,4 +1,4 @@
-// server/routes/mylist.js — MyList、Memories、Wishlist 路由
+// server/routes/mylist.js — MyList、Wishlist 路由
 const { jsonResp, readBody } = require('../lib/utils');
 
 module.exports = {

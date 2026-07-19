@@ -1,6 +1,6 @@
 # MyAnimeDock — Complete Data Flow Reference
 
-> 涵盖 14 个主要数据流：config, scan/discovery, import, metadata fetch, play sessions, memories, covers/thumbnails, SQLite persistence, startup init, MyList status, Bangumi sync, discovery management, full call chain。
+> 涵盖 13 个主要数据流：config, scan/discovery, import, metadata fetch, play sessions, covers/thumbnails, SQLite persistence, startup init, MyList status, Bangumi sync, discovery management, full call chain。
 > 涉及数据持久化、API 端点、或数据模型改动时，必须先读此文档。
 
 ## Architecture Overview
@@ -20,7 +20,7 @@
 │    • lib/utils.js: mime, serveImage, jsonResp, readBody, ffmpeg helpers       │
 │    • routes/*.js: 7 route modules (config, discovery, library, playback,       │
 │      mylist, stats, bangumi) — each exports handler(req, res, state)          │
-│    • Persistence: SQLite (Prisma ORM) — library/memories/playSessions         │
+│    • Persistence: SQLite (Prisma ORM) — library/playSessions         │
 │    • JSON files: config.json (settings), scanned-tree.json (scan result)      │
 │    • Static file serving: public/ frontend + covers/ + thumbs/                │
 │    • ffmpeg: thumbnail extraction + cover resize                               │
@@ -31,7 +31,7 @@
 
 | File | Location (dev) | Location (MSI/pkg) | Purpose |
 |------|---------------|-------------------|---------|
-| `anime.db` | `prisma/anime.db` | `%APPDATA%/MyAnimeDock/anime.db` | SQLite — primary store for library, memories, playSessions |
+| `anime.db` | `prisma/anime.db` | `%APPDATA%/MyAnimeDock/anime.db` | SQLite — primary store for library, playSessions |
 | `config.json` | `server/config.json` | `%APPDATA%/MyAnimeDock/config.json` | Settings (JSON only, managed by lib/config.js) |
 | `scanned-tree.json` | `server/scanned-tree.json` | `%APPDATA%/MyAnimeDock/scanned-tree.json` | Scan result tree (JSON only, managed by lib/config.js) |
 | `anime-data.json` | (legacy) | (legacy) | **Removed**. Only used as migration fallback for scannedTree on first startup |
@@ -50,9 +50,8 @@ server.js ⇒ init()
   ├─ 2. db.ensureSchema() — auto-create SQLite tables if not exist
   │
   ├─ 3. db.loadData() — read all data from SQLite → global `data` object
-  │     (SQLite is the PRIMARY store for library/memories/playSessions)
+  │     (SQLite is the PRIMARY store for library/playSessions)
   │     ├─ Anime + Episode records → data.library
-  │     ├─ Memory records → data.memories
   │     ├─ PlaySession records → data.playSessions
   │     └─ ScannedTree record (JSON stored in SQLite) → data.scannedTree
   │
@@ -391,28 +390,7 @@ GET /api/anime/:id/sessions
   → Frontend: Canvas bar chart in detail.js renderWatchStats()
 ```
 
-## 9. Memory Flow
-
-### List
-```
-GET /api/memories
-  → routes/mylist.js:handleGetMemories()
-  → Return data.memories[] sorted by updatedAt desc
-  → Frontend: memory-masonry grid (cards with cover + rating + thoughts)
-```
-
-### Create / Update
-```
-POST /api/memories
-  → routes/mylist.js:handlePostMemory()
-  → Body: { animeId, title, coverLocal, coverUrl, rating, thoughts, notes,
-             episodesWatched, totalEpisodes }
-  → Upsert: find by animeId → update, or create new
-  → db.saveMemories(data) — only writes memory table
-  → Frontend: open archive modal from detail view or memory page
-```
-
-## 10. MyList Status Flow
+## 9. MyList Status Flow
 
 ### Status Change (manual)
 ```
@@ -441,7 +419,7 @@ DELETE /api/anime/:id
   → db.saveMyList(data) + db.saveLibrary(data)
 ```
 
-## 11. Bangumi Sync Flow
+## 10. Bangumi Sync Flow
 
 ### Full Sync (Pull → Merge → Push)
 ```
@@ -466,7 +444,7 @@ PUT /api/mylist/:id/status
   → Sends single status update to Bangumi API
 ```
 
-## 12. Discovery Management Flow
+## 11. Discovery Management Flow
 
 ### Exclude from scan
 ```
@@ -494,18 +472,17 @@ POST /api/discovery/unlink
   → db.saveLibrary(data) + saveScannedTree(scannedTree)
 ```
 
-## 13. Save Function Taxonomy (db.js)
+## 12. Save Function Taxonomy (db.js)
 
 | Function | Writes | When to use |
 |----------|--------|-------------|
 | `db.saveLibrary(data)` | anime + episode tables | Import, delete, metadata fetch, auto-import |
 | `db.saveMyList(data)` | mylist table | Import, auto-import, status change |
-| `db.saveMemories(data)` | memory table | Archive create/update |
 | `db.savePlaySessions(data)` | playSession table | Play start, mpv final/error |
 | `db.updateEpisodeProgress(id, n, fields)` | single episode row | mpv progress (every 10s), manual update |
 | `db.updateEpisodesWatched(id, numbers[])` | batch episode rows | Auto-mark previous episodes as watched |
 | `db.updatePlaySession(sid, fields)` | single playSession row | mpv progress (every 10s) |
-| `db.saveAll(data)` | all three tables in parallel | Composite fallback for multi-table saves |
+| `db.saveAll(data)` | all tables in parallel | Composite fallback for multi-table saves |
 | `saveScannedTree(tree)` | `scanned-tree.json` (sync) | Scan, exclude, unlink, metadata |
 
 ### Call Site → Save Function Mapping
@@ -520,7 +497,6 @@ POST /api/discovery/unlink
 | Fetch metadata | `db.saveLibrary()` + `saveScannedTree()` |
 | MyList status change | `db.saveMyList()` + `bangumiSync.pushStatusChange()` |
 | Bangumi full sync | `bangumiSync.syncMyList()` (handles own persistence) |
-| Memory create/update | `db.saveMemories()` |
 | Play start | `db.savePlaySessions()` + `db.updateEpisodesWatched()` (auto-mark) |
 | mpv final/error | `db.savePlaySessions()` |
 | Episode progress (manual/mpv) | `db.updateEpisodeProgress()` |
@@ -531,7 +507,6 @@ POST /api/discovery/unlink
 async loadData() {
   ├─ ensureSchema() — auto-create tables if missing
   ├─ Read all Anime + Episode from SQLite
-  ├─ Read all Memory from SQLite
   ├─ Read all PlaySession from SQLite
   ├─ Read ScannedTree from SQLite (JSON stringified in single row)
   ├─ Convert Prisma models → legacy JSON format
@@ -541,7 +516,7 @@ async loadData() {
 
 ### Persistence Architecture
 ```
-SQLite (anime.db): primary store for library, memories, playSessions
+SQLite (anime.db): primary store for library, playSessions
   → Fine-grained writes: each function writes only its table
   → Full-state sync: db.saveAll() writes all three tables
 
@@ -553,7 +528,7 @@ config.json: independent JSON file for settings
   → Managed separately, never in SQLite
 ```
 
-## 14. Full HTTP Call Chain
+## 13. Full HTTP Call Chain
 
 Each API request flows through:
 
@@ -569,7 +544,6 @@ http.createServer((req, res) => {
   │   │   ├─ Mutate global `data` (if applicable)
   │   │   ├─ Fine-grained save (only affected table/file):
   │   │   │   ├─ db.saveLibrary() — anime/episode changes
-  │   │   │   ├─ db.saveMemories() — memory changes
   │   │   │   ├─ db.savePlaySessions() — play session changes
   │   │   │   ├─ db.updateEpisodeProgress() — single episode update
   │   │   │   ├─ db.updatePlaySession() — single session update
@@ -594,10 +568,10 @@ http.createServer((req, res) => {
 | `server/routes/discovery.js` | 329 | Browse, scan (SSE), import, discovery unlink/exclude/include/fetch-meta |
 | `server/routes/library.js` | 240 | Library list, anime detail/delete, library sync (batch + SSE stream), AniList backfill |
 | `server/routes/playback.js` | 179 | Play, progress, mpv-status, thumbnail |
-| `server/routes/mylist.js` | 216 | MyList CRUD, memories list/create, wishlist |
+| `server/routes/mylist.js` | 216 | MyList CRUD, wishlist |
 | `server/routes/stats.js` | 131 | Dashboard stats, tags, seasons, ratings, watch-activity, anime sessions |
 | `server/routes/bangumi.js` | 162 | Bangumi search, fetch, sync, OAuth (auth status/url/callback/logout/creds/me) |
-| `server/db.js` | 732 | Prisma wrapper: saveLibrary, saveMemories, savePlaySessions, saveMyList, loadData, updateEpisodeProgress, updatePlaySession |
+| `server/db.js` | 732 | Prisma wrapper: saveLibrary, savePlaySessions, saveMyList, loadData, updateEpisodeProgress, updatePlaySession |
 | `public/js/stats.js` | 561 | Stats view: word cloud, activity/rating/season charts |
 | `server/scanner.js` | 404 | Media directory scanner, folder name parsing (anitomy) with extra video filtering, [bgmN] ID extraction |
 | `server/mpv-controller.js` | 178 | mpv process spawn, IPC progress tracking, error/crash reporting |
@@ -613,10 +587,9 @@ http.createServer((req, res) => {
 | `public/js/discovery.js` | — | Scan/browse UI, import panel |
 | `public/js/library.js` | — | Library grid, search, sort |
 | `public/js/detail.js` | — | Detail view, hero animation, episodes, heatmap, stats |
-| `public/js/memory.js` | — | Memories grid, archive |
 | `public/styles.css` | 3373 | All styling (dark/light theme, responsive, animations) |
 
-## 15. AniList 双源同步 — 所有触发路径一览
+## 14. AniList 双源同步 — 所有触发路径一览
 
 | 触发方式 | 端点/位置 | 调用方式 | syncAnilist？ | 备注 |
 |---------|-----------|---------|:-----------:|------|

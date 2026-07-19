@@ -534,7 +534,7 @@ describe('DB Integration Tests', () => {
       if (data === null) return;
 
       // Simulate completed myList query
-      const memories = (data.myList || [])
+      const archivedItems = (data.myList || [])
         .filter(m => m.status === 'completed')
         .map(m => {
           const anime = data.library.find(a => a.id === m.animeId);
@@ -548,12 +548,12 @@ describe('DB Integration Tests', () => {
           };
         });
 
-      const memory = memories.find(m => m.animeId === lifecycleAnimeId);
-      assert.ok(memory, 'archived anime should appear in memories');
-      assert.equal(memory.title, 'Lifecycle Test Anime');
-      assert.equal(memory.bangumiTitle, '生命周期测试动画');
-      assert.equal(memory.rating, 9.0);
-      assert.equal(memory.thoughts, '非常好看，强烈推荐');
+      const item = archivedItems.find(m => m.animeId === lifecycleAnimeId);
+      assert.ok(item, 'completed anime should appear in myList');
+      assert.equal(item.title, 'Lifecycle Test Anime');
+      assert.equal(item.bangumiTitle, '生命周期测试动画');
+      assert.equal(item.rating, 9.0);
+      assert.equal(item.thoughts, '非常好看，强烈推荐');
     });
 
     it('Step 6: Delete anime → remove from library and myList', async () => {

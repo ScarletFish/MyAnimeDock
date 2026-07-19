@@ -198,12 +198,6 @@
   background: rgba(0, 0, 0, 0.5);
 }
 
-/* ─── Memory Card ─── */
-:is([data-theme="light"], [data-theme-mode="light"]) .memory-card:hover {
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-  border-color: rgba(var(--accent-rgb), 0.15);
-}
-
 /* ─── Modal ─── */
 :is([data-theme="light"], [data-theme-mode="light"]) .modal-overlay { background: rgba(0, 0, 0, 0.45); }
 :is([data-theme="light"], [data-theme-mode="light"]) .modal {

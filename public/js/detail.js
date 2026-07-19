@@ -416,10 +416,8 @@ function renderWishlistDetail(anime) {
   // Hide action buttons
   const fetchBtn = document.getElementById('btnFetchBangumi');
   const deleteBtn = document.getElementById('btnDeleteAnime');
-  const writeBtn = document.getElementById('btnWriteMemory');
   if (fetchBtn) fetchBtn.style.display = 'none';
   if (deleteBtn) deleteBtn.style.display = 'none';
-  if (writeBtn) writeBtn.style.display = 'none';
 
   const layoutEl = document.querySelector('.detail-layout');
   if (layoutEl) layoutEl.classList.remove('detail-layout--archive');

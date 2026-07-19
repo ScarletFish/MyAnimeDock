@@ -1,5 +1,5 @@
 // server/db.js — Prisma/SQLite 数据层封装（单存储）
-// SQLite 是 library / memories / playSessions 唯一持久化目标
+// SQLite 是 library / playSessions 唯一持久化目标
 // scannedTree 和 config 由 server.js 独立管理 JSON 文件
 // 提供 loadData() / saveAll() / shutdown()
 
@@ -412,7 +412,7 @@ async function loadData() {
 
 // ─── Save ───
 
-// ─── Save (SQLite 批量全同步，library/memories/playSessions) ───
+// ─── Save (SQLite 批量全同步，library/playSessions) ───
 // scannedTree 由 server.js 独立写入 JSON 文件
 async function saveAll(data) {
   if (!data) return;

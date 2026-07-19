@@ -589,11 +589,11 @@
 
 /* ─── Episode Card — cinematic 16:9 thumbnail ─── */
 .episode-card {
+  position: relative;
   flex-shrink: 0;
   width: calc((100% - 0.875rem * 3 * var(--scale)) / 4);
   scroll-snap-align: start;
   border-radius: var(--radius-lg);
-  overflow: hidden;
   cursor: pointer;
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -623,6 +623,7 @@
   position: relative;
   aspect-ratio: 16 / 9;
   overflow: hidden;
+  border-radius: inherit;
   background: var(--bg-surface);
 }
 
@@ -747,6 +748,33 @@
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: 1.35;
+}
+
+/* ─── Episode Card Tooltip (fixed to viewport, JS-controlled) ─── */
+#episodeCardTooltip {
+  position: fixed;
+  z-index: 999;
+  background: var(--bg-surface);
+  color: var(--fg-primary);
+  padding: calc(5px * var(--scale)) calc(12px * var(--scale));
+  border-radius: var(--radius-sm);
+  font-size: calc(0.8125rem * var(--scale));
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+  border: 1px solid var(--border);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition:
+    opacity 0.18s var(--ease-out),
+    transform 0.18s var(--ease-out);
+}
+#episodeCardTooltip.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+html[data-reduce-motion="true"] #episodeCardTooltip {
+  transition: none !important;
 }
 
 /* ─── Characters & Staff ─── */

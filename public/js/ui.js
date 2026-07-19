@@ -174,9 +174,13 @@ function closeModal(el) {
     clearTimeout(hideTimer);
     current = target;
 
+    // Store cursor position at entry (fixed, doesn't track movement)
+    var entryX = e.clientX;
+    var entryY = e.clientY;
+
     showTimer = setTimeout(function() {
       el.textContent = target.getAttribute('data-tooltip');
-      position(target);
+      position(entryX, entryY);
       el.classList.remove('is-exiting');
       el.classList.add('is-visible');
     }, 500);
@@ -207,16 +211,24 @@ function closeModal(el) {
     }
   }, true);
 
-  function position(target) {
-    var rect = target.getBoundingClientRect();
+  function position(cx, cy) {
     var tw = el.offsetWidth || 0;
-    // Centered above the target element
-    var left = rect.left + rect.width / 2 - (tw / 2);
-    var top = rect.top - 12;
+    var th = el.offsetHeight || 30;
+    var gap = 10;
+    // Default: below-right of cursor
+    var left = cx + gap;
+    var top = cy + gap + 4;
 
-    if (tw) {
-      left = Math.max(8, Math.min(left, window.innerWidth - tw - 8));
+    // Flip left if would overflow right edge
+    if (tw && left + tw > window.innerWidth - 6) {
+      left = cx - tw - gap;
     }
+    // Flip above if would overflow bottom edge
+    if (top + th > window.innerHeight - 6) {
+      top = cy - th - gap;
+    }
+    // Protect left/top edges
+    left = Math.max(6, left);
     top = Math.max(6, top);
     el.style.left = left + 'px';
     el.style.top = top + 'px';

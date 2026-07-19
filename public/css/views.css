@@ -431,6 +431,7 @@
 .discovery-actions-sentinel {
   height: 1px;
 }
+
 .discovery-actions {
   display: flex;
   align-items: center;

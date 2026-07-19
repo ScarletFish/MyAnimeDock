@@ -28,6 +28,13 @@
       <span class="titlebar__title" id="titlebarTitle"></span>
     </div>
   </div>
+  <div class="titlebar__search" id="titlebarSearch">
+    <div class="titlebar__search-wrap">
+      <svg class="titlebar__search-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="5"/><path d="m11 11 3 3"/></svg>
+      <input type="text" id="globalSearchInput" placeholder="搜索…" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="titlebar__search-results hidden" id="globalSearchResults"></div>
+  </div>
   <div class="titlebar__controls">
     <button class="titlebar__btn" id="titlebarMinimize" data-tooltip="最小化">
       <svg viewBox="0 0 14 14"><line x1="3" y1="7" x2="11" y2="7" stroke="currentColor" stroke-width="1.5"/></svg>
@@ -814,5 +821,6 @@ function switchSettingsTab(btn, tab) {
 <script src="/js/stats.js"></script>
 <script src="/js/titlebar.js"></script>
 <script src="/js/app.js"></script>
+<script src="/js/search.js"></script>
 </body>
 </html>

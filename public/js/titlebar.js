@@ -88,13 +88,11 @@
   window.setTitlebarContext = function (mode, title) {
     var brand = document.getElementById('titlebarBrand');
     var detailCtx = document.getElementById('titlebarDetailContext');
-    var titleEl = document.getElementById('titlebarTitle');
-    if (!brand || !detailCtx || !titleEl) return;
+    if (!brand || !detailCtx) return;
 
     if (mode === 'detail') {
       brand.classList.add('hidden');
       detailCtx.classList.remove('hidden');
-      titleEl.textContent = title || '';
     } else {
       brand.classList.remove('hidden');
       detailCtx.classList.add('hidden');

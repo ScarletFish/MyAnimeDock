@@ -160,17 +160,6 @@ module.exports = {
           const meta = await registry.fetchMetadata(match.source, folderParsed.cleanTitle, coverDir, match.id, config, match._detail);
           if (!meta) return { animeId, success: false, error: '获取元数据失败' };
           Object.assign(anime, meta);
-          // Fetch episode titles from Bangumi
-          if (anime.bangumiId && anime.episodes?.length) {
-            const bangumiScraper = registry.get('bangumi');
-            if (bangumiScraper) {
-              const epList = await bangumiScraper.getEpisodes(anime.bangumiId).catch(() => []);
-              for (const ep of anime.episodes) {
-                const m = epList.find(e => e.number === ep.number);
-                if (m?.name) ep.name = m.name;
-              }
-            }
-          }
             // Cover resize removed — browser handles display scaling
           if (match.matchedSeason != null) anime.matchedSeason = match.matchedSeason;
           if (match.totalSeasons != null) anime.totalSeasons = match.totalSeasons;
@@ -243,17 +232,6 @@ module.exports = {
             if (timedOut) return;
             if (!meta) { send('progress', { animeId, success: false, error: '获取元数据失败' }); return; }
             Object.assign(anime, meta);
-            // Fetch episode titles from Bangumi
-            if (anime.bangumiId && anime.episodes?.length) {
-              const bangumiScraper = registry.get('bangumi');
-              if (bangumiScraper) {
-                const epList = await bangumiScraper.getEpisodes(anime.bangumiId).catch(() => []);
-                for (const ep of anime.episodes) {
-                  const m = epList.find(e => e.number === ep.number);
-                  if (m?.name) ep.name = m.name;
-                }
-              }
-            }
           // Cover resize removed — browser handles display scaling
             if (match.matchedSeason != null) anime.matchedSeason = match.matchedSeason;
             if (match.totalSeasons != null) anime.totalSeasons = match.totalSeasons;

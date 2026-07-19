@@ -271,30 +271,6 @@ class BangumiScraper {
     const res = await tryFetch(url, { headers: { 'User-Agent': USER_AGENT } });
     return res.json(); // [{id, type, name, name_cn, relation, ...}]
   }
-
-  /**
-   * Fetch episode list for a subject from Bangumi.
-   * Each episode gets { number, name } mapped from the API response.
-   * Handles pagination for long-running series (>100 eps).
-   */
-  async getEpisodes(subjectId) {
-    const limit = 100;
-    let offset = 0;
-    let all = [];
-    while (true) {
-      const url = `${this.apiBase}/v0/episodes?subject_id=${subjectId}&type=0&limit=${limit}&offset=${offset}`;
-      const res = await tryFetch(url, { headers: { 'User-Agent': USER_AGENT } });
-      const data = await res.json();
-      const items = data.data || [];
-      all = all.concat(items.map(ep => ({
-        number: ep.sort ?? ep.episode,
-        name: ep.name_cn || ep.name || '',
-      })));
-      if (items.length < limit) break;
-      offset += limit;
-    }
-    return all;
-  }
 }
 
 module.exports = BangumiScraper;

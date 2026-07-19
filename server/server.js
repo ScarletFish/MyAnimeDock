@@ -343,17 +343,6 @@ async function autoImportNewFolders(data, config) {
         anime.eps = meta.eps || null;
         anime.totalEpisodes = meta.totalEpisodes || null;
       }
-      // Fetch episode titles from Bangumi
-      if (anime.episodes?.length) {
-        const scraper = registry.get('bangumi');
-        if (scraper) {
-          const epList = await scraper.getEpisodes(bgmId).catch(() => []);
-          for (const ep of anime.episodes) {
-            const m = epList.find(e => e.number === ep.number);
-            if (m?.name) ep.name = m.name;
-          }
-        }
-      }
       // Cover resize removed — browser handles display scaling
 
       data.library.push(anime);

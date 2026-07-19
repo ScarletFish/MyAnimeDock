@@ -246,9 +246,9 @@ function renderCard(node, showLine) {
             <div class="discovery-card-title-row">
               <span class="discovery-card-title${node.alreadyImported ? ' discovery-card-title--imported' : ''}${excluded ? ' discovery-card-title--excluded' : ''}">${escHtml(node.parsedTitle)}${seasonText}</span>
               <div class="discovery-card-row-actions">
-                ${node.alreadyImported ? `<button class="discovery-card-action discovery-card-unlink" onclick="event.preventDefault();event.stopPropagation();unlinkSingle(this.closest('.discovery-card').dataset.path)" title="取消导入">${unlinkSvg} 取消导入</button>` : ''}
-                ${!node.alreadyImported && !excluded ? `<button class="discovery-card-action discovery-card-exclude" onclick="event.preventDefault();event.stopPropagation();excludeSingle(this.closest('.discovery-card').dataset.path)" title="排除扫描">${excludeSvg} 排除</button>` : ''}
-                ${excluded ? `<button class="discovery-card-action discovery-card-unexclude" onclick="event.preventDefault();event.stopPropagation();includeSingle(this.closest('.discovery-card').dataset.path)" title="取消排除">${includeSvg} 取消排除</button>` : ''}
+                ${node.alreadyImported ? `<button class="discovery-card-action discovery-card-unlink" onclick="event.preventDefault();event.stopPropagation();unlinkSingle(this.closest('.discovery-card').dataset.path)" data-tooltip="取消导入">${unlinkSvg} 取消导入</button>` : ''}
+                ${!node.alreadyImported && !excluded ? `<button class="discovery-card-action discovery-card-exclude" onclick="event.preventDefault();event.stopPropagation();excludeSingle(this.closest('.discovery-card').dataset.path)" data-tooltip="排除扫描">${excludeSvg} 排除</button>` : ''}
+                ${excluded ? `<button class="discovery-card-action discovery-card-unexclude" onclick="event.preventDefault();event.stopPropagation();includeSingle(this.closest('.discovery-card').dataset.path)" data-tooltip="取消排除">${includeSvg} 取消排除</button>` : ''}
               </div>
             </div>
             <span class="discovery-card-meta">${node.videoCount} 集 · ${sizeMB} MB</span>
@@ -266,7 +266,7 @@ function renderCard(node, showLine) {
         ${hasVideos ? `
         <ul class="discovery-card-files collapsed">
           ${node.videos.map(v => `
-            <li class="discovery-card-file" title="${escAttr(v.name)}">
+            <li class="discovery-card-file" data-tooltip="${escAttr(v.name)}">
               <span class="discovery-card-file-icon">${playSvg}</span>
               <span class="discovery-card-file-name">${escHtml(v.name)}</span>
               <span class="discovery-card-file-size">${(v.size / 1024 / 1024).toFixed(0)} MB</span>

@@ -22,20 +22,20 @@
   <div class="titlebar__left">
     <span class="titlebar__brand" id="titlebarBrand">MyAnimeDock</span>
     <div class="titlebar__detail-context hidden" id="titlebarDetailContext">
-      <button class="titlebar__back" id="titlebarBack" title="返回">
+      <button class="titlebar__back" id="titlebarBack" data-tooltip="返回">
         <svg viewBox="0 0 16 16"><polyline points="10 4 6 8 10 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
       <span class="titlebar__title" id="titlebarTitle"></span>
     </div>
   </div>
   <div class="titlebar__controls">
-    <button class="titlebar__btn" id="titlebarMinimize" title="最小化">
+    <button class="titlebar__btn" id="titlebarMinimize" data-tooltip="最小化">
       <svg viewBox="0 0 14 14"><line x1="3" y1="7" x2="11" y2="7" stroke="currentColor" stroke-width="1.5"/></svg>
     </button>
-    <button class="titlebar__btn" id="titlebarMaximize" title="最大化">
+    <button class="titlebar__btn" id="titlebarMaximize" data-tooltip="最大化">
       <svg viewBox="0 0 14 14"><rect x="3" y="3" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
     </button>
-    <button class="titlebar__btn titlebar__btn--close" id="titlebarClose" title="关闭">
+    <button class="titlebar__btn titlebar__btn--close" id="titlebarClose" data-tooltip="关闭">
       <svg viewBox="0 0 14 14"><line x1="4" y1="4" x2="10" y2="10" stroke="currentColor" stroke-width="1.5"/><line x1="10" y1="4" x2="4" y2="10" stroke="currentColor" stroke-width="1.5"/></svg>
     </button>
   </div>
@@ -106,12 +106,12 @@
     <div class="theme-dock-section">
       <span class="theme-dock-label">主题色系</span>
       <div class="theme-picker">
-        <button class="theme-option theme-option--default" data-theme="default" onclick="selectTheme(this, 'default')" title="默认"></button>
-        <button class="theme-option theme-option--amber" data-theme="amber" onclick="selectTheme(this, 'amber')" title="琥珀"></button>
-        <button class="theme-option theme-option--ocean" data-theme="ocean" onclick="selectTheme(this, 'ocean')" title="海洋"></button>
-        <button class="theme-option theme-option--sakura" data-theme="sakura" onclick="selectTheme(this, 'sakura')" title="樱花"></button>
-        <button class="theme-option theme-option--emerald" data-theme="emerald" onclick="selectTheme(this, 'emerald')" title="翡翠"></button>
-        <button class="theme-option theme-option--violet" data-theme="violet" onclick="selectTheme(this, 'violet')" title="紫罗兰"></button>
+        <button class="theme-option theme-option--default" data-theme="default" onclick="selectTheme(this, 'default')" data-tooltip="默认"></button>
+        <button class="theme-option theme-option--amber" data-theme="amber" onclick="selectTheme(this, 'amber')" data-tooltip="琥珀"></button>
+        <button class="theme-option theme-option--ocean" data-theme="ocean" onclick="selectTheme(this, 'ocean')" data-tooltip="海洋"></button>
+        <button class="theme-option theme-option--sakura" data-theme="sakura" onclick="selectTheme(this, 'sakura')" data-tooltip="樱花"></button>
+        <button class="theme-option theme-option--emerald" data-theme="emerald" onclick="selectTheme(this, 'emerald')" data-tooltip="翡翠"></button>
+        <button class="theme-option theme-option--violet" data-theme="violet" onclick="selectTheme(this, 'violet')" data-tooltip="紫罗兰"></button>
       </div>
     </div>
     <div class="theme-dock-separator"></div>
@@ -140,7 +140,7 @@
       </label>
     </div>
   </div>
-  <button class="theme-dock-close" onclick="closeThemeDock()" title="关闭">✕</button>
+  <button class="theme-dock-close" onclick="closeThemeDock()" data-tooltip="关闭">✕</button>
 </div>
 
 <!-- Main Content -->
@@ -228,7 +228,7 @@
         <div class="stats-card-header">
           <h2>分类词云</h2>
           <span class="stats-card-subtitle">Bangumi 类型标签聚合</span>
-          <button class="stats-refresh-btn" onclick="loadStats()" title="刷新词云">
+          <button class="stats-refresh-btn" onclick="loadStats()" data-tooltip="刷新词云">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
           </button>
         </div>
@@ -251,7 +251,7 @@
         <div class="stats-card-header">
           <h2>观看活跃度</h2>
           <span class="stats-card-subtitle">最近 6 个月观看时长趋势</span>
-          <button class="stats-refresh-btn" onclick="loadActivityChart()" title="刷新图表">
+          <button class="stats-refresh-btn" onclick="loadActivityChart()" data-tooltip="刷新图表">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
           </button>
         </div>
@@ -274,7 +274,7 @@
         <div class="stats-card-header">
           <h2>评分分布</h2>
           <span class="stats-card-subtitle">Bangumi 评分偏好一览</span>
-          <button class="stats-refresh-btn" onclick="loadRatingChart()" title="刷新图表">
+          <button class="stats-refresh-btn" onclick="loadRatingChart()" data-tooltip="刷新图表">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
           </button>
         </div>
@@ -297,7 +297,7 @@
         <div class="stats-card-header">
           <h2>季度分布</h2>
           <span class="stats-card-subtitle">所看番剧在哪个季度最突出</span>
-          <button class="stats-refresh-btn" onclick="loadSeasonChart()" title="刷新图表">
+          <button class="stats-refresh-btn" onclick="loadSeasonChart()" data-tooltip="刷新图表">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
           </button>
         </div>
@@ -481,16 +481,16 @@
       <button class="btn btn-outline" id="mmMainActionBtn" onclick="mmMainAction()">自动匹配全部</button>
       <span class="mm-shift-tip" id="mmShiftTip" style="display:none">Shift+点击 多选</span>
       <div class="spacer"></div>
-      <button class="mm-filter-dot mm-filter-dot--active" data-mmfilter="all" onclick="mmSetFilter('all')" title="全部">
+      <button class="mm-filter-dot mm-filter-dot--active" data-mmfilter="all" onclick="mmSetFilter('all')" data-tooltip="全部">
         <span class="dot dot-all"></span>
       </button>
-      <button class="mm-filter-dot" data-mmfilter="pending" onclick="mmSetFilter('pending')" title="待处理">
+      <button class="mm-filter-dot" data-mmfilter="pending" onclick="mmSetFilter('pending')" data-tooltip="待处理">
         <span class="dot dot-pending"></span>
       </button>
-      <button class="mm-filter-dot" data-mmfilter="failed" onclick="mmSetFilter('failed')" title="失败">
+      <button class="mm-filter-dot" data-mmfilter="failed" onclick="mmSetFilter('failed')" data-tooltip="失败">
         <span class="dot dot-failed"></span>
       </button>
-      <button class="mm-filter-dot" data-mmfilter="matched" onclick="mmSetFilter('matched')" title="已匹配">
+      <button class="mm-filter-dot" data-mmfilter="matched" onclick="mmSetFilter('matched')" data-tooltip="已匹配">
         <span class="dot dot-matched"></span>
       </button>
       <div class="mm-list-search" style="width:160px;flex-shrink:0">
@@ -639,7 +639,7 @@
     <div class="settings-header">
       <div class="settings-header-top">
         <h2>设置</h2>
-        <button class="btn-icon visual-settings-btn" onclick="closeModal('settingsModal'); openVisualDock()" title="主题与视觉设置" aria-label="主题与视觉设置">
+        <button class="btn-icon visual-settings-btn" onclick="closeModal('settingsModal'); openVisualDock()" data-tooltip="主题与视觉设置" aria-label="主题与视觉设置">
           <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="16" height="16" rx="3" fill="var(--accent)" stroke="var(--accent)" stroke-width="0.5"/><text x="8" y="13" font-family="Georgia,'Times New Roman',serif" font-weight="700" font-size="12" fill="var(--bg-elevated)" text-anchor="middle">D</text></svg>
           <span>视觉</span>
         </button>
@@ -659,7 +659,7 @@
           <label for="settingsMediaDir">媒体目录路径</label>
           <div class="input-with-btn">
             <input type="text" id="settingsMediaDir" placeholder="E:/Anime">
-            <button class="btn btn-sm" onclick="browseFolder('settingsMediaDir')" title="选择文件夹">浏览</button>
+            <button class="btn btn-sm" onclick="browseFolder('settingsMediaDir')" data-tooltip="选择文件夹">浏览</button>
           </div>
           <p class="form-hint">动漫文件夹所在的根目录</p>
         </div>
@@ -672,7 +672,7 @@
           <label for="settingsMpvPath">mpv 可执行文件路径</label>
           <div class="input-with-btn">
             <input type="text" id="settingsMpvPath" placeholder="mpv">
-            <button class="btn btn-sm" onclick="browseFile('settingsMpvPath')" title="选择文件">浏览</button>
+            <button class="btn btn-sm" onclick="browseFile('settingsMpvPath')" data-tooltip="选择文件">浏览</button>
           </div>
         </div>
         <div class="form-group">

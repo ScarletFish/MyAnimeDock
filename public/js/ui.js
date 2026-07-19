@@ -80,7 +80,7 @@ function renderAnimeCard(anime, options = {}) {
 
   // More button
   const moreBtnHtml = showMoreBtn
-    ? ('<div class="card-more-btn" onclick="event.stopPropagation();openStatusModal(event, \'' + id + '\')" title="设置状态">' +
+    ? ('<div class="card-more-btn" onclick="event.stopPropagation();openStatusModal(event, \'' + id + '\')" data-tooltip="设置状态">' +
         '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">' +
           '<circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/>' +
         '</svg></div>')
@@ -150,4 +150,75 @@ function closeModal(el) {
       }
     }
   });
+})();
+
+// ─── Global Tooltip (styled replacement for native title attribute) ───
+// Use data-tooltip="text" on any element → hover shows modern tooltip.
+// Delay 500ms, fades in above the element, auto-positions.
+(function() {
+  var el = document.createElement('div');
+  el.id = 'globalTooltip';
+  document.body.appendChild(el);
+
+  var showTimer = null;
+  var hideTimer = null;
+  var current = null;
+
+  // Mouse enter an element with data-tooltip
+  document.addEventListener('mouseover', function(e) {
+    var target = e.target.closest('[data-tooltip]');
+    if (!target) { return; }
+    if (target === current) { return; }
+
+    clearTimeout(showTimer);
+    clearTimeout(hideTimer);
+    current = target;
+
+    showTimer = setTimeout(function() {
+      el.textContent = target.getAttribute('data-tooltip');
+      position(target);
+      el.classList.remove('is-exiting');
+      el.classList.add('is-visible');
+    }, 500);
+  });
+
+  // Mouse leave → hide
+  document.addEventListener('mouseout', function(e) {
+    var target = e.target.closest('[data-tooltip]');
+    if (!target) { return; }
+    if (target !== current && !target.contains(current)) { return; }
+
+    clearTimeout(showTimer);
+    current = null;
+    hideTimer = setTimeout(function() {
+      el.classList.add('is-exiting');
+      el.classList.remove('is-visible');
+    }, 80);
+  });
+
+  // Scroll → hide (prevents stuck tooltip)
+  document.addEventListener('scroll', function() {
+    if (el.classList.contains('is-visible')) {
+      clearTimeout(showTimer);
+      clearTimeout(hideTimer);
+      current = null;
+      el.classList.add('is-exiting');
+      el.classList.remove('is-visible');
+    }
+  }, true);
+
+  function position(target) {
+    var rect = target.getBoundingClientRect();
+    var tw = el.offsetWidth || 0;
+    // Centered above the target element
+    var left = rect.left + rect.width / 2 - (tw / 2);
+    var top = rect.top - 12;
+
+    if (tw) {
+      left = Math.max(8, Math.min(left, window.innerWidth - tw - 8));
+    }
+    top = Math.max(6, top);
+    el.style.left = left + 'px';
+    el.style.top = top + 'px';
+  }
 })();

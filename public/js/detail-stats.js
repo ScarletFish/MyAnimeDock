@@ -27,7 +27,7 @@ function renderEpisodeHeatmap(anime, animate) {
     const thumbUrl = `/api/thumbnail?path=${encodeURIComponent(ep.filePath)}&time=mid`;
     const epNum = String(ep.number).padStart(2, '0');
 
-    return `<div class="episode-card" data-index="${idx}" data-ep="${ep.number}" data-path="${escAttr(ep.filePath)}" data-pos="${ep.progress || 0}" data-title="${escAttr(title)}">
+    return `<div class="episode-card" data-index="${idx}" data-ep="${ep.number}" data-path="${escAttr(ep.filePath)}" data-pos="${ep.progress || 0}">
       <div class="episode-card-thumb">
         <div class="episode-card-bg" style="background-image:url('${escAttr(thumbUrl)}')"></div>
         <div class="episode-card-overlay"></div>
@@ -37,7 +37,7 @@ function renderEpisodeHeatmap(anime, animate) {
         </button>
       </div>
       <div class="episode-card-info">
-        <div class="episode-card-title">${escHtml(title)}</div>
+        <div class="episode-card-title" data-tooltip="${escAttr(title)}">${escHtml(title)}</div>
       </div>
     </div>`;
   }).join('');
@@ -165,15 +165,7 @@ function renderEpisodeHeatmap(anime, animate) {
   }
 
   // Bind card events
-  const tooltip = createEpisodeTooltip();
   grid.querySelectorAll('.episode-card').forEach(el => {
-    // Tooltip only triggers from the title text area
-    const titleEl = el.querySelector('.episode-card-title');
-    if (titleEl) {
-      titleEl.addEventListener('mouseenter', () => tooltip.show(el, el.dataset.title));
-      titleEl.addEventListener('mouseleave', () => tooltip.hide());
-    }
-    // Click/contextmenu on entire card
     el.addEventListener('click', () => {
       const path = el.dataset.path;
       const pos = parseFloat(el.dataset.pos) || 0;
@@ -189,57 +181,6 @@ function renderEpisodeHeatmap(anime, animate) {
       toggleWatched(anime.id, epNumber, !ep.watched);
     });
   });
-}
-
-// ─── Episode Card Tooltip (hover, fixed position above card) ───
-const _epTooltip = (() => {
-  const el = document.createElement('div');
-  el.id = 'episodeCardTooltip';
-  document.body.appendChild(el);
-  let showTimer = null;
-  let hideTimer = null;
-
-  function show(card, text) {
-    clearTimeout(showTimer);
-    clearTimeout(hideTimer);
-    // Delay before showing (native title behavior)
-    showTimer = setTimeout(() => {
-      el.textContent = text;
-      position(card);
-      el.classList.add('is-visible');
-    }, 500);
-  }
-
-  function hide() {
-    clearTimeout(showTimer);
-    hideTimer = setTimeout(() => {
-      el.classList.remove('is-visible');
-    }, 80);
-  }
-
-  function position(card) {
-    const titleEl = card.querySelector('.episode-card-title');
-    const anchor = titleEl || card;
-    const rect = anchor.getBoundingClientRect();
-    const tw = el.offsetWidth || 0;
-    // Centered above the title text
-    let left = rect.left + rect.width / 2 - (tw / 2);
-    let top = rect.top - 8;
-
-    // Keep within viewport
-    if (tw) {
-      left = Math.max(8, Math.min(left, window.innerWidth - tw - 8));
-    }
-    top = Math.max(6, top);
-    el.style.left = left + 'px';
-    el.style.top = top + 'px';
-  }
-
-  return { show, hide };
-})();
-
-function createEpisodeTooltip() {
-  return _epTooltip;
 }
 
 // ─── Watch Stats (Canvas Bar Chart) ───

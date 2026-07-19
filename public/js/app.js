@@ -731,10 +731,10 @@ function renderDashboardLayoutSettings() {
       '</label>' +
       '<span class="dashboard-layout-label">' + label + '</span>' +
       '<div class="dashboard-layout-arrows">' +
-        '<button class="btn btn-icon btn-xs" onclick="moveDashboardSection(\'' + s.id + '\', -1)" ' + (i === 0 ? 'disabled' : '') + ' title="上移">' +
+        '<button class="btn btn-icon btn-xs" onclick="moveDashboardSection(\'' + s.id + '\', -1)" ' + (i === 0 ? 'disabled' : '') + ' data-tooltip="上移">' +
           '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>' +
         '</button>' +
-        '<button class="btn btn-icon btn-xs" onclick="moveDashboardSection(\'' + s.id + '\', 1)" ' + (i === layout.length - 1 ? 'disabled' : '') + ' title="下移">' +
+        '<button class="btn btn-icon btn-xs" onclick="moveDashboardSection(\'' + s.id + '\', 1)" ' + (i === layout.length - 1 ? 'disabled' : '') + ' data-tooltip="下移">' +
           '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>' +
         '</button>' +
       '</div>' +

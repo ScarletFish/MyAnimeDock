@@ -203,8 +203,9 @@ module.exports = {
     res.on('close', () => { cancelledSyncSessions.set(sessionId, true); });
 
     (async () => {
-      const { registry, matchSeason, parallelMap } = require('../scrapers');
+      const { registry, matchSeason, parallelMap, syncAnilist } = require('../scrapers');
       const coverDir = path.join(DATA_DIR, 'covers');
+      const bannerDir = path.join(DATA_DIR, 'banners');
       const toSync = [];
       for (const animeId of animeIds) {
         if (cancelledSyncSessions.get(sessionId) || res.writableEnded) { send('cancelled', { ok: true }); break; }
@@ -236,6 +237,13 @@ module.exports = {
             if (match.matchedSeason != null) anime.matchedSeason = match.matchedSeason;
             if (match.totalSeasons != null) anime.totalSeasons = match.totalSeasons;
             send('progress', { animeId, success: true, meta, matchedSeason: match.matchedSeason, totalSeasons: match.totalSeasons });
+            // 拉取 AniList banner，完成后落盘（不阻塞 progress 事件，但确保 done 前 banner 就绪）
+            if (anime.anilistId === -1) anime.anilistId = null;
+            try {
+              await syncAnilist(anime, config, bannerDir, coverDir);
+            } catch (e) {
+              logger.error('AniList sync failed: ' + e.message);
+            }
           })();
           const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('处理超时')), 60000));
           await Promise.race([itemPromise, timeout]);

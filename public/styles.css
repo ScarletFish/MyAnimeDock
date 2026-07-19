@@ -1230,10 +1230,6 @@ html.theme-transitioning .theme-dock {
   .mm-batch-bar { animation: none !important; }
   .anime-card { animation: none !important; }
   #detailView.detail-enter-active { animation: none !important; }
-  .detail-enter-active .detail-info-panel,
-  .detail-enter-active .detail-right {
-    transition-duration: 0.01ms !important;
-  }
   .view { animation: none !important; }
   .detail-nav-arrow { transition-duration: 0.01ms !important; }
   /* Card hover effects */
@@ -1280,8 +1276,7 @@ html[data-reduce-motion="true"] .anime-card,
 html[data-reduce-motion="true"] #detailView.detail-enter-active,
 html[data-reduce-motion="true"] .view { animation: none !important; }
 
-html[data-reduce-motion="true"] .detail-enter-active .detail-info-panel,
-html[data-reduce-motion="true"] .detail-enter-active .detail-right,
+
 html[data-reduce-motion="true"] .detail-nav-arrow,
 html[data-reduce-motion="true"] .anime-card .overlay,
 html[data-reduce-motion="true"] .anime-card::after,

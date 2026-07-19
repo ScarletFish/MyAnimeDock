@@ -110,7 +110,9 @@ async function slideToAnime(id, direction) {
   const [loadOk] = await Promise.all([loadPromise, exitPromise]);
   if (!loadOk) return; // error already handled in loadAnimeData
 
-  // Re-render
+  // Re-render with entrance stagger（同步细节页入场方式）
+  const viewEl = document.getElementById('detailView');
+  viewEl.classList.add('detail-enter-active');
   renderDetail();
   showView('detail');
   const wrap = document.getElementById('detailCover');
@@ -121,26 +123,12 @@ async function slideToAnime(id, direction) {
   document.getElementById('headerTitle').textContent = currentAnime.bangumiTitle || currentAnime.title;
   if (!isWishlistMode) startDetailRefresh();
 
-  // Enter animation: slide + fade in from opposite direction
-  if (layout) {
-    gsap.set(layout, {
-      x: direction === 'prev' ? -50 : 50,
-      opacity: 0
-    });
-    gsap.to(layout, {
-      x: 0,
-      opacity: 1,
-      duration: 0.2,
-      ease: 'power2.out',
-      onComplete: () => {
-        isSliding = false;
-        if (navOverlay) navOverlay.style.pointerEvents = '';
-      }
-    });
-  } else {
-    isSliding = false;
-    if (navOverlay) navOverlay.style.pointerEvents = '';
-  }
+  // 内容分波入场（替代 GSAP 滑入）
+  setEntranceDelays(0.04, 0);
+  viewEl.classList.add('show-content');
+
+  isSliding = false;
+  if (navOverlay) navOverlay.style.pointerEvents = '';
 }
 
 async function loadAnimeData(id) {

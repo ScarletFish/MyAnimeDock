@@ -379,19 +379,45 @@
 .detail-enter-active .detail-cover-wrap {
   opacity: 0;
 }
-.detail-enter-active .detail-info-panel,
-.detail-enter-active .detail-right {
+/* 内容默认隐藏 + transition 声明：show-content 添加时触发过渡 */
+.detail-enter-active .detail-banner-right > *,
+.detail-enter-active #episodeHeatmap,
+.detail-enter-active .detail-char-card,
+.detail-enter-active #watchStats {
   opacity: 0;
   transform: translateY(12px);
-  transition: all 0.35s var(--ease-out);
+  transition: opacity 0.25s ease-out, transform 0.25s ease-out;
+  /* transitionDelay 由 JS 设置 inline，实现分波 */
 }
 .detail-enter-active.show-content .detail-cover-wrap {
   opacity: 1;
 }
-.detail-enter-active.show-content .detail-info-panel,
-.detail-enter-active.show-content .detail-right {
+.detail-enter-active.show-content .detail-banner-right > *,
+.detail-enter-active.show-content #episodeHeatmap,
+.detail-enter-active.show-content .detail-char-card,
+.detail-enter-active.show-content #watchStats {
   opacity: 1;
   transform: translateY(0);
+}
+
+/* reduce-motion: 直接显示，跳过过渡 */
+@media (prefers-reduced-motion: reduce) {
+  .detail-enter-active .detail-banner-right > *,
+  .detail-enter-active #episodeHeatmap,
+  .detail-enter-active .detail-char-card,
+  .detail-enter-active #watchStats {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
+html[data-reduce-motion="true"] .detail-enter-active .detail-banner-right > *,
+html[data-reduce-motion="true"] .detail-enter-active #episodeHeatmap,
+html[data-reduce-motion="true"] .detail-enter-active .detail-char-card,
+html[data-reduce-motion="true"] .detail-enter-active #watchStats {
+  opacity: 1 !important;
+  transform: none !important;
+  transition: none !important;
 }
 
 .bangumi-search-results {

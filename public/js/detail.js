@@ -77,6 +77,12 @@ AppState.on('detailSourceView', v => { detailSourceView = v; });
 
 function resetDetailEnter() {
   clearTimeout(charResizeTimer);
+  // 阻止过渡回退动画（class 移除时 opacity→0 的过渡）
+  document.querySelectorAll('.detail-banner-right > *, .detail-char-card, #episodeHeatmap, #watchStats')
+    .forEach(el => {
+      el.style.transition = 'none';
+      el.style.transitionDelay = '';
+    });
   const viewEl = document.getElementById('detailView');
   if (viewEl) {
     viewEl.classList.remove('detail-enter-active', 'show-content');
@@ -131,10 +137,14 @@ async function showDetail(id, fromRect, fromSrc) {
       showView('detail');
       animateHeroCoverFlip(fromRect, fromSrc);
     } else {
+      const viewEl = document.getElementById('detailView');
+      viewEl.classList.add('detail-enter-active');
       showView('detail');
       const wrap = document.getElementById('detailCover');
       wrap.style.opacity = '1';
       wrap.style.transform = 'scale(1)';
+      setEntranceDelays(0.04 /* banner间隔 */, 0 /* 基础偏移 */);
+      viewEl.classList.add('show-content');
     }
 
     document.getElementById('headerTitle').textContent = currentAnime.bangumiTitle || currentAnime.title;
@@ -151,6 +161,42 @@ async function showDetail(id, fromRect, fromSrc) {
   } catch (e) {
     showToast('加载详情失败: ' + e.message, 'error');
   }
+}
+
+/**
+ * 设置 CSS transition-delay 分波参数（不触发过渡，由后续 addClass('show-content') 触发）。
+ * 必须在 addClass('show-content') 之前调用。
+ * @param {number} bannerStep - banner 每子项间隔（Flip 0.08, 无 Flip 0.06）
+ * @param {number} baseOffset - 基础偏移（Flip 0.35 在 Flip 期间播放，无 Flip 0）
+ */
+function setEntranceDelays(bannerStep, baseOffset) {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
+      document.documentElement.dataset.reduceMotion === 'true') return;
+
+  // 恢复 CSS transition 属性（resetDetailEnter 设了 transition:none）
+  document.querySelectorAll('.detail-banner-right > *, .detail-char-card, #episodeHeatmap, #watchStats')
+    .forEach(el => el.style.transition = '');
+
+  const b = baseOffset || 0;
+  // banner-right children：从 b 开始，每项间隔 bannerStep
+  document.querySelectorAll('.detail-banner-right > *').forEach((el, i) => {
+    el.style.transitionDelay = `${b + i * bannerStep}s`;
+  });
+
+  // heatmap：0.10s 开始 → 0.35s (Flip完成) 结束 (0.10+0.25=0.35)
+  const heatEl = document.getElementById('episodeHeatmap');
+  if (heatEl) heatEl.style.transitionDelay = `${b + 0.06}s`;
+
+  // char-cards：center-out
+  const cards = document.querySelectorAll('.detail-char-card');
+  const center = (cards.length - 1) / 2;
+  cards.forEach((card, i) => {
+    card.style.transitionDelay = `${b + 0.12 + Math.abs(i - center) * 0.02}s`;
+  });
+
+  // watch-stats
+  const stEl = document.getElementById('watchStats');
+  if (stEl) stEl.style.transitionDelay = `${b + 0.18}s`;
 }
 
 function animateHeroCoverFlip(fromRect, fromSrc) {
@@ -192,6 +238,9 @@ function animateHeroCoverFlip(fromRect, fromSrc) {
   hero.style.top = toRect.top + 'px';
   hero.style.width = toRect.width + 'px';
   hero.style.height = toRect.height + 'px';
+
+  // 设 stagger delay 后再触发，transition 与 Flip 同步播放
+  setEntranceDelays(0.05 /* banner间隔 */, 0.04 /* 基础偏移 */);
 
   viewEl.classList.add('show-content');
 

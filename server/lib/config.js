@@ -28,6 +28,7 @@ const DEFAULT_CONFIG = {
   uiScale: 1.0,
   apiSources: [
     { type: 'bangumi', url: 'https://api.bangumi.lol', key: '' },
+    { type: 'anilist', url: '', key: '' },
   ],
 };
 

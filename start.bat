@@ -53,6 +53,11 @@ echo.
 pause
 goto MENU
 
+:GET_VERSION
+:: Read version silently (no prompt) â€?for builds
+for /f %%a in ('powershell -NoProfile -Command "Select-String -Path 'src-tauri\Cargo.toml' -Pattern '^version = \"(.+)\"' | ForEach-Object { $_.Matches.Groups[1].Value }"') do set "VERSION=%%a"
+goto :EOF
+
 :SET_VERSION
 :: Read + prompt + update version in Cargo.toml (single source of truth)
 :: Returns: sets VERSION env var
@@ -80,11 +85,6 @@ goto :EOF
 cls
 echo --- Build MSI Installer ---
 echo.
-call :SET_VERSION
-if %ERRORLEVEL% neq 0 goto MENU
-echo.
-echo Building MSI installer for v!VERSION! ...
-echo.
 call npm run build:msi
 if %ERRORLEVEL% neq 0 (
     echo.
@@ -102,11 +102,6 @@ goto MENU
 :BUILD_NSIS
 cls
 echo --- Build NSIS Installer ---
-echo.
-call :SET_VERSION
-if %ERRORLEVEL% neq 0 goto MENU
-echo.
-echo Building NSIS installer for v!VERSION! ...
 echo.
 call npm run build:nsis
 if %ERRORLEVEL% neq 0 (

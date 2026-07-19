@@ -83,6 +83,11 @@ module.exports = {
       if (!filePath) { jsonResp(res, 400, { error: 'filePath is required' }); return; }
       if (!fs.existsSync(filePath)) { jsonResp(res, 404, { error: 'File not found' }); return; }
       const mpvPath = config.mpvPath || 'mpv';
+      const { checkMpvAvailable } = require('../mpv-controller');
+      if (!checkMpvAvailable(mpvPath)) {
+        jsonResp(res, 400, { error: '未检测到 mpv 播放器。请安装 mpv 后在设置 → 播放 中配置路径。' });
+        return;
+      }
       let targetAnime, targetEp;
       for (const a of data.library) {
         const ep = a.episodes.find(e => e.filePath === filePath);

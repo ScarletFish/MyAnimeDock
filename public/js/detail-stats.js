@@ -1,6 +1,7 @@
 // ─── Episode List (full-width horizontal scroll) ───
 
 let watchStatsVersion = 0;
+let _episodeThumbObserver = null;
 
 function renderEpisodeHeatmap(anime, animate) {
   const grid = document.getElementById('episodeHeatmapGrid');
@@ -29,7 +30,7 @@ function renderEpisodeHeatmap(anime, animate) {
 
     return `<div class="episode-card" data-index="${idx}" data-ep="${ep.number}" data-path="${escAttr(ep.filePath)}" data-pos="${ep.progress || 0}">
       <div class="episode-card-thumb">
-        <div class="episode-card-bg" style="background-image:url('${escAttr(thumbUrl)}')"></div>
+        <div class="episode-card-bg" data-src="${escAttr(thumbUrl)}"></div>
         <div class="episode-card-overlay"></div>
         <div class="episode-card-num">${epNum}</div>
         <button class="episode-card-play" data-path="${escAttr(ep.filePath)}" data-pos="${ep.progress || 0}" onclick="event.stopPropagation();playEpisode(this.dataset.path, parseFloat(this.dataset.pos) || 0)">
@@ -162,6 +163,32 @@ function renderEpisodeHeatmap(anime, animate) {
         }
       });
     }
+  }
+
+  // ─── Lazy-load thumbnails via IntersectionObserver ───
+  if (_episodeThumbObserver) _episodeThumbObserver.disconnect();
+  const thumbEls = grid.querySelectorAll('.episode-card-bg[data-src]');
+  if ('IntersectionObserver' in window && thumbEls.length > 0) {
+    _episodeThumbObserver = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          const el = entry.target;
+          const src = el.getAttribute('data-src');
+          if (src) {
+            el.style.backgroundImage = `url("${src}")`;
+            el.removeAttribute('data-src');
+          }
+          _episodeThumbObserver.unobserve(el);
+        }
+      }
+    }, { root: grid, rootMargin: '100px' });
+    thumbEls.forEach(el => _episodeThumbObserver.observe(el));
+  } else {
+    // Fallback: load all at once
+    thumbEls.forEach(el => {
+      const src = el.getAttribute('data-src');
+      if (src) { el.style.backgroundImage = `url("${src}")`; el.removeAttribute('data-src'); }
+    });
   }
 
   // Bind card events

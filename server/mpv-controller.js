@@ -175,4 +175,24 @@ function stopCurrent() {
     if (activeSession) { activeSession.kill(); activeSession = null; }
 }
 
-module.exports = { startMpv: start, stopCurrent };
+function checkMpvAvailable(mpvPath) {
+    const isWin = process.platform === 'win32';
+    // Resolve 'mpv' / 'mpv.com' → 'mpv.exe' on Windows (same logic as startMpv)
+    if (isWin && (mpvPath === 'mpv' || mpvPath === 'mpv.com')) {
+        mpvPath = 'mpv.exe';
+    }
+    // Absolute path → direct exists check
+    if (path.isAbsolute(mpvPath) || mpvPath.includes('/') || mpvPath.includes('\\')) {
+        return fs.existsSync(mpvPath);
+    }
+    // Search PATH
+    const cmd = isWin ? 'where' : 'command -v';
+    try {
+        require('child_process').execSync(`${cmd} ${mpvPath}`, { stdio: 'ignore' });
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+module.exports = { startMpv: start, stopCurrent, checkMpvAvailable };

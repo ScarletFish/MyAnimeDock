@@ -64,7 +64,7 @@
     if (!tauriWin) return;
     // Only primary button, skip interactive elements
     if (e.button !== 0) return;
-    if (e.target.closest('button, input, select, textarea, a')) return;
+    if (e.target.closest('button, input, select, textarea, a, #globalSearchResults')) return;
     tauriWin.startDragging();
   });
 

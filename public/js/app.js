@@ -671,6 +671,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   applyZoom(configCache?.uiScale || 1);
   showView('library');
 
+  // First-run: show onboarding overlay (defined in onboarding.js)
+  if (configCache?.firstRun) {
+    if (typeof showOnboarding === 'function') showOnboarding();
+  }
+
   // Handle Bangumi OAuth redirect result
   const params = new URLSearchParams(window.location.search);
   const authResult = params.get('bangumi_auth');

@@ -702,7 +702,7 @@
               </div>
               <div class="api-source-fields">
                 <input type="text" class="api-source-url" id="bangumiUrl" placeholder="API 地址" value="https://api.bangumi.lol">
-                <p class="form-hint">默认使用 bangumi.lol，可换为镜像站如 api.bgm.tv</p>
+                <p class="form-hint">默认使用镜像站 api.bangumi.lol，官方源为 api.bgm.tv</p>
               </div>
             </div>
           </div>
@@ -732,7 +732,7 @@
           </div>
         </div>
         <div class="form-group">
-          <label>AniList（可选，罗马音标题搜索用）</label>
+          <label>AniList</label>
           <div class="api-source-card api-source-card--fixed">
             <div class="api-source-body">
               <div class="api-source-type">
@@ -743,7 +743,7 @@
                 </label>
               </div>
               <div class="api-source-fields">
-                <p class="form-hint">启用后，罗马音标题（如 Gochiusa）会先通过 AniList 获取日文名，再搜 Bangumi。无需 API Key。</p>
+                <p class="form-hint">双源匹配：AniList 提供罗马音 + banner 图，Bangumi 提供元数据。无需 API Key。</p>
               </div>
             </div>
           </div>
@@ -798,8 +798,65 @@ function switchSettingsTab(btn, tab) {
 </div>
 
 <!-- Toast -->
-<!-- Toast -->
 <div class="toast-container" id="toastContainer" role="alert" aria-live="polite"></div>
+
+<!-- Onboarding overlay (first-run welcome) -->
+<div id="onboardingOverlay" class="onboarding-overlay hidden">
+  <div class="onboarding__card">
+    <div class="onboarding__header">
+      <svg class="onboarding__icon" viewBox="0 0 48 48" fill="none">
+        <rect x="8" y="12" width="32" height="28" rx="4" stroke="currentColor" stroke-width="2"/>
+        <circle cx="24" cy="28" r="6" stroke="currentColor" stroke-width="2"/>
+        <path d="M24 16V22M24 34V40" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <path d="M16 30L20 28M28 28L32 30" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M14 12V8H34V12" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+      </svg>
+      <h1 class="onboarding__title">欢迎使用 MyAnimeDock</h1>
+      <p class="onboarding__desc">自托管动漫媒体库管理器。智能扫描文件夹、自动匹配 Bangumi 元数据、mpv 直接播放并追踪进度。</p>
+    </div>
+    <div class="onboarding__body">
+      <div class="onb-field" id="onbDirGroup">
+        <label class="onb-field__label">媒体目录</label>
+        <div class="onb-field__row">
+          <input type="text" class="onb-field__input" id="onbMediaDir" placeholder="选择动漫文件夹…" autocomplete="off" spellcheck="false">
+          <button class="onb-field__browse" id="onbBrowseDir">浏览</button>
+        </div>
+        <div class="onb-field__foot">
+          <a href="#" class="onb-field__skip" id="onbSkipDir">暂时跳过</a>
+        </div>
+      </div>
+      <div class="onb-field" id="onbMpvGroup">
+        <label class="onb-field__label">mpv 播放器 <span class="onb-field__optional">（可选）</span></label>
+        <div class="onb-field__row">
+          <input type="text" class="onb-field__input" id="onbMpvPath" placeholder="留空使用系统 PATH 中的 mpv" autocomplete="off" spellcheck="false">
+          <button class="onb-field__browse" id="onbBrowseMpv">浏览</button>
+        </div>
+        <div class="onb-field__foot">
+          <a href="#" class="onb-field__skip" id="onbSkipMpv">暂时跳过</a>
+        </div>
+      </div>
+      <div class="onb-error hidden" id="onbError"></div>
+      <button class="onb-submit" id="onbStart">开始使用</button>
+    </div>
+  </div>
+</div>
+
+<!-- Keyboard shortcuts help overlay -->
+<div id="kbdHelpOverlay" class="kbd-help-overlay hidden">
+  <div class="kbd-help__card">
+    <h2 class="kbd-help__title">键盘快捷键</h2>
+    <div class="kbd-help__grid">
+      <div class="kbd-help__row"><kbd>1</kbd><span>发现页</span></div>
+      <div class="kbd-help__row"><kbd>2</kbd><span>动漫库</span></div>
+      <div class="kbd-help__row"><kbd>3</kbd><span>我的列表</span></div>
+      <div class="kbd-help__row"><kbd>4</kbd><span>统计</span></div>
+      <div class="kbd-help__row"><kbd>/</kbd><span>搜索</span></div>
+      <div class="kbd-help__row"><kbd>?</kbd><span>快捷键帮助</span></div>
+      <div class="kbd-help__row"><kbd>Esc</kbd><span>关闭弹窗 / 返回</span></div>
+    </div>
+    <p class="kbd-help__hint">点击任意位置关闭</p>
+  </div>
+</div>
 
 <script src="/vendor/d3/d3.min.js"></script>
 <script src="/vendor/wordcloud/wordcloud2.js"></script>
@@ -822,5 +879,7 @@ function switchSettingsTab(btn, tab) {
 <script src="/js/titlebar.js"></script>
 <script src="/js/app.js"></script>
 <script src="/js/search.js"></script>
+<script src="/js/onboarding.js"></script>
+<script src="/js/keyboard.js"></script>
 </body>
 </html>

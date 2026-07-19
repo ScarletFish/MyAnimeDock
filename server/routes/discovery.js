@@ -237,27 +237,24 @@ module.exports = {
           bangumiSync.pushStatusChange(anime.id, data);
         }
       }
+      // 先存初始数据（暂无封面的条目）
+      await db.saveLibrary(data);
+      await db.saveMyList(data);
+      saveScannedTree(data.scannedTree);
+      // 等待封面元数据下载完成（覆盖 coverUrl/localCover），每个 fetch 内部已落盘
+      await Promise.all(metadataFetches);
+      jsonResp(res, 200, { ok: true, imported });
+      // 后台拉取 AniList banner（不影响封面显示）
       const bannerDir = path.join(DATA_DIR, 'banners');
       const coverDir = path.join(DATA_DIR, 'covers');
-      (async () => {
-        try {
-          await db.saveLibrary(data);
-          await db.saveMyList(data);
-          saveScannedTree(data.scannedTree);
-          await Promise.all(metadataFetches);
-          imported.forEach(id => {
-            const anime = data.library.find(a => a.id === id);
-            if (anime && anime.bangumiId) {
-              syncAnilist(anime, config, bannerDir, coverDir)
-                .then(() => db.saveLibrary(data))
-                .catch(e => logger.warn(`AniList sync failed for ${id}: ${e.message}`));
-            }
-          });
-        } catch (e) {
-          logger.warn('Import/background save error: ' + e.message);
+      imported.forEach(id => {
+        const anime = data.library.find(a => a.id === id);
+        if (anime && anime.bangumiId) {
+          syncAnilist(anime, config, bannerDir, coverDir)
+            .then(() => db.saveLibrary(data))
+            .catch(e => logger.warn(`AniList sync failed for ${id}: ${e.message}`));
         }
-      })();
-      jsonResp(res, 200, { ok: true, imported });
+      });
     } catch (e) {
       jsonResp(res, 400, { error: 'Invalid request body' });
     }

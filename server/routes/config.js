@@ -6,13 +6,14 @@ const { saveConfig } = require('../lib/config');
 
 module.exports = {
   handleGetConfig(req, res, state) {
-    const { config, autoImportResult } = state;
+    const { config, autoImportResult, data } = state;
     const dirValid = config.mediaDir
       ? fs.existsSync(config.mediaDir) && fs.statSync(config.mediaDir).isDirectory()
       : false;
+    const firstRun = !config.mediaDir && (!data?.library || data.library.length === 0);
     const importInfo = { ...autoImportResult };
     state.autoImportResult = { count: 0, message: '' }; // 一次性消费
-    jsonResp(res, 200, { ...config, dirValid, autoImport: importInfo });
+    jsonResp(res, 200, { ...config, dirValid, firstRun, autoImport: importInfo });
   },
 
   handleGetNotifications(req, res, state) {

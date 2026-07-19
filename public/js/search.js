@@ -106,6 +106,23 @@
     results.classList.remove('hidden');
   }
 
+  // ─── Highlight management for keyboard navigation ───
+  function getHighlightedIndex(items) {
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].classList.contains('highlighted')) return i;
+    }
+    return -1;
+  }
+
+  function setHighlight(items, idx) {
+    for (var i = 0; i < items.length; i++) {
+      items[i].classList.remove('highlighted');
+    }
+    if (idx >= 0 && idx < items.length) {
+      items[idx].classList.add('highlighted');
+    }
+  }
+
   // ─── Navigation ───
   function navigateTo(itemEl) {
     var type = itemEl.getAttribute('data-type');
@@ -155,15 +172,36 @@
       if (item) navigateTo(item);
     });
 
-    // Escape / Enter
+    // Escape / Arrow keys / Enter
     input.addEventListener('keydown', function(e) {
       if (e.key === 'Escape') {
         closeDropdown();
         input.blur();
+        return;
       }
-      if (e.key === 'Enter') {
-        var first = results.querySelector('.titlebar__search-item');
-        if (first) navigateTo(first);
+
+      var items = results.querySelectorAll('.titlebar__search-item');
+      if (items.length === 0) return;
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        var cur = getHighlightedIndex(items);
+        setHighlight(items, cur < items.length - 1 ? cur + 1 : 0);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        var cur = getHighlightedIndex(items);
+        if (cur <= 0) {
+          setHighlight(items, items.length - 1); // wrap to last
+        } else {
+          setHighlight(items, cur - 1);
+        }
+      } else if (e.key === 'Enter') {
+        var highlighted = results.querySelector('.titlebar__search-item.highlighted');
+        if (highlighted) {
+          navigateTo(highlighted);
+        } else if (items.length > 0) {
+          navigateTo(items[0]);
+        }
       }
     });
   }

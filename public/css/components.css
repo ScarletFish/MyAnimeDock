@@ -1370,19 +1370,6 @@ input[type="range"]::-webkit-slider-thumb {
   position: relative;
 }
 
-.context-menu-item:focus,
-.context-menu-item:focus-visible,
-.context-menu-item *:focus,
-.context-menu-item *:focus-visible {
-  outline: none;
-}
-
-/* Force: ID specificity beats *:focus-visible global rule */
-#contextMenu,
-#contextMenu * {
-  outline: none !important;
-}
-
 .context-menu-item svg {
   width: 14px;
   height: 14px;

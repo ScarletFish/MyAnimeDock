@@ -1085,8 +1085,8 @@ html {
 
 /* ─── Accessibility ─── */
 *:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline: 1px solid rgba(255, 255, 255, 0.15);
+  outline-offset: 1px;
 }
 
 /* ─── View Transitions ─── */

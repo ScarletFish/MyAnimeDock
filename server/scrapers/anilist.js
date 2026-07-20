@@ -6,12 +6,12 @@ const logger = require('../logger').child('[ANILIST]');
 
 const ANILIST_API = 'https://graphql.anilist.co';
 const ANILIST_IMAGE_BASE = 'https://s4.anilist.co/file';
-const TIMEOUT = 3000;
+const TIMEOUT = 5000;
 
 // Rate limiter: ensure minimum 1.5s gap between requests
 let _lastRequestTime = 0;
 const MIN_REQUEST_INTERVAL = 1500;
-const MAX_RETRIES = 3;
+const MAX_RETRIES = 2;
 const RETRY_BASE_DELAY = 1500;
 
 async function rateLimitWait() {
@@ -28,12 +28,12 @@ let curlFallbackUntil = 0;
 const CURL_COOLDOWN = 60000;
 
 function curlFetch(url, body) {
-  const args = ['-s', '--max-time', '5', '-X', 'POST',
+  const args = ['-s', '--max-time', '8', '-X', 'POST',
     '-H', 'Content-Type: application/json',
     '-d', body,
     '-H', 'Accept: application/json',
     url];
-  const result = spawnSync('curl', args, { timeout: 4000, encoding: 'utf-8' });
+  const result = spawnSync('curl', args, { timeout: 10000, encoding: 'utf-8' });
   if (result.error) throw new Error(`curl 调用失败: ${result.error.message}`);
   if (result.stderr) logger.error('curl stderr:', result.stderr);
   if (!result.stdout || !result.stdout.trim()) throw new Error('curl 返回空响应');

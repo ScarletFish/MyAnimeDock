@@ -65,7 +65,7 @@ async function runAnilistBackfill(state) {
       logger.error(`Backfill: ${anime.title} → ${e.message}`);
       return 'failed';
     }
-  }, 3);
+  }, 2);
 
   await db.saveLibrary(data);
 
@@ -195,9 +195,9 @@ module.exports = {
         } catch (e) {
           return { animeId, success: false, error: e.message };
         }
-      }, 3);
+      }, 2);
       results.push(...syncResults);
-      Promise.all([db.saveLibrary(data), saveScannedTree(data.scannedTree)]);
+      await Promise.all([db.saveLibrary(data), saveScannedTree(data.scannedTree)]);
       const { registry: reg } = require('../scrapers');
       reg.clearSearchCache();
       jsonResp(res, 200, { ok: true, results });
@@ -295,10 +295,10 @@ module.exports = {
           send('progress', { animeId, success: false, error: e.message });
         }
         processed++;
-        if (processed % 5 === 0) Promise.all([db.saveLibrary(data), saveScannedTree(data.scannedTree)]);
-      }, 3);
+        if (processed % 5 === 0) await Promise.all([db.saveLibrary(data), saveScannedTree(data.scannedTree)]);
+      }, 2);
 
-      Promise.all([db.saveLibrary(data), saveScannedTree(data.scannedTree)]);
+      await Promise.all([db.saveLibrary(data), saveScannedTree(data.scannedTree)]);
       const { registry: reg } = require('../scrapers');
       reg.clearSearchCache();
       cancelledSyncSessions.delete(sessionId);

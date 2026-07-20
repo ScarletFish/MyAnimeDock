@@ -5,17 +5,17 @@ const { nodeFetch } = require('./node-fetch');
 const logger = require('../logger').child('[BANGUMI]');
 
 const USER_AGENT = 'anime-manager (https://github.com/ScarletFish/Gallery)';
-const TIMEOUT = 3000;
+const TIMEOUT = 5000;
 
 let useCurlFallback = false;
 let curlFallbackUntil = 0;
 const CURL_COOLDOWN = 60000;
 
 function curlFetch(method, url, body) {
-  const args = ['-s', '--max-time', '5', '-X', method];
+  const args = ['-s', '--max-time', '8', '-X', method];
   if (body) args.push('-H', 'Content-Type: application/json', '-d', body);
   args.push('-H', `User-Agent: ${USER_AGENT}`, url);
-  const result = spawnSync('curl', args, { timeout: 4000, encoding: 'utf-8' });
+  const result = spawnSync('curl', args, { timeout: 10000, encoding: 'utf-8' });
   if (result.error) throw new Error(`curl 调用失败: ${result.error.message}`);
   if (result.stderr) logger.error('curl stderr:', result.stderr);
   if (!result.stdout || !result.stdout.trim()) throw new Error('curl 返回空响应');

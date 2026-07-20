@@ -7,13 +7,7 @@ let mylistSortOpen = false;
 // 引用自 ui.js 的 STATUS_LABELS
 const MYLIST_LABELS = STATUS_LABELS;
 const MYLIST_STATUS_ORDER = ['watching', 'wish', 'completed', 'on_hold', 'dropped'];
-const MYLIST_SORT_OPTIONS = [
-  { key: 'name', label: '名称' },
-  { key: 'recent', label: '最近观看' },
-  { key: 'updated', label: '最近更新' },
-  { key: 'rating', label: '评分' },
-  { key: 'imported', label: '导入时间' },
-];
+const MYLIST_SORT_OPTIONS = LIBRARY_SORT_OPTIONS;
 
 async function loadMyList() {
   try {
@@ -82,64 +76,6 @@ function renderMyListSortDropdown() {
 
 // ─── Sorting ───
 
-function sortMyListItems(items) {
-  var FORMAT_RANK = { TV: 0, OVA: 1, SP: 2, MOVIE: 3 };
-  function getBaseKey(a) {
-    var t = (a.bangumiTitle || a.title || '').toLowerCase();
-    t = t.replace(/[♪♫☆★！!？?~～\s]+/g, ' ').trim();
-    t = t.replace(/\d+季/g, '').trim();
-    t = t.replace(/\s*(OVA|SP|OAD|剧场版|Movie|Special|剧场版动画|夏日时光|Dear My Sister|Sing For You|BLOOM|Nachuyachumi).*$/i, '').trim();
-    t = t.replace(/\s+\d+.*$/, '').trim();
-    return t || (a.title || a.id || '').toLowerCase();
-  }
-  function getSeasonRank(a) {
-    var p = (a.platform || '').toUpperCase();
-    var formatRank = FORMAT_RANK[p] != null ? FORMAT_RANK[p] : 0;
-    var season = a.matchedSeason || a.season || 1;
-    return formatRank * 100 + season;
-  }
-  function getJpName(a) {
-    return (a.bangumiTitleJp || a.bangumiTitle || a.title || '').toLowerCase();
-  }
-  function getLastWatched(a) {
-    if (!a.episodes || a.episodes.length === 0) return '';
-    var latest = '';
-    a.episodes.forEach(function(e) {
-      if (e.updatedAt && e.updatedAt > latest) latest = e.updatedAt;
-    });
-    return latest;
-  }
-  function getBlockScore(block, key) {
-    if (key === 'rating') return Math.max.apply(null, block.map(function(a) { return a.rating || 0; }));
-    if (key === 'recent') return block.reduce(function(m, a) { var lw = getLastWatched(a); return lw > m ? lw : m; }, '');
-    if (key === 'updated') return block.reduce(function(m, a) { return (a.completedAt || a.startedAt || '') > m ? a.completedAt || a.startedAt || '' : m; }, '');
-    if (key === 'imported') return block.reduce(function(m, a) { var i = a.importedAt || 'z'; return i < m ? i : m; }, 'z');
-    return getJpName(block[0]);
-  }
-
-  // Group by base title
-  var groups = {};
-  items.forEach(function(a) {
-    var key = getBaseKey(a);
-    if (!groups[key]) groups[key] = [];
-    groups[key].push(a);
-  });
-  var blocks = Object.values(groups);
-  blocks.forEach(function(block) { block.sort(function(a, b) { return getSeasonRank(a) - getSeasonRank(b); }); });
-
-  // Sort blocks
-  blocks.sort(function(a, b) {
-    var sa = getBlockScore(a, mylistSort);
-    var sb = getBlockScore(b, mylistSort);
-    if (mylistSort === 'imported') return sa.localeCompare(sb);
-    return sb.localeCompare(sa) || sa.localeCompare(sb);
-  });
-
-  var result = [];
-  blocks.forEach(function(block) { block.forEach(function(a) { result.push(a); }); });
-  return result;
-}
-
 // ─── Filter & Render ───
 
 function setMyListFilter(filter) {
@@ -157,7 +93,7 @@ function renderMyList() {
     filtered = mylistData.filter(item => item.status === mylistFilter);
   }
 
-  filtered = sortMyListItems(filtered);
+  filtered = sortLibraryItems(filtered, mylistSort);
 
   if (filtered.length === 0) {
     grid.innerHTML = '';

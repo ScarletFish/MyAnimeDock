@@ -303,7 +303,8 @@ function renderContinueSection(data, container) {
 }
 
 /** Sort anime library items */
-function sortLibraryItems(items) {
+function sortLibraryItems(items, sortMode) {
+  var sortKey = sortMode || librarySort;
   var FORMAT_RANK = { TV: 0, OVA: 1, SP: 2, MOVIE: 3 };
 
   function getBaseKey(a) {
@@ -375,10 +376,10 @@ function sortLibraryItems(items) {
 
   // Step 3: Sort blocks by selected option
   blocks.sort(function(a, b) {
-    var sa = getBlockScore(a, librarySort);
-    var sb = getBlockScore(b, librarySort);
-    if (librarySort === 'name' || librarySort === 'rating' || librarySort === 'recent' || librarySort === 'updated') {
-      if (librarySort === 'imported') return sa.localeCompare(sb);
+    var sa = getBlockScore(a, sortKey);
+    var sb = getBlockScore(b, sortKey);
+    if (sortKey === 'name' || sortKey === 'rating' || sortKey === 'recent' || sortKey === 'updated') {
+      if (sortKey === 'imported') return sa.localeCompare(sb);
       return sb.localeCompare(sa) || sa.localeCompare(sb);
     }
     return sa.localeCompare(sb);

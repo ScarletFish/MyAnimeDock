@@ -175,7 +175,6 @@ function renderDashboard() {
     var contBody = document.getElementById('dashSection-continueWatch');
     if (contBody) renderContinueSection(libraryData, contBody);
   }
-  renderStatusGrids(libraryData);
   if (!librarySortDropdown) {
     librarySortDropdown = createDropdown({
       containerId: 'librarySortDropdown',
@@ -184,6 +183,7 @@ function renderDashboard() {
       onSelect: function() { renderStatusGrids(libraryData); }
     });
   }
+  renderStatusGrids(libraryData);
   librarySortDropdown.render();
 }
 

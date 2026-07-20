@@ -352,7 +352,8 @@ function switchLibrarySort(mode) {
   renderStatusGrids(libraryData);
 }
 
-function toggleSortDropdown() {
+function toggleSortDropdown(e) {
+  if (e) e.stopPropagation();
   librarySortOpen = !librarySortOpen;
   renderSortDropdown();
 }
@@ -367,7 +368,7 @@ function renderSortDropdown() {
     '</button>' +
     (librarySortOpen ? '<div class="library-sort-menu">' +
       LIBRARY_SORT_OPTIONS.map(function(o) {
-        return '<div class="library-sort-option' + (o.key === librarySort ? ' active' : '') + '" onclick="switchLibrarySort(\'' + o.key + '\')">' + o.label + '</div>';
+        return '<div class="library-sort-option' + (o.key === librarySort ? ' active' : '') + '" onclick="event.stopPropagation(); switchLibrarySort(\'' + o.key + '\')">' + o.label + '</div>';
       }).join('') +
     '</div>' : '');
 }

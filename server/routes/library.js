@@ -148,7 +148,6 @@ module.exports = {
       for (const animeId of animeIds) {
         const anime = data.library.find(a => a.id === animeId);
         if (!anime) { results.push({ animeId, success: false, error: 'Anime not found' }); continue; }
-        if (anime.bangumiId) { results.push({ animeId, success: true, skipped: true, message: '已有元数据' }); continue; }
         toSync.push({ animeId, anime });
       }
       const syncResults = await parallelMap(toSync, async ({ animeId, anime }) => {
@@ -211,7 +210,6 @@ module.exports = {
         if (cancelledSyncSessions.get(sessionId) || res.writableEnded) { send('cancelled', { ok: true }); break; }
         const anime = data.library.find(a => a.id === animeId);
         if (!anime) { send('progress', { animeId, success: false, error: 'Anime not found' }); continue; }
-        if (anime.bangumiId) { send('progress', { animeId, success: true, skipped: true, message: '已有元数据' }); continue; }
         toSync.push({ animeId, anime });
       }
       let processed = 0;

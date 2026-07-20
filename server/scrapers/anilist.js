@@ -178,10 +178,10 @@ class AniListScraper {
   }
 
   enabled(config) {
-    if (config?.apiSources) {
-      return config.apiSources.some(s => s.type === 'anilist');
-    }
-    return true; // AniList is free, enabled by default
+    if (!config?.apiSources) return true; // No config → enabled by default
+    const src = config.apiSources.find(s => s.type === 'anilist');
+    if (!src) return true; // Not listed → enabled by default (AniList is free)
+    return src.enabled !== false; // Explicitly disabled only if enabled:false
   }
 
   setSource(source) {
@@ -344,9 +344,9 @@ class AniListScraper {
         title: e.node.title.romaji,
         title_native: e.node.title.native,
       })),
-      seasonChain: (() => {
+      seasonChain: await (async () => {
         try {
-          const sc = this.extractSeasonChain(detail);
+          const sc = await this.extractSeasonChain(detail);
           return sc.size > 0 ? JSON.stringify(Object.fromEntries(sc)) : null;
         } catch (_) { return null; }
       })(),
@@ -354,50 +354,65 @@ class AniListScraper {
   }
 
   /**
-   * Extract season chain from AniList relations
+   * Extract season chain from AniList relations by following SEQUEL links.
+   * Two-batch approach: discover sequel IDs from relations, then batch-fetch.
    * Returns Map<seasonNumber, {id, title, title_native}>
    */
-  extractSeasonChain(detail) {
-    const REVERSE_MAP = {
-      'SEQUEL': 'sequel',
-      'PREQUEL': 'prequel',
-      'SIDE_STORY': 'spin_off',
-      'ADAPTATION': 'adaptation',
-      'CHARACTER': 'character',
-      'SUMMARY': 'summary',
-      'ALTERNATIVE': 'alternative',
-      'OTHER': 'other',
-    };
-
-    const relations = detail.relations?.edges || [];
+  async extractSeasonChain(detail) {
     const chain = new Map();
+    const seen = new Set();
 
-    // Find sequel chain
-    const findSequel = (currentId, season = 1) => {
-      const sequel = relations.find(e =>
-        e.relationType === 'SEQUEL' && e.node.id !== currentId
-      );
-      if (sequel && !chain.has(season + 1)) {
-        chain.set(season + 1, {
-          id: sequel.node.id,
-          title: sequel.node.title.romaji,
-          title_native: sequel.node.title.native,
-        });
-        return sequel.node.id;
-      }
-      return null;
+    const addEntry = (media, seasonNum) => {
+      if (chain.has(seasonNum) || seen.has(media.id)) return false;
+      chain.set(seasonNum, {
+        id: media.id,
+        title: media.title?.romaji || null,
+        title_native: media.title?.native || null,
+      });
+      seen.add(media.id);
+      return true;
     };
 
-    // Build chain from current entry
-    let currentId = detail.id;
+    // Round 1: use current detail's relations to find all immediate sequels
+    addEntry(detail, 1);
+    const firstHopIds = [];
+    for (const e of (detail.relations?.edges || [])) {
+      if (e.relationType === 'SEQUEL' && !seen.has(e.node.id)) {
+        firstHopIds.push(e.node.id);
+      }
+    }
+
+    if (firstHopIds.length === 0) return chain;
+
+    // Round 2: batch-fetch all discovered sequel IDs (single API call)
+    let allSequels;
+    try {
+      allSequels = await this.batchGetDetails(firstHopIds);
+    } catch (_) {
+      allSequels = [];
+    }
+
+    // Map ID → detail for quick lookup
+    const byId = new Map();
+    for (const m of allSequels) byId.set(m.id, m);
+
+    // Walk the chain: each sequel points to the next via its relations
+    let currentDetail = detail;
     let season = 1;
-    while (currentId && season <= 10) {
-      chain.set(season, {
-        id: currentId,
-        title: detail.title.romaji,
-        title_native: detail.title.native,
-      });
-      currentId = findSequel(currentId, season);
+
+    while (season <= 10) {
+      addEntry(currentDetail, season);
+
+      // Find next sequel from THIS anime's relations
+      const nextEdge = (currentDetail.relations?.edges || []).find(
+        e => e.relationType === 'SEQUEL' && !seen.has(e.node.id)
+      );
+      if (!nextEdge) break;
+
+      const nextId = nextEdge.node.id;
+      const nextDetail = byId.get(nextId);
+      if (!nextDetail) break; // Not in batch → stop here
+      currentDetail = nextDetail;
       season++;
     }
 

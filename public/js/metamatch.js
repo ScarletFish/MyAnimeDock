@@ -79,7 +79,7 @@ async function mmLoadModalData() {
       title: a.title || a.folderName || a.bangumiTitle || '未知',
       folderName: a.folderName || a.title || '',
       specialSuffix: a.specialSuffix || null,
-      parsedSeason: a.parsedSeason || (a.specialSuffix ? null : 1),
+      parsedSeason: a.matchedSeason || a.season || (a.specialSuffix ? null : 1),
       episodeCount: a.episodes ? a.episodes.length : 0,
       status: a.bangumiId ? 'matched' : 'pending',
       error: null,
@@ -99,7 +99,7 @@ async function mmLoadModalData() {
       coverUrl: a.coverUrl || a.localCover || null,
       localCover: a.localCover || null,
       bangumiTitle: a.bangumiTitle,
-      season: a.parsedSeason,
+      season: a.matchedSeason || a.season,
     }));
 
     mmUpdateUI();

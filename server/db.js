@@ -498,6 +498,21 @@ async function saveLibrary(data) {
           }
         }
 
+        // Check anilistId uniqueness — current record wins, clear old owner
+        if (animeData.anilistId) {
+          const existingAnilist = await tx.anime.findFirst({
+            where: { anilistId: animeData.anilistId, NOT: { id: a.id } },
+            select: { id: true },
+          });
+          if (existingAnilist) {
+            logger.warn(`anilistId ${animeData.anilistId} already owned by ${existingAnilist.id}, clearing old owner`);
+            await tx.anime.update({
+              where: { id: existingAnilist.id },
+              data: { anilistId: null, anilistBanner: null, anilistCover: null, anilistTitleEn: null, seasonChain: null },
+            });
+          }
+        }
+
         await tx.anime.upsert({
           where: { id: a.id },
           create: { id: a.id, ...animeData },

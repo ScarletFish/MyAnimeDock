@@ -52,7 +52,6 @@ module.exports = {
       Object.assign(anime, meta);
       if (matchInfo) {
         if (matchInfo.matchedSeason != null) anime.matchedSeason = matchInfo.matchedSeason;
-        if (matchInfo.totalSeasons != null) anime.totalSeasons = matchInfo.totalSeasons;
       }
       // AniList 双源同步（手动同步时重置 -1 重新搜索）
       const bannerDir = path.join(DATA_DIR, 'banners');

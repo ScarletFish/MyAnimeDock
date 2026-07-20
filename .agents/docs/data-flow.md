@@ -246,7 +246,7 @@ POST /api/bangumi/fetch (for library items — already imported)
       │   ├─ Sørensen-Dice ≥ 0.5 匹配成功 → fetchMetadata + downloadBanner
       │   └─ 匹配失败 → 标记 anilistId = -1
       ├─ 下载 banner 到 DATA_DIR/banners/ 目录
-      └─ db.saveLibrary(data) — 写 anilistId/anilistBanner/anilistTitleEn/seasonChain
+      └─ db.saveLibrary(data) — 写 anilistId/anilistBanner/anilistTitleEn
   → db.saveLibrary(data) + saveScannedTree(data.scannedTree)
 ```
 
@@ -583,7 +583,7 @@ http.createServer((req, res) => {
 | `server/mpv-controller.js` | 178 | mpv process spawn, IPC progress tracking, error/crash reporting |
 | `server/bangumi-sync.js` | 206 | Bangumi sync orchestration: Pull→Merge→Push, OAuth status push |
 | `server/scrapers/index.js` | 470 | ScraperRegistry: multi-source metadata aggregation, syncAnilist() helper |
-| `server/scrapers/anilist.js` | — | Anilist GraphQL client: search, fetchMetadata, downloadBanner, season chain extraction (async, two-batch sequel discovery). `enabled()` defaults to true when apiSources exists but no anilist entry. |
+| `server/scrapers/anilist.js` | — | Anilist GraphQL client: search (with toHiragana normalization), fetchMetadata, downloadBanner. `enabled()` defaults to true when apiSources exists but no anilist entry. |
 | `server/scrapers/bangumi.js` | — | Bangumi API client + cover download |
 | `server/scrapers/tmdb.js` | — | TMDB API client + cover download |
 | `server/scrapers/node-fetch.js` | — | Node.js http/https fetch polyfill (pkg-compatible) |

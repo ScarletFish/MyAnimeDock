@@ -344,79 +344,7 @@ class AniListScraper {
         title: e.node.title.romaji,
         title_native: e.node.title.native,
       })),
-      seasonChain: await (async () => {
-        try {
-          const sc = await this.extractSeasonChain(detail);
-          return sc.size > 0 ? JSON.stringify(Object.fromEntries(sc)) : null;
-        } catch (_) { return null; }
-      })(),
     };
-  }
-
-  /**
-   * Extract season chain from AniList relations by following SEQUEL links.
-   * Two-batch approach: discover sequel IDs from relations, then batch-fetch.
-   * Returns Map<seasonNumber, {id, title, title_native}>
-   */
-  async extractSeasonChain(detail) {
-    const chain = new Map();
-    const seen = new Set();
-
-    const addEntry = (media, seasonNum) => {
-      if (chain.has(seasonNum) || seen.has(media.id)) return false;
-      chain.set(seasonNum, {
-        id: media.id,
-        title: media.title?.romaji || null,
-        title_native: media.title?.native || null,
-      });
-      seen.add(media.id);
-      return true;
-    };
-
-    // Round 1: use current detail's relations to find all immediate sequels
-    addEntry(detail, 1);
-    const firstHopIds = [];
-    for (const e of (detail.relations?.edges || [])) {
-      if (e.relationType === 'SEQUEL' && !seen.has(e.node.id)) {
-        firstHopIds.push(e.node.id);
-      }
-    }
-
-    if (firstHopIds.length === 0) return chain;
-
-    // Round 2: batch-fetch all discovered sequel IDs (single API call)
-    let allSequels;
-    try {
-      allSequels = await this.batchGetDetails(firstHopIds);
-    } catch (_) {
-      allSequels = [];
-    }
-
-    // Map ID → detail for quick lookup
-    const byId = new Map();
-    for (const m of allSequels) byId.set(m.id, m);
-
-    // Walk the chain: each sequel points to the next via its relations
-    let currentDetail = detail;
-    let season = 1;
-
-    while (season <= 10) {
-      addEntry(currentDetail, season);
-
-      // Find next sequel from THIS anime's relations
-      const nextEdge = (currentDetail.relations?.edges || []).find(
-        e => e.relationType === 'SEQUEL' && !seen.has(e.node.id)
-      );
-      if (!nextEdge) break;
-
-      const nextId = nextEdge.node.id;
-      const nextDetail = byId.get(nextId);
-      if (!nextDetail) break; // Not in batch → stop here
-      currentDetail = nextDetail;
-      season++;
-    }
-
-    return chain;
   }
 
   /**

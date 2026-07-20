@@ -89,7 +89,7 @@ if (process.pkg) {
 // 首次启动时 anime.db 不存在，PrismaClient 连接后自动创建空文件，
 // 但不会创建表。以下 SQL 在首次启动时自建制表（CREATE TABLE IF NOT EXISTS）。
 const INIT_SQL = [
-  `CREATE TABLE IF NOT EXISTS "Anime" ("id" TEXT NOT NULL PRIMARY KEY, "folderPath" TEXT NOT NULL, "folderName" TEXT NOT NULL, "title" TEXT NOT NULL, "season" INTEGER, "importedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "downloaded" BOOLEAN NOT NULL DEFAULT true, "bangumiId" INTEGER, "bangumiTitle" TEXT, "bangumiTitleJp" TEXT, "summary" TEXT, "coverUrl" TEXT, "localCover" TEXT, "rating" REAL, "source" TEXT, "pinyinTitle" TEXT, "matchedSeason" INTEGER, "totalSeasons" INTEGER, "metadata" TEXT, "anilistId" INTEGER, "anilistBanner" TEXT, "anilistCover" TEXT, "anilistTitleEn" TEXT, "seasonChain" TEXT)`,
+  `CREATE TABLE IF NOT EXISTS "Anime" ("id" TEXT NOT NULL PRIMARY KEY, "folderPath" TEXT NOT NULL, "folderName" TEXT NOT NULL, "title" TEXT NOT NULL, "season" INTEGER, "importedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "downloaded" BOOLEAN NOT NULL DEFAULT true, "bangumiId" INTEGER, "bangumiTitle" TEXT, "bangumiTitleJp" TEXT, "summary" TEXT, "coverUrl" TEXT, "localCover" TEXT, "rating" REAL, "source" TEXT, "pinyinTitle" TEXT, "matchedSeason" INTEGER, "metadata" TEXT, "anilistId" INTEGER, "anilistBanner" TEXT, "anilistCover" TEXT, "anilistTitleEn" TEXT)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "Anime_folderPath_key" ON "Anime"("folderPath")`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "Anime_bangumiId_key" ON "Anime"("bangumiId")`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "Anime_anilistId_key" ON "Anime"("anilistId")`,
@@ -325,12 +325,10 @@ function animeToLegacy(a) {
     source: a.source,
     pinyinTitle: a.pinyinTitle,
     matchedSeason: a.matchedSeason,
-    totalSeasons: a.totalSeasons,
     anilistId: a.anilistId,
     anilistBanner: a.anilistBanner,
     anilistCover: a.anilistCover,
     anilistTitleEn: a.anilistTitleEn,
-    seasonChain: a.seasonChain,
     // Spread persisted extras (characters, persons, tags, date, platform,
     // ratingRank, ratingTotal, infobox, collection, eps, totalEpisodes, specialSuffix)
     ...metadataExtra,
@@ -478,12 +476,10 @@ async function saveLibrary(data) {
           pinyinTitle: a.pinyinTitle,
           metadata: metadataStr,
           matchedSeason: a.matchedSeason ?? null,
-          totalSeasons: a.totalSeasons ?? null,
           anilistId: a.anilistId ?? null,
           anilistBanner: a.anilistBanner ?? null,
           anilistCover: a.anilistCover ?? null,
           anilistTitleEn: a.anilistTitleEn ?? null,
-          seasonChain: a.seasonChain ?? null,
         };
 
         // Check bangumiId uniqueness — skip if another anime already owns it
@@ -508,7 +504,7 @@ async function saveLibrary(data) {
             logger.warn(`anilistId ${animeData.anilistId} already owned by ${existingAnilist.id}, clearing old owner`);
             await tx.anime.update({
               where: { id: existingAnilist.id },
-              data: { anilistId: null, anilistBanner: null, anilistCover: null, anilistTitleEn: null, seasonChain: null },
+              data: { anilistId: null, anilistBanner: null, anilistCover: null, anilistTitleEn: null },
             });
           }
         }

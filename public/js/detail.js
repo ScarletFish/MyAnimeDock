@@ -312,15 +312,10 @@ function renderDetail() {
   if (anime.ratingTotal) leftParts.push(`<span class="info-rating-sub">${anime.ratingTotal}人</span>`);
 
   const rightParts = [];
-  const total = anime.totalSeasons;
-  if (total && total > 1) {
-    const s = anime.matchedSeason || anime.season || 1;
+  const s = anime.matchedSeason || anime.season;
+  if (s && s > 1) {
     const mismatch = anime.season && anime.matchedSeason && anime.season !== anime.matchedSeason;
-    if (s !== 1 || mismatch) {
-      rightParts.push(`<span class="info-tag${mismatch ? ' info-tag--warn' : ''}">S${s} / 共${total}季${mismatch ? ' ⚠' : ''}</span>`);
-    } else {
-      rightParts.push(`<span class="info-tag">共${total}季</span>`);
-    }
+    rightParts.push(`<span class="info-tag${mismatch ? ' info-tag--warn' : ''}">S${s}${mismatch ? ' ⚠' : ''}</span>`);
   }
   if (anime.date) rightParts.push(`<span class="info-tag">${anime.date}</span>`);
   if (anime.platform) rightParts.push(`<span class="info-tag">${escHtml(anime.platform)}</span>`);

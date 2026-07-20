@@ -319,7 +319,6 @@ async function autoImportNewFolders(data, config) {
         rating: meta?.rating || null,
         metadataSource: meta?.source || 'bangumi',
         matchedSeason: item.parsedSeason || null,
-        totalSeasons: null,
         episodes: item.videos.map((v, i) => ({
           number: i + 1,
           filePath: path.join(item.path, v.name) || v.path,

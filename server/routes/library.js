@@ -161,8 +161,7 @@ module.exports = {
           Object.assign(anime, meta);
             // Cover resize removed — browser handles display scaling
           if (match.matchedSeason != null) anime.matchedSeason = match.matchedSeason;
-          if (match.totalSeasons != null) anime.totalSeasons = match.totalSeasons;
-          return { animeId, success: true, meta, matchedSeason: match.matchedSeason, totalSeasons: match.totalSeasons };
+          return { animeId, success: true, meta, matchedSeason: match.matchedSeason };
         } catch (e) {
           return { animeId, success: false, error: e.message };
         }
@@ -233,8 +232,7 @@ module.exports = {
             Object.assign(anime, meta);
           // Cover resize removed — browser handles display scaling
             if (match.matchedSeason != null) anime.matchedSeason = match.matchedSeason;
-            if (match.totalSeasons != null) anime.totalSeasons = match.totalSeasons;
-            send('progress', { animeId, success: true, meta, matchedSeason: match.matchedSeason, totalSeasons: match.totalSeasons });
+            send('progress', { animeId, success: true, meta, matchedSeason: match.matchedSeason });
             // 拉取 AniList banner，完成后落盘（不阻塞 progress 事件，但确保 done 前 banner 就绪）
             if (anime.anilistId === -1) anime.anilistId = null;
             try {

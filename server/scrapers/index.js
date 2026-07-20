@@ -521,7 +521,6 @@ async function syncAnilist(anime, config, bannerDir, coverDir) {
   anime.anilistId = anilistId;
   if (localBanner) anime.anilistBanner = localBanner;
   if (meta.anilistTitleEn) anime.anilistTitleEn = meta.anilistTitleEn;
-  if (meta.seasonChain) anime.seasonChain = meta.seasonChain;
 
   logger.info(`syncAnilist: done for id=${anime.id} → anilistId=${anilistId}${localBanner ? ' +banner' : ''}`);
   return { anilistId, localBanner, anilistTitleEn: meta.anilistTitleEn };

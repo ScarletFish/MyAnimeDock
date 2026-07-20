@@ -85,7 +85,6 @@ async function mmLoadModalData() {
       error: null,
       pinyinTitle: a.pinyinTitle || '',
       matchedSeason: a.matchedSeason || null,
-      totalSeasons: a.totalSeasons || null,
       meta: a.bangumiId ? {
         bangumiId: a.bangumiId,
         bangumiTitle: a.bangumiTitle,
@@ -212,13 +211,9 @@ function mmRenderList() {
 
     // Season chain info — only show for S2+ or specials
     let seasonBadge = '';
-    if (item.matchedSeason != null && item.totalSeasons != null && item.totalSeasons > 1) {
+    if (item.matchedSeason != null && item.matchedSeason > 1) {
       const seasonMismatch = item.parsedSeason && item.matchedSeason !== item.parsedSeason;
-      if (item.matchedSeason !== 1 || seasonMismatch) {
-        seasonBadge = `<span class="mm-row-season${seasonMismatch ? ' mm-row-season--mismatch' : ''}">S${item.matchedSeason}/${item.totalSeasons}${seasonMismatch ? ' ⚠' : ''}</span>`;
-      }
-    } else if (item.totalSeasons != null && item.totalSeasons > 1) {
-      seasonBadge = `<span class="mm-row-season">共${item.totalSeasons}季</span>`;
+      seasonBadge = `<span class="mm-row-season${seasonMismatch ? ' mm-row-season--mismatch' : ''}">S${item.matchedSeason}${seasonMismatch ? ' ⚠' : ''}</span>`;
     }
 
     const badgeLabels = { matched: '已匹配', failed: '失败', matching: '匹配中', pending: '待处理' };
@@ -594,11 +589,6 @@ function mmRenderPanel(item) {
     if (item.episodeCount) parts.push(`${item.episodeCount}集`);
     seasonInfo = parts.join(' · ');
   }
-  let seasonChain = '';
-  if (item.matchedSeason != null && item.totalSeasons != null && item.totalSeasons > 1) {
-    seasonChain = `S${item.matchedSeason}/${item.totalSeasons}`;
-  }
-
   // Summary
   let summaryHtml = '';
   if (item.status === 'matched' && item.meta?.summary) {
@@ -674,7 +664,6 @@ function mmRenderPanel(item) {
       </div>
       ${seasonChain || seasonInfo ? `
       <div class="mm-panel-key-info">
-        ${seasonChain ? `<span class="mm-panel-key-badge">${seasonChain}</span>` : ''}
         <span class="mm-panel-key-text">${seasonInfo}</span>
       </div>
       ` : ''}
@@ -771,7 +760,6 @@ async function mmApplyFix(animeId, resultIndex) {
       item.coverUrl = a.coverUrl || a.localCover || item.coverUrl;
       item.error = null;
       if (a.matchedSeason != null) item.matchedSeason = a.matchedSeason;
-      if (a.totalSeasons != null) item.totalSeasons = a.totalSeasons;
     } else {
       item.status = 'failed';
       item.error = '获取元数据返回空';
@@ -986,7 +974,6 @@ async function mmSyncViaSSE(animeIds) {
           item.coverUrl = data.meta?.coverUrl || null;
           item.error = null;
           if (data.matchedSeason != null) item.matchedSeason = data.matchedSeason;
-          if (data.totalSeasons != null) item.totalSeasons = data.totalSeasons;
           mmAddSyncLogEntry(data.animeId, null, 'matched', (data.meta?.bangumiTitle || data.meta?.title || '匹配成功'));
         } else {
           item.status = 'failed';
@@ -1076,7 +1063,6 @@ async function mmSyncViaBatch(animeIds) {
           item.coverUrl = r.meta.coverUrl || null;
           item.error = null;
           if (r.matchedSeason != null) item.matchedSeason = r.matchedSeason;
-          if (r.totalSeasons != null) item.totalSeasons = r.totalSeasons;
           mmAddSyncLogEntry(r.animeId, r.title || item.title || item.folderName || '未知', 'matched', r.meta.bangumiTitle || r.meta.title || '匹配成功');
         } else {
           item.status = 'failed';

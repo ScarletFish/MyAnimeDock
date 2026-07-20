@@ -29,6 +29,12 @@ function normalizeTitle(title) {
     .toLowerCase();
 }
 
+/** Convert katakana to hiragana for AniList search normalization */
+function toHiragana(s) {
+  if (!s) return s;
+  return s.replace(/[\u30A1-\u30F6]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60));
+}
+
 /**
  * Sorensen-Dice coefficient for fuzzy string comparison
  * Returns 0-1, where 1 is identical
@@ -466,13 +472,9 @@ async function syncAnilist(anime, config, bannerDir, coverDir) {
 
     for (const t of unique) {
       try {
-        let results = await anilist.search(t, source);
-        // Fallback: strip trailing chars until we get results
-        let fallback = t;
-        while (results.length === 0 && fallback.length > 2) {
-          fallback = fallback.slice(0, -1).replace(/[!！?？☆★~～、。]$/, '').trim();
-          if (fallback.length > 2) results = await anilist.search(fallback, source);
-        }
+        // Normalize katakana → hiragana for better AniList search match
+        const query = toHiragana(t);
+        const results = await anilist.search(query, source);
         if (results.length === 0) continue;
         const bestItem = pickBestBySimilarity(t, results);
         if (bestItem) {

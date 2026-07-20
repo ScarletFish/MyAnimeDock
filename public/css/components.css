@@ -552,8 +552,7 @@
 /* ─── Settings Modal — Tabbed Layout ─── */
 .modal.modal--settings {
   padding: 0;
-  overflow: hidden;
-  max-width: 520px;
+  max-width: 640px;
 }
 
 .settings-header {

@@ -244,6 +244,7 @@ const routeTable = [
   { method: 'POST', path: '/api/db/restore', handler: H.handleDbRestore },
   { method: 'POST', path: '/api/db/clear-sessions', handler: H.handleDbClearSessions },
   { method: 'POST', path: '/api/db/vacuum', handler: H.handleDbVacuum },
+  { method: 'POST', path: '/api/db/clear-cache', handler: H.handleDbClearCache },
   { method: 'POST', path: '/api/db/reset', handler: H.handleDbReset },
   // Quit
   { method: 'POST', path: '/api/quit', handler: handleQuit },

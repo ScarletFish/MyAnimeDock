@@ -425,8 +425,15 @@ async function saveSettings() {
 
 // ─── DB Management ───
 
+function formatSize(bytes) {
+  if (bytes > 1048576) return (bytes / 1048576).toFixed(1) + ' MB';
+  if (bytes > 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return bytes + ' B';
+}
+
 async function refreshDbInfo() {
   const container = document.getElementById('dbInfoContainer');
+  const cacheContainer = document.getElementById('dbCacheContainer');
   if (!container) return;
   try {
     const info = await API.get('/api/db/info');
@@ -438,36 +445,63 @@ async function refreshDbInfo() {
     const configSizeStr = info.configSize > 1024
       ? (info.configSize / 1024).toFixed(1) + ' KB'
       : info.configSize + ' B';
-    container.innerHTML = `
-      <div class="db-info-grid">
-        <div class="db-info-item">
-          <span class="db-info-label">数据库位置</span>
-          <span class="db-info-value db-info-path">${escHtml(info.dbPath)}</span>
-        </div>
-        <div class="db-info-item">
-          <span class="db-info-label">数据库大小</span>
-          <span class="db-info-value">${dbSizeStr}</span>
-        </div>
-        <div class="db-info-item">
-          <span class="db-info-label">动漫数量</span>
-          <span class="db-info-value">${info.counts.anime}</span>
-        </div>
-        <div class="db-info-item">
-          <span class="db-info-label">剧集数量</span>
-          <span class="db-info-value">${info.counts.episodes}</span>
-        </div>
-        <div class="db-info-item">
-          <span class="db-info-label">播放记录</span>
-          <span class="db-info-value">${info.counts.playSessions}</span>
-        </div>
-        <div class="db-info-item">
-          <span class="db-info-label">列表条目</span>
-          <span class="db-info-value">${info.counts.myList}</span>
-        </div>
-      </div>
-    `;
+    container.innerHTML = '<div class="db-info-grid">' +
+      '<div class="db-info-item"><span class="db-info-label">数据库位置</span><span class="db-info-value db-info-path">' + escHtml(info.dbPath) + '</span></div>' +
+      '<div class="db-info-item"><span class="db-info-label">数据库大小</span><span class="db-info-value">' + dbSizeStr + '</span></div>' +
+      '<div class="db-info-item"><span class="db-info-label">动漫数量</span><span class="db-info-value">' + info.counts.anime + '</span></div>' +
+      '<div class="db-info-item"><span class="db-info-label">剧集数量</span><span class="db-info-value">' + info.counts.episodes + '</span></div>' +
+      '<div class="db-info-item"><span class="db-info-label">播放记录</span><span class="db-info-value">' + info.counts.playSessions + '</span></div>' +
+      '<div class="db-info-item"><span class="db-info-label">列表条目</span><span class="db-info-value">' + info.counts.myList + '</span></div>' +
+    '</div>';
+
+    // 渲染缓存信息
+    if (cacheContainer) {
+      if (info.cache) {
+        var cacheHtml = '<div class="db-info-grid">';
+        for (var key in info.cache) {
+          var c = info.cache[key];
+          var label = {thumbs:'视频缩略图', covers:'封面图片', banners:'横幅图片'}[key] || key;
+          cacheHtml += '<div class="db-info-item">' +
+            '<span class="db-info-label">' + label + '</span>' +
+            '<span class="db-info-value">' + formatSize(c.size) + '</span>' +
+            '<span class="db-info-label" style="font-size:calc(0.625rem * var(--scale));margin-top:1px">' + c.files + ' 个文件</span>' +
+          '</div>';
+        }
+        cacheHtml += '</div>' +
+          '<div class="db-action-row" style="margin-top:8px">' +
+            '<button class="btn btn-sm" onclick="dbClearCache(\'thumbs\')" data-tooltip="超过14天的缩略图系统会自动清理，一般无需手动操作">清除缩略图</button>' +
+            '<button class="btn btn-sm" onclick="dbClearCache(\'covers\')" data-tooltip="超过14天的缩放缓存系统会自动清理，原图保留">清除封面缓存</button>' +
+            '<button class="btn btn-sm" onclick="dbClearCache(\'banners\')" data-tooltip="横幅图片缓存，需要时自动重新下载">清除横幅缓存</button>' +
+            '<button class="btn btn-sm" onclick="dbClearCache(\'all\')" data-tooltip="清除所有缓存，系统会在需要时重新生成">清除全部缓存</button>' +
+          '</div>';
+        cacheContainer.innerHTML = cacheHtml;
+      } else {
+        cacheContainer.innerHTML = '<p class="form-hint">暂无数据（请重启服务器以使改动生效）</p>';
+      }
+    }
   } catch (e) {
-    container.innerHTML = `<p class="form-hint" style="color:var(--error)">加载失败: ${escHtml(e.message)}</p>`;
+    container.innerHTML = '<p class="form-hint" style="color:var(--error)">加载失败: ' + escHtml(e.message) + '</p>';
+  }
+}
+
+async function dbClearCache(target) {
+  var label = {thumbs:'缩略图', covers:'封面缓存', banners:'横幅缓存', all:'全部缓存'}[target] || target;
+  var confirmed = await showConfirm('确定要清除' + label + '吗？\n\n缓存文件会在需要时重新生成。');
+  if (!confirmed) return;
+
+  try {
+    var res = await API.post('/api/db/clear-cache', { target: target === 'all' ? undefined : target });
+    if (res.ok) {
+      var parts = [];
+      for (var key in res.results) {
+        var r = res.results[key];
+        if (r.cleared > 0) parts.push(key + ': ' + formatSize(r.size) + ' (' + r.cleared + ' 个文件)');
+      }
+      showToast('已清除 ' + label + (parts.length ? ' — ' + parts.join(' | ') : ''), 'success');
+      refreshDbInfo();
+    }
+  } catch (e) {
+    showToast('清除失败: ' + e.message, 'error');
   }
 }
 

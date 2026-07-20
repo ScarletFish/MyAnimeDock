@@ -785,13 +785,21 @@
         </div>
 
         <div class="form-group">
+          <label>缓存管理</label>
+          <p class="form-hint">系统会自动清理超过 14 天的缓存</p>
+          <div id="dbCacheContainer">
+            <p class="form-hint">加载中...</p>
+          </div>
+        </div>
+
+        <div class="form-group">
           <label>维护操作</label>
           <div class="db-action-row">
             <button class="btn btn-sm" onclick="dbClearSessions()" id="btnDbClearSessions">
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4h14"/><path d="M3 4v9a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4"/><path d="M6 4V2h4v2"/></svg>
               清除播放记录
             </button>
-            <button class="btn btn-sm" onclick="dbVacuum()" id="btnDbVacuum">
+            <button class="btn btn-sm" onclick="dbVacuum()" id="btnDbVacuum" data-tooltip="压缩数据库文件大小，回收已删除数据的磁盘空间">
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="7"/><path d="M8 5v3"/><path d="M8 11h.01"/></svg>
               优化数据库（VACUUM）
             </button>

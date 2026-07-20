@@ -83,6 +83,21 @@ function renderMyListSortDropdown() {
 // ─── Sorting ───
 
 function sortMyListItems(items) {
+  var FORMAT_RANK = { TV: 0, OVA: 1, SP: 2, MOVIE: 3 };
+  function getBaseKey(a) {
+    var t = (a.bangumiTitle || a.title || '').toLowerCase();
+    t = t.replace(/[♪♫☆★！!？?~～\s]+/g, ' ').trim();
+    t = t.replace(/\d+季/g, '').trim();
+    t = t.replace(/\s*(OVA|SP|OAD|剧场版|Movie|Special|剧场版动画|夏日时光|Dear My Sister|Sing For You|BLOOM|Nachuyachumi).*$/i, '').trim();
+    t = t.replace(/\s+\d+.*$/, '').trim();
+    return t || (a.title || a.id || '').toLowerCase();
+  }
+  function getSeasonRank(a) {
+    var p = (a.platform || '').toUpperCase();
+    var formatRank = FORMAT_RANK[p] != null ? FORMAT_RANK[p] : 0;
+    var season = a.matchedSeason || a.season || 1;
+    return formatRank * 100 + season;
+  }
   function getJpName(a) {
     return (a.bangumiTitleJp || a.bangumiTitle || a.title || '').toLowerCase();
   }
@@ -94,15 +109,35 @@ function sortMyListItems(items) {
     });
     return latest;
   }
-  return items.slice().sort(function(a, b) {
-    switch (mylistSort) {
-      case 'rating': return (b.rating || 0) - (a.rating || 0);
-      case 'recent': return getLastWatched(b).localeCompare(getLastWatched(a));
-      case 'updated': return (b.completedAt || b.startedAt || '').localeCompare(a.completedAt || a.startedAt || '');
-      case 'imported': return (a.importedAt || '').localeCompare(b.importedAt || '');
-      case 'name': default: return getJpName(a).localeCompare(getJpName(b), 'ja');
-    }
+  function getBlockScore(block, key) {
+    if (key === 'rating') return Math.max.apply(null, block.map(function(a) { return a.rating || 0; }));
+    if (key === 'recent') return block.reduce(function(m, a) { var lw = getLastWatched(a); return lw > m ? lw : m; }, '');
+    if (key === 'updated') return block.reduce(function(m, a) { return (a.completedAt || a.startedAt || '') > m ? a.completedAt || a.startedAt || '' : m; }, '');
+    if (key === 'imported') return block.reduce(function(m, a) { var i = a.importedAt || 'z'; return i < m ? i : m; }, 'z');
+    return getJpName(block[0]);
+  }
+
+  // Group by base title
+  var groups = {};
+  items.forEach(function(a) {
+    var key = getBaseKey(a);
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(a);
   });
+  var blocks = Object.values(groups);
+  blocks.forEach(function(block) { block.sort(function(a, b) { return getSeasonRank(a) - getSeasonRank(b); }); });
+
+  // Sort blocks
+  blocks.sort(function(a, b) {
+    var sa = getBlockScore(a, mylistSort);
+    var sb = getBlockScore(b, mylistSort);
+    if (mylistSort === 'imported') return sa.localeCompare(sb);
+    return sb.localeCompare(sa) || sa.localeCompare(sb);
+  });
+
+  var result = [];
+  blocks.forEach(function(block) { block.forEach(function(a) { result.push(a); }); });
+  return result;
 }
 
 // ─── Filter & Render ───

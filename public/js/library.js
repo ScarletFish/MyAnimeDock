@@ -431,12 +431,6 @@ function showContextMenu(e, animeId) {
   if (y + rect.height > window.innerHeight) y = window.innerHeight - rect.height - 8;
   menu.style.left = x + 'px';
   menu.style.top = y + 'px';
-  // Also sync Alpine data so @click.outside / :class work after init
-  if (typeof Alpine !== 'undefined' && menu.__x) {
-    Alpine.$data(menu).show = true;
-    Alpine.$data(menu).x = x;
-    Alpine.$data(menu).y = y;
-  }
 }
 
 function contextCopyTitle() {
@@ -484,7 +478,6 @@ function contextToggleStatus() {
 function hideContextMenu() {
   const el = document.getElementById('contextMenu');
   if (el) el.classList.remove('show');
-  if (el && typeof Alpine !== 'undefined' && el.__x) Alpine.$data(el).show = false;
   contextMenuAnimeId = null;
   contextMenuCard = null;
 }

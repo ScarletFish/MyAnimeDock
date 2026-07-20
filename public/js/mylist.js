@@ -519,11 +519,6 @@ function showMyListContextMenu(e, id) {
   if (y + rect.height > window.innerHeight) y = window.innerHeight - rect.height - 8;
   menu.style.left = x + 'px';
   menu.style.top = y + 'px';
-  if (typeof Alpine !== 'undefined' && menu.__x) {
-    Alpine.$data(menu).show = true;
-    Alpine.$data(menu).x = x;
-    Alpine.$data(menu).y = y;
-  }
 }
 
 async function setMyListItemStatus(id, status) {

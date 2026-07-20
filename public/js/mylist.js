@@ -2,7 +2,6 @@
 let mylistData = [];
 let mylistFilter = 'all';
 let mylistSort = localStorage.getItem('mylistSort') || 'name';
-let mylistSortOpen = false;
 
 // 引用自 ui.js 的 STATUS_LABELS
 const MYLIST_LABELS = STATUS_LABELS;
@@ -117,28 +116,25 @@ function renderMyListStatusBar() {
 function switchMyListSort(mode) {
   mylistSort = mode;
   localStorage.setItem('mylistSort', mode);
-  mylistSortOpen = false;
   renderMyListSortDropdown();
   renderMyList();
-}
-
-function toggleMyListSortDropdown() {
-  mylistSortOpen = !mylistSortOpen;
-  setTimeout(function() { renderMyListSortDropdown(); }, 0);
 }
 
 function renderMyListSortDropdown() {
   const el = document.getElementById('mylistSortDropdown');
   if (!el) return;
   el.innerHTML =
-    '<button class="library-sort-trigger' + (mylistSortOpen ? ' open' : '') + '" onclick="toggleMyListSortDropdown()">' +
-      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M6 12h12M9 18h6"/></svg>' +
-    '</button>' +
-    '<div class="library-sort-menu' + (mylistSortOpen ? ' open' : '') + '">' +
-      ANIME_SORT_OPTIONS.map(function(o) {
-        return '<div class="library-sort-option' + (o.key === mylistSort ? ' active' : '') + '" onclick="switchMyListSort(\'' + o.key + '\')">' + o.label + '</div>';
-      }).join('') +
+    '<div x-data="{ open: false }" @click.outside="open = false" class="library-sort-dd">' +
+      '<button type="button" class="library-sort-trigger" :class="{ \'open\': open }" @click="open = !open">' +
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M6 12h12M9 18h6"/></svg>' +
+      '</button>' +
+      '<div class="library-sort-menu" :class="{ \'open\': open }">' +
+        ANIME_SORT_OPTIONS.map(function(o) {
+          return '<div class="library-sort-option' + (o.key === mylistSort ? ' active' : '') + '" onclick="switchMyListSort(\'' + o.key + '\')">' + o.label + '</div>';
+        }).join('') +
+      '</div>' +
     '</div>';
+  if (typeof Alpine !== 'undefined') Alpine.initTree(el);
 }
 
 // ─── Sorting ───
@@ -512,15 +508,22 @@ function showMyListContextMenu(e, id) {
       '</div>';
   }
 
-  // Position
+  // Position: always apply directly, sync Alpine data if available
   let x = e.clientX;
   let y = e.clientY;
+  menu.style.left = x + 'px';
+  menu.style.top = y + 'px';
   menu.classList.add('show');
   const rect = menu.getBoundingClientRect();
   if (x + rect.width > window.innerWidth) x = window.innerWidth - rect.width - 8;
   if (y + rect.height > window.innerHeight) y = window.innerHeight - rect.height - 8;
   menu.style.left = x + 'px';
   menu.style.top = y + 'px';
+  if (typeof Alpine !== 'undefined' && menu.__x) {
+    Alpine.$data(menu).show = true;
+    Alpine.$data(menu).x = x;
+    Alpine.$data(menu).y = y;
+  }
 }
 
 async function setMyListItemStatus(id, status) {
@@ -560,11 +563,3 @@ async function removeMyListItem(id) {
     showToast('移除失败: ' + e.message, 'error');
   }
 }
-
-// Close sort dropdown on outside click
-document.addEventListener('click', function(e) {
-  if (mylistSortOpen && !e.target.closest('#mylistSortDropdown')) {
-    mylistSortOpen = false;
-    renderMyListSortDropdown();
-  }
-});

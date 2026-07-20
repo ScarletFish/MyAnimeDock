@@ -310,29 +310,25 @@ function renderContinueSection(data, container) {
 function switchLibrarySort(mode) {
   librarySort = mode;
   localStorage.setItem('librarySort', mode);
-  librarySortOpen = false;
   renderSortDropdown();
   renderStatusGrids(libraryData);
-}
-
-function toggleSortDropdown() {
-  librarySortOpen = !librarySortOpen;
-  // Defer render to let click event finish propagating
-  setTimeout(function() { renderSortDropdown(); }, 0);
 }
 
 function renderSortDropdown() {
   var el = document.getElementById('librarySortDropdown');
   if (!el) return;
   el.innerHTML =
-    '<button class="library-sort-trigger' + (librarySortOpen ? ' open' : '') + '" onclick="toggleSortDropdown()">' +
-      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M6 12h12M9 18h6"/></svg>' +
-    '</button>' +
-    '<div class="library-sort-menu' + (librarySortOpen ? ' open' : '') + '">' +
-      ANIME_SORT_OPTIONS.map(function(o) {
-        return '<div class="library-sort-option' + (o.key === librarySort ? ' active' : '') + '" onclick="switchLibrarySort(\'' + o.key + '\')">' + o.label + '</div>';
-      }).join('') +
+    '<div x-data="{ open: false }" @click.outside="open = false" class="library-sort-dd">' +
+      '<button type="button" class="library-sort-trigger" :class="{ \'open\': open }" @click="open = !open">' +
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M6 12h12M9 18h6"/></svg>' +
+      '</button>' +
+      '<div class="library-sort-menu" :class="{ \'open\': open }">' +
+        ANIME_SORT_OPTIONS.map(function(o) {
+          return '<div class="library-sort-option' + (o.key === librarySort ? ' active' : '') + '" onclick="switchLibrarySort(\'' + o.key + '\')">' + o.label + '</div>';
+        }).join('') +
+      '</div>' +
     '</div>';
+  if (typeof Alpine !== 'undefined') Alpine.initTree(el);
 }
 
 function renderStatusGrids(data) {
@@ -424,15 +420,23 @@ function showContextMenu(e, animeId) {
     document.getElementById('ctxOpenBgm').addEventListener('click', contextOpenBgm);
   }
 
-  // Position
+  // Position: always apply directly (Alpine :style + :class augment, don't replace)
   let x = e.clientX;
   let y = e.clientY;
+  menu.style.left = x + 'px';
+  menu.style.top = y + 'px';
   menu.classList.add('show');
   const rect = menu.getBoundingClientRect();
   if (x + rect.width > window.innerWidth) x = window.innerWidth - rect.width - 8;
   if (y + rect.height > window.innerHeight) y = window.innerHeight - rect.height - 8;
   menu.style.left = x + 'px';
   menu.style.top = y + 'px';
+  // Also sync Alpine data so @click.outside / :class work after init
+  if (typeof Alpine !== 'undefined' && menu.__x) {
+    Alpine.$data(menu).show = true;
+    Alpine.$data(menu).x = x;
+    Alpine.$data(menu).y = y;
+  }
 }
 
 function contextCopyTitle() {
@@ -478,7 +482,9 @@ function contextToggleStatus() {
 }
 
 function hideContextMenu() {
-  document.getElementById('contextMenu').classList.remove('show');
+  const el = document.getElementById('contextMenu');
+  if (el) el.classList.remove('show');
+  if (el && typeof Alpine !== 'undefined' && el.__x) Alpine.$data(el).show = false;
   contextMenuAnimeId = null;
   contextMenuCard = null;
 }
@@ -500,17 +506,18 @@ async function contextDeleteAnime() {
   }
 }
 
+// Context menu close on outside click / scroll / mouse leave
 document.addEventListener('click', function(e) {
   hideContextMenu();
-  if (librarySortOpen && !e.target.closest('#librarySortDropdown')) {
-    librarySortOpen = false;
-    renderSortDropdown();
-  }
 });
 document.addEventListener('contextmenu', (e) => {
   if (!e.target.closest('.context-menu')) hideContextMenu();
 });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideContextMenu(); });
+window.addEventListener('scroll', hideContextMenu, { capture: true });
+var _mainContent = document.querySelector('.main-content');
+if (_mainContent) _mainContent.addEventListener('scroll', hideContextMenu, { passive: true });
+document.getElementById('contextMenu').addEventListener('mouseleave', hideContextMenu);
 
 function navigateToDetail(id, cardEl) {
   const img = cardEl.querySelector('img');

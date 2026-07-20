@@ -52,7 +52,7 @@
 
 <!-- Sidebar -->
 <aside class="sidebar">
-  <div class="sidebar-brand" onclick="toggleThemeDock()" data-tip="主题与视觉设置" role="button" tabindex="0">
+    <div class="sidebar-brand" onclick="openThemeDock()" data-tip="主题与视觉设置" role="button" tabindex="0">
     <div class="sidebar-brand-icon theme-indicator">
       <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="MyAnimeDock">
         <rect x="0" y="0" width="16" height="16" rx="3" fill="var(--accent)" stroke="var(--border)" stroke-width="0.5"/>
@@ -104,50 +104,50 @@
   <div class="sidebar-tooltip-text" id="sidebarTooltipText"></div>
 </div>
 
-<!-- Theme Dock Overlay -->
-<div class="theme-dock-overlay" id="themeDockOverlay" onclick="handleDockOverlayClick()"></div>
-
-<!-- Theme Dock -->
-<div class="theme-dock" id="themeDock">
-  <div class="theme-dock-inner">
-    <div class="theme-dock-section">
-      <span class="theme-dock-label">主题色系</span>
-      <div class="theme-picker">
-        <button class="theme-option theme-option--default" data-theme="default" onclick="selectTheme(this, 'default')" data-tooltip="默认"></button>
-        <button class="theme-option theme-option--amber" data-theme="amber" onclick="selectTheme(this, 'amber')" data-tooltip="琥珀"></button>
-        <button class="theme-option theme-option--ocean" data-theme="ocean" onclick="selectTheme(this, 'ocean')" data-tooltip="海洋"></button>
-        <button class="theme-option theme-option--sakura" data-theme="sakura" onclick="selectTheme(this, 'sakura')" data-tooltip="樱花"></button>
-        <button class="theme-option theme-option--emerald" data-theme="emerald" onclick="selectTheme(this, 'emerald')" data-tooltip="翡翠"></button>
-        <button class="theme-option theme-option--violet" data-theme="violet" onclick="selectTheme(this, 'violet')" data-tooltip="紫罗兰"></button>
+<!-- Theme Dock (Alpine) -->
+<div id="themeDockRoot" x-data="{ dockOpen: false }" x-effect="window.__dockOpen = dockOpen; document.body.style.overflow = dockOpen ? 'hidden' : ''">
+  <div x-show="dockOpen" class="theme-dock-overlay" @click="dockOpen = false"></div>
+  <div :class="{ 'open': dockOpen }" x-cloak class="theme-dock" id="themeDock">
+    <div class="theme-dock-inner">
+      <div class="theme-dock-section">
+        <span class="theme-dock-label">主题色系</span>
+        <div class="theme-picker">
+          <button class="theme-option theme-option--default" data-theme="default" @click="selectTheme($el, 'default')" data-tooltip="默认"></button>
+          <button class="theme-option theme-option--amber" data-theme="amber" @click="selectTheme($el, 'amber')" data-tooltip="琥珀"></button>
+          <button class="theme-option theme-option--ocean" data-theme="ocean" @click="selectTheme($el, 'ocean')" data-tooltip="海洋"></button>
+          <button class="theme-option theme-option--sakura" data-theme="sakura" @click="selectTheme($el, 'sakura')" data-tooltip="樱花"></button>
+          <button class="theme-option theme-option--emerald" data-theme="emerald" @click="selectTheme($el, 'emerald')" data-tooltip="翡翠"></button>
+          <button class="theme-option theme-option--violet" data-theme="violet" @click="selectTheme($el, 'violet')" data-tooltip="紫罗兰"></button>
+        </div>
       </div>
-    </div>
-    <div class="theme-dock-separator"></div>
-    <div class="theme-dock-section">
-      <div class="theme-mode-toggle" style="margin-top:0">
-        <span class="theme-toggle-label theme-toggle-label--active" id="dockLabelDark">深色</span>
+      <div class="theme-dock-separator"></div>
+      <div class="theme-dock-section">
+        <div class="theme-mode-toggle" style="margin-top:0">
+          <span class="theme-toggle-label theme-toggle-label--active" id="dockLabelDark">深色</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="dockThemeMode" @change="handleDockThemeModeToggle($el)">
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="theme-toggle-label theme-toggle-label--inactive" id="dockLabelLight">浅色</span>
+        </div>
+      </div>
+      <div class="theme-dock-separator"></div>
+      <div class="theme-dock-section theme-dock-section--zoom">
+        <span class="theme-dock-label">缩放</span>
+        <input type="range" id="dockZoom" min="75" max="125" step="5" value="100" @input="handleDockZoom($el)">
+        <span class="theme-dock-zoom-value" id="dockZoomLabel">100%</span>
+      </div>
+      <div class="theme-dock-separator"></div>
+      <div class="theme-dock-section">
+        <span class="theme-dock-label">减少动画</span>
         <label class="toggle-switch">
-          <input type="checkbox" id="dockThemeMode" onchange="handleDockThemeModeToggle(this)">
+          <input type="checkbox" id="dockReduceMotion" @change="handleReduceMotionToggle($el)">
           <span class="toggle-slider"></span>
         </label>
-        <span class="theme-toggle-label theme-toggle-label--inactive" id="dockLabelLight">浅色</span>
       </div>
     </div>
-    <div class="theme-dock-separator"></div>
-    <div class="theme-dock-section theme-dock-section--zoom">
-      <span class="theme-dock-label">缩放</span>
-      <input type="range" id="dockZoom" min="75" max="125" step="5" value="100" oninput="handleDockZoom(this)">
-      <span class="theme-dock-zoom-value" id="dockZoomLabel">100%</span>
-    </div>
-    <div class="theme-dock-separator"></div>
-    <div class="theme-dock-section">
-      <span class="theme-dock-label">减少动画</span>
-      <label class="toggle-switch">
-        <input type="checkbox" id="dockReduceMotion" onchange="handleReduceMotionToggle(this)">
-        <span class="toggle-slider"></span>
-      </label>
-    </div>
+    <button class="theme-dock-close" @click="dockOpen = false" data-tooltip="关闭">✕</button>
   </div>
-  <button class="theme-dock-close" onclick="closeThemeDock()" data-tooltip="关闭">✕</button>
 </div>
 
 <!-- Main Content -->
@@ -781,8 +781,8 @@ function switchSettingsTab(btn, tab) {
 
 </div> <!-- /body-wrapper -->
 
-<!-- Context Menu -->
-<div class="context-menu" id="contextMenu">
+<!-- Context Menu (Alpine) -->
+<div class="context-menu" id="contextMenu" x-data="{ show: false, x: 0, y: 0 }" :class="{ 'show': show }" :style="'left:'+x+'px;top:'+y+'px'">
   <div class="context-menu-item context-menu-danger" id="ctxDelete">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M3 6h18"></path>

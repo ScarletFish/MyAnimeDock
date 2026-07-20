@@ -133,11 +133,11 @@ function animateThemeTransition(theme, mode) {
   }, 500);
 }
 
-// ─── Theme Dock ───
+// ─── Theme Dock (state managed by Alpine in index.html) ───
 function openThemeDock() {
-  const dock = document.getElementById('themeDock');
-  const overlay = document.getElementById('themeDockOverlay');
-  // Sync dock controls with current state
+  const root = document.getElementById('themeDockRoot');
+  if (!root) return;
+  // Sync dock controls with current state before showing
   const mode = document.documentElement.getAttribute('data-theme-mode') || 'dark';
   const dockToggle = document.getElementById('dockThemeMode');
   if (dockToggle) {
@@ -154,47 +154,12 @@ function openThemeDock() {
   if (rmToggle) {
     rmToggle.checked = document.documentElement.getAttribute('data-reduce-motion') === 'true';
   }
-  dock.classList.add('open');
-  overlay.classList.add('open');
-  document.addEventListener('keydown', handleDockEsc);
-}
-
-function closeThemeDock() {
-  const dock = document.getElementById('themeDock');
-  const overlay = document.getElementById('themeDockOverlay');
-  dock.classList.remove('open');
-  overlay.classList.remove('open');
-  document.removeEventListener('keydown', handleDockEsc);
-}
-
-function handleDockEsc(e) {
-  if (e.key === 'Escape') closeThemeDock();
-}
-
-let _dockZoomTimer = null;
-function handleDockZoom(input) {
-  const scale = parseInt(input.value) / 100;
-  applyZoom(scale);
-  document.getElementById('dockZoomLabel').textContent = input.value + '%';
-  // Debounce: persist to server config
-  clearTimeout(_dockZoomTimer);
-  _dockZoomTimer = setTimeout(async () => {
-    try { await API.post('/api/config', { uiScale: scale }); } catch (_) {}
-  }, 300);
+  if (typeof Alpine !== 'undefined') Alpine.$data(root).dockOpen = true;
 }
 
 function openVisualDock() {
   closeModal('settingsModal');
   openThemeDock();
-}
-
-function toggleThemeDock() {
-  const dock = document.getElementById('themeDock');
-  if (dock.classList.contains('open')) {
-    closeThemeDock();
-  } else {
-    openThemeDock();
-  }
 }
 
 // Zoom via CSS --scale variable (GSAP-safe, fixed-position-friendly)
@@ -221,8 +186,8 @@ function loadReduceMotion() {
 // Settings
 async function openSettings() {
   // Close dock if open before showing modal
-  const dock = document.getElementById('themeDock');
-  if (dock?.classList.contains('open')) closeThemeDock();
+  const root = document.getElementById('themeDockRoot');
+  if (root && typeof Alpine !== 'undefined' && root.__x && Alpine.$data(root).dockOpen) Alpine.$data(root).dockOpen = false;
   try {
     const config = await API.get('/api/config');
     configCache = config;

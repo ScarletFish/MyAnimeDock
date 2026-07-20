@@ -307,7 +307,14 @@ function sortLibraryItems(items) {
   var FORMAT_RANK = { TV: 0, OVA: 1, SP: 2, MOVIE: 3 };
 
   function getBaseKey(a) {
-    return (a.title || a.id || '').toLowerCase();
+    // Normalize bangumiTitle to base series name for grouping
+    // "摇曳百合♪♪" → "摇曳百合", "摇曳百合 3☆High!" → "摇曳百合"
+    var t = (a.bangumiTitle || a.title || '').toLowerCase();
+    t = t.replace(/[♪♫☆★！!？?~～\s]+/g, ' ').trim();  // strip symbols
+    t = t.replace(/\d+季/g, '').trim();                    // strip "N季"
+    t = t.replace(/\s*(OVA|SP|OAD|剧场版|Movie|Special|剧场版动画|夏日时光|Dear My Sister|Sing For You|BLOOM|Nachuyachumi).*$/i, '').trim();
+    t = t.replace(/\s+\d+.*$/, '').trim();                 // strip trailing "3 High!" etc.
+    return t || (a.title || a.id || '').toLowerCase();
   }
   function getSeasonRank(a) {
     var p = (a.platform || '').toUpperCase();
@@ -366,18 +373,8 @@ function sortLibraryItems(items) {
     block.sort(function(a, b) { return getSeasonRank(a) - getSeasonRank(b); });
   });
 
-  function getBlockFormatRank(block) {
-    // Lowest format rank in block determines group position (TV=0 before OVA=1)
-    return Math.min.apply(null, block.map(function(a) {
-      var p = (a.platform || '').toUpperCase();
-      return FORMAT_RANK[p] != null ? FORMAT_RANK[p] : 0;
-    }));
-  }
-
-  // Step 3: Sort blocks — TV first, then by selected option
+  // Step 3: Sort blocks by selected option
   blocks.sort(function(a, b) {
-    var fa = getBlockFormatRank(a), fb = getBlockFormatRank(b);
-    if (fa !== fb) return fa - fb;  // TV before OVA/SP/Movie
     var sa = getBlockScore(a, librarySort);
     var sb = getBlockScore(b, librarySort);
     if (librarySort === 'name' || librarySort === 'rating' || librarySort === 'recent' || librarySort === 'updated') {

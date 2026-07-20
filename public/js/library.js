@@ -155,7 +155,7 @@ function renderDashboard() {
         sectionHTML += '<div class="dashboard-section" data-section="localLibrary">' +
           '<div class="dashboard-section-header"><span class="dashboard-section-title">本地动漫</span>' +
           '<div class="library-sort-bar">' +
-            '<button class="library-sort-btn' + (librarySort === 'season' ? ' active' : '') + '" onclick="switchLibrarySort(\'season\')">季度</button>' +
+            '<button class="library-sort-btn' + (librarySort === 'season' ? ' active' : '') + '" onclick="switchLibrarySort(\'season\')">日文名+季度</button>' +
             '<button class="library-sort-btn' + (librarySort === 'name' ? ' active' : '') + '" onclick="switchLibrarySort(\'name\')">中文名</button>' +
             '<button class="library-sort-btn' + (librarySort === 'imported' ? ' active' : '') + '" onclick="switchLibrarySort(\'imported\')">导入时间</button>' +
           '</div></div>' +
@@ -303,13 +303,13 @@ function renderContinueSection(data, container) {
   '</div>';
 }
 
-/** Sort anime by season order: TV S1→S2→S3 → OVA → SP → Movie → unknown */
+/** Sort anime: TV S1→S2→S3 → OVA → SP → Movie → unknown */
 function sortLibraryItems(items) {
   var formatOrder = { tv: 0, ova: 1, sp: 2, movie: 3, unknown: 4 };
   function getFormat(a) {
-    var name = (a.folderName || '') + ' ' + (a.title || '');
-    if (/[Oo][Vv][Aa]/.test(name)) return 'ova';
-    if (/[Ss][Pp][Ee][Cc][Ii][Aa][Ll]|特典|SP/.test(name)) return 'sp';
+    var name = (a.folderName || '') + ' ' + (a.specialSuffix || '');
+    if (/[Oo][Vv][Aa]/.test(name) || /[~～].*[Oo][Vv][Aa]/.test(name)) return 'ova';
+    if (/[Ss][Pp][Ee][Cc][Ii][Aa][Ll]|特典/.test(name)) return 'sp';
     if (/剧场版|[Mm]ovie/.test(name)) return 'movie';
     return 'tv';
   }
@@ -318,6 +318,10 @@ function sortLibraryItems(items) {
   }
   function getCnName(a) {
     return (a.bangumiTitle || a.title || '').toLowerCase();
+  }
+  function getSeason(a) {
+    // matchedSeason from searchBangumiBySeason, season from folder parse
+    return a.matchedSeason || a.season || 1;  // TV entries without explicit season default to 1
   }
   return items.slice().sort(function(a, b) {
     if (librarySort === 'name') {
@@ -329,8 +333,7 @@ function sortLibraryItems(items) {
     // Default: season order
     var fa = formatOrder[getFormat(a)], fb = formatOrder[getFormat(b)];
     if (fa !== fb) return fa - fb;
-    var sa = a.matchedSeason || a.season || 999;
-    var sb = b.matchedSeason || b.season || 999;
+    var sa = getSeason(a), sb = getSeason(b);
     if (sa !== sb) return sa - sb;
     return getJpName(a).localeCompare(getJpName(b), 'ja');
   });
@@ -341,7 +344,7 @@ function switchLibrarySort(mode) {
   localStorage.setItem('librarySort', mode);
   // Update button states
   document.querySelectorAll('.library-sort-btn').forEach(function(btn) {
-    btn.classList.toggle('active', btn.textContent === { season: '季度', name: '中文名', imported: '导入时间' }[mode]);
+    btn.classList.toggle('active', btn.textContent === { season: '日文名+季度', name: '中文名', imported: '导入时间' }[mode]);
   });
   renderStatusGrids(libraryData);
 }

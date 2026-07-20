@@ -65,7 +65,7 @@
   color: var(--fg-muted);
   background: transparent;
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: 6px;
   cursor: pointer;
   transition: all var(--duration-fast) var(--ease-out);
   user-select: none;

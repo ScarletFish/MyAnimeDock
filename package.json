@@ -1,6 +1,6 @@
 {
   "name": "anime-manager",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Local anime management library with Bangumi metadata and mpv integration",
   "main": "server/server.js",
   "scripts": {

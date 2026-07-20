@@ -157,6 +157,17 @@ function openThemeDock() {
   if (typeof Alpine !== 'undefined') Alpine.$data(root).dockOpen = true;
 }
 
+let _dockZoomTimer = null;
+function handleDockZoom(input) {
+  const scale = parseInt(input.value) / 100;
+  applyZoom(scale);
+  document.getElementById('dockZoomLabel').textContent = input.value + '%';
+  clearTimeout(_dockZoomTimer);
+  _dockZoomTimer = setTimeout(async () => {
+    try { await API.post('/api/config', { uiScale: scale }); } catch (_) {}
+  }, 300);
+}
+
 function openVisualDock() {
   closeModal('settingsModal');
   openThemeDock();

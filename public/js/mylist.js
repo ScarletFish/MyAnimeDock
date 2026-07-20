@@ -1,13 +1,24 @@
 // My List view — 全生命周期总览
 let mylistData = [];
 let mylistFilter = 'all';
+let mylistSort = localStorage.getItem('mylistSort') || 'name';
+let mylistSortOpen = false;
 
 // 引用自 ui.js 的 STATUS_LABELS
 const MYLIST_LABELS = STATUS_LABELS;
+const MYLIST_STATUS_ORDER = ['watching', 'wish', 'completed', 'on_hold', 'dropped'];
+const MYLIST_SORT_OPTIONS = [
+  { key: 'name', label: '名称' },
+  { key: 'rating', label: '评分' },
+  { key: 'progress', label: '进度' },
+  { key: 'recent', label: '最近更新' },
+];
 
 async function loadMyList() {
   try {
     mylistData = await API.get('/api/mylist');
+    renderMyListStatusBar();
+    renderMyListSortDropdown();
     renderMyList();
   } catch (e) {
     if (window.location.origin !== 'http://localhost:3456') return;
@@ -15,25 +26,103 @@ async function loadMyList() {
   }
 }
 
+// ─── Status Bar ───
+
+function renderMyListStatusBar() {
+  const el = document.getElementById('mylistStatusBar');
+  if (!el) return;
+  const counts = { all: mylistData.length };
+  MYLIST_STATUS_ORDER.forEach(s => counts[s] = 0);
+  mylistData.forEach(item => {
+    const s = item.status || 'wish';
+    if (counts[s] != null) counts[s]++;
+  });
+
+  const statuses = [
+    { key: 'all', label: '全部' },
+    ...MYLIST_STATUS_ORDER.map(s => ({ key: s, label: MYLIST_LABELS[s] || s })),
+  ];
+
+  el.innerHTML = statuses.map(s => {
+    const active = mylistFilter === s.key ? ' active' : '';
+    const dot = s.key !== 'all' ? '<span class="mylist-status-dot"></span>' : '';
+    return '<div class="mylist-status-item' + active + '" data-status="' + s.key + '" onclick="setMyListFilter(\'' + s.key + '\')">' +
+      dot + '<b>' + (counts[s.key] || 0) + '</b>' + s.label + '</div>';
+  }).join('');
+}
+
+// ─── Sort Dropdown ───
+
+function switchMyListSort(mode) {
+  mylistSort = mode;
+  localStorage.setItem('mylistSort', mode);
+  mylistSortOpen = false;
+  renderMyListSortDropdown();
+  renderMyList();
+}
+
+function toggleMyListSortDropdown() {
+  mylistSortOpen = !mylistSortOpen;
+  setTimeout(function() { renderMyListSortDropdown(); }, 0);
+}
+
+function renderMyListSortDropdown() {
+  const el = document.getElementById('mylistSortDropdown');
+  if (!el) return;
+  el.innerHTML =
+    '<button class="library-sort-trigger' + (mylistSortOpen ? ' open' : '') + '" onclick="toggleMyListSortDropdown()">' +
+      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M6 12h12M9 18h6"/></svg>' +
+    '</button>' +
+    '<div class="library-sort-menu' + (mylistSortOpen ? ' open' : '') + '">' +
+      MYLIST_SORT_OPTIONS.map(function(o) {
+        return '<div class="library-sort-option' + (o.key === mylistSort ? ' active' : '') + '" onclick="switchMyListSort(\'' + o.key + '\')">' + o.label + '</div>';
+      }).join('') +
+    '</div>';
+}
+
+// ─── Sorting ───
+
+function sortMyListItems(items) {
+  function getRating(a) { return a.rating || 0; }
+  function getProgress(a) {
+    if (!a.episodeCount) return 0;
+    return a.episodesWatched / a.episodeCount;
+  }
+  function getJpName(a) {
+    return (a.bangumiTitleJp || a.bangumiTitle || a.title || '').toLowerCase();
+  }
+  return items.slice().sort(function(a, b) {
+    switch (mylistSort) {
+      case 'rating': return getRating(b) - getRating(a);
+      case 'progress': return getProgress(b) - getProgress(a);
+      case 'recent': return (b.completedAt || b.startedAt || '').localeCompare(a.completedAt || a.startedAt || '');
+      case 'name': default: return getJpName(a).localeCompare(getJpName(b), 'ja');
+    }
+  });
+}
+
+// ─── Filter & Render ───
+
+function setMyListFilter(filter) {
+  mylistFilter = filter;
+  renderMyListStatusBar();
+  renderMyList();
+}
+
 function renderMyList() {
   const empty = document.getElementById('mylistEmpty');
   const grid = document.getElementById('mylistGrid');
 
-  // Filter
   let filtered = mylistData;
   if (mylistFilter !== 'all') {
-    if (mylistFilter === 'in_progress') {
-      filtered = mylistData.filter(item => item.status === 'watching');
-    } else {
-      filtered = mylistData.filter(item => item.status === mylistFilter);
-    }
+    filtered = mylistData.filter(item => item.status === mylistFilter);
   }
 
+  filtered = sortMyListItems(filtered);
+
   if (filtered.length === 0) {
-    killMyListAnimations();
     grid.innerHTML = '';
     if (empty) empty.style.display = 'flex';
-    // Restore empty state text
     const p = empty ? empty.querySelector('p') : null;
     if (p) p.textContent = mylistFilter === 'all' ? '暂无内容' : '暂无"' + (MYLIST_LABELS[mylistFilter] || '') + '"的条目';
     return;
@@ -47,17 +136,11 @@ function renderMyList() {
     renderFilteredTab(filtered);
   }
 
-  // Apply grid sizing to match library
   applyGridZoom();
 
-  // Card reveal animation
   document.querySelectorAll('#mylistView .anime-card').forEach(card => {
     card.style.animation = 'cardReveal 300ms var(--ease-out) forwards';
   });
-}
-
-function killMyListAnimations() {
-  // Placeholder if needed
 }
 
 function renderAllTab(items) {
@@ -118,16 +201,6 @@ function renderMyListCard(item) {
     onContextMenu: 'showMyListContextMenu',
     extraAttrs: extraAttrs
   });
-}
-
-// ─── Tab switching ───
-
-function setMyListFilter(filter) {
-  mylistFilter = filter;
-  document.querySelectorAll('.mylist-tab').forEach(t => {
-    t.classList.toggle('active', t.dataset.filter === filter);
-  });
-  renderMyList();
 }
 
 // ─── Card click handlers ───

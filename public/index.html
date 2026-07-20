@@ -328,15 +328,9 @@
   <section class="view hidden" id="mylistView">
     <div class="view-header">
       <h1>我的列表</h1>
-      <div class="mylist-tab-bar">
-        <button class="mylist-tab active" data-filter="all" onclick="setMyListFilter('all')">全部</button>
-        <button class="mylist-tab" data-filter="wish" onclick="setMyListFilter('wish')">计划中</button>
-        <button class="mylist-tab" data-filter="in_progress" onclick="setMyListFilter('in_progress')">进行中</button>
-        <button class="mylist-tab" data-filter="completed" onclick="setMyListFilter('completed')">已完成</button>
-        <button class="mylist-tab" data-filter="on_hold" onclick="setMyListFilter('on_hold')">搁置</button>
-        <button class="mylist-tab" data-filter="dropped" onclick="setMyListFilter('dropped')">抛弃</button>
-      </div>
+      <div class="mylist-sort-bar" id="mylistSortDropdown"></div>
     </div>
+    <div class="mylist-status-bar" id="mylistStatusBar"></div>
     <div id="mylistGrid" class="mylist-grid"></div>
     <div class="empty-state" id="mylistEmpty" style="display:none">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">

@@ -47,40 +47,74 @@
 }
 
 /* Tab bar */
-.mylist-tab-bar {
+/* ─── My List Status Bar ─── */
+.mylist-status-bar {
   display: flex;
-  gap: 4px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 3px;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+  align-items: center;
+  justify-content: space-evenly;
+  padding: 0.5rem 0;
+  flex-wrap: wrap;
+  gap: 0;
+  margin-bottom: var(--space-3);
 }
-
-.mylist-tab {
-  padding: 6px 14px;
-  font-size: calc(0.75rem * var(--scale));
-  font-weight: var(--fw-medium);
-  background: transparent;
-  border: none;
+.mylist-status-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.125rem;
+  padding: 0.5rem 0.75rem;
+  font-size: calc(0.8125rem * var(--scale));
   color: var(--fg-muted);
-  cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-out);
-  font-family: inherit;
-  line-height: 1.4;
   white-space: nowrap;
-  border-radius: calc(var(--radius-md) - 2px);
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: background var(--duration-fast) var(--ease-out);
+  user-select: none;
 }
-
-.mylist-tab:hover {
+.mylist-status-item:hover {
+  background: var(--bg-elevated);
+}
+.mylist-status-item.active {
+  color: var(--accent);
+}
+.mylist-status-item b {
+  display: block;
   color: var(--fg-primary);
-  background: var(--bg-surface);
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+  font-size: calc(1.3rem * var(--scale));
+  line-height: 1.2;
 }
-
-.mylist-tab.active {
-  color: #fff;
+.mylist-status-item.active b {
+  color: var(--accent);
+}
+.mylist-status-item .mylist-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--fg-muted);
+  opacity: 0.4;
+}
+.mylist-status-item.active .mylist-status-dot {
+  opacity: 1;
   background: var(--accent);
+}
+/* Status colors */
+.mylist-status-item[data-status="watching"] .mylist-status-dot { background: #4ade80; }
+.mylist-status-item[data-status="wish"] .mylist-status-dot { background: #60a5fa; }
+.mylist-status-item[data-status="completed"] .mylist-status-dot { background: #a78bfa; }
+.mylist-status-item[data-status="on_hold"] .mylist-status-dot { background: #fbbf24; }
+.mylist-status-item[data-status="dropped"] .mylist-status-dot { background: #f87171; }
+.mylist-status-item.active[data-status="watching"] .mylist-status-dot { background: #4ade80; }
+.mylist-status-item.active[data-status="wish"] .mylist-status-dot { background: #60a5fa; }
+.mylist-status-item.active[data-status="completed"] .mylist-status-dot { background: #a78bfa; }
+.mylist-status-item.active[data-status="on_hold"] .mylist-status-dot { background: #fbbf24; }
+.mylist-status-item.active[data-status="dropped"] .mylist-status-dot { background: #f87171; }
+
+/* ─── My List Sort Dropdown ─── */
+.mylist-sort-bar {
+  position: relative;
+  margin-left: auto;
 }
 
 /* Wishlist card */

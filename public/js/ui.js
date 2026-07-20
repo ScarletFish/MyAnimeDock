@@ -117,6 +117,8 @@ function openModal(el, { onClose } = {}) {
   if (!el) return;
   el._onClose = typeof onClose === 'function' ? onClose : null;
   el.classList.add('show');
+  // Alpine-powered: sync x-data.open for x-show/x-effect
+  if (typeof Alpine !== 'undefined' && el.__x) Alpine.$data(el).open = true;
   document.body.style.overflow = 'hidden';
 }
 
@@ -124,6 +126,8 @@ function closeModal(el) {
   if (typeof el === 'string') el = document.getElementById(el);
   if (!el) return;
   el.classList.remove('show');
+  // Alpine-powered: sync x-data.open
+  if (typeof Alpine !== 'undefined' && el.__x) Alpine.$data(el).open = false;
   document.body.style.overflow = '';
   if (el._onClose) {
     const cb = el._onClose;

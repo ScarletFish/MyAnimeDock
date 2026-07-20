@@ -1625,7 +1625,7 @@ html[data-reduce-motion="true"] .episode-dot {
   flex: 1;
   padding: calc(0.6rem * var(--scale)) calc(0.75rem * var(--scale));
   background: var(--bg-elevated);
-  border: 1px solid var(--border-primary, #2e2e45);
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm, 6px);
   color: var(--fg-primary, #ede8e2);
   font-size: calc(0.8125rem * var(--scale));
@@ -1635,7 +1635,7 @@ html[data-reduce-motion="true"] .episode-dot {
 }
 
 .onb-field__input:focus {
-  border-color: var(--accent, #f59e0b);
+  border-color: var(--accent);
 }
 
 .onb-field__input::placeholder {
@@ -1645,8 +1645,8 @@ html[data-reduce-motion="true"] .episode-dot {
 .onb-field__browse {
   flex-shrink: 0;
   padding: calc(0.6rem * var(--scale)) calc(1rem * var(--scale));
-  background: var(--bg-elevated, #2a2a3e);
-  border: 1px solid var(--border-primary, #2e2e45);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm, 6px);
   color: var(--fg-primary, #ede8e2);
   font-size: calc(0.8125rem * var(--scale));
@@ -1656,8 +1656,9 @@ html[data-reduce-motion="true"] .episode-dot {
 }
 
 .onb-field__browse:hover {
-  background: var(--bg-hover, #32324a);
-  border-color: var(--accent, #f59e0b);
+  background: var(--bg-elevated);
+  filter: brightness(1.15);
+  border-color: var(--accent);
 }
 
 .onb-field__foot {
@@ -1722,16 +1723,16 @@ html[data-reduce-motion="true"] .episode-dot {
 /* Light mode overrides */
 [data-theme-mode="light"] .onb-field__input {
   background: var(--bg-elevated);
-  border-color: var(--border-primary, #d4d0c8);
+  border-color: var(--border);
 }
 
 [data-theme-mode="light"] .onb-field__browse {
-  background: var(--bg-elevated, #e0dcd5);
-  border-color: var(--border-primary, #d4d0c8);
+  background: var(--bg-elevated);
+  border-color: var(--border);
 }
 
 [data-theme-mode="light"] .onb-field__browse:hover {
-  background: var(--bg-hover, #d5d0c8);
+  filter: brightness(0.95);
 }
 
 /* ─── Keyboard Shortcuts Help ─── */

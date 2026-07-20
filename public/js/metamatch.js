@@ -28,7 +28,8 @@ function mmOpenModal() {
       mmSelectedId = null;
       mmSelectedIds.clear();
       mmSelectionOrder = [];
-      mmPanelOpen = false;
+      const panel = document.getElementById('mmPanel');
+      if (panel && typeof Alpine !== 'undefined') Alpine.$data(panel).panelOpen = false;
       const wasSyncing = mmSyncInProgress;
       mmSyncInProgress = false;
       mmSyncCancelled = true;
@@ -72,10 +73,10 @@ async function mmLoadModalData() {
     mmSyncInProgress = false;
     mmSelectedIds.clear();
     mmSelectionOrder = [];
-    mmPanelOpen = false;
+    const panel = document.getElementById('mmPanel');
+    if (panel && typeof Alpine !== 'undefined') Alpine.$data(panel).panelOpen = false;
     document.getElementById('mmPanelEmpty').style.display = 'flex';
     document.getElementById('mmPanelContent').style.display = 'none';
-    document.getElementById('mmPanel').classList.remove('open');
 
     const libData = await API.get('/api/library');
     if (!libData || libData.length === 0) {
@@ -129,17 +130,17 @@ function mmShowEmpty(msg) {
   if (empty) { empty.style.display = 'flex'; const p = empty.querySelector('p'); if (p) p.textContent = msg || '没有需要匹配的条目'; }
   if (panelEmpty) panelEmpty.style.display = 'flex';
   if (panelContent) panelContent.style.display = 'none';
-  mmPanelOpen = false;
-  document.getElementById('mmPanel')?.classList.remove('open');
+  const panel = document.getElementById('mmPanel');
+  if (panel && typeof Alpine !== 'undefined') Alpine.$data(panel).panelOpen = false;
 }
 
 // ─── Filter & Search ───
 
 function mmSetFilter(filter) {
   mmFilter = filter;
-  document.querySelectorAll('.mm-filter-dot').forEach(b => {
-    b.classList.toggle('mm-filter-dot--active', b.dataset.mmfilter === filter);
-  });
+  // Sync Alpine data if filter bar is Alpine-ified
+  var bar = document.querySelector('.modal-m-filterbar');
+  if (bar && typeof Alpine !== 'undefined') Alpine.$data(bar).filter = filter;
   mmApplyFilters();
 }
 
@@ -505,8 +506,7 @@ function mmMainAction() {
 function mmOpenPanel() {
   const panel = document.getElementById('mmPanel');
   if (!panel || mmPanelOpen) return;
-  mmPanelOpen = true;
-  panel.classList.add('open');
+  if (typeof Alpine !== 'undefined') Alpine.$data(panel).panelOpen = true;
 }
 
 function mmClosePanel(cb) {
@@ -515,8 +515,7 @@ function mmClosePanel(cb) {
     if (cb) cb();
     return;
   }
-  mmPanelOpen = false;
-  panel.classList.remove('open');
+  if (typeof Alpine !== 'undefined') Alpine.$data(panel).panelOpen = false;
   if (cb) setTimeout(cb, 350);
 }
 
@@ -526,7 +525,10 @@ document.addEventListener('click', (e) => {
   if (e.target.closest('.mm-row')) return;
   if (e.target.closest('.modal-m-filterbar')) return;
   if (e.target.closest('.modal-m-topbar')) return;
-  if (mmPanelOpen) mmDeselectPanel();
+  if (typeof Alpine !== 'undefined') {
+    const panel = document.getElementById('mmPanel');
+    if (panel && Alpine.$data(panel).panelOpen) mmDeselectPanel();
+  }
   if (mmSelectedIds.size > 0) mmClearSelection();
 });
 

@@ -349,7 +349,7 @@ function renderStatusGrids(data) {
   container.innerHTML = sections.map(function(cfg) {
     var items = sortAnimeItems(data.filter(function(a) {
       return (a.myListStatus || 'wish') === cfg.status;
-    }));
+    }), librarySort);
     if (items.length === 0) return '';
     var cardsHtml = items.map(function(a) { return renderAnimeCard(a); }).join('');
     return '<div class="status-section" id="statusSection-' + cfg.status + '">' +

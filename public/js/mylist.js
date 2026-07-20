@@ -294,55 +294,7 @@ function showWishlistDetail(id) {
 
 let _statusModalId = null;
 
-// Reverse map for status dropdown: label → value
-function _statusValue(label) {
-  for (var k in STATUS_LABELS) {
-    if (STATUS_LABELS[k] === label) return k;
-  }
-  return 'watching';
-}
-
-function toggleStatusDropdown(e) {
-  if (e) e.stopPropagation();
-  var dd = document.getElementById('statusDd');
-  if (!dd) return;
-  var isOpen = dd.classList.toggle('is-open');
-  if (isOpen) {
-    var selected = dd.querySelector('.status-dd-opt.is-selected');
-    if (selected) {
-      var menu = dd.querySelector('.status-dd-menu');
-      var scrollTop = selected.offsetTop - menu.offsetTop - menu.clientHeight / 2 + selected.clientHeight / 2;
-      menu.scrollTop = Math.max(0, scrollTop);
-    }
-    // Close on outside click
-    document.addEventListener('click', closeStatusDropdown);
-  } else {
-    document.removeEventListener('click', closeStatusDropdown);
-  }
-}
-
-function closeStatusDropdown(e) {
-  var dd = document.getElementById('statusDd');
-  if (!dd) return;
-  if (e && dd.contains(e.target)) return;
-  dd.classList.remove('is-open');
-  document.removeEventListener('click', closeStatusDropdown);
-}
-
-function selectStatusOption(btn) {
-  var dd = document.getElementById('statusDd');
-  if (!dd) return;
-  var value = btn.getAttribute('data-value');
-  var label = btn.querySelector('span').textContent;
-  // Update trigger text
-  document.getElementById('statusDdText').textContent = label;
-  // Update selected option
-  dd.querySelectorAll('.status-dd-opt').forEach(function(o) { o.classList.remove('is-selected'); });
-  btn.classList.add('is-selected');
-  // Close
-  dd.classList.remove('is-open');
-  document.removeEventListener('click', closeStatusDropdown);
-}
+// dropdown via Alpine (statusDd x-data)
 
 // ─── Number Stepper ───
 function stepperChange(btn, delta) {
@@ -426,12 +378,10 @@ function openStatusModal(e, id) {
     }
   }
 
-  // Status: custom dropdown
+  // Status: Alpine dropdown
   var curStatus = (item && item.status) || 'wish';
-  document.getElementById('statusDdText').textContent = STATUS_LABELS[curStatus] || '计划中';
-  document.getElementById('statusDd').querySelectorAll('.status-dd-opt').forEach(function(o) {
-    o.classList.toggle('is-selected', o.getAttribute('data-value') === curStatus);
-  });
+  var ddEl = document.getElementById('statusDd');
+  if (ddEl && typeof Alpine !== 'undefined') Alpine.$data(ddEl).selected = curStatus;
 
   // Rating: num-stepper
   var rating = item && item.rating != null ? item.rating : '';
@@ -466,8 +416,6 @@ function openStatusModal(e, id) {
   if (notesEl) notesEl.value = (item && item.notes) || '';
 
   openModal('statusModal');
-  // Close dropdown on modal close
-  closeStatusDropdown();
 }
 
 function _todayStr() {
@@ -482,9 +430,11 @@ async function saveStatusModal() {
   var id = _statusModalId;
   if (!id) return;
 
-  // Read status from custom dropdown
-  var statusText = document.getElementById('statusDdText').textContent;
-  var status = _statusValue(statusText);
+  // Read status from Alpine dropdown
+  var ddEl = document.getElementById('statusDd');
+  var status = (ddEl && typeof Alpine !== 'undefined')
+    ? Alpine.$data(ddEl).selected
+    : 'wish';
 
   // Read rating from stepper display
   var ratingText = document.getElementById('ratingDisplay').textContent;
@@ -517,7 +467,6 @@ async function saveStatusModal() {
     showToast('已保存', 'success');
     closeModal('statusModal');
     hideContextMenu();
-    closeStatusDropdown();
     loadMyList();
     if (typeof loadLibrary === 'function') loadLibrary();
   } catch (e) {

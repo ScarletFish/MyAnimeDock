@@ -49,7 +49,7 @@ npm run prisma:studio    # Open Prisma Studio (SQLite browser)
 node scripts/migrate-to-sqlite.js  # 从 JSON 迁移数据到 SQLite（一次性）
 start.bat             # Windows 菜单：开发/构建/清理/prisma 操作
 # 测试命令
-cd server && npm test    # 全量测试（198 tests）
+cd server && npm test    # 全量测试（224 tests）
 ```
 
 完整 API 端点参考见 `.agents/docs/data-flow.md`（14 个主要数据流，40+ 端点）。
@@ -74,7 +74,7 @@ src-tauri/         → Tauri v2 desktop shell (Rust)
 prisma/            → SQLite (Prisma ORM) — anime.db + schema.prisma + migrations/
 public/            → 无构建前端
 ├── index.html + styles.css
-└── js/            → api.js, app.js, library.js, detail.js, discovery.js, mylist.js, stats.js, metamatch.js, ui.js, state.js, utils.js
+└── js/            → api.js, app.js, components.js, library.js, detail.js, discovery.js, mylist.js, stats.js, metamatch.js, ui.js, state.js, utils.js
 scripts/           → copy-sidecar-deps.js, migrate-to-sqlite.js
 .agents/           → 规则/技能/文档
 ```
@@ -106,6 +106,7 @@ scripts/           → copy-sidecar-deps.js, migrate-to-sqlite.js
 - **MetaMatch 批量匹配**: `metamatch.js` 列表+面板布局，SSE 流式同步 `/api/library/sync/stream`，支持取消、重试
 - **MyList 状态管理**: 导入时自动创建 MyList 条目（默认 `watching`），删除动画时自动标记 `completed`
 - **Modal 弹窗模式**: `.modal-overlay` 包裹 `.modal`，overlay `onclick` 支持点击遮罩层关闭；右上角 `.modal-close-btn` 显式关闭
+- **UI 组件工厂**（`components.js`）: `createDropdown({ containerId, options, storageKey, onSelect })` 统一下拉菜单（状态 + 渲染 + click-outside）；`createFilterBar({ container, options, initial, onChange })` 统一筛选栏。新增 UI 优先用工厂，避免重复写 toggle/render/click-outside
 - **详情页封面不能加 `decoding="async"`**：`renderDetail()` 中封面 `<img>` 必须 eager 加载，否则 GSAP Flip 动画完成时封面尚未解码，露出空白框架闪白
 
 ## Config
@@ -200,7 +201,7 @@ __debug.snapshot(label)       // 快照：view, scrollTop, scrollHeight, 数据�
 测试指南见 `.agents/docs/testing.md`（模式惯例、已知行为、陷阱记录）。
 
 ```bash
-cd server && npm test    # 全量测试（198 tests）
+cd server && npm test    # 全量测试（224 tests）
 ```
 
 | 文件 | 测试数 | 覆盖模块 | 何时运行 |

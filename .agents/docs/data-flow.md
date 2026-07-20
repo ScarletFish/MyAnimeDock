@@ -1,6 +1,6 @@
 # MyAnimeDock — Complete Data Flow Reference
 
-> 涵盖 13 个主要数据流：config, scan/discovery, import, metadata fetch, play sessions, covers/thumbnails, SQLite persistence, startup init, MyList status, Bangumi sync, discovery management, full call chain。
+> 涵盖 15 个主要数据流：config, scan/discovery, import, metadata fetch, play sessions, covers/thumbnails, SQLite persistence, startup init, MyList status, Bangumi sync, discovery management, save taxonomy, full call chain, AniList sync, thumbnail queue。
 > 涉及数据持久化、API 端点、或数据模型改动时，必须先读此文档。
 
 ## Architecture Overview
@@ -553,6 +553,7 @@ http.createServer((req, res) => {
 | `scripts/copy-sidecar-deps.js` | — | Build: copies Prisma engine + ffmpeg.exe to sidecar-modules/ |
 | `public/js/api.js` | — | Frontend fetch() wrapper (API.get, API.post, API.del) |
 | `public/js/app.js` | — | Router, theme, toast, settings, zoom |
+| `public/js/components.js` | 93 | UI component factories: createDropdown, createFilterBar |
 | `public/js/discovery.js` | — | Scan/browse UI, import panel |
 | `public/js/library.js` | — | Library grid, search, sort |
 | `public/js/detail.js` | — | Detail view, hero animation, episodes, heatmap, stats |

@@ -1,8 +1,18 @@
 let discoveryData = [];
 let checkedPaths = new Set();
 let isScanning = false;
-let filterMode = 'all';
 let stickObserver = null;
+
+const discoveryFilterBar = createFilterBar({
+  container: '.discovery-actions .filter-group',
+  options: [
+    { key: 'all', label: '全部' },
+    { key: 'unimported', label: '未导入' },
+    { key: 'excluded', label: '已排除' }
+  ],
+  initial: 'all',
+  onChange: function() { loadDiscovery(); }
+});
 
 async function loadDiscovery() {
   const grid = document.getElementById('discoveryGrid');
@@ -31,7 +41,7 @@ async function loadDiscovery() {
     }
     heroPath.textContent = config.mediaDir;
 
-    const showExcluded = filterMode === 'excluded';
+    const showExcluded = discoveryFilterBar.current === 'excluded';
     const resp = await API.get(`/api/browse${showExcluded ? '?showExcluded=true' : ''}`);
     discoveryData = resp.tree || [];
 
@@ -127,9 +137,7 @@ function renderDiscovery() {
   document.getElementById('statImported').textContent = imported;
   stats.style.display = '';
 
-  document.querySelectorAll('.discovery-actions .filter-btn[data-filter]').forEach(b => {
-    b.classList.toggle('filter-btn--active', b.dataset.filter === filterMode);
-  });
+  discoveryFilterBar.render();
 
   const hasNew = discoveryData.some(n => !n.alreadyImported && !n.excluded);
   actions.style.display = hasNew ? '' : 'none';
@@ -149,11 +157,11 @@ function renderDiscovery() {
   }
 
   let displayData = discoveryData;
-  if (filterMode === 'unimported') {
+  if (discoveryFilterBar.current === 'unimported') {
     displayData = discoveryData.filter(n => !n.alreadyImported && !n.excluded);
-  } else if (filterMode === 'excluded') {
+  } else if (discoveryFilterBar.current === 'excluded') {
     displayData = discoveryData.filter(n => n.excluded);
-  } else if (filterMode === 'all') {
+  } else if (discoveryFilterBar.current === 'all') {
     displayData = discoveryData.filter(n => !n.excluded);
     // 未导入排前
     displayData.sort((a, b) => {
@@ -293,11 +301,6 @@ function toggleCard() {
     else checkedPaths.delete(card.dataset.path);
   });
   updateImportCount();
-}
-
-function setFilter(mode) {
-  filterMode = mode;
-  loadDiscovery();
 }
 
 function expandAll() {

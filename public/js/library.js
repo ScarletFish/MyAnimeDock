@@ -5,9 +5,8 @@ let contextMenuCard = null;
 let cardScrollTrigger = null;
 let cardTween = null;
 
-// Sort state
-let librarySort = localStorage.getItem('librarySort') || 'name';
-let librarySortOpen = false;
+// Sort state — initialized after ANIME_SORT_OPTIONS is defined (mylist.js)
+let librarySortDropdown = null;
 
 // Grid card sizing
 const GRID_CARD_BASE = 190;
@@ -177,7 +176,15 @@ function renderDashboard() {
     if (contBody) renderContinueSection(libraryData, contBody);
   }
   renderStatusGrids(libraryData);
-  renderSortDropdown();
+  if (!librarySortDropdown) {
+    librarySortDropdown = createDropdown({
+      containerId: 'librarySortDropdown',
+      storageKey: 'librarySort',
+      options: ANIME_SORT_OPTIONS,
+      onSelect: function() { renderStatusGrids(libraryData); }
+    });
+  }
+  librarySortDropdown.render();
 }
 
 function renderStatsSection(data, container) {
@@ -308,38 +315,9 @@ function renderContinueSection(data, container) {
 
 
 function switchLibrarySort(mode) {
-  librarySort = mode;
-  localStorage.setItem('librarySort', mode);
-  renderSortDropdown();
-  renderStatusGrids(libraryData);
+  librarySortDropdown.select(mode);
 }
 
-function toggleSortDropdown() {
-  librarySortOpen = !librarySortOpen;
-  setTimeout(function() { renderSortDropdown(); }, 0);
-}
-
-// Click outside: close sort dropdown
-document.addEventListener('click', (e) => {
-  if (!librarySortOpen) return;
-  if (e.target.closest('#librarySortDropdown')) return;
-  librarySortOpen = false;
-  renderSortDropdown();
-});
-
-function renderSortDropdown() {
-  var el = document.getElementById('librarySortDropdown');
-  if (!el) return;
-  el.innerHTML =
-    '<button class="library-sort-trigger' + (librarySortOpen ? ' open' : '') + '" onclick="toggleSortDropdown()">' +
-      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M6 12h12M9 18h6"/></svg>' +
-    '</button>' +
-    '<div class="library-sort-menu' + (librarySortOpen ? ' open' : '') + '">' +
-      ANIME_SORT_OPTIONS.map(function(o) {
-        return '<div class="library-sort-option' + (o.key === librarySort ? ' active' : '') + '" onclick="switchLibrarySort(\'' + o.key + '\')">' + o.label + '</div>';
-      }).join('') +
-    '</div>';
-}
 
 function renderStatusGrids(data) {
   var container = document.getElementById('dashSection-localLibrary');
@@ -355,7 +333,7 @@ function renderStatusGrids(data) {
   container.innerHTML = sections.map(function(cfg) {
     var items = sortAnimeItems(data.filter(function(a) {
       return (a.myListStatus || 'wish') === cfg.status;
-    }), librarySort);
+    }), librarySortDropdown.current);
     if (items.length === 0) return '';
     var cardsHtml = items.map(function(a) { return renderAnimeCard(a); }).join('');
     return '<div class="status-section" id="statusSection-' + cfg.status + '">' +

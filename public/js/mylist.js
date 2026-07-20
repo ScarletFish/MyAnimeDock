@@ -1,8 +1,6 @@
 // My List view — 全生命周期总览
 let mylistData = [];
 let mylistFilter = 'all';
-let mylistSort = localStorage.getItem('mylistSort') || 'name';
-let mylistSortOpen = false;
 
 // 引用自 ui.js 的 STATUS_LABELS
 const MYLIST_LABELS = STATUS_LABELS;
@@ -17,6 +15,13 @@ const ANIME_SORT_OPTIONS = [
   { key: 'rating', label: '评分' },
   { key: 'imported', label: '导入时间' },
 ];
+
+const mylistSortDropdown = createDropdown({
+  containerId: 'mylistSortDropdown',
+  storageKey: 'mylistSort',
+  options: ANIME_SORT_OPTIONS,
+  onSelect: function() { renderMyList(); }
+});
 
 function sortAnimeItems(items, sortMode) {
   var FORMAT_RANK = { TV: 0, OVA: 1, SP: 2, MOVIE: 3 };
@@ -116,38 +121,11 @@ function renderMyListStatusBar() {
 // ─── Sort Dropdown ───
 
 function switchMyListSort(mode) {
-  mylistSort = mode;
-  localStorage.setItem('mylistSort', mode);
-  mylistSortOpen = false;
-  renderMyListSortDropdown();
-  renderMyList();
+  mylistSortDropdown.select(mode);
 }
-
-function toggleMyListSortDropdown() {
-  mylistSortOpen = !mylistSortOpen;
-  setTimeout(function() { renderMyListSortDropdown(); }, 0);
-}
-
-// Click outside: close sort dropdown
-document.addEventListener('click', (e) => {
-  if (!mylistSortOpen) return;
-  if (e.target.closest('#mylistSortDropdown')) return;
-  mylistSortOpen = false;
-  renderMyListSortDropdown();
-});
 
 function renderMyListSortDropdown() {
-  const el = document.getElementById('mylistSortDropdown');
-  if (!el) return;
-  el.innerHTML =
-    '<button class="library-sort-trigger' + (mylistSortOpen ? ' open' : '') + '" onclick="toggleMyListSortDropdown()">' +
-      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M6 12h12M9 18h6"/></svg>' +
-    '</button>' +
-    '<div class="library-sort-menu' + (mylistSortOpen ? ' open' : '') + '">' +
-      ANIME_SORT_OPTIONS.map(function(o) {
-        return '<div class="library-sort-option' + (o.key === mylistSort ? ' active' : '') + '" onclick="switchMyListSort(\'' + o.key + '\')">' + o.label + '</div>';
-      }).join('') +
-    '</div>';
+  mylistSortDropdown.render();
 }
 
 // ─── Sorting ───
@@ -169,7 +147,7 @@ function renderMyList() {
     filtered = mylistData.filter(item => item.status === mylistFilter);
   }
 
-  filtered = sortAnimeItems(filtered, mylistSort);
+  filtered = sortAnimeItems(filtered, mylistSortDropdown.current);
 
   if (filtered.length === 0) {
     grid.innerHTML = '';

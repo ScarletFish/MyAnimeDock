@@ -51,49 +51,43 @@
 .mylist-status-bar {
   display: flex;
   align-items: center;
-  justify-content: space-evenly;
-  padding: 0.5rem 0;
-  flex-wrap: wrap;
-  gap: 0;
+  justify-content: center;
+  gap: 6px;
   margin-bottom: var(--space-3);
 }
 .mylist-status-item {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 0.125rem;
-  padding: 0.5rem 0.75rem;
-  font-size: calc(0.8125rem * var(--scale));
+  gap: 4px;
+  padding: 4px 12px;
+  font-size: calc(0.75rem * var(--scale));
+  font-weight: var(--fw-medium);
   color: var(--fg-muted);
-  white-space: nowrap;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 999px;
   cursor: pointer;
-  border-radius: var(--radius-md);
-  transition: background var(--duration-fast) var(--ease-out);
+  transition: all var(--duration-fast) var(--ease-out);
   user-select: none;
+  white-space: nowrap;
 }
 .mylist-status-item:hover {
-  background: var(--bg-elevated);
+  border-color: var(--fg-muted);
+  color: var(--fg-primary);
 }
 .mylist-status-item.active {
-  color: var(--accent);
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
 }
 .mylist-status-item b {
-  display: block;
-  color: var(--fg-primary);
-  font-weight: var(--fw-semibold);
   font-variant-numeric: tabular-nums;
-  font-size: calc(1.3rem * var(--scale));
-  line-height: 1.2;
+  font-size: calc(0.75rem * var(--scale));
+  font-weight: var(--fw-semibold);
 }
 .mylist-status-item.active b {
-  color: var(--accent);
+  color: #fff;
 }
-/* Status colors */
-.mylist-status-item.active[data-status="watching"] b { color: #4ade80; }
-.mylist-status-item.active[data-status="wish"] b { color: #60a5fa; }
-.mylist-status-item.active[data-status="completed"] b { color: #a78bfa; }
-.mylist-status-item.active[data-status="on_hold"] b { color: #fbbf24; }
-.mylist-status-item.active[data-status="dropped"] b { color: #f87171; }
 
 /* ─── My List Sort Dropdown ─── */
 .mylist-sort-bar {

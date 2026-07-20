@@ -448,11 +448,8 @@
 /* Responsive */
 @media (max-width: 768px) {
   .mylist-status-item {
-    padding: 0.375rem 0.5rem;
-    font-size: calc(0.75rem * var(--scale));
-  }
-  .mylist-status-item b {
-    font-size: calc(1.1rem * var(--scale));
+    padding: 3px 8px;
+    font-size: calc(0.688rem * var(--scale));
   }
   .mylist-section-title {
     font-size: calc(0.875rem * var(--scale));

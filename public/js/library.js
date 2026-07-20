@@ -6,7 +6,7 @@ let cardScrollTrigger = null;
 let cardTween = null;
 
 // Sort state
-let librarySort = localStorage.getItem('librarySort') || 'recent';
+let librarySort = localStorage.getItem('librarySort') || 'name';
 let librarySortOpen = false;
 
 // Grid card sizing
@@ -304,6 +304,21 @@ function renderContinueSection(data, container) {
 
 /** Sort anime library items */
 function sortLibraryItems(items) {
+  var FORMAT_RANK = { TV: 0, OVA: 1, SP: 2, MOVIE: 3 };
+
+  function getBaseKey(a) {
+    // Group by bangumiTitle (Chinese title from Bangumi) or title
+    return (a.bangumiTitle || a.title || a.id || '').toLowerCase();
+  }
+  function getSeasonRank(a) {
+    var p = (a.platform || '').toUpperCase();
+    var formatRank = FORMAT_RANK[p] != null ? FORMAT_RANK[p] : 0;
+    var season = a.matchedSeason || a.season || 1;
+    return formatRank * 100 + season;
+  }
+  function getJpName(a) {
+    return (a.bangumiTitleJp || a.bangumiTitle || a.title || '').toLowerCase();
+  }
   function getLastWatched(a) {
     if (!a.episodes || a.episodes.length === 0) return '';
     var latest = '';
@@ -312,28 +327,64 @@ function sortLibraryItems(items) {
     });
     return latest;
   }
-  function getJpName(a) {
-    return (a.bangumiTitleJp || a.bangumiTitle || a.title || '').toLowerCase();
-  }
-  function getCnName(a) {
-    return (a.bangumiTitle || a.title || '').toLowerCase();
-  }
-  return items.slice().sort(function(a, b) {
-    switch (librarySort) {
-      case 'recent':
-        return getLastWatched(b).localeCompare(getLastWatched(a));
-      case 'updated':
-        return (b.importedAt || '').localeCompare(a.importedAt || '');
-      case 'rating':
-        return (b.rating || 0) - (a.rating || 0);
-      case 'name':
-        return getJpName(a).localeCompare(getJpName(b), 'ja');
-      case 'imported':
-        return (a.importedAt || '').localeCompare(b.importedAt || '');
-      default:
-        return getCnName(a).localeCompare(getCnName(b), 'zh');
+  function getBlockScore(block, key) {
+    // Score for sorting blocks — use the "best" entry in the block
+    if (key === 'rating') {
+      return Math.max.apply(null, block.map(function(a) { return a.rating || 0; }));
     }
+    if (key === 'recent') {
+      return block.reduce(function(max, a) {
+        var lw = getLastWatched(a);
+        return lw > max ? lw : max;
+      }, '');
+    }
+    if (key === 'updated') {
+      return block.reduce(function(max, a) {
+        return (a.importedAt || '') > max ? a.importedAt || '' : max;
+      }, '');
+    }
+    if (key === 'imported') {
+      return block.reduce(function(min, a) {
+        var imp = a.importedAt || 'z';
+        return imp < min ? imp : min;
+      }, 'z');
+    }
+    // name: use first entry's Japanese name
+    return getJpName(block[0]);
+  }
+
+  // Step 1: Group by base title
+  var groups = {};
+  items.forEach(function(a) {
+    var key = getBaseKey(a);
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(a);
   });
+
+  // Step 2: Within each group, sort by season order
+  var blocks = Object.values(groups);
+  blocks.forEach(function(block) {
+    block.sort(function(a, b) { return getSeasonRank(a) - getSeasonRank(b); });
+  });
+
+  // Step 3: Sort blocks by selected option
+  blocks.sort(function(a, b) {
+    var sa = getBlockScore(a, librarySort);
+    var sb = getBlockScore(b, librarySort);
+    if (librarySort === 'name' || librarySort === 'rating' || librarySort === 'recent' || librarySort === 'updated') {
+      // Descending for rating/recent/updated, ascending for name/imported
+      if (librarySort === 'imported') return sa.localeCompare(sb);
+      return sb.localeCompare(sa) || sa.localeCompare(sb);
+    }
+    return sa.localeCompare(sb);
+  });
+
+  // Step 4: Flatten blocks back to array
+  var result = [];
+  blocks.forEach(function(block) {
+    block.forEach(function(a) { result.push(a); });
+  });
+  return result;
 }
 
 var LIBRARY_SORT_OPTIONS = [

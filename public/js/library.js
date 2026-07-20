@@ -305,13 +305,16 @@ function renderContinueSection(data, container) {
 
 /** Sort anime: TV S1→S2→S3 → OVA → SP → Movie → unknown */
 function sortLibraryItems(items) {
-  var formatOrder = { tv: 0, ova: 1, sp: 2, movie: 3, unknown: 4 };
-  function getFormat(a) {
+  var formatOrder = { TV: 0, OVA: 1, SP: 2, MOVIE: 3, unknown: 4 };
+  function getFormatRank(a) {
+    var p = (a.platform || '').toUpperCase();
+    if (formatOrder[p] != null) return formatOrder[p];
+    // Fallback: detect from folder name
     var name = (a.folderName || '') + ' ' + (a.specialSuffix || '');
-    if (/[Oo][Vv][Aa]/.test(name) || /[~～].*[Oo][Vv][Aa]/.test(name)) return 'ova';
-    if (/[Ss][Pp][Ee][Cc][Ii][Aa][Ll]|特典/.test(name)) return 'sp';
-    if (/剧场版|[Mm]ovie/.test(name)) return 'movie';
-    return 'tv';
+    if (/[Oo][Vv][Aa]/.test(name)) return 1;
+    if (/[Ss][Pp][Ee][Cc][Ii][Aa][Ll]|特典/.test(name)) return 2;
+    if (/剧场版|[Mm]ovie/.test(name)) return 3;
+    return 0;
   }
   function getJpName(a) {
     return (a.bangumiTitleJp || a.bangumiTitle || a.title || '').toLowerCase();
@@ -320,8 +323,7 @@ function sortLibraryItems(items) {
     return (a.bangumiTitle || a.title || '').toLowerCase();
   }
   function getSeason(a) {
-    // matchedSeason from searchBangumiBySeason, season from folder parse
-    return a.matchedSeason || a.season || 1;  // TV entries without explicit season default to 1
+    return a.matchedSeason || a.season || 1;
   }
   return items.slice().sort(function(a, b) {
     if (librarySort === 'name') {
@@ -330,8 +332,8 @@ function sortLibraryItems(items) {
     if (librarySort === 'imported') {
       return (a.importedAt || '').localeCompare(b.importedAt || '');
     }
-    // Default: season order
-    var fa = formatOrder[getFormat(a)], fb = formatOrder[getFormat(b)];
+    // Default: format + season + Japanese name
+    var fa = getFormatRank(a), fb = getFormatRank(b);
     if (fa !== fb) return fa - fb;
     var sa = getSeason(a), sb = getSeason(b);
     if (sa !== sb) return sa - sb;

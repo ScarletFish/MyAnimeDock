@@ -1163,6 +1163,10 @@ html {
   padding: 4px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
   z-index: 10;
+  display: none;
+}
+.library-sort-menu.open {
+  display: block;
 }
 .library-sort-option {
   padding: 6px 12px;

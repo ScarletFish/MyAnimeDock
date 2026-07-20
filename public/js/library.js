@@ -352,8 +352,7 @@ function switchLibrarySort(mode) {
   renderStatusGrids(libraryData);
 }
 
-function toggleSortDropdown(e) {
-  if (e) e.stopPropagation();
+function toggleSortDropdown() {
   librarySortOpen = !librarySortOpen;
   renderSortDropdown();
 }
@@ -361,16 +360,15 @@ function toggleSortDropdown(e) {
 function renderSortDropdown() {
   var el = document.getElementById('librarySortDropdown');
   if (!el) return;
-  var current = LIBRARY_SORT_OPTIONS.find(function(o) { return o.key === librarySort; });
   el.innerHTML =
-    '<button class="library-sort-trigger" onclick="toggleSortDropdown()">' +
+    '<button class="library-sort-trigger' + (librarySortOpen ? ' open' : '') + '" onclick="toggleSortDropdown()">' +
       '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M6 12h12M9 18h6"/></svg>' +
     '</button>' +
-    (librarySortOpen ? '<div class="library-sort-menu">' +
+    '<div class="library-sort-menu' + (librarySortOpen ? ' open' : '') + '">' +
       LIBRARY_SORT_OPTIONS.map(function(o) {
-        return '<div class="library-sort-option' + (o.key === librarySort ? ' active' : '') + '" onclick="event.stopPropagation(); switchLibrarySort(\'' + o.key + '\')">' + o.label + '</div>';
+        return '<div class="library-sort-option' + (o.key === librarySort ? ' active' : '') + '" onclick="switchLibrarySort(\'' + o.key + '\')">' + o.label + '</div>';
       }).join('') +
-    '</div>' : '');
+    '</div>';
 }
 
 function renderStatusGrids(data) {

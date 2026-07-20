@@ -66,6 +66,7 @@ function sortAnimeItems(items, sortMode) {
   blocks.sort(function(a, b) {
     var sa = getBlockScore(a, sortMode);
     var sb = getBlockScore(b, sortMode);
+    if (typeof sa === 'number') return sb - sa;
     if (sortMode === 'imported') return sa.localeCompare(sb);
     return sb.localeCompare(sa) || sa.localeCompare(sb);
   });

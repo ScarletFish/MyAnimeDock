@@ -1129,31 +1129,57 @@ html {
   align-items: center;
 }
 
-/* ─── Library Sort Bar ─── */
+/* ─── Library Sort Dropdown ─── */
 .library-sort-bar {
-  display: flex;
-  gap: 4px;
+  position: relative;
   margin-left: auto;
 }
-.library-sort-btn {
-  font-size: calc(0.75rem * var(--scale));
-  padding: 3px 10px;
-  border-radius: 999px;
+.library-sort-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
   border: 1px solid var(--border);
   background: transparent;
   color: var(--fg-muted);
   cursor: pointer;
   transition: all 0.15s;
-  font-family: var(--font-body);
 }
-.library-sort-btn:hover {
+.library-sort-trigger:hover {
   border-color: var(--fg-muted);
   color: var(--fg-primary);
 }
-.library-sort-btn.active {
-  background: var(--fg-primary);
-  color: var(--bg-base);
-  border-color: var(--fg-primary);
+.library-sort-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  min-width: 100px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 10;
+}
+.library-sort-option {
+  padding: 6px 12px;
+  font-size: calc(0.8125rem * var(--scale));
+  color: var(--fg-secondary);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.1s;
+  white-space: nowrap;
+}
+.library-sort-option:hover {
+  background: var(--bg-elevated);
+  color: var(--fg-primary);
+}
+.library-sort-option.active {
+  color: var(--accent);
+  font-weight: var(--fw-semibold);
 }
 
 /* ─── Status Section (dashboard grid segments) ─── */

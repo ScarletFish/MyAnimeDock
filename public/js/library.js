@@ -6,7 +6,8 @@ let cardScrollTrigger = null;
 let cardTween = null;
 
 // Sort state
-let librarySort = localStorage.getItem('librarySort') || 'season';
+let librarySort = localStorage.getItem('librarySort') || 'recent';
+let librarySortOpen = false;
 
 // Grid card sizing
 const GRID_CARD_BASE = 190;
@@ -154,11 +155,8 @@ function renderDashboard() {
         sectionIds.push('localLibrary');
         sectionHTML += '<div class="dashboard-section" data-section="localLibrary">' +
           '<div class="dashboard-section-header"><span class="dashboard-section-title">本地动漫</span>' +
-          '<div class="library-sort-bar">' +
-            '<button class="library-sort-btn' + (librarySort === 'season' ? ' active' : '') + '" onclick="switchLibrarySort(\'season\')">默认</button>' +
-            '<button class="library-sort-btn' + (librarySort === 'name' ? ' active' : '') + '" onclick="switchLibrarySort(\'name\')">中文名</button>' +
-            '<button class="library-sort-btn' + (librarySort === 'imported' ? ' active' : '') + '" onclick="switchLibrarySort(\'imported\')">导入时间</button>' +
-          '</div></div>' +
+          '<div class="library-sort-bar" id="librarySortDropdown"></div>' +
+          '</div>' +
           '<div class="dashboard-section-body" id="dashSection-localLibrary"></div></div>';
         break;
     }
@@ -177,6 +175,7 @@ function renderDashboard() {
     if (contBody) renderContinueSection(libraryData, contBody);
   }
   renderStatusGrids(libraryData);
+  renderSortDropdown();
   return Promise.all(promises);
 }
 
@@ -303,18 +302,15 @@ function renderContinueSection(data, container) {
   '</div>';
 }
 
-/** Sort anime: TV S1→S2→S3 → OVA → SP → Movie → unknown */
+/** Sort anime library items */
 function sortLibraryItems(items) {
-  var formatOrder = { TV: 0, OVA: 1, SP: 2, MOVIE: 3, unknown: 4 };
-  function getFormatRank(a) {
-    var p = (a.platform || '').toUpperCase();
-    if (formatOrder[p] != null) return formatOrder[p];
-    // Fallback: detect from folder name
-    var name = (a.folderName || '') + ' ' + (a.specialSuffix || '');
-    if (/[Oo][Vv][Aa]/.test(name)) return 1;
-    if (/[Ss][Pp][Ee][Cc][Ii][Aa][Ll]|特典/.test(name)) return 2;
-    if (/剧场版|[Mm]ovie/.test(name)) return 3;
-    return 0;
+  function getLastWatched(a) {
+    if (!a.episodes || a.episodes.length === 0) return '';
+    var latest = '';
+    a.episodes.forEach(function(e) {
+      if (e.updatedAt && e.updatedAt > latest) latest = e.updatedAt;
+    });
+    return latest;
   }
   function getJpName(a) {
     return (a.bangumiTitleJp || a.bangumiTitle || a.title || '').toLowerCase();
@@ -322,33 +318,58 @@ function sortLibraryItems(items) {
   function getCnName(a) {
     return (a.bangumiTitle || a.title || '').toLowerCase();
   }
-  function getSeason(a) {
-    return a.matchedSeason || a.season || 1;
-  }
   return items.slice().sort(function(a, b) {
-    if (librarySort === 'name') {
-      return getCnName(a).localeCompare(getCnName(b), 'zh');
+    switch (librarySort) {
+      case 'recent':
+        return getLastWatched(b).localeCompare(getLastWatched(a));
+      case 'updated':
+        return (b.importedAt || '').localeCompare(a.importedAt || '');
+      case 'rating':
+        return (b.rating || 0) - (a.rating || 0);
+      case 'name':
+        return getJpName(a).localeCompare(getJpName(b), 'ja');
+      case 'imported':
+        return (a.importedAt || '').localeCompare(b.importedAt || '');
+      default:
+        return getCnName(a).localeCompare(getCnName(b), 'zh');
     }
-    if (librarySort === 'imported') {
-      return (a.importedAt || '').localeCompare(b.importedAt || '');
-    }
-    // Default: format + season + Japanese name
-    var fa = getFormatRank(a), fb = getFormatRank(b);
-    if (fa !== fb) return fa - fb;
-    var sa = getSeason(a), sb = getSeason(b);
-    if (sa !== sb) return sa - sb;
-    return getJpName(a).localeCompare(getJpName(b), 'ja');
   });
 }
+
+var LIBRARY_SORT_OPTIONS = [
+  { key: 'recent', label: '最近观看' },
+  { key: 'updated', label: '最近更新' },
+  { key: 'rating', label: '评分' },
+  { key: 'name', label: '名称' },
+  { key: 'imported', label: '导入时间' },
+];
 
 function switchLibrarySort(mode) {
   librarySort = mode;
   localStorage.setItem('librarySort', mode);
-  // Update button states
-  document.querySelectorAll('.library-sort-btn').forEach(function(btn) {
-    btn.classList.toggle('active', btn.textContent === { season: '默认', name: '中文名', imported: '导入时间' }[mode]);
-  });
+  librarySortOpen = false;
+  renderSortDropdown();
   renderStatusGrids(libraryData);
+}
+
+function toggleSortDropdown() {
+  librarySortOpen = !librarySortOpen;
+  renderSortDropdown();
+}
+
+function renderSortDropdown() {
+  var el = document.getElementById('librarySortDropdown');
+  if (!el) return;
+  var current = LIBRARY_SORT_OPTIONS.find(function(o) { return o.key === librarySort; });
+  el.innerHTML =
+    '<button class="library-sort-trigger" onclick="toggleSortDropdown()">' +
+      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M6 12h12M9 18h6"/></svg>' +
+    '</button>' +
+    (librarySortOpen ? '<div class="library-sort-menu">' +
+      LIBRARY_SORT_OPTIONS.map(function(o) {
+        return '<div class="library-sort-option' + (o.key === librarySort ? ' active' : '') + '" onclick="switchLibrarySort(\'' + o.key + '\')">' + o.label + '</div>';
+      }).join('') +
+    '</div>' : '');
 }
 
 function renderStatusGrids(data) {
@@ -517,7 +538,13 @@ async function contextDeleteAnime() {
   }
 }
 
-document.addEventListener('click', hideContextMenu);
+document.addEventListener('click', function(e) {
+  hideContextMenu();
+  if (librarySortOpen && !e.target.closest('#librarySortDropdown')) {
+    librarySortOpen = false;
+    renderSortDropdown();
+  }
+});
 document.addEventListener('contextmenu', (e) => {
   if (!e.target.closest('.context-menu')) hideContextMenu();
 });

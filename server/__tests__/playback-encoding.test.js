@@ -3,7 +3,7 @@
 // 复现 "播放失败: File not found" bug 的根本原因
 
 const assert = require('node:assert');
-const { describe, it } = require('node:test');
+const { describe, it, before } = require('node:test');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');

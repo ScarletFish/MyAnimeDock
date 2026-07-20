@@ -196,31 +196,6 @@ function pickBestBySimilarity(cleanTitle, results) {
 }
 
 /**
- * Validate match quality (optional, does not block matching)
- * Returns confidence score 0-1
- */
-function validateMatch(detail, folderParsed) {
-  let confidence = 0.5;
-
-  // Season match bonus
-  if (folderParsed.season && detail.eps) {
-    confidence += 0.1;
-  }
-
-  // Title similarity bonus
-  const titleScore = sorensenDice(folderParsed.cleanTitle, detail.name_cn || detail.name || '');
-  confidence += titleScore * 0.3;
-
-  // Format match bonus
-  const specialType = detectSpecialType(folderParsed.title);
-  if (specialType) {
-    confidence += 0.1;
-  }
-
-  return Math.min(1, confidence);
-}
-
-/**
  * Search AniList for base title → find Nth season by temporal sort → native title → Bangumi
  * Bangumi search ignores "第3期" markers, so we use AniList's season metadata to
  * locate the correct entry, then use its exact native title for Bangumi lookup.
@@ -302,14 +277,10 @@ async function matchSeason(registry, keyword, folderParsed, videoCount, config) 
   const detail = await bangumi.getSubjectDetail(best.id);
   if (!detail) return null;
 
-  // 6. Validate (optional, for confidence reference)
-  const confidence = validateMatch(detail, folderParsed);
-
   return {
     ...detail,
     source: 'bangumi',
     matchedSeason: folderParsed.season || null,
-    confidence,
     _detail: detail,
   };
 }
@@ -559,7 +530,7 @@ module.exports = {
   searchBangumiBySeason,
   pickBestBySimilarity,
   buildSearchTerms,
-  validateMatch,
+
   sorensenDice,
   normalizeTitle,
   detectSpecialType,

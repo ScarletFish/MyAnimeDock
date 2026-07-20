@@ -718,6 +718,19 @@ async function updatePlaySession(sessionId, fields) {
   }
 }
 
+async function updateAnime(id, fields) {
+  try {
+    if (!id || !fields || Object.keys(fields).length === 0) return;
+    const p = getPrisma();
+    await p.anime.updateMany({
+      where: { id },
+      data: fields,
+    });
+  } catch (e) {
+    logger.error('Anime update error:', e.message);
+  }
+}
+
 async function deletePlaySession(sessionId) {
   try {
     if (!sessionId) return;
@@ -764,4 +777,4 @@ async function updateMyListItem(animeId, fields) {
   }
 }
 
-module.exports = { loadData, saveAll, saveLibrary, saveMyList, updateMyItemStatus, updateMyListItem, savePlaySessions, updateEpisodeProgress, updateEpisodesWatched, updatePlaySession, deletePlaySession, shutdown, getPrisma, ensureSchema };
+module.exports = { loadData, saveAll, saveLibrary, saveMyList, updateMyItemStatus, updateMyListItem, savePlaySessions, updateEpisodeProgress, updateEpisodesWatched, updatePlaySession, updateAnime, deletePlaySession, shutdown, getPrisma, ensureSchema };

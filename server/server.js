@@ -16,6 +16,7 @@ const {
 const {
   mime, setFfmpegPath, serveImage, serveRaw, readBody, jsonResp, cleanupOldCache,
 } = require('./lib/utils');
+const ThumbnailQueue = require('./thumbnail-queue');
 
 // ── 引导日志 ──
 bootLog('=== BOOT: server.js init ===');
@@ -88,10 +89,10 @@ process.on('uncaughtException', (err) => {
 });
 
 // ── 运行时状态 ──
-let autoImportResult = { count: 0, message: '' };
 let pendingNotifications = [];
 const activePlays = new Map();
 const cancelledSyncSessions = new Map();
+const thumbnailQueue = new ThumbnailQueue(activePlays);
 let config = loadConfig();
 let data;
 let startupTime;
@@ -248,8 +249,8 @@ let server;
 
 function makeState() {
   return {
-    data, config, db, logger, activePlays, cancelledSyncSessions,
-    bangumiPersonal, bangumiSync, pendingNotifications, autoImportResult,
+    data, config, db, logger, activePlays, cancelledSyncSessions, thumbnailQueue,
+    bangumiPersonal, bangumiSync, pendingNotifications,
     server, startupTime, saveData, loadScannedTree,
   };
 }
@@ -281,142 +282,7 @@ server = http.createServer((req, res) => {
   handleStaticFiles(req, res, makeState());
 });
 
-// ── 启动自动导入（async，post-init）──
-async function autoImportNewFolders(data, config) {
-  if (!config.mediaDir || !fs.existsSync(config.mediaDir)) return;
-  const aiLog = logger.child('[AUTOIMPORT]');
-  const { registry, resolveAnilistId } = require('./scrapers');
-  const coverDir = path.join(DATA_DIR, 'covers');
 
-  const importedPaths = new Set(data.library.map(a => a.folderPath));
-  const candidates = scanMediaDirFlat(config.mediaDir);
-  let imported = 0;
-
-  for (const item of candidates) {
-    if (importedPaths.has(item.path)) continue;
-    const bgmId = item.bangumiId || extractBgmId(item.name) || extractBgmId(item.path);
-    if (!bgmId) continue;
-
-    aiLog.info(`Auto-importing: ${item.name} (bgmId=${bgmId})`);
-    try {
-      const meta = await registry.fetchMetadata('bangumi', item.parsedTitle, coverDir, bgmId, config);
-      const anime = {
-        id: String(bgmId),
-        folderPath: item.path,
-        folderName: item.name,
-        title: meta?.bangumiTitle || item.parsedTitle,
-        season: item.parsedSeason || null,
-        specialSuffix: item.specialSuffix || null,
-        importedAt: new Date().toISOString(),
-        downloaded: true,
-        bangumiId: bgmId,
-        bangumiTitle: meta?.bangumiTitle || item.parsedTitle,
-        bangumiTitleJp: meta?.bangumiTitleJp || null,
-        bangumiTitleEn: null,
-        summary: meta?.summary || null,
-        coverUrl: meta?.coverUrl || null,
-        localCover: meta?.localCover || null,
-        rating: meta?.rating || null,
-        metadataSource: meta?.source || 'bangumi',
-        matchedSeason: item.parsedSeason || null,
-        episodes: item.videos.map((v, i) => ({
-          number: i + 1,
-          filePath: path.join(item.path, v.name) || v.path,
-          fileName: v.name,
-          fileSize: v.size || 0,
-          duration: null,
-          watched: false,
-          progress: 0,
-        })),
-      };
-      if (meta) {
-        anime.characters = meta.characters || [];
-        anime.persons = meta.persons || [];
-        anime.tags = meta.tags || [];
-        anime.date = meta.date || null;
-        anime.platform = meta.platform || null;
-        anime.ratingRank = meta.ratingRank || null;
-        anime.ratingTotal = meta.ratingTotal || null;
-        anime.infobox = meta.infobox || [];
-        anime.collection = meta.collection || null;
-        anime.eps = meta.eps || null;
-        anime.totalEpisodes = meta.totalEpisodes || null;
-      }
-      // Cover resize removed — browser handles display scaling
-
-      data.library.push(anime);
-      if (!data.myList) data.myList = [];
-      if (!data.myList.find(m => m.animeId === anime.id)) {
-        data.myList.push({ animeId: anime.id, status: 'wish', rating: null, thoughts: '', notes: '' });
-      }
-      if (anime.bangumiId) {
-        const wishIdx = data.myList.findIndex(m => !m.animeId && m.bangumiId === anime.bangumiId);
-        if (wishIdx !== -1) data.myList.splice(wishIdx, 1);
-      }
-
-      await db.saveLibrary(data);
-      await db.saveMyList(data);
-
-      // AniList ID 解析（轻量，仅搜索取 ID，不阻塞导入流程）
-      resolveAnilistId(anime, config).then(() => {
-        db.saveLibrary(data);
-      }).catch(e => aiLog.error('AniList resolveId failed:', e.message));
-
-      imported++;
-
-      try {
-        BangumiSync.pushStatusChange(anime.id, data);
-      } catch (_) {}
-    } catch (e) {
-      aiLog.warn(`Failed to import ${item.folderName}: ${e.message}`);
-    }
-  }
-
-  aiLog.info(`Auto-imported ${imported} new anime`);
-  autoImportResult = { count: imported, message: imported > 0 ? `自动导入了 ${imported} 部新番` : '', done: true };
-  if (imported > 0) {
-    pendingNotifications.push({ type: 'auto_import', count: imported, message: autoImportResult.message });
-  }
-
-  // 后台重试队列：渐进重试 anilistId = -1 的条目
-  startAnilistRetryQueue(data, config, aiLog);
-}
-
-// ── AniList 失败重试队列 ──
-const RETRY_INTERVAL = 30000; // 每 30s 重试一个
-let retryTimer = null;
-
-function startAnilistRetryQueue(data, config, log) {
-  if (retryTimer) return; // 已在运行
-  const { resolveAnilistId } = require('./scrapers');
-
-  async function retryOne() {
-    const candidate = data.library.find(a => a.anilistId === -1);
-    if (!candidate) {
-      log.info('AniList retry queue: all done, stopping');
-      retryTimer = null;
-      return;
-    }
-    log.info(`AniList retry: "${candidate.title}" (bgmId=${candidate.bangumiId})`);
-    try {
-      // 重置 -1 允许重新搜索
-      candidate.anilistId = null;
-      const id = await resolveAnilistId(candidate, config);
-      if (id) {
-        log.info(`AniList retry: "${candidate.title}" → anilistId=${id}`);
-        await db.saveLibrary(data);
-      } else {
-        log.info(`AniList retry: "${candidate.title}" → still no match`);
-      }
-    } catch (e) {
-      log.warn(`AniList retry failed for "${candidate.title}": ${e.message}`);
-      candidate.anilistId = -1; // 恢复标记
-    }
-    retryTimer = setTimeout(retryOne, RETRY_INTERVAL);
-  }
-
-  retryTimer = setTimeout(retryOne, RETRY_INTERVAL);
-}
 
 async function validateCovers(data) {
   const coverDir = path.join(DATA_DIR, 'covers');
@@ -509,12 +375,6 @@ async function init() {
     logger.info(`Media directory: ${config.mediaDir}`);
   }
 
-  // Phase 5: Auto-import
-  if (config.mediaDir) {
-    autoImportNewFolders(data, config).catch(e =>
-      logger.warn('[AUTOIMPORT] Error:', e.message)
-    );
-  }
 }
 
 init().catch(e => {

@@ -236,7 +236,7 @@ class AniListScraper {
 
   async search(keyword, source) {
     if (source) this.setSource(source);
-    // Check prefetch cache first
+    // Check search cache first
     if (this._registry) {
       const cached = this._registry._searchCache?.get(keyword);
       if (cached && Date.now() - cached.timestamp < this._registry._cacheTTL) {
@@ -376,42 +376,6 @@ class AniListScraper {
         title_native: e.node.title.native,
       })),
     };
-  }
-
-  /**
-   * Prefetch search results for multiple keywords (for batch operations)
-   * Populates the registry's search cache
-   */
-  async prefetch(keywords, registry, config, concurrency = 2) {
-    const results = [];
-    const source = config.apiSources?.find(s => s.type === 'anilist');
-
-    // Process keywords with concurrency control
-    const processKeyword = async (kw) => {
-      try {
-        const searchResults = await this.search(kw, source);
-        // Cache in registry
-        registry._searchCache.set(kw, {
-          results: searchResults.map(r => ({ ...r, source: 'anilist' })),
-          timestamp: Date.now(),
-        });
-        results.push({ keyword: kw, count: searchResults.length });
-      } catch (e) {
-        logger.error('prefetch failed for', kw, ':', e.message);
-      }
-    };
-
-    // Simple concurrency control
-    const queue = [...keywords];
-    const workers = Array.from({ length: Math.min(concurrency, queue.length) }, async () => {
-      while (queue.length > 0) {
-        const kw = queue.shift();
-        if (kw) await processKeyword(kw);
-      }
-    });
-    await Promise.all(workers);
-
-    return results;
   }
 }
 

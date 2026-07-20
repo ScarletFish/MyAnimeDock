@@ -65,27 +65,7 @@ server.js ⇒ init()
   │
   ├─ 7. Start HTTP server (http.createServer, listen :3456)
   │
-        └─ 8. Phase 5: Auto-import new folders (async, non-blocking)
-        autoImportNewFolders(data, config)  (defined inline in server.js)
-        ├─ Scan mediaDir via scanMediaDir() → flat leaf array
-        ├─ For each leaf with [bgmN] in folder name:
-        │   ├─ Skip if already in data.library (by folderPath)
-        │   ├─ Extract bangumiId via extractBgmId() → numeric ID
-        │   ├─ Fetch metadata from Bangumi using bangumiId (registry.fetchMetadata)
-        │   ├─ Build anime record with bangumiId as primary key (id = String(bgmId))
-        │   ├─ Generate episode list from folder's video files
-        │   ├─ Push to data.library
-        │   ├─ Create MyList entry (status: 'watching')
-        │   ├─ db.saveLibrary(data) → SQLite anime + episode tables
-        │   ├─ db.saveMyList(data) → SQLite mylist table
-        │   ├─ Bangumi sync (async, fire-and-forget)
-        │   ├─ resolveAnilistId(anime, config) (async, fire-and-forget)
-        │   │   └─ 仅搜索取 ID，不获取 banner（轻量，防 429 限流）
-        │   └─ autoImportResult.count++
-        ├─ If imported > 0, set autoImportResult = { count, message }
-        │    → consumed by frontend first /api/config GET as `autoImport` field
-        └─ startAnilistRetryQueue(data, config)
-             └─ 每 30s 重试一个 anilistId=-1 的条目（渐进补全）
+        └─ 8. Start HTTP server — 启动完成，无后台自动导入
 ```
 
 ## 2. Config Flow
@@ -175,35 +155,12 @@ POST /api/import
       ├─ Build anime + episodes in data.library[]:
       │   { id, title, folderName, folderPath, season, specialSuffix,
       │     episodes: [{ animeId, episodeNumber, filePath, fileName, fileSize }] }
-      ├─ If has bangumiId and no tags → queue background metadata fetch
+      ├─ [bgmN] items 跳过 metadata fetch — 只有扫描数据
+      ├─ 非 [bgmN] items 通过 scannedNode 携带的预取元数据（如有）
       ├─ Mark node.alreadyImported = true in scannedTree
       └─ db.saveLibrary(data) + saveScannedTree(scannedTree)
-  → After all items saved + metadata fetches complete:
-      └─ For each imported item with bangumiId → syncAnilist() async fire-and-forget
+  → For each imported item with bangumiId → syncAnilist() async fire-and-forget
   → jsonResp(res, 200, { count: N })
-```
-
-### Auto-Import (at startup, for [bgmN] folders)
-
-```
-init() → autoImportNewFolders(data, config)  (inline in server.js)
-  ├─ Called async after server starts listening
-  ├─ scanMediaDir(config.mediaDir) → flat leaves
-  ├─ For each leaf not already in library:
-  │   ├─ extractBgmId(folderName) → numeric bangumiId
-  │   ├─ registry.fetchMetadata('bangumi', title, coverDir, bangumiId, config)
-  │   ├─ Build anime record with id = String(bangumiId) (NOT parsedTitle)
-  │   ├─ Assign episodes from folder's video files
-  │   ├─ Push to data.library
-  │   ├─ Create MyList entry (status: 'watching')
-  │   ├─ db.saveLibrary(data) + db.saveMyList(data) (sequential, FK safety)
-  │   └─ Bangumi sync (async fire-and-forget)
-  │   └─ resolveAnilistId(anime, config) (async, fire-and-forget)
-  │       └─ 仅搜索取 anilistId，不获取 banner（防 429 限流）
-  ├─ Set autoImportResult = { count, message }
-  ├─ Frontend consumes via first GET /api/config → showToast()
-  └─ startAnilistRetryQueue(data, config)
-       └─ 每 30s 重试一个 anilistId=-1 的条目
 ```
 
 ## 5. Metadata Fetch Flow
@@ -607,16 +564,45 @@ AniList 同步拆分为两步：**resolveAnilistId**（轻量，仅搜索取 ID�
 
 | 触发方式 | 端点/位置 | 调用方式 | 函数 | 备注 |
 |---------|-----------|---------|------|------|
-| 启动自动导入（有 `[bgmN]` 的文件夹） | `server.js` → `autoImportNewFolders()` | fire-and-forget `.then()` | `resolveAnilistId` | 仅取 ID，不获取 banner |
-| 自动导入失败重试 | `server.js` → `startAnilistRetryQueue()` | 每 30s 定时器 | `resolveAnilistId` | 渐进重试 `anilistId=-1` 的条目 |
+| 发现页手动导入 | `POST /api/import` → `discovery.js` | 元数据落盘后 `.then()` | `syncAnilist` | [bgmN] 跳过搜索，直接取元数据 |
 | 详情页 banner 懒加载 | `GET /api/anime/:id` → `library.js` | 响应后异步 | `syncAnilistDetail` | `anilistId` 有但 `anilistBanner` 缺失时触发 |
 | 详情页刷元数据 | `POST /api/bangumi/fetch` → `bangumi.js` | fire-and-forget `.then()` | `syncAnilist` | 重置 `-1` 重新搜索，含完整同步 |
-| 发现页手动导入 | `POST /api/import` → `discovery.js` | 元数据拉取完成后 `.then()` | `syncAnilist` | 用户主动，含完整同步 |
 | AniList 批量回填 | `POST /api/library/sync-anilist-backfill` → `library.js` | `await` 串行，每 5 部落盘 | `syncAnilist` | 传参 `result` 含成功/跳过/失败 |
-| SSE 流式同步 | `POST /api/library/sync/stream` → `library.js` | `parallelMap` | `syncAnilist` | MetaMatch 用，含完整同步 |
-| 详情页搜索框/自动匹配 | `POST /api/bangumi/search` → `bangumi.js` | `searchAll()` | — (缓存) | 搜 Bangumi 前也从 `searchAll` 经过，吃到预取缓存 |
+| SSE 流式同步 | `POST /api/library/sync/stream` → `library.js` | `parallelMap` | `syncAnilist` | [bgmN] 跳过 matchSeason，ID 直取 |
+| 详情页搜索框/自动匹配 | `POST /api/bangumi/search` → `bangumi.js` | `searchAll()` | — (缓存) | 搜 Bangumi 前也从 `searchAll` 经过，命中缓存跳过 API |
 
-**预取缓存**：scan 时后台将罗马音文件夹名的 AniList 搜索结果缓存到 `registry._searchCache`（5 分钟 TTL）。`anilist.search()` 先查该缓存，有就直接返回，跳过 API。这样 `resolveAnilistId()` 搜索罗马音标题时能直接命中预取数据，无需网络请求。
+## 15. Thumbnail Queue
+
+### 触发路径
+
+| 触发点 | 文件位置 | 方式 | 优先级 |
+|--------|---------|------|--------|
+| Discovery 导入 | `discovery.js` handleImport | 响应后异步 | FIFO（队尾） |
+| MetaMatch 同步（JSON） | `library.js` handleLibrarySync | 响应后异步 | FIFO（队尾） |
+| MetaMatch 同步（SSE） | `library.js` handleLibrarySyncStream | stream `done` 后 | FIFO（队尾） |
+| 详情页加载 | `library.js` handleGetAnimeDetail | 响应后异步 | **插队**（队首） |
+
+### 队列行为
+
+- **并发**：3 路 ffmpeg `-vframes 1`（0.5-2s/张）
+- **空闲检测**：`activePlays.size === 0`，mpv 运行时暂停 → 30s 后重试
+- **生成位置**：25% 时长（30-120s 区间），已知 `ep.duration` 则用，否则 60s
+- **缓存键**：`md5(filePath + 'mid').jpg`，与 `time=mid` 按需生成共享缓存
+- **无持久化队列**：重启后队列丢失，缩略图可重新生成
+- **按需兜底**：`handleThumbnail` 保持不变，队列没来得及时即时生成
+
+### 模块
+
+```
+server/thumbnail-queue.js
+  └─ ThumbnailQueue class
+      ├─ enqueue(anime, prepend=false) → 加入队列（去重：已缓存跳过）
+      ├─ clear() → 清空队列
+      ├─ length / busy → 状态查询
+      └─ _drain() → 空闲循环 × 3 并发
+```
+
+**通用搜索缓存**：`registry._searchCache`（5 分钟 TTL）由 `searchAll()` 写入，`anilist.search()` 优先读缓存再调 API。缓存是惰性填充的——只在实际发生搜索时写入，不再有扫描时后台预取。
 
 **AniList 限流保护**：`anilist.js` 内置全局请求队列（每次请求间隔 1.5s）+ 429 自动重试（指数退避 1.5s→3s→6s，最多 3 次）。导入时 21 部动漫的 `resolveAnilistId` 并发调用，通过共享的 `_lastRequestTime` 自动串行化，不会触发限流。
 
@@ -634,16 +620,15 @@ AniList 同步拆分为两步：**resolveAnilistId**（轻量，仅搜索取 ID�
 10. **mpv error propagation**: `/api/play` uses Promise with 2s timeout to capture spawn errors. `mpv-controller.js` reports ENOENT/early crashes via `onError` callback. Frontend sees "播放失败: ..." toast.
 11. **nodemon data ignore**: `dev:server:watch` must ignore `server/prisma/`, `server/covers/`, `server/thumbs/`, `server/scanned-tree.json` to prevent data writes from triggering server restarts.
 12. **DB path in dev mode**: `server/db.js` uses `path.join(__dirname, '..', 'prisma', 'anime.db')` — i.e. project root → `prisma/anime.db`. The SQLite database is at project root `prisma/` directory, not inside `server/`.
-13. **Auto-import is async**: `autoImportNewFolders()` runs after the server starts listening, not blocking startup. The `autoImportResult` is consumed by the frontend's first `/api/config` GET request (one-shot).
-14. **[bgmN] extraction**: `extractBgmId()` (`scanner.js:398`) uses regex `/\[bgm(\d+)\]/i` — case-insensitive, supports `[bgm123]` and `[BGM123]`. Only the first match is returned. Must match the Bangumi subject ID exactly.
+13. **[bgmN] extraction**: `extractBgmId()` (`scanner.js:398`) uses regex `/\[bgm(\d+)\]/i` — case-insensitive, supports `[bgm123]` and `[BGM123]`. Only the first match is returned. Must match the Bangumi subject ID exactly.
 15. **Auto-mark requires DB save**: When auto-marking previous episodes as watched on play start, `db.updateEpisodesWatched()` must be called to persist to SQLite. Without this, the watched state is only in memory and lost on server restart.
 16. **Persistence testing rule**: Any code that modifies in-memory state MUST be followed by a DB save call. When adding new persistence code, always write a test that verifies: (1) save to SQLite, (2) `loadData()` reload, (3) state matches expected. Testing only in-memory state catches nothing.
 17. **UTC/local time in stats APIs**: `watch-activity` and `sessions` APIs compare time-series data (session startTime against current date). Use LOCAL year/month/day via `getFullYear()/getMonth()/getDate()` — never `toISOString().slice()` which converts to UTC and shifts dates in UTC+8 timezones. Session startTime is stored as UTC ISO string from `new Date().toISOString()`, parse it as `new Date()` then use local accessors for matching.
-18. **AniList sync is fire-and-forget**: `syncAnilist()` runs async after the main response is sent (except backfill which `await`s sequentially). It mutates the anime object in place and calls `db.saveLibrary()` on completion. This means the frontend won't see AniList fields until the next page refresh after the async call completes. All four sync paths (auto-import, bangumi-fetch, manual import, backfill) are covered; only `discovery/fetch-meta` is exempt because the item isn't in the library yet.
+18. **AniList sync is fire-and-forget**: `syncAnilist()` runs async after the main response is sent (except backfill which `await`s sequentially). It mutates the anime object in place and calls `db.saveLibrary()` on completion. This means the frontend won't see AniList fields until the next page refresh after the async call completes. All sync paths (manual import, bangumi-fetch, backfill, MetaMatch) are covered; only `discovery/fetch-meta` is exempt because the item isn't in the library yet.
 19. **Banner path conversion**: `anilistBanner` stores the absolute filesystem path (e.g., `C:\Users\...\banners\al-12345.jpg`). The frontend converts this to a URL path `/banners/al-12345.jpg` via `path.basename()` + `/banners/` prefix, matched by `handleBannerImage` in server.js.
 20. **Backfill endpoint**: `POST /api/library/sync-anilist-backfill` iterates all library items without `anilistId`, calls `syncAnilist()` on each with batch save every 5 items. Returns `{ total, succeeded, failed, skipped }`. Non-blocking but slow for large libraries.
 18. **ep.progress is always 0-1**: The Episode model has `progress Float @default(0) // 0-1`. mpv IPC reports time-pos in seconds; the `onProgress` callback normalizes via `Math.min(1, Math.max(0, timePos / duration))` before storing. When resuming, convert 0-1 progress to seconds using `ep.duration * progress` for `--start` and `progressStart`.
 21. **AniList enabled() defaults to true**: `AniListScraper.enabled(config)` returns true when `apiSources` exists but has no anilist entry, or when anilist entry has no `enabled` field. Only `enabled: false` explicitly disables it. This matches the comment "AniList is free, enabled by default".
 22. **anilistId uniqueness in saveLibrary**: `saveLibrary()` checks `anilistId` uniqueness before upsert. If another anime already owns the same `anilistId`, the old owner's AniList fields are cleared (current record wins). This supports manual re-matching where the user intentionally overrides an existing AniList association.
 23. **syncAnilist katakana normalization**: `syncAnilist()` applies `toHiragana()` (Unicode offset U+30A1-30F6 → U+3041-3096) to search terms before querying AniList. This handles Bangumi returning katakana titles (e.g., "ハイ") that AniList stores as hiragana ("はい"), which would otherwise return 0 search results.
-24. **Retry bypasses bangumiId skip**: The SSE and batch sync endpoints no longer skip items that already have a `bangumiId`. This allows re-matching of previously matched items (e.g., fixing a wrong match or updating metadata). The frontend filters by status (pending/failed) to avoid redundant work.
+24. **[bgmN] MetaMatch 跳过搜索**: SSE 流式同步和批量同步中，有 `bangumiId` 的条目直接 `fetchMetadata('bangumi', id)` 取元数据，跳过 `matchSeason()` 的多轮搜索 + 季度链。`matchedSeason` 从条目已有值保留。非 [bgmN] 条目仍走完整搜索路径。

@@ -98,7 +98,7 @@ scripts/           → copy-sidecar-deps.js, migrate-to-sqlite.js
 - **播放会话追踪**: `activePlays` Map（内存），每 10s 精细化更新 SQLite，mpv 关闭时落盘
 - **细粒度数据持久化**: 每个 API 端点只写入实际修改的 SQLite 表，避免全量 `saveData()` 导致 nodemon 误重启
 - **bangumiId 精准匹配**: `extractBgmId(name)` 从文件夹名提取 `[bgmN]` 数字 ID 作为主键（`String(bangumiId)`），手动导入项使用 `parsedTitle + Season`
-- **启动自动导入**: `autoImportNewFolders()` 在服务器启动后异步执行，扫描有 `[bgmN]` 标识的文件夹自动全流程导入
+- **无启动自动导入**: 服务器启动不做任何 API 调用，元数据仅通过 Discovery 手动导入拉取
 - **拼音搜索**: `server.js` 返回 `pinyinTitle`（去声调），`library.js` 同时匹配 `title`/`bangumiTitle`/`pinyinTitle`
 - **多主题系统**: 6 种色彩主题（default/amber/ocean/sakura/emerald/violet）+ 独立 dark/light 模式，底部 dock 选择器切换即时生效
 - **GSAP 引用**: `public/vendor/gsap/`（从 `node_modules/gsap/dist/` 拷贝），不经过 npm 构建；`index.html` 中 `<script>` 直接加载

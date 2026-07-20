@@ -90,7 +90,6 @@ async function startScan() {
           scanBtnText.textContent = `扫描 ${msg.current}/${msg.total}`;
         } else if (msg.type === 'done') {
           loadDiscovery();
-          pollNotifications();
         } else if (msg.type === 'error') {
           showToast('扫描失败: ' + msg.message, 'error');
         }
@@ -417,21 +416,3 @@ async function includeSingle(path) {
 }
 
 // ─── Background notification polling ───
-async function pollNotifications() {
-  for (let i = 0; i < 5; i++) {
-    await new Promise(r => setTimeout(r, 2000));
-    try {
-      const resp = await API.get('/api/notifications');
-      if (resp.notifications?.length > 0) {
-        for (const n of resp.notifications) {
-          if (n.type === 'anilist_prefetch') {
-            showToast(`已后台预取 ${n.count} 部 AniList 元数据`, 'silent');
-          }
-        }
-        return;
-      }
-    } catch (e) {
-      return;
-    }
-  }
-}

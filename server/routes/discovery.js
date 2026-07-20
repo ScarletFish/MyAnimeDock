@@ -102,49 +102,6 @@ module.exports = {
       data.scannedTree = tree;
       saveScannedTree(data.scannedTree);
       send({ type: 'done', tree });
-      // Background AniList prefetch: cache + store matched IDs on scanned nodes
-      if (config.apiSources?.some(s => s.type === 'anilist')) {
-        const { registry, isPrimarilyRomaji, pickBestBySimilarity, sorensenDice } = require('../scrapers');
-        const { parseFolderName } = require('../scanner');
-        const anilist = registry.get('anilist');
-        if (anilist) {
-          const romajiKeywords = tree
-            .filter(n => n.type === 'leaf' && !n.alreadyImported)
-            .map(n => parseFolderName(n.name))
-            .filter(p => isPrimarilyRomaji(p.cleanTitle || p.title))
-            .map(p => p.cleanTitle)
-            .filter(Boolean)
-            .slice(0, 20);
-          if (romajiKeywords.length > 0) {
-            anilist.prefetch(romajiKeywords, registry, config)
-              .then(() => {
-                // Match cached results to scanned nodes, store anilistId
-                let matched = 0;
-                for (const n of tree) {
-                  if (n.type !== 'leaf' || n.alreadyImported || n.anilistId) continue;
-                  const parsed = parseFolderName(n.name);
-                  const title = isPrimarilyRomaji(parsed.cleanTitle || parsed.title)
-                    ? (parsed.cleanTitle || parsed.title) : null;
-                  if (!title) continue;
-                  const cached = registry._searchCache?.get(title);
-                  if (!cached?.results?.length) continue;
-                  const bestItem = pickBestBySimilarity(title, cached.results);
-                  if (!bestItem) continue;
-                  const matchTitle = bestItem.name_cn || bestItem.name || '';
-                  if (sorensenDice(title, matchTitle) >= 0.5) {
-                    n.anilistId = bestItem.id;
-                    matched++;
-                  }
-                }
-                if (matched > 0) {
-                  saveScannedTree(data.scannedTree);
-                  pendingNotifications.push({ type: 'anilist_prefetch', count: matched });
-                }
-              })
-              .catch(() => {});
-          }
-        }
-      }
     } catch (e) {
       send({ type: 'error', message: e.message });
     }
@@ -161,9 +118,7 @@ module.exports = {
         return;
       }
       const { findVideos, isExtraVideo } = require('../scanner');
-      const { registry } = require('../scrapers');
       const imported = [];
-      const metadataFetches = [];
       for (const item of items) {
         const { folderPath, folderName, parsedTitle, parsedSeason, specialSuffix } = item;
         if (!folderPath || !folderName) continue;
@@ -213,26 +168,6 @@ module.exports = {
           if (wishIdx !== -1) data.myList.splice(wishIdx, 1);
         }
         if (scannedNode) scannedNode.excluded = false;
-        if (anime.bangumiId && (!anime.tags || anime.tags.length === 0)) {
-          const coverDir = path.join(DATA_DIR, 'covers');
-          metadataFetches.push(
-            registry.fetchMetadata('bangumi', anime.title, coverDir, anime.bangumiId, config)
-              .then(meta => {
-                if (meta) {
-                  anime.tags = meta.tags || [];
-                  anime.bangumiTitle = meta.bangumiTitle || anime.bangumiTitle;
-                  anime.bangumiTitleJp = meta.bangumiTitleJp || anime.bangumiTitleJp;
-                  anime.summary = meta.summary || anime.summary;
-                  anime.coverUrl = meta.coverUrl || anime.coverUrl;
-                  anime.localCover = meta.localCover || anime.localCover;
-                  anime.rating = meta.rating || anime.rating;
-                  // Cover resize removed — browser handles display scaling
-                  return db.saveLibrary(data);
-                }
-              })
-              .catch(e => logger.warn(`Background metadata fetch failed for ${anime.id}: ${e.message}`))
-          );
-        }
         if (anime.bangumiId) {
           bangumiSync.pushStatusChange(anime.id, data);
         }
@@ -241,14 +176,15 @@ module.exports = {
       await db.saveLibrary(data);
       await db.saveMyList(data);
       saveScannedTree(data.scannedTree);
-      // 等待封面元数据下载完成（覆盖 coverUrl/localCover），每个 fetch 内部已落盘
-      await Promise.all(metadataFetches);
       jsonResp(res, 200, { ok: true, imported });
       // 后台拉取 AniList banner（不影响封面显示）
       const bannerDir = path.join(DATA_DIR, 'banners');
       const coverDir = path.join(DATA_DIR, 'covers');
       imported.forEach(id => {
         const anime = data.library.find(a => a.id === id);
+        if (anime) {
+          state.thumbnailQueue?.enqueue(anime);
+        }
         if (anime && anime.bangumiId) {
           syncAnilist(anime, config, bannerDir, coverDir)
             .then(() => db.saveLibrary(data))

@@ -38,34 +38,34 @@ function resolveFolderParsed(anime) {
  */
 async function runAnilistBackfill(state) {
   const { data, config, db, logger } = state;
-  const { syncAnilist } = require('../scrapers');
+  const { syncAnilist, parallelMap } = require('../scrapers');
   const bannerDir = path.join(DATA_DIR, 'banners');
   const coverDir = path.join(DATA_DIR, 'covers');
 
   const candidates = data.library.filter(a => a.anilistId == null && a.anilistId !== -1);
-  let succeeded = 0, failed = 0, skipped = 0;
 
   logger.info(`AniList backfill: ${candidates.length} candidates`);
-  for (let i = 0; i < candidates.length; i++) {
-    const anime = candidates[i];
+
+  const results = await parallelMap(candidates, async (anime) => {
     try {
       const result = await syncAnilist(anime, config, bannerDir, coverDir);
       if (result) {
-        succeeded++;
-        logger.info(`Backfill [${i+1}/${candidates.length}]: ${anime.title} → anilistId=${result.anilistId}`);
+        logger.info(`Backfill: ${anime.title} → anilistId=${result.anilistId}`);
+        return 'succeeded';
       } else {
-        skipped++;
-        logger.info(`Backfill [${i+1}/${candidates.length}]: ${anime.title} → skipped (no match)`);
+        return 'skipped';
       }
     } catch (e) {
-      failed++;
-      logger.error(`Backfill [${i+1}/${candidates.length}]: ${anime.title} → ${e.message}`);
+      logger.error(`Backfill: ${anime.title} → ${e.message}`);
+      return 'failed';
     }
-    // 每 5 部落盘一次
-    if ((i + 1) % 5 === 0 || i === candidates.length - 1) {
-      await db.saveLibrary(data);
-    }
-  }
+  }, 3);
+
+  await db.saveLibrary(data);
+
+  const succeeded = results.filter(r => r === 'succeeded').length;
+  const skipped = results.filter(r => r === 'skipped').length;
+  const failed = results.filter(r => r === 'failed').length;
   return { total: candidates.length, succeeded, failed, skipped };
 }
 
@@ -100,14 +100,19 @@ module.exports = {
     }
     jsonResp(res, 200, anime);
 
+    // 后台预生成缩略图（详情页查看时插队到队列最前）
+    state.thumbnailQueue?.enqueue(anime, true);
+
     // 懒加载 banner：anilistId 有但 banner 缺失时异步补全（不阻塞响应）
     if (anime.anilistId && anime.anilistId !== -1 && !anime.anilistBanner) {
       const { syncAnilistDetail } = require('../scrapers');
       const bannerDir = path.join(DATA_DIR, 'banners');
       const coverDir = path.join(DATA_DIR, 'covers');
-      syncAnilistDetail(anime, config, bannerDir, coverDir).then(() => {
-        const { db } = state;
-        db.saveLibrary(data);
+      syncAnilistDetail(anime, config, bannerDir, coverDir).then(result => {
+        if (result) {
+          const { db } = state;
+          db.updateAnime(anime.id, { anilistBanner: anime.anilistBanner ?? null, anilistTitleEn: anime.anilistTitleEn ?? null });
+        }
       }).catch(e => logger.warn(`Detail lazy banner failed for ${id}: ${e.message}`));
     }
   },
@@ -165,14 +170,22 @@ module.exports = {
         try {
           const folderParsed = resolveFolderParsed(anime);
           const videoCount = anime.episodes?.length || 0;
-          const match = await matchSeason(registry, folderParsed.cleanTitle, folderParsed, videoCount, config);
-          if (!match) return { animeId, success: false, error: '未找到匹配结果' };
-          const meta = await registry.fetchMetadata(match.source, folderParsed.cleanTitle, coverDir, match.id, config, match._detail);
-          if (!meta) return { animeId, success: false, error: '获取元数据失败' };
+          let meta, matchedSeason;
+          // 已知 bangumiId 跳过搜索，直接取元数据
+          if (anime.bangumiId) {
+            meta = await registry.fetchMetadata('bangumi', folderParsed.cleanTitle, coverDir, anime.bangumiId, config);
+            if (!meta) return { animeId, success: false, error: '获取元数据失败' };
+          } else {
+            const match = await matchSeason(registry, folderParsed.cleanTitle, folderParsed, videoCount, config);
+            if (!match) return { animeId, success: false, error: '未找到匹配结果' };
+            meta = await registry.fetchMetadata(match.source, folderParsed.cleanTitle, coverDir, match.id, config, match._detail);
+            if (!meta) return { animeId, success: false, error: '获取元数据失败' };
+            matchedSeason = match.matchedSeason;
+          }
           Object.assign(anime, meta);
             // Cover resize removed — browser handles display scaling
-          if (match.matchedSeason != null) anime.matchedSeason = match.matchedSeason;
-          return { animeId, success: true, meta, matchedSeason: match.matchedSeason };
+          if (matchedSeason != null) anime.matchedSeason = matchedSeason;
+          return { animeId, success: true, meta, matchedSeason };
         } catch (e) {
           return { animeId, success: false, error: e.message };
         }
@@ -182,6 +195,13 @@ module.exports = {
       const { registry: reg } = require('../scrapers');
       reg.clearSearchCache();
       jsonResp(res, 200, { ok: true, results });
+      // 后台生成缩略图
+      for (const r of results) {
+        if (r.success) {
+          const anime = data.library.find(a => a.id === r.animeId);
+          if (anime) state.thumbnailQueue?.enqueue(anime);
+        }
+      }
     } catch (e) {
       jsonResp(res, 500, { error: e.message });
     }
@@ -231,19 +251,29 @@ module.exports = {
           let timedOut = false;
           const itemPromise = (async () => {
             const baseName = folderParsed.cleanTitle || folderParsed.cjkTitle || anime.folderName || anime.title || '未知';
-            const searchTerm = folderParsed.season ? `${baseName} (S${folderParsed.season})` : baseName;
-            send('matching', { animeId, searchTerm });
-            const match = await matchSeason(registry, folderParsed.cleanTitle, folderParsed, videoCount, config);
-            if (timedOut) return;
-            if (!match) { send('progress', { animeId, success: false, error: '未找到匹配结果' }); return; }
-            send('fetching', { animeId, matchSource: match.source || 'unknown', matchTitle: match.title || match.name || '' });
-            const meta = await registry.fetchMetadata(match.source, folderParsed.cleanTitle, coverDir, match.id, config, match._detail);
-            if (timedOut) return;
-            if (!meta) { send('progress', { animeId, success: false, error: '获取元数据失败' }); return; }
+            let meta, matchedSeason;
+            // 已知 bangumiId 跳过搜索，直接取元数据
+            if (anime.bangumiId) {
+              send('matching', { animeId, searchTerm: baseName });
+              meta = await registry.fetchMetadata('bangumi', folderParsed.cleanTitle, coverDir, anime.bangumiId, config);
+              if (timedOut) return;
+              if (!meta) { send('progress', { animeId, success: false, error: '获取元数据失败' }); return; }
+            } else {
+              const searchTerm = folderParsed.season ? `${baseName} (S${folderParsed.season})` : baseName;
+              send('matching', { animeId, searchTerm });
+              const match = await matchSeason(registry, folderParsed.cleanTitle, folderParsed, videoCount, config);
+              if (timedOut) return;
+              if (!match) { send('progress', { animeId, success: false, error: '未找到匹配结果' }); return; }
+              send('fetching', { animeId, matchSource: match.source || 'unknown', matchTitle: match.title || match.name || '' });
+              meta = await registry.fetchMetadata(match.source, folderParsed.cleanTitle, coverDir, match.id, config, match._detail);
+              if (timedOut) return;
+              if (!meta) { send('progress', { animeId, success: false, error: '获取元数据失败' }); return; }
+              matchedSeason = match.matchedSeason;
+            }
             Object.assign(anime, meta);
           // Cover resize removed — browser handles display scaling
-            if (match.matchedSeason != null) anime.matchedSeason = match.matchedSeason;
-            send('progress', { animeId, success: true, meta, matchedSeason: match.matchedSeason });
+            if (matchedSeason != null) anime.matchedSeason = matchedSeason;
+            send('progress', { animeId, success: true, meta, matchedSeason });
             // 拉取 AniList banner，完成后落盘（不阻塞 progress 事件，但确保 done 前 banner 就绪）
             if (anime.anilistId === -1) anime.anilistId = null;
             try {
@@ -268,6 +298,10 @@ module.exports = {
       cancelledSyncSessions.delete(sessionId);
       send('done', { ok: true });
       res.end();
+      // 后台生成缩略图
+      for (const { anime } of toSync) {
+        state.thumbnailQueue?.enqueue(anime);
+      }
     })();
   },
 

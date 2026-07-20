@@ -165,10 +165,12 @@ function renderDashboard() {
   container.innerHTML = sectionHTML;
 
   // Render sections
-  const promises = [];
   if (sectionIds.indexOf('stats') !== -1) {
     var statsBody = document.getElementById('dashSection-stats');
-    if (statsBody) promises.push(renderStatsSection(libraryData, statsBody));
+    if (statsBody) {
+      statsBody.innerHTML = '<div class="dashboard-stats-loading">加载中...</div>';
+      renderStatsSection(libraryData, statsBody).catch(function() {});
+    }
   }
   if (sectionIds.indexOf('continueWatch') !== -1) {
     var contBody = document.getElementById('dashSection-continueWatch');
@@ -176,7 +178,6 @@ function renderDashboard() {
   }
   renderStatusGrids(libraryData);
   renderSortDropdown();
-  return Promise.all(promises);
 }
 
 function renderStatsSection(data, container) {
@@ -417,8 +418,7 @@ function showContextMenu(e, animeId) {
       '<span>移除</span>' +
     '</div>';
 
-  // Bind event listeners
-  document.getElementById('ctxDelete').addEventListener('click', contextDeleteAnime);
+  // Bind event listeners (ctxDelete uses inline onclick in innerHTML above)
   document.getElementById('ctxCopyTitle').addEventListener('click', contextCopyTitle);
   if (bangumiId) {
     document.getElementById('ctxOpenBgm').addEventListener('click', contextOpenBgm);
@@ -511,7 +511,6 @@ document.addEventListener('contextmenu', (e) => {
   if (!e.target.closest('.context-menu')) hideContextMenu();
 });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideContextMenu(); });
-document.getElementById('ctxDelete').addEventListener('click', contextDeleteAnime);
 
 function navigateToDetail(id, cardEl) {
   const img = cardEl.querySelector('img');

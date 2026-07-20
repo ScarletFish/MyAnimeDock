@@ -129,8 +129,6 @@
   background: linear-gradient(transparent 20%, rgba(0, 0, 0, 0.88) 80%);
 }
 :is([data-theme="light"], [data-theme-mode="light"]) .anime-card .overlay h3 { color: #fff; }
-:is([data-theme="light"], [data-theme-mode="light"]) .season-badge { background: rgba(0, 0, 0, 0.06); }
-
 /* ─── Dashboard Cards (hover shadows) ─── */
 :is([data-theme="light"], [data-theme-mode="light"]) .dashboard-card:hover {
   border-color: rgba(var(--accent-rgb), 0.15);

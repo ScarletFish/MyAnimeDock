@@ -652,6 +652,7 @@
         <button class="settings-tab" data-tab="playback" role="tab" aria-selected="false" onclick="switchSettingsTab(this, 'playback')">播放</button>
         <button class="settings-tab" data-tab="scraper" role="tab" aria-selected="false" onclick="switchSettingsTab(this, 'scraper')">刮削</button>
         <button class="settings-tab" data-tab="dashboard" role="tab" aria-selected="false" onclick="switchSettingsTab(this, 'dashboard')">动漫库</button>
+        <button class="settings-tab" data-tab="database" role="tab" aria-selected="false" onclick="switchSettingsTab(this, 'database')">数据库</button>
       </nav>
     </div>
 
@@ -754,6 +755,60 @@
           <div class="dashboard-layout-list" id="dashboardLayoutList"></div>
         </div>
       </div>
+
+      <!-- Tab: 数据库 -->
+      <div class="settings-panel" id="tab-database">
+        <div class="form-group">
+          <label>数据库概览</label>
+          <div id="dbInfoContainer">
+            <p class="form-hint">加载中...</p>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>备份与恢复</label>
+          <div class="db-action-row">
+            <button class="btn btn-sm" onclick="dbBackup()" id="btnDbBackup">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 8v5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V8"/><path d="M5 5l3-3 3 3"/><path d="M8 2v9"/></svg>
+              下载 DB 备份
+            </button>
+            <button class="btn btn-sm" onclick="dbBackupAll()" id="btnDbBackupAll">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 8v5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V8"/><path d="M5 5l3-3 3 3"/><path d="M8 2v9"/></svg>
+              完整备份（含配置）
+            </button>
+            <button class="btn btn-sm" onclick="document.getElementById('restoreFileInput').click()">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8v5a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V8"/><path d="M5 11l3 3 3-3"/><path d="M8 14V2"/></svg>
+              恢复备份
+            </button>
+            <input type="file" id="restoreFileInput" accept=".db" style="display:none" onchange="dbRestore(this)">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>维护操作</label>
+          <div class="db-action-row">
+            <button class="btn btn-sm" onclick="dbClearSessions()" id="btnDbClearSessions">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4h14"/><path d="M3 4v9a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4"/><path d="M6 4V2h4v2"/></svg>
+              清除播放记录
+            </button>
+            <button class="btn btn-sm" onclick="dbVacuum()" id="btnDbVacuum">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="7"/><path d="M8 5v3"/><path d="M8 11h.01"/></svg>
+              优化数据库（VACUUM）
+            </button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="db-danger-label">危险操作</label>
+          <div class="db-action-row">
+            <button class="btn btn-sm btn-danger" onclick="dbReset()" id="btnDbReset">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l4 4"/><path d="M10 6l-4 4"/><circle cx="8" cy="8" r="7"/></svg>
+              重置数据库
+            </button>
+          </div>
+          <p class="form-hint db-danger-hint">重置会清空所有动漫数据、播放记录和列表。操作前会自动备份当前数据库。</p>
+        </div>
+      </div>
     </div>
 
     <div id="settingsError" class="error-msg"></div>
@@ -774,6 +829,9 @@ function switchSettingsTab(btn, tab) {
   btn.setAttribute('aria-selected', 'true');
   document.querySelectorAll('.settings-panel').forEach(p => p.classList.remove('active'));
   document.getElementById('tab-' + tab).classList.add('active');
+  if (tab === 'database' && typeof refreshDbInfo === 'function') {
+    refreshDbInfo();
+  }
 }
 </script>
 

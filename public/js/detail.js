@@ -121,9 +121,9 @@ function stopDetailRefresh() {
   if (detailRefreshTimer) { clearInterval(detailRefreshTimer); detailRefreshTimer = null; }
 }
 
-async function showDetail(id, fromRect, fromSrc) {
+async function showDetail(id, fromRect, fromSrc, sourceView = 'library') {
   isWishlistMode = false;
-  detailSourceView = 'library'; AppState.set('detailSourceView', 'library');
+  detailSourceView = sourceView; AppState.set('detailSourceView', sourceView);
 
   resetDetailEnter();
   stopDetailRefresh();

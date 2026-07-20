@@ -222,6 +222,9 @@ async function openSettings() {
     // Dashboard layout
     if (typeof renderDashboardLayoutSettings === 'function') renderDashboardLayoutSettings();
 
+    // Preload DB info
+    if (typeof refreshDbInfo === 'function') refreshDbInfo();
+
     openModal('settingsModal');
   } catch (e) {
     if (window.location.origin !== 'http://localhost:3456') return;
@@ -417,6 +420,218 @@ async function saveSettings() {
     refreshDiscovery();
   } catch (e) {
     document.getElementById('settingsError').textContent = '保存失败: ' + e.message;
+  }
+}
+
+// ─── DB Management ───
+
+async function refreshDbInfo() {
+  const container = document.getElementById('dbInfoContainer');
+  if (!container) return;
+  try {
+    const info = await API.get('/api/db/info');
+    const dbSizeStr = info.dbSize > 1048576
+      ? (info.dbSize / 1048576).toFixed(1) + ' MB'
+      : info.dbSize > 1024
+        ? (info.dbSize / 1024).toFixed(1) + ' KB'
+        : info.dbSize + ' B';
+    const configSizeStr = info.configSize > 1024
+      ? (info.configSize / 1024).toFixed(1) + ' KB'
+      : info.configSize + ' B';
+    container.innerHTML = `
+      <div class="db-info-grid">
+        <div class="db-info-item">
+          <span class="db-info-label">数据库位置</span>
+          <span class="db-info-value db-info-path">${escHtml(info.dbPath)}</span>
+        </div>
+        <div class="db-info-item">
+          <span class="db-info-label">数据库大小</span>
+          <span class="db-info-value">${dbSizeStr}</span>
+        </div>
+        <div class="db-info-item">
+          <span class="db-info-label">动漫数量</span>
+          <span class="db-info-value">${info.counts.anime}</span>
+        </div>
+        <div class="db-info-item">
+          <span class="db-info-label">剧集数量</span>
+          <span class="db-info-value">${info.counts.episodes}</span>
+        </div>
+        <div class="db-info-item">
+          <span class="db-info-label">播放记录</span>
+          <span class="db-info-value">${info.counts.playSessions}</span>
+        </div>
+        <div class="db-info-item">
+          <span class="db-info-label">列表条目</span>
+          <span class="db-info-value">${info.counts.myList}</span>
+        </div>
+      </div>
+    `;
+  } catch (e) {
+    container.innerHTML = `<p class="form-hint" style="color:var(--error)">加载失败: ${escHtml(e.message)}</p>`;
+  }
+}
+
+function dbBackup() {
+  const btn = document.getElementById('btnDbBackup');
+  btn.disabled = true;
+  btn.textContent = '下载中...';
+  // 直接用 fetch 获取二进制
+  fetch('/api/db/backup')
+    .then(res => {
+      if (!res.ok) throw new Error('备份失败');
+      return res.blob();
+    })
+    .then(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = blob.name || `myanimedock-backup-${new Date().toISOString().slice(0, 10)}.db`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('数据库备份已下载', 'success');
+    })
+    .catch(e => showToast('备份失败: ' + e.message, 'error'))
+    .finally(() => {
+      btn.disabled = false;
+      btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 8v5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V8"/><path d="M5 5l3-3 3 3"/><path d="M8 2v9"/></svg> 下载 DB 备份';
+    });
+}
+
+async function dbBackupAll() {
+  const btn = document.getElementById('btnDbBackupAll');
+  btn.disabled = true;
+  btn.textContent = '打包中...';
+  try {
+    const res = await fetch('/api/db/backup/download-all', { method: 'POST' });
+    if (!res.ok) throw new Error('打包备份失败');
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `myanimedock-full-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('完整备份已下载', 'success');
+  } catch (e) {
+    showToast('备份失败: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 8v5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V8"/><path d="M5 5l3-3 3 3"/><path d="M8 2v9"/></svg> 完整备份（含配置）';
+  }
+}
+
+async function dbRestore(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const confirmed = await showConfirm('恢复备份将替换当前数据库。\n\n当前数据会自动备份到 backups/ 目录。\n确定要继续吗？');
+  if (!confirmed) {
+    input.value = '';
+    return;
+  }
+
+  // Show loading state on the file input's sibling buttons
+  showToast('正在恢复数据库...', 'info');
+
+  try {
+    // 读取文件为 base64
+    const reader = new FileReader();
+    const base64 = await new Promise((resolve, reject) => {
+      reader.onload = () => {
+        const result = reader.result;
+        const commaIdx = result.indexOf(',');
+        resolve(commaIdx >= 0 ? result.slice(commaIdx + 1) : result);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+    const res = await API.post('/api/db/restore', { file: base64 });
+    if (res.ok) {
+      showToast('数据库恢复成功', 'success');
+      refreshDbInfo();
+      if (typeof refreshLibrary === 'function') refreshLibrary();
+    }
+  } catch (e) {
+    showToast('恢复失败: ' + e.message, 'error');
+  } finally {
+    input.value = '';
+  }
+}
+
+async function dbClearSessions() {
+  const confirmed = await showConfirm('确定要清除所有播放记录吗？\n此操作不可撤销。');
+  if (!confirmed) return;
+
+  const btn = document.getElementById('btnDbClearSessions');
+  btn.disabled = true;
+  btn.textContent = '清除中...';
+  try {
+    const res = await API.post('/api/db/clear-sessions', {});
+    if (res.ok) {
+      showToast('播放记录已清除', 'success');
+      refreshDbInfo();
+    }
+  } catch (e) {
+    showToast('清除失败: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4h14"/><path d="M3 4v9a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4"/><path d="M6 4V2h4v2"/></svg> 清除播放记录';
+  }
+}
+
+async function dbVacuum() {
+  const confirmed = await showConfirm('数据库优化（VACUUM）会压缩数据库文件大小，期间数据库操作可能暂时变慢。\n确定要继续吗？');
+  if (!confirmed) return;
+
+  const btn = document.getElementById('btnDbVacuum');
+  btn.disabled = true;
+  btn.textContent = '优化中...';
+  try {
+    const res = await API.post('/api/db/vacuum', {});
+    if (res.ok) {
+      const newSize = res.dbSize > 1048576
+        ? (res.dbSize / 1048576).toFixed(1) + ' MB'
+        : (res.dbSize / 1024).toFixed(1) + ' KB';
+      showToast('数据库优化完成，当前大小: ' + newSize, 'success');
+      refreshDbInfo();
+    }
+  } catch (e) {
+    showToast('优化失败: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="7"/><path d="M8 5v3"/><path d="M8 11h.01"/></svg> 优化数据库（VACUUM）';
+  }
+}
+
+async function dbReset() {
+  const step1 = await showConfirm('⚠️ 危险操作\n\n确定要重置数据库吗？\n这将删除所有动漫数据、播放记录和列表。\n\n当前数据库会自动备份到 backups/ 目录。');
+  if (!step1) return;
+
+  const step2 = await showConfirm('再次确认：真的要重置吗？\n\n所有数据将被永久删除！');
+  if (!step2) return;
+
+  const btn = document.getElementById('btnDbReset');
+  btn.disabled = true;
+  btn.textContent = '重置中...';
+  try {
+    const res = await API.post('/api/db/reset', {});
+    if (res.ok) {
+      showToast('数据库已重置', 'info');
+      refreshDbInfo();
+      // 刷新各个界面
+      if (typeof refreshLibrary === 'function') refreshLibrary();
+      if (typeof renderMyList === 'function') renderMyList();
+    }
+  } catch (e) {
+    showToast('重置失败: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l4 4"/><path d="M10 6l-4 4"/><circle cx="8" cy="8" r="7"/></svg> 重置数据库';
   }
 }
 

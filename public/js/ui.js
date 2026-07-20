@@ -59,6 +59,7 @@ function renderAnimeCard(anime, options = {}) {
     showMoreBtn = true,
     coverSize = '400',
     isWish = false,
+    userRating = null,
     extraAttrs = ''
   } = options;
 
@@ -72,11 +73,6 @@ function renderAnimeCard(anime, options = {}) {
 
   const coverStyle = isWish ? 'opacity:0.45;filter:grayscale(0.6)' : '';
   const cardClass = isWish ? 'anime-card anime-card--wish' : 'anime-card';
-
-  // Status badge label
-  const mylistLabel = anime.myListStatus
-    ? (STATUS_LABELS[anime.myListStatus] || anime.myListStatus)
-    : null;
 
   // More button
   const moreBtnHtml = showMoreBtn
@@ -96,14 +92,12 @@ function renderAnimeCard(anime, options = {}) {
       : renderGrayCover(anime)
     ) +
     moreBtnHtml +
+    (userRating ? '<span class="user-rating">☆ ' + userRating + '</span>' : '') +
     '<div class="overlay">' +
       '<h3>' + title + '</h3>' +
       '<div class="meta">' +
         (anime.rating ? '<span class="rating-badge">★ ' + anime.rating + '</span>' : '') +
         (anime.season && !isWish ? '<span class="season-badge">S' + anime.season + '</span>' : '') +
-        (mylistLabel && anime.myListStatus !== 'watching'
-          ? '<span class="mylist-badge ' + anime.myListStatus + '">' + mylistLabel + '</span>'
-          : '') +
         (isWish ? '<span class="wishlist-badge">愿望</span>' : '') +
       '</div>' +
     '</div>' +

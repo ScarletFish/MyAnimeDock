@@ -231,6 +231,7 @@ function renderMyListCard(item) {
       onContextMenu: 'showMyListContextMenu',
       showMoreBtn: false,
       isWish: true,
+      userRating: item.userRating,
       extraAttrs: extraAttrs
     });
   }
@@ -238,6 +239,7 @@ function renderMyListCard(item) {
   return renderAnimeCard(item, {
     onClick: 'navigateToMyListDetail',
     onContextMenu: 'showMyListContextMenu',
+    userRating: item.userRating,
     extraAttrs: extraAttrs
   });
 }
@@ -252,8 +254,7 @@ function navigateToMyListDetail(id, cardEl) {
     rect = img.getBoundingClientRect();
     if (rect.width && rect.height) imgSrc = img.currentSrc || img.src;
   }
-  AppState.set('detailSourceView', 'mylist');
-  showDetail(id, rect, imgSrc);
+  showDetail(id, rect, imgSrc, 'mylist');
 }
 
 function showWishlistDetail(id) {
@@ -381,7 +382,7 @@ function openStatusModal(e, id) {
   if (ddEl && typeof Alpine !== 'undefined') Alpine.$data(ddEl).selected = curStatus;
 
   // Rating: num-stepper
-  var rating = item && item.rating != null ? item.rating : '';
+  var rating = item && item.userRating != null ? item.userRating : '';
   var ratingDisplay = document.getElementById('ratingDisplay');
   if (ratingDisplay) ratingDisplay.textContent = rating !== '' ? rating : '—';
 

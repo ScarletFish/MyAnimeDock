@@ -133,7 +133,7 @@
 
     if (type === 'anime' && id) {
       if (typeof showDetail === 'function') {
-        showDetail(id);
+        showDetail(id, null, null, 'library');
       }
     } else if (type === 'settings' && tab) {
       if (typeof openSettings === 'function') {

@@ -134,7 +134,8 @@ const H = Object.assign(
   require('./routes/playback'),
   require('./routes/mylist'),
   require('./routes/stats'),
-  require('./routes/bangumi')
+  require('./routes/bangumi'),
+  require('./routes/db-manager')
 );
 
 // ── 内联 handler（关闭、封面、静态文件）──
@@ -236,6 +237,14 @@ const routeTable = [
   { method: 'POST', path: '/api/bangumi/auth/logout', handler: H.handleBangumiAuthLogout },
   { method: 'POST', path: '/api/bangumi/auth/creds', handler: H.handleBangumiAuthCreds },
   { method: 'GET', path: '/api/bangumi/me', handler: H.handleBangumiMe },
+  // DB Management
+  { method: 'GET', path: '/api/db/info', handler: H.handleDbInfo },
+  { method: 'GET', path: '/api/db/backup', handler: H.handleDbBackup },
+  { method: 'POST', path: '/api/db/backup/download-all', handler: H.handleDbBackupAll },
+  { method: 'POST', path: '/api/db/restore', handler: H.handleDbRestore },
+  { method: 'POST', path: '/api/db/clear-sessions', handler: H.handleDbClearSessions },
+  { method: 'POST', path: '/api/db/vacuum', handler: H.handleDbVacuum },
+  { method: 'POST', path: '/api/db/reset', handler: H.handleDbReset },
   // Quit
   { method: 'POST', path: '/api/quit', handler: handleQuit },
   // Covers

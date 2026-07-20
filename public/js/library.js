@@ -395,21 +395,21 @@ function showContextMenu(e, animeId) {
   }
 
   menu.innerHTML =
-    '<div class="context-menu-item" id="ctxCopyTitle">' +
+    '<div class="context-menu-item" id="ctxCopyTitle" tabindex="0">' +
       '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>' +
       '<span>复制标题</span>' +
     '</div>' +
-    (bangumiId ? '<div class="context-menu-item" id="ctxOpenBgm">' +
+    (bangumiId ? '<div class="context-menu-item" id="ctxOpenBgm" tabindex="0">' +
       '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>' +
       '<span>在 Bangumi 打开</span>' +
     '</div>' : '') +
     '<div class="context-menu-divider"></div>' +
-    '<div class="context-menu-item" onclick="event.stopPropagation();contextToggleStatus()">' +
+    '<div class="context-menu-item" tabindex="0" onclick="event.stopPropagation();contextToggleStatus()">' +
       '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' +
       '<span>标记状态</span>' +
     '</div>' +
     '<div class="context-menu-divider"></div>' +
-    '<div class="context-menu-item context-menu-danger" id="ctxDelete">' +
+    '<div class="context-menu-item context-menu-danger" id="ctxDelete" tabindex="0">' +
       '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>' +
       '<span>移除</span>' +
     '</div>';
@@ -529,7 +529,7 @@ function navigateToDetail(id, cardEl) {
     if (rect.width === 0 || rect.height === 0) rect = null;
     else imgSrc = img.currentSrc || img.src;
   }
-  showDetail(id, rect, imgSrc);
+  showDetail(id, rect, imgSrc, 'library');
 }
 
 // --- Library Sync ---

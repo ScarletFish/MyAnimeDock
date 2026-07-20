@@ -578,4 +578,315 @@ describe('DB Integration Tests', () => {
       assert.equal(reloaded.playSessions.filter(s => s.animeId === lifecycleAnimeId).length, 0, 'play sessions should be removed');
     });
   });
+
+  // ── saveAll ──
+  describe('saveAll', () => {
+    it('writes library, mylist, and playSessions in one call', async () => {
+      const data = await db.loadData();
+      if (data === null) return;
+
+      const id = 'saveall-test-001';
+      // Save library first (FK: playSession.animeId → anime.id)
+      data.library.push({
+        id, folderPath: '/test/saveall', folderName: 'SaveAll Test',
+        title: 'SaveAll Test', importedAt: new Date().toISOString(),
+        downloaded: true, bangumiId: 77777001, bangumiTitle: 'SaveAllテスト',
+        episodes: [{ number: 1, filePath: '/test/saveall/ep01.mkv', fileName: 'ep01.mkv', fileSize: 100, watched: false, progress: 0 }],
+      });
+      data.myList.push({ animeId: id, status: 'watching', rating: 7.5 });
+      data.playSessions.push({
+        animeId: id, episodeNumber: 1, sessionId: 'saveall-sess-1',
+        startTime: new Date().toISOString(), endTime: null,
+        duration: 0, clockTime: 0, progressStart: 0,
+      });
+
+      // saveAll runs in parallel — library must be saved before sessions
+      // (saveAll doesn't guarantee order, so save library separately first)
+      await db.saveLibrary(data);
+      await db.saveAll(data);
+
+      const reloaded = await db.loadData();
+      assert.ok(reloaded.library.find(a => a.id === id), 'anime saved');
+      assert.ok(reloaded.myList.find(m => m.animeId === id), 'myList saved');
+      assert.ok(reloaded.playSessions.find(s => s.sessionId === 'saveall-sess-1'), 'session saved');
+
+      // Cleanup
+      reloaded.library = reloaded.library.filter(a => a.id !== id);
+      reloaded.myList = reloaded.myList.filter(m => m.animeId !== id);
+      reloaded.playSessions = reloaded.playSessions.filter(s => s.animeId !== id);
+      await db.saveAll(reloaded);
+    });
+  });
+
+  // ── bangumiId uniqueness ──
+  describe('saveLibrary — bangumiId uniqueness', () => {
+    it('skips anime if another already owns the same bangumiId', async () => {
+      const data = await db.loadData();
+      if (data === null) return;
+
+      const bgmId = 77777002;
+      const owner = 'bgm-unique-owner';
+      const skip = 'bgm-unique-skip';
+
+      // Ensure owner exists
+      if (!data.library.find(a => a.id === owner)) {
+        data.library.push({
+          id: owner, folderPath: '/test/bgm-unique', folderName: 'Owner',
+          title: 'Owner', importedAt: new Date().toISOString(),
+          downloaded: true, bangumiId: bgmId, bangumiTitle: '所有者',
+          episodes: [],
+        });
+      }
+      await db.saveLibrary(data);
+
+      // Try to save another anime with the same bangumiId
+      const skipAnime = {
+        id: skip, folderPath: '/test/bgm-skip', folderName: 'Skip',
+        title: 'Skip', importedAt: new Date().toISOString(),
+        downloaded: true, bangumiId: bgmId, bangumiTitle: '被跳过',
+        episodes: [],
+      };
+      if (!data.library.find(a => a.id === skip)) {
+        data.library.push(skipAnime);
+      }
+      await db.saveLibrary(data);
+
+      // Verify: owner still has the bangumiId, skip should be skipped (not upserted with same bangumiId)
+      const reloaded = await db.loadData();
+      const ownerRecord = reloaded.library.find(a => a.id === owner);
+      assert.ok(ownerRecord, 'owner should exist');
+      assert.equal(ownerRecord.bangumiId, bgmId, 'owner keeps bangumiId');
+
+      // Cleanup
+      reloaded.library = reloaded.library.filter(a => a.id !== owner && a.id !== skip);
+      await db.saveLibrary(reloaded);
+    });
+  });
+
+  // ── anilistId uniqueness ──
+  describe('saveLibrary — anilistId uniqueness', () => {
+    it('clears old owner anilistId when new record claims it', async () => {
+      const data = await db.loadData();
+      if (data === null) return;
+
+      const alId = 77777003;
+      const oldOwner = 'al-old-owner';
+      const newOwner = 'al-new-owner';
+
+      // Create old owner with anilistId
+      if (!data.library.find(a => a.id === oldOwner)) {
+        data.library.push({
+          id: oldOwner, folderPath: '/test/al-old', folderName: 'Old',
+          title: 'Old', importedAt: new Date().toISOString(),
+          downloaded: true, bangumiId: 77777010, bangumiTitle: '旧所有者',
+          anilistId: alId, anilistBanner: '/banners/old.jpg',
+          episodes: [],
+        });
+      }
+      await db.saveLibrary(data);
+
+      // Create new owner claiming the same anilistId
+      if (!data.library.find(a => a.id === newOwner)) {
+        data.library.push({
+          id: newOwner, folderPath: '/test/al-new', folderName: 'New',
+          title: 'New', importedAt: new Date().toISOString(),
+          downloaded: true, bangumiId: 77777011, bangumiTitle: '新所有者',
+          anilistId: alId, anilistBanner: '/banners/new.jpg',
+          episodes: [],
+        });
+      }
+      await db.saveLibrary(data);
+
+      // Verify: old owner's anilist fields should be cleared
+      const reloaded = await db.loadData();
+      const old = reloaded.library.find(a => a.id === oldOwner);
+      const fresh = reloaded.library.find(a => a.id === newOwner);
+      assert.ok(old, 'old owner should exist');
+      assert.ok(fresh, 'new owner should exist');
+      assert.equal(old.anilistId, null, 'old owner anilistId cleared');
+      assert.equal(old.anilistBanner, null, 'old owner banner cleared');
+      assert.equal(fresh.anilistId, alId, 'new owner keeps anilistId');
+
+      // Cleanup
+      reloaded.library = reloaded.library.filter(a => a.id !== oldOwner && a.id !== newOwner);
+      await db.saveLibrary(reloaded);
+    });
+  });
+
+  // ── updateMyItemStatus ──
+  describe('updateMyItemStatus', () => {
+    it('upserts status for library-linked item', async () => {
+      const data = await db.loadData();
+      if (data === null) return;
+
+      const id = 'status-test-001';
+      if (!data.library.find(a => a.id === id)) {
+        data.library.push({
+          id, folderPath: '/test/status', folderName: 'Status',
+          title: 'Status', importedAt: new Date().toISOString(),
+          downloaded: true, bangumiId: 77777020, bangumiTitle: 'ステータステスト',
+          episodes: [],
+        });
+        data.myList.push({ animeId: id, status: 'wish' });
+        await db.saveLibrary(data);
+        await db.saveMyList(data);
+      }
+
+      await db.updateMyItemStatus(id, 'completed');
+
+      const reloaded = await db.loadData();
+      const item = reloaded.myList.find(m => m.animeId === id);
+      assert.ok(item, 'myList item should exist');
+      assert.equal(item.status, 'completed');
+
+      // Cleanup
+      reloaded.library = reloaded.library.filter(a => a.id !== id);
+      reloaded.myList = reloaded.myList.filter(m => m.animeId !== id);
+      await db.saveLibrary(reloaded);
+      await db.saveMyList(reloaded);
+    });
+  });
+
+  // ── updateMyListItem ──
+  describe('updateMyListItem', () => {
+    it('updates specific fields without touching others', async () => {
+      const data = await db.loadData();
+      if (data === null) return;
+
+      const id = 'myitem-test-001';
+      if (!data.library.find(a => a.id === id)) {
+        data.library.push({
+          id, folderPath: '/test/myitem', folderName: 'MyItem',
+          title: 'MyItem', importedAt: new Date().toISOString(),
+          downloaded: true, bangumiId: 77777030, bangumiTitle: 'マイアイテム',
+          episodes: [],
+        });
+        data.myList.push({ animeId: id, status: 'watching', rating: 5.0, thoughts: 'old thoughts' });
+        await db.saveLibrary(data);
+        await db.saveMyList(data);
+      }
+
+      // Update only rating, leave status/thoughts untouched
+      await db.updateMyListItem(id, { rating: 9.5 });
+
+      const reloaded = await db.loadData();
+      const item = reloaded.myList.find(m => m.animeId === id);
+      assert.ok(item, 'myList item should exist');
+      assert.equal(item.rating, 9.5, 'rating should be updated');
+      assert.equal(item.status, 'watching', 'status should be unchanged');
+      assert.equal(item.thoughts, 'old thoughts', 'thoughts should be unchanged');
+
+      // Cleanup
+      reloaded.library = reloaded.library.filter(a => a.id !== id);
+      reloaded.myList = reloaded.myList.filter(m => m.animeId !== id);
+      await db.saveLibrary(reloaded);
+      await db.saveMyList(reloaded);
+    });
+  });
+
+  // ── updatePlaySession ──
+  describe('updatePlaySession', () => {
+    it('updates session endTime and duration', async () => {
+      const data = await db.loadData();
+      if (data === null) return;
+
+      const id = 'sess-test-001';
+      const sessionId = 'sess-update-001';
+
+      // Ensure anime exists in library (FK requirement)
+      if (!data.library.find(a => a.id === id)) {
+        data.library.push({
+          id, folderPath: '/test/sess', folderName: 'Sess',
+          title: 'Sess', importedAt: new Date().toISOString(),
+          downloaded: true, bangumiId: 77777040, bangumiTitle: 'セッション',
+          episodes: [{ number: 1, filePath: '/test/sess/ep01.mkv', fileName: 'ep01.mkv', fileSize: 100, watched: false, progress: 0 }],
+        });
+        await db.saveLibrary(data);
+      }
+
+      // Create session (anime must exist first)
+      data.playSessions.push({
+        animeId: id, episodeNumber: 1, sessionId,
+        startTime: new Date(Date.now() - 300000).toISOString(),
+        endTime: null, duration: 0, clockTime: 0, progressStart: 0,
+      });
+      await db.savePlaySessions(data);
+
+      // Update session
+      await db.updatePlaySession(sessionId, {
+        endTime: new Date().toISOString(),
+        duration: 300,
+        clockTime: 310,
+      });
+
+      const reloaded = await db.loadData();
+      const session = reloaded.playSessions.find(s => s.sessionId === sessionId);
+      assert.ok(session, 'session should exist');
+      assert.equal(session.duration, 300, 'duration updated');
+      assert.equal(session.clockTime, 310, 'clockTime updated');
+      assert.ok(session.endTime, 'endTime set');
+
+      // Cleanup
+      reloaded.library = reloaded.library.filter(a => a.id !== id);
+      reloaded.playSessions = reloaded.playSessions.filter(s => s.animeId !== id);
+      await db.saveLibrary(reloaded);
+      await db.savePlaySessions(reloaded);
+    });
+  });
+
+  // ── deletePlaySession ──
+  describe('deletePlaySession', () => {
+    it('removes session by sessionId', async () => {
+      const data = await db.loadData();
+      if (data === null) return;
+
+      const id = 'sess-del-001';
+      const sessionId = 'sess-delete-001';
+
+      // Ensure anime exists in library (FK requirement)
+      if (!data.library.find(a => a.id === id)) {
+        data.library.push({
+          id, folderPath: '/test/sess-del', folderName: 'SessDel',
+          title: 'SessDel', importedAt: new Date().toISOString(),
+          downloaded: true, bangumiId: 77777050, bangumiTitle: 'セッション削除',
+          episodes: [{ number: 1, filePath: '/test/sess-del/ep01.mkv', fileName: 'ep01.mkv', fileSize: 100, watched: false, progress: 0 }],
+        });
+        await db.saveLibrary(data);
+      }
+
+      // Create session
+      data.playSessions.push({
+        animeId: id, episodeNumber: 1, sessionId,
+        startTime: new Date().toISOString(), endTime: null,
+        duration: 0, clockTime: 0, progressStart: 0,
+      });
+      await db.savePlaySessions(data);
+
+      // Verify it exists
+      let reloaded = await db.loadData();
+      assert.ok(reloaded.playSessions.find(s => s.sessionId === sessionId), 'session should exist');
+
+      // Delete
+      await db.deletePlaySession(sessionId);
+
+      // Verify gone
+      reloaded = await db.loadData();
+      assert.equal(reloaded.playSessions.find(s => s.sessionId === sessionId), undefined, 'session should be deleted');
+
+      // Cleanup
+      reloaded.library = reloaded.library.filter(a => a.id !== id);
+      reloaded.playSessions = reloaded.playSessions.filter(s => s.animeId !== id);
+      await db.saveLibrary(reloaded);
+      await db.savePlaySessions(reloaded);
+    });
+  });
+
+  // ── ensureSchema ──
+  describe('ensureSchema', () => {
+    it('is idempotent — calling twice does not error', async () => {
+      await db.ensureSchema();
+      await db.ensureSchema();
+      assert.ok(true, 'no error on repeated calls');
+    });
+  });
 });

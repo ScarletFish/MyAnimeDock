@@ -99,6 +99,17 @@ module.exports = {
       anime.summary = truncateSummary(anime.summary);
     }
     jsonResp(res, 200, anime);
+
+    // 懒加载 banner：anilistId 有但 banner 缺失时异步补全（不阻塞响应）
+    if (anime.anilistId && anime.anilistId !== -1 && !anime.anilistBanner) {
+      const { syncAnilistDetail } = require('../scrapers');
+      const bannerDir = path.join(DATA_DIR, 'banners');
+      const coverDir = path.join(DATA_DIR, 'covers');
+      syncAnilistDetail(anime, config, bannerDir, coverDir).then(() => {
+        const { db } = state;
+        db.saveLibrary(data);
+      }).catch(e => logger.warn(`Detail lazy banner failed for ${id}: ${e.message}`));
+    }
   },
 
   handleDeleteAnime(req, res, state) {

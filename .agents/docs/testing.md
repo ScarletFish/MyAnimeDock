@@ -16,9 +16,10 @@ const assert = require('node:assert');
 ## 运行测试
 
 ```bash
-cd server && npm test            # 全量测试（当前 82 tests: 17 DB + 65 scanner）
+cd server && npm test            # 全量测试（当前 198 tests: 25 DB + 65 scanner + 66 scrapers + 42 playback）
 cd server && npx node --test --test-name-pattern="parseFolderName" __tests__/scanner.test.js  # 筛选单个 describe
 cd server && npx node --test --test-name-pattern="NCOP" __tests__/scanner.test.js              # 筛选单个 it
+cd server && node --test __tests__/scrapers.test.js                                           # 仅匹配逻辑测试（改匹配时用）
 ```
 
 ## 测试分类
@@ -116,9 +117,10 @@ Step 6: Delete anime → remove from library and myList
 
 ```
 server/__tests__/
-├── db.test.js        # 数据库集成测试
-├── scanner.test.js   # Scanner 纯函数 + 文件系统集成
-└── ...               # 新模块按 `{module}.test.js` 命名
+├── db.test.js            # 数据库集成测试（25 tests）
+├── scanner.test.js       # Scanner 纯函数 + 文件系统集成（65 tests）
+├── scrapers.test.js      # 元数据匹配逻辑（66 tests）— 改匹配时只跑这个
+└── playback-encoding.test.js  # 播放路径编码验证（42 tests）
 ```
 
 ### 覆盖率目标

@@ -285,7 +285,7 @@ server = http.createServer((req, res) => {
 async function autoImportNewFolders(data, config) {
   if (!config.mediaDir || !fs.existsSync(config.mediaDir)) return;
   const aiLog = logger.child('[AUTOIMPORT]');
-  const { registry, syncAnilist } = require('./scrapers');
+  const { registry, resolveAnilistId } = require('./scrapers');
   const coverDir = path.join(DATA_DIR, 'covers');
 
   const importedPaths = new Set(data.library.map(a => a.folderPath));
@@ -357,11 +357,10 @@ async function autoImportNewFolders(data, config) {
       await db.saveLibrary(data);
       await db.saveMyList(data);
 
-      // AniList 双源同步（异步，不阻塞导入流程）
-      const bannerDir = path.join(DATA_DIR, 'banners');
-      syncAnilist(anime, config, bannerDir, coverDir).then(() => {
+      // AniList ID 解析（轻量，仅搜索取 ID，不阻塞导入流程）
+      resolveAnilistId(anime, config).then(() => {
         db.saveLibrary(data);
-      }).catch(e => aiLog.error('AniList sync failed:', e.message));
+      }).catch(e => aiLog.error('AniList resolveId failed:', e.message));
 
       imported++;
 
@@ -378,6 +377,45 @@ async function autoImportNewFolders(data, config) {
   if (imported > 0) {
     pendingNotifications.push({ type: 'auto_import', count: imported, message: autoImportResult.message });
   }
+
+  // 后台重试队列：渐进重试 anilistId = -1 的条目
+  startAnilistRetryQueue(data, config, aiLog);
+}
+
+// ── AniList 失败重试队列 ──
+const RETRY_INTERVAL = 30000; // 每 30s 重试一个
+let retryTimer = null;
+
+function startAnilistRetryQueue(data, config, log) {
+  if (retryTimer) return; // 已在运行
+  const { resolveAnilistId } = require('./scrapers');
+
+  async function retryOne() {
+    const candidate = data.library.find(a => a.anilistId === -1);
+    if (!candidate) {
+      log.info('AniList retry queue: all done, stopping');
+      retryTimer = null;
+      return;
+    }
+    log.info(`AniList retry: "${candidate.title}" (bgmId=${candidate.bangumiId})`);
+    try {
+      // 重置 -1 允许重新搜索
+      candidate.anilistId = null;
+      const id = await resolveAnilistId(candidate, config);
+      if (id) {
+        log.info(`AniList retry: "${candidate.title}" → anilistId=${id}`);
+        await db.saveLibrary(data);
+      } else {
+        log.info(`AniList retry: "${candidate.title}" → still no match`);
+      }
+    } catch (e) {
+      log.warn(`AniList retry failed for "${candidate.title}": ${e.message}`);
+      candidate.anilistId = -1; // 恢复标记
+    }
+    retryTimer = setTimeout(retryOne, RETRY_INTERVAL);
+  }
+
+  retryTimer = setTimeout(retryOne, RETRY_INTERVAL);
 }
 
 async function validateCovers(data) {

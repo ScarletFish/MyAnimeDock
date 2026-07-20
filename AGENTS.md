@@ -49,7 +49,7 @@ npm run prisma:studio    # Open Prisma Studio (SQLite browser)
 node scripts/migrate-to-sqlite.js  # 从 JSON 迁移数据到 SQLite（一次性）
 start.bat             # Windows 菜单：开发/构建/清理/prisma 操作
 # 测试命令
-cd server && npm test    # 全量测试（81 tests）
+cd server && npm test    # 全量测试（198 tests）
 ```
 
 完整 API 端点参考见 `.agents/docs/data-flow.md`（14 个主要数据流，40+ 端点）。
@@ -200,13 +200,17 @@ __debug.snapshot(label)       // 快照：view, scrollTop, scrollHeight, 数据�
 测试指南见 `.agents/docs/testing.md`（模式惯例、已知行为、陷阱记录）。
 
 ```bash
-cd server && npm test    # 全量测试（81 tests）
+cd server && npm test    # 全量测试（198 tests）
 ```
 
-| 文件 | 测试数 | 覆盖模块 |
-|------|--------|----------|
-| `server/__tests__/db.test.js` | 17 | `loadData`, `saveLibrary`, `saveMyList`, `updateEpisodesWatched`, 全生命周期（导入→播放→归档→删除） |
-| `server/__tests__/scanner.test.js` | 65 | `parseFolderName`(21), `isExtraVideo`(16), `extractBgmId`(7), `findVideos`(5), `hasDirectVideos`(5), `buildLeaf` via `scanMediaDirFlat`(5), `scanMediaDirFlat`(5), `scanMediaDir`(1) |
+| 文件 | 测试数 | 覆盖模块 | 何时运行 |
+|------|--------|----------|----------|
+| `server/__tests__/db.test.js` | 25 | `loadData`, `saveLibrary`, `saveMyList`, `updateEpisodesWatched`, `saveAll`, `updateMyItemStatus`, `updateMyListItem`, `updatePlaySession`, `deletePlaySession`, `ensureSchema`, bangumiId/anilistId 唯一性, 全生命周期 | 数据持久化改动时 |
+| `server/__tests__/scanner.test.js` | 65 | `parseFolderName`(21), `isExtraVideo`(16), `extractBgmId`(7), `findVideos`(5), `hasDirectVideos`(5), `buildLeaf` via `scanMediaDirFlat`(5), `scanMediaDirFlat`(5), `scanMediaDir`(1) | scanner 改动时 |
+| `server/__tests__/scrapers.test.js` | 66 | `normalizeTitle`, `sorensenDice`, `toHiragana`, `pickBestBySimilarity`, `extractRomajiTitle`, `parseFolderName` 真实数据集(15), `resolveAnilistId`(mock + real API), `syncAnilistDetail`(mock) | **匹配逻辑改动时** |
+| `server/__tests__/playback-encoding.test.js` | 42 | 播放路径编码、`escAttr` → HTML → `dataset` → JSON 全链路 | 播放路径改动时 |
+
+**运行策略**：改匹配逻辑（`scrapers/index.js`、`anilist.js`）→ 只跑 `node --test __tests__/scrapers.test.js`（~135ms）。其余改动 → `npm test` 全量。
 
 ### 修 bug / 新增功能
 

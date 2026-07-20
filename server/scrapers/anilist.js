@@ -8,6 +8,21 @@ const ANILIST_API = 'https://graphql.anilist.co';
 const ANILIST_IMAGE_BASE = 'https://s4.anilist.co/file';
 const TIMEOUT = 3000;
 
+// Rate limiter: ensure minimum 1.5s gap between requests
+let _lastRequestTime = 0;
+const MIN_REQUEST_INTERVAL = 1500;
+const MAX_RETRIES = 3;
+const RETRY_BASE_DELAY = 1500;
+
+async function rateLimitWait() {
+  const now = Date.now();
+  const elapsed = now - _lastRequestTime;
+  if (elapsed < MIN_REQUEST_INTERVAL) {
+    await new Promise(r => setTimeout(r, MIN_REQUEST_INTERVAL - elapsed));
+  }
+  _lastRequestTime = Date.now();
+}
+
 let useCurlFallback = false;
 let curlFallbackUntil = 0;
 const CURL_COOLDOWN = 60000;
@@ -190,17 +205,33 @@ class AniListScraper {
   }
 
   async graphqlRequest(query, variables = {}) {
-    const body = JSON.stringify({ query, variables });
-    const res = await tryFetch(this.apiBase, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body,
-    });
-    const data = await res.json();
-    if (data.errors) {
-      throw new Error(`GraphQL error: ${data.errors[0]?.message}`);
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      if (attempt > 0) {
+        const delay = RETRY_BASE_DELAY * Math.pow(2, attempt - 1);
+        logger.info(`Retry ${attempt}/${MAX_RETRIES} after ${delay}ms`);
+        await new Promise(r => setTimeout(r, delay));
+      }
+      await rateLimitWait();
+      const body = JSON.stringify({ query, variables });
+      try {
+        const res = await tryFetch(this.apiBase, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body,
+        });
+        const data = await res.json();
+        if (data.errors) {
+          throw new Error(`GraphQL error: ${data.errors[0]?.message}`);
+        }
+        return data.data;
+      } catch (e) {
+        if (e.message.includes('429') && attempt < MAX_RETRIES) {
+          logger.warn(`AniList 429 rate limited, will retry (${attempt + 1}/${MAX_RETRIES})`);
+          continue;
+        }
+        throw e;
+      }
     }
-    return data.data;
   }
 
   async search(keyword, source) {

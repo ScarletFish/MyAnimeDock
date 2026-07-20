@@ -79,9 +79,13 @@ server.js ⇒ init()
         │   ├─ db.saveLibrary(data) → SQLite anime + episode tables
         │   ├─ db.saveMyList(data) → SQLite mylist table
         │   ├─ Bangumi sync (async, fire-and-forget)
+        │   ├─ resolveAnilistId(anime, config) (async, fire-and-forget)
+        │   │   └─ 仅搜索取 ID，不获取 banner（轻量，防 429 限流）
         │   └─ autoImportResult.count++
-        └─ If imported > 0, set autoImportResult = { count, message }
-             → consumed by frontend first /api/config GET as `autoImport` field
+        ├─ If imported > 0, set autoImportResult = { count, message }
+        │    → consumed by frontend first /api/config GET as `autoImport` field
+        └─ startAnilistRetryQueue(data, config)
+             └─ 每 30s 重试一个 anilistId=-1 的条目（渐进补全）
 ```
 
 ## 2. Config Flow
@@ -194,10 +198,12 @@ init() → autoImportNewFolders(data, config)  (inline in server.js)
   │   ├─ Create MyList entry (status: 'watching')
   │   ├─ db.saveLibrary(data) + db.saveMyList(data) (sequential, FK safety)
   │   └─ Bangumi sync (async fire-and-forget)
-  │   └─ AniList 双源同步 (async, fire-and-forget):
-  │       syncAnilist(anime, config, bannerDir, coverDir) → saves anilistId/anilistBanner/etc
+  │   └─ resolveAnilistId(anime, config) (async, fire-and-forget)
+  │       └─ 仅搜索取 anilistId，不获取 banner（防 429 限流）
   ├─ Set autoImportResult = { count, message }
-  └─ Frontend consumes via first GET /api/config → showToast()
+  ├─ Frontend consumes via first GET /api/config → showToast()
+  └─ startAnilistRetryQueue(data, config)
+       └─ 每 30s 重试一个 anilistId=-1 的条目
 ```
 
 ## 5. Metadata Fetch Flow
@@ -597,15 +603,22 @@ http.createServer((req, res) => {
 
 ## 14. AniList 双源同步 — 所有触发路径一览
 
-| 触发方式 | 端点/位置 | 调用方式 | syncAnilist？ | 备注 |
-|---------|-----------|---------|:-----------:|------|
-| 启动自动导入（有 `[bgmN]` 的文件夹） | `server.js` → `autoImportNewFolders()` | fire-and-forget `.then()` | ✅ | 导入→元数据→同步 |
-| 详情页刷元数据 | `POST /api/bangumi/fetch` → `bangumi.js` | fire-and-forget `.then()` | ✅ | 重置 `-1` 重新搜索 |
-| 发现页手动导入 | `POST /api/import` → `discovery.js` | 元数据拉取完成后 `.then()` | ✅ | 新增 |
-| AniList 批量回填 | `POST /api/library/sync-anilist-backfill` → `library.js` | `await` 串行，每 5 部落盘 | ✅ | 传参 `result` 含成功/跳过/失败 |
-| 详情页搜索框/自动匹配 | `POST /api/bangumi/search` → `bangumi.js` | `searchAll()` | ✅ (缓存) | 搜 Bangumi 前也从 `searchAll` 经过，吃到预取缓存 |
+AniList 同步拆分为两步：**resolveAnilistId**（轻量，仅搜索取 ID）和 **syncAnilistDetail**（重量，metadata + banner）。导入时只做第一步，banner 在详情页懒加载。
 
-**预取缓存**：scan 时后台将罗马音文件夹名的 AniList 搜索结果缓存到 `registry._searchCache`（5 分钟 TTL）。`anilist.search()` 先查该缓存，有就直接返回，跳过 API。这样 `syncAnilist()` 搜索罗马音标题时能直接命中预取数据，无需网络请求。
+| 触发方式 | 端点/位置 | 调用方式 | 函数 | 备注 |
+|---------|-----------|---------|------|------|
+| 启动自动导入（有 `[bgmN]` 的文件夹） | `server.js` → `autoImportNewFolders()` | fire-and-forget `.then()` | `resolveAnilistId` | 仅取 ID，不获取 banner |
+| 自动导入失败重试 | `server.js` → `startAnilistRetryQueue()` | 每 30s 定时器 | `resolveAnilistId` | 渐进重试 `anilistId=-1` 的条目 |
+| 详情页 banner 懒加载 | `GET /api/anime/:id` → `library.js` | 响应后异步 | `syncAnilistDetail` | `anilistId` 有但 `anilistBanner` 缺失时触发 |
+| 详情页刷元数据 | `POST /api/bangumi/fetch` → `bangumi.js` | fire-and-forget `.then()` | `syncAnilist` | 重置 `-1` 重新搜索，含完整同步 |
+| 发现页手动导入 | `POST /api/import` → `discovery.js` | 元数据拉取完成后 `.then()` | `syncAnilist` | 用户主动，含完整同步 |
+| AniList 批量回填 | `POST /api/library/sync-anilist-backfill` → `library.js` | `await` 串行，每 5 部落盘 | `syncAnilist` | 传参 `result` 含成功/跳过/失败 |
+| SSE 流式同步 | `POST /api/library/sync/stream` → `library.js` | `parallelMap` | `syncAnilist` | MetaMatch 用，含完整同步 |
+| 详情页搜索框/自动匹配 | `POST /api/bangumi/search` → `bangumi.js` | `searchAll()` | — (缓存) | 搜 Bangumi 前也从 `searchAll` 经过，吃到预取缓存 |
+
+**预取缓存**：scan 时后台将罗马音文件夹名的 AniList 搜索结果缓存到 `registry._searchCache`（5 分钟 TTL）。`anilist.search()` 先查该缓存，有就直接返回，跳过 API。这样 `resolveAnilistId()` 搜索罗马音标题时能直接命中预取数据，无需网络请求。
+
+**AniList 限流保护**：`anilist.js` 内置全局请求队列（每次请求间隔 1.5s）+ 429 自动重试（指数退避 1.5s→3s→6s，最多 3 次）。导入时 21 部动漫的 `resolveAnilistId` 并发调用，通过共享的 `_lastRequestTime` 自动串行化，不会触发限流。
 
 ## Key Gotchas
 

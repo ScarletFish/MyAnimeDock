@@ -442,12 +442,12 @@ function extractRomajiTitle(infobox) {
 }
 
 /**
- * Sync AniList metadata for an anime: search → match → fetch → download banner → apply.
- * Modifies `anime` in place. Returns applied fields or null.
+ * Resolve AniList ID for an anime by searching multiple title variants.
+ * Lightweight — no metadata fetch, no banner download.
+ * Modifies anime.anilistId in place (-1 on failure). Returns anilistId or null.
  */
-async function syncAnilist(anime, config, bannerDir, coverDir) {
+async function resolveAnilistId(anime, config) {
   if (!anime) return null;
-  // Already attempted and not found
   if (anime.anilistId === -1) return null;
 
   const anilist = registry.get('anilist');
@@ -455,75 +455,99 @@ async function syncAnilist(anime, config, bannerDir, coverDir) {
   const source = config.apiSources?.find(s => s.type === 'anilist');
 
   let anilistId = anime.anilistId;
+  if (anilistId) return anilistId;
 
-  // Search by title if we don't have an ID yet
-  if (!anilistId) {
-    const romaji = extractRomajiTitle(anime.infobox);
-    const searchTitles = [
-      romaji,                    // 罗马音 → AniList 拉丁文字搜索最准
-      anime.bangumiTitleJp,      // 日文原名
-      anime.bangumiTitleEn,      // 英文标题
-      anime.title,               // 中文标题
-      anime.bangumiTitle,        // Bangumi 主标题
-    ].filter(Boolean);
-    // Deduplicate
-    const seen = new Set();
-    const unique = searchTitles.filter(t => { const k = t.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; });
+  const romaji = extractRomajiTitle(anime.infobox);
+  const searchTitles = [
+    romaji,
+    anime.bangumiTitleJp,
+    anime.bangumiTitleEn,
+    anime.title,
+    anime.bangumiTitle,
+  ].filter(Boolean);
+  const seen = new Set();
+  const unique = searchTitles.filter(t => { const k = t.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; });
 
-    for (const t of unique) {
-      try {
-        // Normalize katakana → hiragana for better AniList search match
-        const query = toHiragana(t);
-        const results = await anilist.search(query, source);
-        if (results.length === 0) continue;
-        const bestItem = pickBestBySimilarity(t, results);
-        if (bestItem) {
-          const matchTitle = bestItem.name_cn || bestItem.name || '';
-          const score = sorensenDice(t, matchTitle);
-          if (score >= 0.5) {
-            anilistId = bestItem.id;
-            break;
-          }
+  for (const t of unique) {
+    try {
+      const query = toHiragana(t);
+      const results = await anilist.search(query, source);
+      if (results.length === 0) continue;
+      const bestItem = pickBestBySimilarity(t, results);
+      if (bestItem) {
+        const matchTitle = bestItem.name_cn || bestItem.name || '';
+        const score = sorensenDice(t, matchTitle);
+        if (score >= 0.5) {
+          anilistId = bestItem.id;
+          break;
         }
-      } catch (e) {
-        logger.warn(`AniList search failed for "${t}": ${e.message}`);
       }
-    }
-
-    if (!anilistId) {
-      anime.anilistId = -1; // Mark as attempted
-      logger.info(`syncAnilist: no match for "${anime.title}" (bgmId=${anime.bangumiId})`);
-      return null;
+    } catch (e) {
+      logger.warn(`AniList search failed for "${t}": ${e.message}`);
     }
   }
 
-  // Fetch full AniList metadata
+  if (!anilistId) {
+    anime.anilistId = -1;
+    logger.info(`resolveAnilistId: no match for "${anime.title}" (bgmId=${anime.bangumiId})`);
+    return null;
+  }
+
+  anime.anilistId = anilistId;
+  return anilistId;
+}
+
+/**
+ * Fetch AniList metadata + download banner for an anime that already has anilistId.
+ * Heavy — calls fetchMetadata + downloadBanner. Modifies anime in place.
+ * Returns { anilistId, localBanner, anilistTitleEn } or null.
+ */
+async function syncAnilistDetail(anime, config, bannerDir, coverDir) {
+  if (!anime || !anime.anilistId || anime.anilistId === -1) return null;
+
+  const anilist = registry.get('anilist');
+  if (!anilist || !anilist.enabled(config)) return null;
+
+  const anilistId = anime.anilistId;
+
   let meta;
   try {
     meta = await anilist.fetchMetadata(anime.title || '', coverDir, anilistId);
   } catch (e) {
-    logger.error(`syncAnilist: fetchMetadata failed for id=${anilistId}: ${e.message}`);
+    logger.error(`syncAnilistDetail: fetchMetadata failed for id=${anilistId}: ${e.message}`);
     return null;
   }
   if (!meta) return null;
 
-  // Download banner
   let localBanner = null;
   if (meta.bannerImage) {
     try {
       localBanner = await anilist.downloadBanner(meta.bannerImage, bannerDir, anilistId);
     } catch (e) {
-      logger.warn(`syncAnilist: banner download failed for id=${anilistId}: ${e.message}`);
+      logger.warn(`syncAnilistDetail: banner download failed for id=${anilistId}: ${e.message}`);
     }
   }
 
-  // Apply to anime object
-  anime.anilistId = anilistId;
   if (localBanner) anime.anilistBanner = localBanner;
   if (meta.anilistTitleEn) anime.anilistTitleEn = meta.anilistTitleEn;
 
-  logger.info(`syncAnilist: done for id=${anime.id} → anilistId=${anilistId}${localBanner ? ' +banner' : ''}`);
+  logger.info(`syncAnilistDetail: done for id=${anime.id} → anilistId=${anilistId}${localBanner ? ' +banner' : ''}`);
   return { anilistId, localBanner, anilistTitleEn: meta.anilistTitleEn };
+}
+
+/**
+ * Full AniList sync: resolve ID + fetch metadata + download banner.
+ * For user-initiated actions (backfill, bangumi-fetch, stream sync) where
+ * doing everything in one call is acceptable.
+ */
+async function syncAnilist(anime, config, bannerDir, coverDir) {
+  if (!anime) return null;
+  if (anime.anilistId === -1) return null;
+
+  const anilistId = await resolveAnilistId(anime, config);
+  if (!anilistId) return null;
+
+  return syncAnilistDetail(anime, config, bannerDir, coverDir);
 }
 
 module.exports = {
@@ -541,8 +565,11 @@ module.exports = {
   detectSpecialType,
   extractBaseAndSuffix,
   parallelMap,
+  resolveAnilistId,
+  syncAnilistDetail,
   syncAnilist,
   extractRomajiTitle,
+  toHiragana,
   isPrimarilyRomaji,
   truncateSummary: BangumiScraper.truncateSummary,
 };

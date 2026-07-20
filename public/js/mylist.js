@@ -9,9 +9,10 @@ const MYLIST_LABELS = STATUS_LABELS;
 const MYLIST_STATUS_ORDER = ['watching', 'wish', 'completed', 'on_hold', 'dropped'];
 const MYLIST_SORT_OPTIONS = [
   { key: 'name', label: '名称' },
+  { key: 'recent', label: '最近观看' },
+  { key: 'updated', label: '最近更新' },
   { key: 'rating', label: '评分' },
-  { key: 'progress', label: '进度' },
-  { key: 'recent', label: '最近更新' },
+  { key: 'imported', label: '导入时间' },
 ];
 
 async function loadMyList() {
@@ -45,9 +46,8 @@ function renderMyListStatusBar() {
 
   el.innerHTML = statuses.map(s => {
     const active = mylistFilter === s.key ? ' active' : '';
-    const dot = s.key !== 'all' ? '<span class="mylist-status-dot"></span>' : '';
     return '<div class="mylist-status-item' + active + '" data-status="' + s.key + '" onclick="setMyListFilter(\'' + s.key + '\')">' +
-      dot + '<b>' + (counts[s.key] || 0) + '</b>' + s.label + '</div>';
+      '<b>' + (counts[s.key] || 0) + '</b>' + s.label + '</div>';
   }).join('');
 }
 
@@ -83,19 +83,23 @@ function renderMyListSortDropdown() {
 // ─── Sorting ───
 
 function sortMyListItems(items) {
-  function getRating(a) { return a.rating || 0; }
-  function getProgress(a) {
-    if (!a.episodeCount) return 0;
-    return a.episodesWatched / a.episodeCount;
-  }
   function getJpName(a) {
     return (a.bangumiTitleJp || a.bangumiTitle || a.title || '').toLowerCase();
   }
+  function getLastWatched(a) {
+    if (!a.episodes || a.episodes.length === 0) return '';
+    var latest = '';
+    a.episodes.forEach(function(e) {
+      if (e.updatedAt && e.updatedAt > latest) latest = e.updatedAt;
+    });
+    return latest;
+  }
   return items.slice().sort(function(a, b) {
     switch (mylistSort) {
-      case 'rating': return getRating(b) - getRating(a);
-      case 'progress': return getProgress(b) - getProgress(a);
-      case 'recent': return (b.completedAt || b.startedAt || '').localeCompare(a.completedAt || a.startedAt || '');
+      case 'rating': return (b.rating || 0) - (a.rating || 0);
+      case 'recent': return getLastWatched(b).localeCompare(getLastWatched(a));
+      case 'updated': return (b.completedAt || b.startedAt || '').localeCompare(a.completedAt || a.startedAt || '');
+      case 'imported': return (a.importedAt || '').localeCompare(b.importedAt || '');
       case 'name': default: return getJpName(a).localeCompare(getJpName(b), 'ja');
     }
   });

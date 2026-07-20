@@ -88,28 +88,12 @@
 .mylist-status-item.active b {
   color: var(--accent);
 }
-.mylist-status-item .mylist-status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--fg-muted);
-  opacity: 0.4;
-}
-.mylist-status-item.active .mylist-status-dot {
-  opacity: 1;
-  background: var(--accent);
-}
 /* Status colors */
-.mylist-status-item[data-status="watching"] .mylist-status-dot { background: #4ade80; }
-.mylist-status-item[data-status="wish"] .mylist-status-dot { background: #60a5fa; }
-.mylist-status-item[data-status="completed"] .mylist-status-dot { background: #a78bfa; }
-.mylist-status-item[data-status="on_hold"] .mylist-status-dot { background: #fbbf24; }
-.mylist-status-item[data-status="dropped"] .mylist-status-dot { background: #f87171; }
-.mylist-status-item.active[data-status="watching"] .mylist-status-dot { background: #4ade80; }
-.mylist-status-item.active[data-status="wish"] .mylist-status-dot { background: #60a5fa; }
-.mylist-status-item.active[data-status="completed"] .mylist-status-dot { background: #a78bfa; }
-.mylist-status-item.active[data-status="on_hold"] .mylist-status-dot { background: #fbbf24; }
-.mylist-status-item.active[data-status="dropped"] .mylist-status-dot { background: #f87171; }
+.mylist-status-item.active[data-status="watching"] b { color: #4ade80; }
+.mylist-status-item.active[data-status="wish"] b { color: #60a5fa; }
+.mylist-status-item.active[data-status="completed"] b { color: #a78bfa; }
+.mylist-status-item.active[data-status="on_hold"] b { color: #fbbf24; }
+.mylist-status-item.active[data-status="dropped"] b { color: #f87171; }
 
 /* ─── My List Sort Dropdown ─── */
 .mylist-sort-bar {

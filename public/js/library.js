@@ -295,6 +295,25 @@ function renderContinueSection(data, container) {
   '</div>';
 }
 
+/** Sort anime by season order: TV S1→S2→S3 → OVA → SP → Movie → unknown */
+function sortBySeason(items) {
+  var formatOrder = { tv: 0, ova: 1, sp: 2, movie: 3, unknown: 4 };
+  function getFormat(a) {
+    var name = (a.folderName || '') + ' ' + (a.title || '');
+    if (/[Oo][Vv][Aa]/.test(name)) return 'ova';
+    if (/[Ss][Pp][Ee][Cc][Ii][Aa][Ll]|特典|SP/.test(name)) return 'sp';
+    if (/剧场版|[Mm]ovie|[Mm]ovie/.test(name)) return 'movie';
+    return 'tv';
+  }
+  return items.slice().sort(function(a, b) {
+    var fa = formatOrder[getFormat(a)], fb = formatOrder[getFormat(b)];
+    if (fa !== fb) return fa - fb;
+    var sa = a.matchedSeason || a.season || 999;
+    var sb = b.matchedSeason || b.season || 999;
+    return sa - sb;
+  });
+}
+
 function renderStatusGrids(data) {
   var container = document.getElementById('dashSection-localLibrary');
   if (!container) return;
@@ -307,9 +326,9 @@ function renderStatusGrids(data) {
   ];
 
   container.innerHTML = sections.map(function(cfg) {
-    var items = data.filter(function(a) {
+    var items = sortBySeason(data.filter(function(a) {
       return (a.myListStatus || 'wish') === cfg.status;
-    });
+    }));
     if (items.length === 0) return '';
     var cardsHtml = items.map(function(a) { return renderAnimeCard(a); }).join('');
     return '<div class="status-section" id="statusSection-' + cfg.status + '">' +

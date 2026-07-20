@@ -1129,6 +1129,33 @@ html {
   align-items: center;
 }
 
+/* ─── Library Sort Bar ─── */
+.library-sort-bar {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+.library-sort-btn {
+  font-size: calc(0.75rem * var(--scale));
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--fg-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: var(--font-body);
+}
+.library-sort-btn:hover {
+  border-color: var(--fg-muted);
+  color: var(--fg-primary);
+}
+.library-sort-btn.active {
+  background: var(--fg-primary);
+  color: var(--bg-base);
+  border-color: var(--fg-primary);
+}
+
 /* ─── Status Section (dashboard grid segments) ─── */
 .status-section {
   margin-bottom: calc(2rem * var(--scale));

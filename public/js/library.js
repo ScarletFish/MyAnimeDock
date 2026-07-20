@@ -5,6 +5,9 @@ let contextMenuCard = null;
 let cardScrollTrigger = null;
 let cardTween = null;
 
+// Sort state
+let librarySort = localStorage.getItem('librarySort') || 'season';
+
 // Grid card sizing
 const GRID_CARD_BASE = 190;
 const GRID_ZOOM_MIN = 0.5;
@@ -150,7 +153,12 @@ function renderDashboard() {
       case 'localLibrary':
         sectionIds.push('localLibrary');
         sectionHTML += '<div class="dashboard-section" data-section="localLibrary">' +
-          '<div class="dashboard-section-header"><span class="dashboard-section-title">本地动漫</span></div>' +
+          '<div class="dashboard-section-header"><span class="dashboard-section-title">本地动漫</span>' +
+          '<div class="library-sort-bar">' +
+            '<button class="library-sort-btn' + (librarySort === 'season' ? ' active' : '') + '" onclick="switchLibrarySort(\'season\')">季度</button>' +
+            '<button class="library-sort-btn' + (librarySort === 'name' ? ' active' : '') + '" onclick="switchLibrarySort(\'name\')">中文名</button>' +
+            '<button class="library-sort-btn' + (librarySort === 'imported' ? ' active' : '') + '" onclick="switchLibrarySort(\'imported\')">导入时间</button>' +
+          '</div></div>' +
           '<div class="dashboard-section-body" id="dashSection-localLibrary"></div></div>';
         break;
     }
@@ -296,22 +304,46 @@ function renderContinueSection(data, container) {
 }
 
 /** Sort anime by season order: TV S1→S2→S3 → OVA → SP → Movie → unknown */
-function sortBySeason(items) {
+function sortLibraryItems(items) {
   var formatOrder = { tv: 0, ova: 1, sp: 2, movie: 3, unknown: 4 };
   function getFormat(a) {
     var name = (a.folderName || '') + ' ' + (a.title || '');
     if (/[Oo][Vv][Aa]/.test(name)) return 'ova';
     if (/[Ss][Pp][Ee][Cc][Ii][Aa][Ll]|特典|SP/.test(name)) return 'sp';
-    if (/剧场版|[Mm]ovie|[Mm]ovie/.test(name)) return 'movie';
+    if (/剧场版|[Mm]ovie/.test(name)) return 'movie';
     return 'tv';
   }
+  function getJpName(a) {
+    return (a.bangumiTitleJp || a.bangumiTitle || a.title || '').toLowerCase();
+  }
+  function getCnName(a) {
+    return (a.bangumiTitle || a.title || '').toLowerCase();
+  }
   return items.slice().sort(function(a, b) {
+    if (librarySort === 'name') {
+      return getCnName(a).localeCompare(getCnName(b), 'zh');
+    }
+    if (librarySort === 'imported') {
+      return (a.importedAt || '').localeCompare(b.importedAt || '');
+    }
+    // Default: season order
     var fa = formatOrder[getFormat(a)], fb = formatOrder[getFormat(b)];
     if (fa !== fb) return fa - fb;
     var sa = a.matchedSeason || a.season || 999;
     var sb = b.matchedSeason || b.season || 999;
-    return sa - sb;
+    if (sa !== sb) return sa - sb;
+    return getJpName(a).localeCompare(getJpName(b), 'ja');
   });
+}
+
+function switchLibrarySort(mode) {
+  librarySort = mode;
+  localStorage.setItem('librarySort', mode);
+  // Update button states
+  document.querySelectorAll('.library-sort-btn').forEach(function(btn) {
+    btn.classList.toggle('active', btn.textContent === { season: '季度', name: '中文名', imported: '导入时间' }[mode]);
+  });
+  renderStatusGrids(libraryData);
 }
 
 function renderStatusGrids(data) {
@@ -326,7 +358,7 @@ function renderStatusGrids(data) {
   ];
 
   container.innerHTML = sections.map(function(cfg) {
-    var items = sortBySeason(data.filter(function(a) {
+    var items = sortLibraryItems(data.filter(function(a) {
       return (a.myListStatus || 'wish') === cfg.status;
     }));
     if (items.length === 0) return '';

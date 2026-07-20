@@ -1624,7 +1624,7 @@ html[data-reduce-motion="true"] .episode-dot {
 .onb-field__input {
   flex: 1;
   padding: calc(0.6rem * var(--scale)) calc(0.75rem * var(--scale));
-  background: var(--bg-input, #252538);
+  background: var(--bg-elevated);
   border: 1px solid var(--border-primary, #2e2e45);
   border-radius: var(--radius-sm, 6px);
   color: var(--fg-primary, #ede8e2);
@@ -1721,7 +1721,7 @@ html[data-reduce-motion="true"] .episode-dot {
 
 /* Light mode overrides */
 [data-theme-mode="light"] .onb-field__input {
-  background: var(--bg-input, #eae6e0);
+  background: var(--bg-elevated);
   border-color: var(--border-primary, #d4d0c8);
 }
 

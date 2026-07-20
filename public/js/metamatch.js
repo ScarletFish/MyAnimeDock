@@ -15,6 +15,7 @@ let mmSSESource = null;
 let mmUIThrottleTimer = null;
 let mmPanelOpen = false;
 let mmSyncLog = [];
+let mmNeedsRefresh = false;
 
 // ─── Modal Open / Close ───
 
@@ -28,11 +29,19 @@ function mmOpenModal() {
       mmSelectedIds.clear();
       mmSelectionOrder = [];
       mmPanelOpen = false;
+      const wasSyncing = mmSyncInProgress;
       mmSyncInProgress = false;
       mmSyncCancelled = true;
       mmSyncLog = [];
       if (mmSSESource) { mmSSESource.close(); mmSSESource = null; }
       if (mmSyncResolve) { mmSyncResolve(); mmSyncResolve = null; }
+      if (wasSyncing) {
+        showToast('匹配已中断，未完成的条目可重新匹配', 'warning');
+      }
+      if (mmNeedsRefresh && typeof loadLibrary === 'function') {
+        mmNeedsRefresh = false;
+        loadLibrary();
+      }
     }
   });
   mmLoadModalData();
@@ -662,7 +671,7 @@ function mmRenderPanel(item) {
         ${coverHtml}
         ${statusOverlay}
       </div>
-      ${seasonChain || seasonInfo ? `
+      ${seasonInfo ? `
       <div class="mm-panel-key-info">
         <span class="mm-panel-key-text">${seasonInfo}</span>
       </div>
@@ -844,6 +853,7 @@ async function mmStartSync(animeIds) {
   }
 
   if (!mmSyncCancelled && matched > 0 && typeof loadLibrary === 'function') {
+    mmNeedsRefresh = true;
     loadLibrary();
   }
 }

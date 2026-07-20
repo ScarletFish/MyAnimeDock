@@ -366,12 +366,21 @@ function sortLibraryItems(items) {
     block.sort(function(a, b) { return getSeasonRank(a) - getSeasonRank(b); });
   });
 
-  // Step 3: Sort blocks by selected option
+  function getBlockFormatRank(block) {
+    // Lowest format rank in block determines group position (TV=0 before OVA=1)
+    return Math.min.apply(null, block.map(function(a) {
+      var p = (a.platform || '').toUpperCase();
+      return FORMAT_RANK[p] != null ? FORMAT_RANK[p] : 0;
+    }));
+  }
+
+  // Step 3: Sort blocks — TV first, then by selected option
   blocks.sort(function(a, b) {
+    var fa = getBlockFormatRank(a), fb = getBlockFormatRank(b);
+    if (fa !== fb) return fa - fb;  // TV before OVA/SP/Movie
     var sa = getBlockScore(a, librarySort);
     var sb = getBlockScore(b, librarySort);
     if (librarySort === 'name' || librarySort === 'rating' || librarySort === 'recent' || librarySort === 'updated') {
-      // Descending for rating/recent/updated, ascending for name/imported
       if (librarySort === 'imported') return sa.localeCompare(sb);
       return sb.localeCompare(sa) || sa.localeCompare(sb);
     }
@@ -387,10 +396,10 @@ function sortLibraryItems(items) {
 }
 
 var LIBRARY_SORT_OPTIONS = [
+  { key: 'name', label: '名称' },
   { key: 'recent', label: '最近观看' },
   { key: 'updated', label: '最近更新' },
   { key: 'rating', label: '评分' },
-  { key: 'name', label: '名称' },
   { key: 'imported', label: '导入时间' },
 ];
 

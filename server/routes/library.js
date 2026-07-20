@@ -195,7 +195,7 @@ module.exports = {
         } catch (e) {
           return { animeId, success: false, error: e.message };
         }
-      }, 2);
+      }, 1);
       results.push(...syncResults);
       await Promise.all([db.saveLibrary(data), saveScannedTree(data.scannedTree)]);
       const { registry: reg } = require('../scrapers');
@@ -296,7 +296,7 @@ module.exports = {
         }
         processed++;
         if (processed % 5 === 0) await Promise.all([db.saveLibrary(data), saveScannedTree(data.scannedTree)]);
-      }, 2);
+      }, 1);
 
       await Promise.all([db.saveLibrary(data), saveScannedTree(data.scannedTree)]);
       const { registry: reg } = require('../scrapers');

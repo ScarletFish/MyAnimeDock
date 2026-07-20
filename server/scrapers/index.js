@@ -563,20 +563,15 @@ async function syncAnilistDetail(anime, config, bannerDir, coverDir) {
   }
   if (!meta) return null;
 
-  let localBanner = null;
   if (meta.bannerImage) {
-    try {
-      localBanner = await anilist.downloadBanner(meta.bannerImage, bannerDir, anilistId);
-    } catch (e) {
-      logger.warn(`syncAnilistDetail: banner download failed for id=${anilistId}: ${e.message}`);
-    }
+    anime.anilistBanner = meta.bannerImage;
+    // Background cache: download banner locally (non-blocking)
+    anilist.downloadBanner(meta.bannerImage, bannerDir, anilistId).catch(() => {});
   }
-
-  if (localBanner) anime.anilistBanner = localBanner;
   if (meta.anilistTitleEn) anime.anilistTitleEn = meta.anilistTitleEn;
 
-  logger.info(`syncAnilistDetail: done for id=${anime.id} → anilistId=${anilistId}${localBanner ? ' +banner' : ''}`);
-  return { anilistId, localBanner, anilistTitleEn: meta.anilistTitleEn };
+  logger.info(`syncAnilistDetail: done for id=${anime.id} → anilistId=${anilistId}${meta.bannerImage ? ' +banner' : ''}`);
+  return { anilistId, localBanner: meta.bannerImage, anilistTitleEn: meta.anilistTitleEn };
 }
 
 /**

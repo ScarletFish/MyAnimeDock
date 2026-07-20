@@ -377,8 +377,8 @@ describe('syncAnilistDetail — mock API', () => {
       const anime = { anilistId: 28900, title: 'Yuru Yuri' };
       const result = await syncAnilistDetail(anime, MATCHING_CONFIG, '/tmp/banners', '/tmp/covers');
       assert.equal(result.anilistId, 28900);
-      assert.equal(result.localBanner, '/banners/al-28900.jpg');
-      assert.equal(anime.anilistBanner, '/banners/al-28900.jpg');
+      assert.equal(result.localBanner, 'https://example.com/banner.jpg');
+      assert.equal(anime.anilistBanner, 'https://example.com/banner.jpg');
       assert.equal(anime.anilistTitleEn, 'Yuru Yuri');
     } finally { restore(); }
   });
@@ -406,7 +406,7 @@ describe('syncAnilistDetail — mock API', () => {
       const anime = { anilistId: 28900, title: 'Yuru Yuri' };
       const result = await syncAnilistDetail(anime, MATCHING_CONFIG, '/tmp/banners', '/tmp/covers');
       assert.equal(result.anilistId, 28900);
-      assert.equal(result.localBanner, null); // banner failed but metadata ok
+      assert.equal(anime.anilistBanner, 'https://example.com/banner.jpg'); // URL set regardless of download
     } finally { restore(); }
   });
 });

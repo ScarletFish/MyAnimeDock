@@ -287,7 +287,10 @@ function renderDetail() {
     bannerBg.className = 'detail-banner-bg';
     const bannerImg = document.createElement('img');
     bannerImg.className = 'detail-banner-bg-img';
-    bannerImg.src = `/banners/${path.basename(anime.anilistBanner)}`;
+    // Remote URL (http/https) → use directly; local path → use /banners/ route
+    bannerImg.src = anime.anilistBanner.startsWith('http')
+      ? anime.anilistBanner
+      : `/banners/${path.basename(anime.anilistBanner)}`;
     bannerImg.alt = '';
     bannerBg.appendChild(bannerImg);
     detailView.insertBefore(bannerBg, detailView.querySelector('.detail-content'));

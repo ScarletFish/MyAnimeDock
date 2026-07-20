@@ -414,13 +414,14 @@ function showContextMenu(e, animeId) {
       '<span>移除</span>' +
     '</div>';
 
-  // Bind event listeners (ctxDelete uses inline onclick in innerHTML above)
+  // Bind event listeners
   document.getElementById('ctxCopyTitle').addEventListener('click', contextCopyTitle);
   if (bangumiId) {
     document.getElementById('ctxOpenBgm').addEventListener('click', contextOpenBgm);
   }
+  document.getElementById('ctxDelete').addEventListener('click', contextDeleteAnime);
 
-  // Position: always apply directly (Alpine :style + :class augment, don't replace)
+  // Position
   let x = e.clientX;
   let y = e.clientY;
   menu.style.left = x + 'px';
@@ -510,7 +511,14 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideContex
 window.addEventListener('scroll', hideContextMenu, { capture: true });
 var _mainContent = document.querySelector('.main-content');
 if (_mainContent) _mainContent.addEventListener('scroll', hideContextMenu, { passive: true });
-document.getElementById('contextMenu').addEventListener('mouseleave', hideContextMenu);
+let _ctxMenuLeaveTimer = null;
+document.getElementById('contextMenu').addEventListener('mouseleave', function() {
+  if (_ctxMenuLeaveTimer) clearTimeout(_ctxMenuLeaveTimer);
+  _ctxMenuLeaveTimer = setTimeout(hideContextMenu, 200);
+});
+document.getElementById('contextMenu').addEventListener('mouseenter', function() {
+  if (_ctxMenuLeaveTimer) { clearTimeout(_ctxMenuLeaveTimer); _ctxMenuLeaveTimer = null; }
+});
 
 function navigateToDetail(id, cardEl) {
   const img = cardEl.querySelector('img');

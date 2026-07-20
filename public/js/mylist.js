@@ -508,7 +508,7 @@ function showMyListContextMenu(e, id) {
       '</div>';
   }
 
-  // Position: always apply directly, sync Alpine data if available
+  // Position
   let x = e.clientX;
   let y = e.clientY;
   menu.style.left = x + 'px';

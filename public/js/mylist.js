@@ -7,7 +7,73 @@ let mylistSortOpen = false;
 // 引用自 ui.js 的 STATUS_LABELS
 const MYLIST_LABELS = STATUS_LABELS;
 const MYLIST_STATUS_ORDER = ['watching', 'wish', 'completed', 'on_hold', 'dropped'];
-const MYLIST_SORT_OPTIONS = LIBRARY_SORT_OPTIONS;
+
+// ─── Sort (owned by My List, shared with Dashboard) ───
+
+const ANIME_SORT_OPTIONS = [
+  { key: 'name', label: '名称' },
+  { key: 'recent', label: '最近观看' },
+  { key: 'updated', label: '最近更新' },
+  { key: 'rating', label: '评分' },
+  { key: 'imported', label: '导入时间' },
+];
+
+function sortAnimeItems(items, sortMode) {
+  var FORMAT_RANK = { TV: 0, OVA: 1, SP: 2, MOVIE: 3 };
+
+  function getBaseKey(a) {
+    var t = (a.bangumiTitle || a.title || '').toLowerCase();
+    t = t.replace(/[♪♫☆★！!？?~～\s]+/g, ' ').trim();
+    t = t.replace(/\d+季/g, '').trim();
+    t = t.replace(/\s*(OVA|SP|OAD|剧场版|Movie|Special|剧场版动画|夏日时光|Dear My Sister|Sing For You|BLOOM|Nachuyachumi).*$/i, '').trim();
+    t = t.replace(/\s+\d+.*$/, '').trim();
+    return t || (a.title || a.id || '').toLowerCase();
+  }
+  function getSeasonRank(a) {
+    var p = (a.platform || '').toUpperCase();
+    var formatRank = FORMAT_RANK[p] != null ? FORMAT_RANK[p] : 0;
+    var season = a.matchedSeason || a.season || 1;
+    return formatRank * 100 + season;
+  }
+  function getJpName(a) {
+    return (a.bangumiTitleJp || a.bangumiTitle || a.title || '').toLowerCase();
+  }
+  function getLastWatched(a) {
+    if (!a.episodes || a.episodes.length === 0) return '';
+    var latest = '';
+    a.episodes.forEach(function(e) {
+      if (e.updatedAt && e.updatedAt > latest) latest = e.updatedAt;
+    });
+    return latest;
+  }
+  function getBlockScore(block, key) {
+    if (key === 'rating') return Math.max.apply(null, block.map(function(a) { return a.rating || 0; }));
+    if (key === 'recent') return block.reduce(function(m, a) { var lw = getLastWatched(a); return lw > m ? lw : m; }, '');
+    if (key === 'updated') return block.reduce(function(m, a) { return (a.importedAt || '') > m ? a.importedAt || '' : m; }, '');
+    if (key === 'imported') return block.reduce(function(m, a) { var i = a.importedAt || 'z'; return i < m ? i : m; }, 'z');
+    return getJpName(block[0]);
+  }
+
+  var groups = {};
+  items.forEach(function(a) {
+    var key = getBaseKey(a);
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(a);
+  });
+  var blocks = Object.values(groups);
+  blocks.forEach(function(block) { block.sort(function(a, b) { return getSeasonRank(a) - getSeasonRank(b); }); });
+
+  blocks.sort(function(a, b) {
+    var sa = getBlockScore(a, sortMode);
+    var sb = getBlockScore(b, sortMode);
+    if (sortMode === 'imported') return sa.localeCompare(sb);
+    return sb.localeCompare(sa) || sa.localeCompare(sb);
+  });
+
+  var result = [];
+  blocks.forEach(function(block) { block.forEach(function(a) { result.push(a); }); });
+  return result;
+}
 
 async function loadMyList() {
   try {
@@ -68,7 +134,7 @@ function renderMyListSortDropdown() {
       '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M6 12h12M9 18h6"/></svg>' +
     '</button>' +
     '<div class="library-sort-menu' + (mylistSortOpen ? ' open' : '') + '">' +
-      MYLIST_SORT_OPTIONS.map(function(o) {
+      ANIME_SORT_OPTIONS.map(function(o) {
         return '<div class="library-sort-option' + (o.key === mylistSort ? ' active' : '') + '" onclick="switchMyListSort(\'' + o.key + '\')">' + o.label + '</div>';
       }).join('') +
     '</div>';
@@ -93,7 +159,7 @@ function renderMyList() {
     filtered = mylistData.filter(item => item.status === mylistFilter);
   }
 
-  filtered = sortLibraryItems(filtered, mylistSort);
+  filtered = sortAnimeItems(filtered, mylistSort);
 
   if (filtered.length === 0) {
     grid.innerHTML = '';

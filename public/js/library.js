@@ -302,104 +302,9 @@ function renderContinueSection(data, container) {
   '</div>';
 }
 
-/** Sort anime library items */
-function sortLibraryItems(items, sortMode) {
-  var sortKey = sortMode || librarySort;
-  var FORMAT_RANK = { TV: 0, OVA: 1, SP: 2, MOVIE: 3 };
+// Sort function owned by mylist.js — sortAnimeItems(items, sortMode)
+// Sort options owned by mylist.js — ANIME_SORT_OPTIONS
 
-  function getBaseKey(a) {
-    // Normalize bangumiTitle to base series name for grouping
-    // "摇曳百合♪♪" → "摇曳百合", "摇曳百合 3☆High!" → "摇曳百合"
-    var t = (a.bangumiTitle || a.title || '').toLowerCase();
-    t = t.replace(/[♪♫☆★！!？?~～\s]+/g, ' ').trim();  // strip symbols
-    t = t.replace(/\d+季/g, '').trim();                    // strip "N季"
-    t = t.replace(/\s*(OVA|SP|OAD|剧场版|Movie|Special|剧场版动画|夏日时光|Dear My Sister|Sing For You|BLOOM|Nachuyachumi).*$/i, '').trim();
-    t = t.replace(/\s+\d+.*$/, '').trim();                 // strip trailing "3 High!" etc.
-    return t || (a.title || a.id || '').toLowerCase();
-  }
-  function getSeasonRank(a) {
-    var p = (a.platform || '').toUpperCase();
-    var formatRank = FORMAT_RANK[p] != null ? FORMAT_RANK[p] : 0;
-    var season = a.matchedSeason || a.season || 1;
-    return formatRank * 100 + season;
-  }
-  function getJpName(a) {
-    return (a.bangumiTitleJp || a.bangumiTitle || a.title || '').toLowerCase();
-  }
-  function getLastWatched(a) {
-    if (!a.episodes || a.episodes.length === 0) return '';
-    var latest = '';
-    a.episodes.forEach(function(e) {
-      if (e.updatedAt && e.updatedAt > latest) latest = e.updatedAt;
-    });
-    return latest;
-  }
-  function getBlockScore(block, key) {
-    // Score for sorting blocks — use the "best" entry in the block
-    if (key === 'rating') {
-      return Math.max.apply(null, block.map(function(a) { return a.rating || 0; }));
-    }
-    if (key === 'recent') {
-      return block.reduce(function(max, a) {
-        var lw = getLastWatched(a);
-        return lw > max ? lw : max;
-      }, '');
-    }
-    if (key === 'updated') {
-      return block.reduce(function(max, a) {
-        return (a.importedAt || '') > max ? a.importedAt || '' : max;
-      }, '');
-    }
-    if (key === 'imported') {
-      return block.reduce(function(min, a) {
-        var imp = a.importedAt || 'z';
-        return imp < min ? imp : min;
-      }, 'z');
-    }
-    // name: use first entry's Japanese name
-    return getJpName(block[0]);
-  }
-
-  // Step 1: Group by base title
-  var groups = {};
-  items.forEach(function(a) {
-    var key = getBaseKey(a);
-    if (!groups[key]) groups[key] = [];
-    groups[key].push(a);
-  });
-
-  // Step 2: Within each group, sort by season order
-  var blocks = Object.values(groups);
-  blocks.forEach(function(block) {
-    block.sort(function(a, b) { return getSeasonRank(a) - getSeasonRank(b); });
-  });
-
-  // Step 3: Sort blocks by selected option
-  blocks.sort(function(a, b) {
-    var sa = getBlockScore(a, sortKey);
-    var sb = getBlockScore(b, sortKey);
-    if (sortKey === 'name' || sortKey === 'rating' || sortKey === 'recent' || sortKey === 'updated') {
-      if (sortKey === 'imported') return sa.localeCompare(sb);
-      return sb.localeCompare(sa) || sa.localeCompare(sb);
-    }
-    return sa.localeCompare(sb);
-  });
-
-  // Step 4: Flatten blocks back to array
-  var result = [];
-  blocks.forEach(function(block) {
-    block.forEach(function(a) { result.push(a); });
-  });
-  return result;
-}
-
-var LIBRARY_SORT_OPTIONS = [
-  { key: 'name', label: '名称' },
-  { key: 'recent', label: '最近观看' },
-  { key: 'updated', label: '最近更新' },
-  { key: 'rating', label: '评分' },
-  { key: 'imported', label: '导入时间' },
-];
 
 function switchLibrarySort(mode) {
   librarySort = mode;
@@ -423,7 +328,7 @@ function renderSortDropdown() {
       '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M6 12h12M9 18h6"/></svg>' +
     '</button>' +
     '<div class="library-sort-menu' + (librarySortOpen ? ' open' : '') + '">' +
-      LIBRARY_SORT_OPTIONS.map(function(o) {
+      ANIME_SORT_OPTIONS.map(function(o) {
         return '<div class="library-sort-option' + (o.key === librarySort ? ' active' : '') + '" onclick="switchLibrarySort(\'' + o.key + '\')">' + o.label + '</div>';
       }).join('') +
     '</div>';
@@ -441,7 +346,7 @@ function renderStatusGrids(data) {
   ];
 
   container.innerHTML = sections.map(function(cfg) {
-    var items = sortLibraryItems(data.filter(function(a) {
+    var items = sortAnimeItems(data.filter(function(a) {
       return (a.myListStatus || 'wish') === cfg.status;
     }));
     if (items.length === 0) return '';

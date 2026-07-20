@@ -52,7 +52,7 @@
 
 <!-- Sidebar -->
 <aside class="sidebar">
-    <div class="sidebar-brand" onclick="openThemeDock()" data-tip="主题与视觉设置" role="button" tabindex="0">
+  <div class="sidebar-brand" onclick="toggleThemeDock()" data-tip="主题与视觉设置" role="button" tabindex="0">
     <div class="sidebar-brand-icon theme-indicator">
       <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="MyAnimeDock">
         <rect x="0" y="0" width="16" height="16" rx="3" fill="var(--accent)" stroke="var(--border)" stroke-width="0.5"/>
@@ -104,50 +104,50 @@
   <div class="sidebar-tooltip-text" id="sidebarTooltipText"></div>
 </div>
 
-<!-- Theme Dock (Alpine) -->
-<div id="themeDockRoot" x-data="{ dockOpen: false }" x-effect="window.__dockOpen = dockOpen; document.body.style.overflow = dockOpen ? 'hidden' : ''">
-  <div x-show="dockOpen" class="theme-dock-overlay" @click="dockOpen = false"></div>
-  <div :class="{ 'open': dockOpen }" x-cloak class="theme-dock" id="themeDock">
-    <div class="theme-dock-inner">
-      <div class="theme-dock-section">
-        <span class="theme-dock-label">主题色系</span>
-        <div class="theme-picker">
-          <button class="theme-option theme-option--default" data-theme="default" @click="selectTheme($el, 'default')" data-tooltip="默认"></button>
-          <button class="theme-option theme-option--amber" data-theme="amber" @click="selectTheme($el, 'amber')" data-tooltip="琥珀"></button>
-          <button class="theme-option theme-option--ocean" data-theme="ocean" @click="selectTheme($el, 'ocean')" data-tooltip="海洋"></button>
-          <button class="theme-option theme-option--sakura" data-theme="sakura" @click="selectTheme($el, 'sakura')" data-tooltip="樱花"></button>
-          <button class="theme-option theme-option--emerald" data-theme="emerald" @click="selectTheme($el, 'emerald')" data-tooltip="翡翠"></button>
-          <button class="theme-option theme-option--violet" data-theme="violet" @click="selectTheme($el, 'violet')" data-tooltip="紫罗兰"></button>
-        </div>
-      </div>
-      <div class="theme-dock-separator"></div>
-      <div class="theme-dock-section">
-        <div class="theme-mode-toggle" style="margin-top:0">
-          <span class="theme-toggle-label theme-toggle-label--active" id="dockLabelDark">深色</span>
-          <label class="toggle-switch">
-            <input type="checkbox" id="dockThemeMode" @change="handleDockThemeModeToggle($el)">
-            <span class="toggle-slider"></span>
-          </label>
-          <span class="theme-toggle-label theme-toggle-label--inactive" id="dockLabelLight">浅色</span>
-        </div>
-      </div>
-      <div class="theme-dock-separator"></div>
-      <div class="theme-dock-section theme-dock-section--zoom">
-        <span class="theme-dock-label">缩放</span>
-        <input type="range" id="dockZoom" min="75" max="125" step="5" value="100" @input="handleDockZoom($el)">
-        <span class="theme-dock-zoom-value" id="dockZoomLabel">100%</span>
-      </div>
-      <div class="theme-dock-separator"></div>
-      <div class="theme-dock-section">
-        <span class="theme-dock-label">减少动画</span>
-        <label class="toggle-switch">
-          <input type="checkbox" id="dockReduceMotion" @change="handleReduceMotionToggle($el)">
-          <span class="toggle-slider"></span>
-        </label>
+<!-- Theme Dock Overlay -->
+<div class="theme-dock-overlay" id="themeDockOverlay" onclick="closeThemeDock()"></div>
+
+<!-- Theme Dock -->
+<div class="theme-dock" id="themeDock">
+  <div class="theme-dock-inner">
+    <div class="theme-dock-section">
+      <span class="theme-dock-label">主题色系</span>
+      <div class="theme-picker">
+        <button class="theme-option theme-option--default" data-theme="default" onclick="selectTheme(this, 'default')" data-tooltip="默认"></button>
+        <button class="theme-option theme-option--amber" data-theme="amber" onclick="selectTheme(this, 'amber')" data-tooltip="琥珀"></button>
+        <button class="theme-option theme-option--ocean" data-theme="ocean" onclick="selectTheme(this, 'ocean')" data-tooltip="海洋"></button>
+        <button class="theme-option theme-option--sakura" data-theme="sakura" onclick="selectTheme(this, 'sakura')" data-tooltip="樱花"></button>
+        <button class="theme-option theme-option--emerald" data-theme="emerald" onclick="selectTheme(this, 'emerald')" data-tooltip="翡翠"></button>
+        <button class="theme-option theme-option--violet" data-theme="violet" onclick="selectTheme(this, 'violet')" data-tooltip="紫罗兰"></button>
       </div>
     </div>
-    <button class="theme-dock-close" @click="dockOpen = false" data-tooltip="关闭">✕</button>
+    <div class="theme-dock-separator"></div>
+    <div class="theme-dock-section">
+      <div class="theme-mode-toggle" style="margin-top:0">
+        <span class="theme-toggle-label theme-toggle-label--active" id="dockLabelDark">深色</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="dockThemeMode" onchange="handleDockThemeModeToggle(this)">
+          <span class="toggle-slider"></span>
+        </label>
+        <span class="theme-toggle-label theme-toggle-label--inactive" id="dockLabelLight">浅色</span>
+      </div>
+    </div>
+    <div class="theme-dock-separator"></div>
+    <div class="theme-dock-section theme-dock-section--zoom">
+      <span class="theme-dock-label">缩放</span>
+      <input type="range" id="dockZoom" min="75" max="125" step="5" value="100" oninput="handleDockZoom(this)">
+      <span class="theme-dock-zoom-value" id="dockZoomLabel">100%</span>
+    </div>
+    <div class="theme-dock-separator"></div>
+    <div class="theme-dock-section">
+      <span class="theme-dock-label">减少动画</span>
+      <label class="toggle-switch">
+        <input type="checkbox" id="dockReduceMotion" onchange="handleReduceMotionToggle(this)">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
   </div>
+  <button class="theme-dock-close" onclick="closeThemeDock()" data-tooltip="关闭">✕</button>
 </div>
 
 <!-- Main Content -->
@@ -478,27 +478,25 @@
     <div class="modal-m-progress"><div class="fill" id="mmModalProgress" style="width:0%"></div></div>
 
     <!-- Filter + Batch bar -->
-    <div x-data="{ filter: 'all', search: '' }"
-         x-effect="window.mmFilter = filter; mmApplyFilters()"
-         class="modal-m-filterbar">
+    <div class="modal-m-filterbar">
       <button class="btn btn-outline" id="mmMainActionBtn" onclick="mmMainAction()">自动匹配全部</button>
       <span class="mm-shift-tip" id="mmShiftTip" style="display:none">Shift+点击 多选</span>
       <div class="spacer"></div>
-      <button class="mm-filter-dot" :class="{ 'mm-filter-dot--active': filter === 'all' }" @click="filter = 'all'" data-tooltip="全部">
+      <button class="mm-filter-dot mm-filter-dot--active" data-mmfilter="all" onclick="mmSetFilter('all')" data-tooltip="全部">
         <span class="dot dot-all"></span>
       </button>
-      <button class="mm-filter-dot" :class="{ 'mm-filter-dot--active': filter === 'pending' }" @click="filter = 'pending'" data-tooltip="待处理">
+      <button class="mm-filter-dot" data-mmfilter="pending" onclick="mmSetFilter('pending')" data-tooltip="待处理">
         <span class="dot dot-pending"></span>
       </button>
-      <button class="mm-filter-dot" :class="{ 'mm-filter-dot--active': filter === 'failed' }" @click="filter = 'failed'" data-tooltip="失败">
+      <button class="mm-filter-dot" data-mmfilter="failed" onclick="mmSetFilter('failed')" data-tooltip="失败">
         <span class="dot dot-failed"></span>
       </button>
-      <button class="mm-filter-dot" :class="{ 'mm-filter-dot--active': filter === 'matched' }" @click="filter = 'matched'" data-tooltip="已匹配">
+      <button class="mm-filter-dot" data-mmfilter="matched" onclick="mmSetFilter('matched')" data-tooltip="已匹配">
         <span class="dot dot-matched"></span>
       </button>
       <div class="mm-list-search" style="width:160px;flex-shrink:0">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        <input type="text" id="mmGridSearch" x-model="search" placeholder="搜索条目..." style="width:100px">
+        <input type="text" id="mmGridSearch" placeholder="搜索条目..." oninput="mmFilterGrid()" style="width:100px">
       </div>
       <button class="btn btn-sm btn-ghost" id="mmCancelBtn" onclick="mmCancelSync()" style="display:none;margin-left:4px">停止</button>
     </div>
@@ -513,7 +511,7 @@
           <p class="empty-hint">所有条目已有元数据，或动漫库为空</p>
         </div>
       </div>
-      <div x-data="{ panelOpen: false }" x-effect="window.mmPanelOpen = panelOpen" :class="{ 'open': panelOpen }" class="mm-panel" id="mmPanel">
+      <div class="mm-panel" id="mmPanel">
         <div class="mm-panel-empty" id="mmPanelEmpty">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
           <p>选择一个条目查看详情</p>
@@ -533,7 +531,7 @@
 </div>
 
 <!-- Status Modal — Cover Card + Horizontal Fields -->
-<div x-data="{ open: false }" x-effect="document.body.style.overflow = open ? 'hidden' : ''" class="modal-overlay" id="statusModal" onclick="if(event.target===this)closeModal('statusModal')">
+<div class="modal-overlay" id="statusModal" onclick="if(event.target===this)closeModal('statusModal')">
   <div class="modal status-modal">
     <div class="status-modal-bg-wrap">
       <div class="status-modal-bg" id="statusModalBg"></div>
@@ -550,17 +548,17 @@
         <div class="field-row">
           <div class="field-cell">
             <label class="field-label">状态</label>
-            <div x-data="{ open: false, selected: 'wish' }" class="status-dd" id="statusDd" :class="{ 'is-open': open }" @click.outside="open = false">
-              <button type="button" class="status-dd-trigger" id="statusDdTrigger" @click="open = !open">
-                <span class="status-dd-text" id="statusDdText" x-text="(window.STATUS_LABELS || {})[selected] || '计划中'"></span>
+            <div class="status-dd" id="statusDd">
+              <button type="button" class="status-dd-trigger" id="statusDdTrigger" onclick="toggleStatusDropdown(event)">
+                <span class="status-dd-text" id="statusDdText">计划中</span>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="status-dd-chevron"><polyline points="6 9 12 15 18 9"/></svg>
               </button>
               <div class="status-dd-menu" id="statusDdMenu">
-                <button type="button" class="status-dd-opt" :class="{ 'is-selected': selected === 'watching' }" @click="selected = 'watching'; open = false"><svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="9"/></svg><span>进行中</span><svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></button>
-                <button type="button" class="status-dd-opt" :class="{ 'is-selected': selected === 'wish' }" @click="selected = 'wish'; open = false"><svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg><span>计划中</span><svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></button>
-                <button type="button" class="status-dd-opt" :class="{ 'is-selected': selected === 'completed' }" @click="selected = 'completed'; open = false"><svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg><span>已完成</span><svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></button>
-                <button type="button" class="status-dd-opt" :class="{ 'is-selected': selected === 'on_hold' }" @click="selected = 'on_hold'; open = false"><svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg><span>搁置</span><svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></button>
-                <button type="button" class="status-dd-opt" :class="{ 'is-selected': selected === 'dropped' }" @click="selected = 'dropped'; open = false"><svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg><span>抛弃</span><svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></button>
+                <button type="button" class="status-dd-opt" data-value="watching" onclick="selectStatusOption(this)"><svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="9"/></svg><span>进行中</span><svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></button>
+                <button type="button" class="status-dd-opt" data-value="wish" onclick="selectStatusOption(this)"><svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg><span>计划中</span><svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></button>
+                <button type="button" class="status-dd-opt" data-value="completed" onclick="selectStatusOption(this)"><svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg><span>已完成</span><svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></button>
+                <button type="button" class="status-dd-opt" data-value="on_hold" onclick="selectStatusOption(this)"><svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg><span>搁置</span><svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></button>
+                <button type="button" class="status-dd-opt" data-value="dropped" onclick="selectStatusOption(this)"><svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg><span>抛弃</span><svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></button>
               </div>
             </div>
           </div>
@@ -847,7 +845,7 @@ function switchSettingsTab(btn, tab) {
 
 </div> <!-- /body-wrapper -->
 
-<!-- Context Menu (Alpine) -->
+<!-- Context Menu -->
 <div class="context-menu" id="contextMenu">
   <div class="context-menu-item context-menu-danger" id="ctxDelete">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -925,7 +923,6 @@ function switchSettingsTab(btn, tab) {
 <script src="/vendor/gsap/gsap.min.js"></script>
 <script src="/vendor/gsap/Flip.min.js"></script>
 <script src="/vendor/gsap/ScrollTrigger.min.js"></script>
-<script src="/vendor/alpine.min.js" defer></script>
 <script src="/js/state.js"></script>
 <script src="/js/debug.js"></script>
 <script src="/js/ui.js"></script>

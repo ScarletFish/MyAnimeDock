@@ -314,21 +314,31 @@ function switchLibrarySort(mode) {
   renderStatusGrids(libraryData);
 }
 
+function toggleSortDropdown() {
+  librarySortOpen = !librarySortOpen;
+  setTimeout(function() { renderSortDropdown(); }, 0);
+}
+
+// Click outside: close sort dropdown
+document.addEventListener('click', (e) => {
+  if (!librarySortOpen) return;
+  if (e.target.closest('#librarySortDropdown')) return;
+  librarySortOpen = false;
+  renderSortDropdown();
+});
+
 function renderSortDropdown() {
   var el = document.getElementById('librarySortDropdown');
   if (!el) return;
   el.innerHTML =
-    '<div x-data="{ open: false }" @click.outside="open = false" class="library-sort-dd">' +
-      '<button type="button" class="library-sort-trigger" :class="{ \'open\': open }" @click="open = !open">' +
-        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M6 12h12M9 18h6"/></svg>' +
-      '</button>' +
-      '<div class="library-sort-menu" :class="{ \'open\': open }">' +
-        ANIME_SORT_OPTIONS.map(function(o) {
-          return '<div class="library-sort-option' + (o.key === librarySort ? ' active' : '') + '" onclick="switchLibrarySort(\'' + o.key + '\')">' + o.label + '</div>';
-        }).join('') +
-      '</div>' +
+    '<button class="library-sort-trigger' + (librarySortOpen ? ' open' : '') + '" onclick="toggleSortDropdown()">' +
+      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M6 12h12M9 18h6"/></svg>' +
+    '</button>' +
+    '<div class="library-sort-menu' + (librarySortOpen ? ' open' : '') + '">' +
+      ANIME_SORT_OPTIONS.map(function(o) {
+        return '<div class="library-sort-option' + (o.key === librarySort ? ' active' : '') + '" onclick="switchLibrarySort(\'' + o.key + '\')">' + o.label + '</div>';
+      }).join('') +
     '</div>';
-  if (typeof Alpine !== 'undefined') Alpine.initTree(el);
 }
 
 function renderStatusGrids(data) {

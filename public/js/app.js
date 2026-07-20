@@ -133,11 +133,11 @@ function animateThemeTransition(theme, mode) {
   }, 500);
 }
 
-// ─── Theme Dock (state managed by Alpine in index.html) ───
+// ─── Theme Dock ───
 function openThemeDock() {
-  const root = document.getElementById('themeDockRoot');
-  if (!root) return;
-  // Sync dock controls with current state before showing
+  const dock = document.getElementById('themeDock');
+  const overlay = document.getElementById('themeDockOverlay');
+  // Sync dock controls with current state
   const mode = document.documentElement.getAttribute('data-theme-mode') || 'dark';
   const dockToggle = document.getElementById('dockThemeMode');
   if (dockToggle) {
@@ -154,7 +154,21 @@ function openThemeDock() {
   if (rmToggle) {
     rmToggle.checked = document.documentElement.getAttribute('data-reduce-motion') === 'true';
   }
-  if (typeof Alpine !== 'undefined') Alpine.$data(root).dockOpen = true;
+  dock.classList.add('open');
+  overlay.classList.add('open');
+  document.addEventListener('keydown', handleDockEsc);
+}
+
+function closeThemeDock() {
+  const dock = document.getElementById('themeDock');
+  const overlay = document.getElementById('themeDockOverlay');
+  dock.classList.remove('open');
+  overlay.classList.remove('open');
+  document.removeEventListener('keydown', handleDockEsc);
+}
+
+function handleDockEsc(e) {
+  if (e.key === 'Escape') closeThemeDock();
 }
 
 let _dockZoomTimer = null;
@@ -171,6 +185,15 @@ function handleDockZoom(input) {
 function openVisualDock() {
   closeModal('settingsModal');
   openThemeDock();
+}
+
+function toggleThemeDock() {
+  const dock = document.getElementById('themeDock');
+  if (dock.classList.contains('open')) {
+    closeThemeDock();
+  } else {
+    openThemeDock();
+  }
 }
 
 // Zoom via CSS --scale variable (GSAP-safe, fixed-position-friendly)
@@ -197,8 +220,8 @@ function loadReduceMotion() {
 // Settings
 async function openSettings() {
   // Close dock if open before showing modal
-  const root = document.getElementById('themeDockRoot');
-  if (root && typeof Alpine !== 'undefined' && root.__x && Alpine.$data(root).dockOpen) Alpine.$data(root).dockOpen = false;
+  const dock = document.getElementById('themeDock');
+  if (dock?.classList.contains('open')) closeThemeDock();
   try {
     const config = await API.get('/api/config');
     configCache = config;

@@ -2,6 +2,7 @@
 let mylistData = [];
 let mylistFilter = 'all';
 let mylistSort = localStorage.getItem('mylistSort') || 'name';
+let mylistSortOpen = false;
 
 // 引用自 ui.js 的 STATUS_LABELS
 const MYLIST_LABELS = STATUS_LABELS;
@@ -117,25 +118,36 @@ function renderMyListStatusBar() {
 function switchMyListSort(mode) {
   mylistSort = mode;
   localStorage.setItem('mylistSort', mode);
+  mylistSortOpen = false;
   renderMyListSortDropdown();
   renderMyList();
 }
+
+function toggleMyListSortDropdown() {
+  mylistSortOpen = !mylistSortOpen;
+  setTimeout(function() { renderMyListSortDropdown(); }, 0);
+}
+
+// Click outside: close sort dropdown
+document.addEventListener('click', (e) => {
+  if (!mylistSortOpen) return;
+  if (e.target.closest('#mylistSortDropdown')) return;
+  mylistSortOpen = false;
+  renderMyListSortDropdown();
+});
 
 function renderMyListSortDropdown() {
   const el = document.getElementById('mylistSortDropdown');
   if (!el) return;
   el.innerHTML =
-    '<div x-data="{ open: false }" @click.outside="open = false" class="library-sort-dd">' +
-      '<button type="button" class="library-sort-trigger" :class="{ \'open\': open }" @click="open = !open">' +
-        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M6 12h12M9 18h6"/></svg>' +
-      '</button>' +
-      '<div class="library-sort-menu" :class="{ \'open\': open }">' +
-        ANIME_SORT_OPTIONS.map(function(o) {
-          return '<div class="library-sort-option' + (o.key === mylistSort ? ' active' : '') + '" onclick="switchMyListSort(\'' + o.key + '\')">' + o.label + '</div>';
-        }).join('') +
-      '</div>' +
+    '<button class="library-sort-trigger' + (mylistSortOpen ? ' open' : '') + '" onclick="toggleMyListSortDropdown()">' +
+      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M6 12h12M9 18h6"/></svg>' +
+    '</button>' +
+    '<div class="library-sort-menu' + (mylistSortOpen ? ' open' : '') + '">' +
+      ANIME_SORT_OPTIONS.map(function(o) {
+        return '<div class="library-sort-option' + (o.key === mylistSort ? ' active' : '') + '" onclick="switchMyListSort(\'' + o.key + '\')">' + o.label + '</div>';
+      }).join('') +
     '</div>';
-  if (typeof Alpine !== 'undefined') Alpine.initTree(el);
 }
 
 // ─── Sorting ───
@@ -292,7 +304,49 @@ function showWishlistDetail(id) {
 
 let _statusModalId = null;
 
-// dropdown via Alpine (statusDd x-data)
+// Reverse map for status dropdown: label → value
+function _statusValue(label) {
+  for (var k in STATUS_LABELS) {
+    if (STATUS_LABELS[k] === label) return k;
+  }
+  return 'watching';
+}
+
+function toggleStatusDropdown(e) {
+  if (e) e.stopPropagation();
+  var dd = document.getElementById('statusDd');
+  if (!dd) return;
+  var isOpen = dd.classList.toggle('is-open');
+  if (isOpen) {
+    var selected = dd.querySelector('.status-dd-opt.is-selected');
+    if (selected) {
+      var menu = dd.querySelector('.status-dd-menu');
+      var scrollTop = selected.offsetTop - menu.offsetTop - menu.clientHeight / 2 + selected.clientHeight / 2;
+      menu.scrollTop = Math.max(0, scrollTop);
+    }
+    document.addEventListener('click', closeStatusDropdown);
+  }
+}
+
+function closeStatusDropdown(e) {
+  var dd = document.getElementById('statusDd');
+  if (!dd) return;
+  if (e && dd.contains(e.target)) return;
+  dd.classList.remove('is-open');
+  document.removeEventListener('click', closeStatusDropdown);
+}
+
+function selectStatusOption(btn) {
+  var dd = document.getElementById('statusDd');
+  if (!dd) return;
+  var value = btn.getAttribute('data-value');
+  var label = btn.querySelector('span').textContent;
+  document.getElementById('statusDdText').textContent = label;
+  dd.querySelectorAll('.status-dd-opt').forEach(function(o) { o.classList.remove('is-selected'); });
+  btn.classList.add('is-selected');
+  dd.classList.remove('is-open');
+  document.removeEventListener('click', closeStatusDropdown);
+}
 
 // ─── Number Stepper ───
 function stepperChange(btn, delta) {
@@ -376,10 +430,12 @@ function openStatusModal(e, id) {
     }
   }
 
-  // Status: Alpine dropdown
+  // Status: vanilla dropdown
   var curStatus = (item && item.status) || 'wish';
-  var ddEl = document.getElementById('statusDd');
-  if (ddEl && typeof Alpine !== 'undefined') Alpine.$data(ddEl).selected = curStatus;
+  document.getElementById('statusDdText').textContent = STATUS_LABELS[curStatus] || '计划中';
+  document.getElementById('statusDd').querySelectorAll('.status-dd-opt').forEach(function(o) {
+    o.classList.toggle('is-selected', o.getAttribute('data-value') === curStatus);
+  });
 
   // Rating: num-stepper
   var rating = item && item.userRating != null ? item.userRating : '';
@@ -428,11 +484,9 @@ async function saveStatusModal() {
   var id = _statusModalId;
   if (!id) return;
 
-  // Read status from Alpine dropdown
-  var ddEl = document.getElementById('statusDd');
-  var status = (ddEl && typeof Alpine !== 'undefined')
-    ? Alpine.$data(ddEl).selected
-    : 'wish';
+  // Read status from custom dropdown
+  var statusText = document.getElementById('statusDdText').textContent;
+  var status = _statusValue(statusText);
 
   // Read rating from stepper display
   var ratingText = document.getElementById('ratingDisplay').textContent;

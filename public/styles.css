@@ -1,9 +1,6 @@
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-user-select: none; user-select: none; }
 input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: auto; }
 
-/* Alpine.js: hide uninitialized components */
-[x-cloak] { display: none !important; }
-
 :root {
   --bg-deep: #050505;
   --bg-base: #0f0f0f;

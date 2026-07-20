@@ -28,8 +28,6 @@ function mmOpenModal() {
       mmSelectedId = null;
       mmSelectedIds.clear();
       mmSelectionOrder = [];
-      const panel = document.getElementById('mmPanel');
-      if (panel && typeof Alpine !== 'undefined') Alpine.$data(panel).panelOpen = false;
       const wasSyncing = mmSyncInProgress;
       mmSyncInProgress = false;
       mmSyncCancelled = true;
@@ -73,8 +71,6 @@ async function mmLoadModalData() {
     mmSyncInProgress = false;
     mmSelectedIds.clear();
     mmSelectionOrder = [];
-    const panel = document.getElementById('mmPanel');
-    if (panel && typeof Alpine !== 'undefined') Alpine.$data(panel).panelOpen = false;
     document.getElementById('mmPanelEmpty').style.display = 'flex';
     document.getElementById('mmPanelContent').style.display = 'none';
 
@@ -131,16 +127,16 @@ function mmShowEmpty(msg) {
   if (panelEmpty) panelEmpty.style.display = 'flex';
   if (panelContent) panelContent.style.display = 'none';
   const panel = document.getElementById('mmPanel');
-  if (panel && typeof Alpine !== 'undefined') Alpine.$data(panel).panelOpen = false;
+  if (panel) panel.classList.remove('open');
 }
 
 // ─── Filter & Search ───
 
 function mmSetFilter(filter) {
   mmFilter = filter;
-  // Sync Alpine data if filter bar is Alpine-ified
-  var bar = document.querySelector('.modal-m-filterbar');
-  if (bar && typeof Alpine !== 'undefined') Alpine.$data(bar).filter = filter;
+  document.querySelectorAll('.mm-filter-dot').forEach(b => {
+    b.classList.toggle('mm-filter-dot--active', b.dataset.mmfilter === filter);
+  });
   mmApplyFilters();
 }
 
@@ -506,7 +502,8 @@ function mmMainAction() {
 function mmOpenPanel() {
   const panel = document.getElementById('mmPanel');
   if (!panel || mmPanelOpen) return;
-  if (typeof Alpine !== 'undefined') Alpine.$data(panel).panelOpen = true;
+  mmPanelOpen = true;
+  panel.classList.add('open');
 }
 
 function mmClosePanel(cb) {
@@ -515,7 +512,8 @@ function mmClosePanel(cb) {
     if (cb) cb();
     return;
   }
-  if (typeof Alpine !== 'undefined') Alpine.$data(panel).panelOpen = false;
+  mmPanelOpen = false;
+  panel.classList.remove('open');
   if (cb) setTimeout(cb, 350);
 }
 
@@ -525,10 +523,7 @@ document.addEventListener('click', (e) => {
   if (e.target.closest('.mm-row')) return;
   if (e.target.closest('.modal-m-filterbar')) return;
   if (e.target.closest('.modal-m-topbar')) return;
-  if (typeof Alpine !== 'undefined') {
-    const panel = document.getElementById('mmPanel');
-    if (panel && Alpine.$data(panel).panelOpen) mmDeselectPanel();
-  }
+  if (mmPanelOpen) mmDeselectPanel();
   if (mmSelectedIds.size > 0) mmClearSelection();
 });
 

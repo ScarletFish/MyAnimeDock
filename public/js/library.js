@@ -155,7 +155,7 @@ function renderDashboard() {
         sectionHTML += '<div class="dashboard-section" data-section="localLibrary">' +
           '<div class="dashboard-section-header"><span class="dashboard-section-title">本地动漫</span>' +
           '<div class="library-sort-bar">' +
-            '<button class="library-sort-btn' + (librarySort === 'season' ? ' active' : '') + '" onclick="switchLibrarySort(\'season\')">日文名+季度</button>' +
+            '<button class="library-sort-btn' + (librarySort === 'season' ? ' active' : '') + '" onclick="switchLibrarySort(\'season\')">默认</button>' +
             '<button class="library-sort-btn' + (librarySort === 'name' ? ' active' : '') + '" onclick="switchLibrarySort(\'name\')">中文名</button>' +
             '<button class="library-sort-btn' + (librarySort === 'imported' ? ' active' : '') + '" onclick="switchLibrarySort(\'imported\')">导入时间</button>' +
           '</div></div>' +
@@ -344,7 +344,7 @@ function switchLibrarySort(mode) {
   localStorage.setItem('librarySort', mode);
   // Update button states
   document.querySelectorAll('.library-sort-btn').forEach(function(btn) {
-    btn.classList.toggle('active', btn.textContent === { season: '日文名+季度', name: '中文名', imported: '导入时间' }[mode]);
+    btn.classList.toggle('active', btn.textContent === { season: '默认', name: '中文名', imported: '导入时间' }[mode]);
   });
   renderStatusGrids(libraryData);
 }

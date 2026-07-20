@@ -25,8 +25,9 @@ function sortAnimeItems(items, sortMode) {
     var t = (a.bangumiTitle || a.title || '').toLowerCase();
     t = t.replace(/[♪♫☆★！!？?~～\s]+/g, ' ').trim();
     t = t.replace(/\d+季/g, '').trim();
-    t = t.replace(/\s*(OVA|SP|OAD|剧场版|Movie|Special|剧场版动画|夏日时光|Dear My Sister|Sing For You|BLOOM|Nachuyachumi).*$/i, '').trim();
-    t = t.replace(/\s+\d+.*$/, '').trim();
+    t = t.replace(/\s*(OVA|SP|OAD|剧场版|Movie|Special|夏日时光|Dear My Sister|Sing For You|BLOOM|Nachuyachumi).*$/i, '').trim();
+    t = t.replace(/\s+\d+[\s\S]*$/, '').trim();   // strip "3 High!" etc (digit not at string end)
+    t = t.replace(/\d+$/, '').trim();               // strip trailing "3" etc
     return t || (a.title || a.id || '').toLowerCase();
   }
   function getSeasonRank(a) {

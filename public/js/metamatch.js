@@ -87,7 +87,7 @@ async function mmLoadModalData() {
       specialSuffix: a.specialSuffix || null,
       parsedSeason: a.matchedSeason || a.season || (a.specialSuffix ? null : 1),
       episodeCount: a.episodes ? a.episodes.length : 0,
-      status: a.bangumiId ? 'matched' : 'pending',
+      status: 'pending',
       error: null,
       pinyinTitle: a.pinyinTitle || '',
       matchedSeason: a.matchedSeason || null,

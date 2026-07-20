@@ -405,7 +405,8 @@ function switchLibrarySort(mode) {
 
 function toggleSortDropdown() {
   librarySortOpen = !librarySortOpen;
-  renderSortDropdown();
+  // Defer render to let click event finish propagating
+  setTimeout(function() { renderSortDropdown(); }, 0);
 }
 
 function renderSortDropdown() {

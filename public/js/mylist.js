@@ -608,3 +608,11 @@ async function removeMyListItem(id) {
     showToast('移除失败: ' + e.message, 'error');
   }
 }
+
+// Close sort dropdown on outside click
+document.addEventListener('click', function(e) {
+  if (mylistSortOpen && !e.target.closest('#mylistSortDropdown')) {
+    mylistSortOpen = false;
+    renderMyListSortDropdown();
+  }
+});

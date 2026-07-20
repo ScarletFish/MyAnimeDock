@@ -122,7 +122,9 @@ function buildSearchTerms(folderParsed, keyword) {
     terms.push(folderParsed.title);
   }
 
-  return [...new Set(terms)];
+  const result = [...new Set(terms)];
+  logger.info(`buildSearchTerms: base="${base}" season=${season} suffix="${folderParsed.specialSuffix || ''}" → [${result.join(', ')}]`);
+  return result;
 }
 
 /**
@@ -134,14 +136,21 @@ let _bangumiSearchFailLogged = false;
 
 async function searchBangumi(bangumi, keyword, config) {
   const source = config.apiSources?.find(s => s.type === 'bangumi');
-  if (!source) return [];
+  if (!source) {
+    logger.debug(`searchBangumi: "${keyword}" → 跳过（无 bangumi apiSources）`);
+    return [];
+  }
 
   const cached = _bangumiSearchCache.get(keyword);
-  if (cached && Date.now() - cached.ts < _bangumiCacheTTL) return cached.results;
+  if (cached && Date.now() - cached.ts < _bangumiCacheTTL) {
+    logger.debug(`searchBangumi: "${keyword}" → 返回缓存 (${cached.results.length} 条)`);
+    return cached.results;
+  }
 
   try {
     const results = await bangumi.search(keyword, source);
     const filtered = results.filter(r => r.type === 2);
+    logger.debug(`searchBangumi: "${keyword}" → Bangumi 返回 ${results.length} 条，filter type=2 → ${filtered.length} 条`);
     _bangumiSearchCache.set(keyword, { results: filtered, ts: Date.now() });
     _bangumiSearchFailLogged = false;
     return filtered;
@@ -160,21 +169,36 @@ async function searchBangumi(bangumi, keyword, config) {
 async function searchViaAniList(registry, bangumi, searchTerm, config) {
   const anilist = registry.get('anilist');
   if (!anilist || !anilist.enabled(config)) {
+    logger.debug(`searchViaAniList: "${searchTerm}" → AniList 不可用，直搜 Bangumi`);
     return searchBangumi(bangumi, searchTerm, config);
   }
 
   try {
     const source = config.apiSources?.find(s => s.type === 'anilist');
-    const anilistResults = await anilist.search(searchTerm, source);
+    logger.debug(`searchViaAniList: "${searchTerm}" → 搜索 AniList...`);
+    let anilistResults = await anilist.search(searchTerm, source);
+    logger.debug(`searchViaAniList: "${searchTerm}" → AniList 返回 ${anilistResults.length} 条结果`);
     if (anilistResults.length === 0) {
-      return searchBangumi(bangumi, searchTerm, config);
+      logger.warn(`searchViaAniList: AniList 返回 0 结果（可能被限流），3s 后重试...`);
+      await new Promise(r => setTimeout(r, 3000));
+      anilistResults = await anilist.search(searchTerm, source);
+      if (anilistResults.length === 0) {
+        logger.warn(`searchViaAniList: "${searchTerm}" → 重试仍无结果，降级直接搜 Bangumi`);
+        return searchBangumi(bangumi, searchTerm, config);
+      }
+      logger.info(`searchViaAniList: 重试成功，获取到 ${anilistResults.length} 条`);
     }
 
     // AniList 只用于获取日文标题，搜索结果不直接使用
     const jpTitle = anilistResults[0].title_native || anilistResults[0].name;
+    logger.debug(`searchViaAniList: "${searchTerm}" → AniList top: "${jpTitle}" (id=${anilistResults[0].id})`);
     if (jpTitle) {
       const bangumiResults = await searchBangumi(bangumi, jpTitle, config);
-      if (bangumiResults.length > 0) return bangumiResults;
+      if (bangumiResults.length > 0) {
+        logger.debug(`searchViaAniList: "${searchTerm}" → 通过日文标题 "${jpTitle}" 找到 ${bangumiResults.length} 个 Bangumi 结果`);
+        return bangumiResults;
+      }
+      logger.debug(`searchViaAniList: "${searchTerm}" → 日文标题 "${jpTitle}" 在 Bangumi 无结果`);
     }
 
     return [];
@@ -202,12 +226,29 @@ function pickBestBySimilarity(cleanTitle, results) {
  */
 async function searchBangumiBySeason(registry, bangumi, baseTitle, season, config) {
   const anilist = registry.get('anilist');
-  if (!anilist || !anilist.enabled(config)) return [];
+  if (!anilist || !anilist.enabled(config)) {
+    logger.debug(`searchBangumiBySeason: "${baseTitle}" S${season} → AniList 不可用`);
+    return [];
+  }
 
   try {
     const source = config.apiSources?.find(s => s.type === 'anilist');
-    const alResults = await anilist.search(baseTitle, source);
-    if (alResults.length === 0) return [];
+    logger.debug(`searchBangumiBySeason: "${baseTitle}" S${season} → 搜索 AniList...`);
+    let alResults = await anilist.search(baseTitle, source);
+    logger.debug(`searchBangumiBySeason: "${baseTitle}" S${season} → AniList 返回 ${alResults.length} 条原始结果`);
+    if (alResults.length === 0) {
+      // AniList 可能被限流或临时不可用，等待 3s 重试一次
+      // 避免"API 挂了"和"真没结果"无法区分导致 season 匹配静默降级
+      logger.warn(`searchBangumiBySeason: AniList 返回 0 结果（可能被限流），3s 后重试...`);
+      await new Promise(r => setTimeout(r, 3000));
+      alResults = await anilist.search(baseTitle, source);
+      logger.debug(`searchBangumiBySeason: 重试后 AniList 返回 ${alResults.length} 条`);
+      if (alResults.length === 0) {
+        logger.warn(`searchBangumiBySeason: "${baseTitle}" S${season} → 重试仍无结果，放弃 season 路径`);
+        return [];
+      }
+      logger.info(`searchBangumiBySeason: 重试成功，进入 season 匹配`);
+    }
 
     // Sort by season-year + season-order (not POPULARITY_DESC from AniList)
     const SEASON_ORDER = { WINTER: 1, SPRING: 2, SUMMER: 3, FALL: 4 };
@@ -220,11 +261,22 @@ async function searchBangumiBySeason(registry, bangumi, baseTitle, season, confi
     // Prefer TV entries, fall back to any format
     let candidates = sorted.filter(r => r.format === 'TV');
     if (candidates.length === 0) candidates = sorted;
+    logger.debug(`searchBangumiBySeason: "${baseTitle}" S${season} → 排序后 TV=${sorted.filter(r=>r.format==='TV').length} 条, candidates=${candidates.length} 条`);
+    candidates.forEach((c, i) => {
+      logger.debug(`  candidates[${i}]: id=${c.id} name="${c.name}" ${c.seasonYear||'?'} ${c.season||'?'} format=${c.format}`);
+    });
+
     const target = candidates[season - 1];
-    if (!target) return [];
+    if (!target) {
+      logger.debug(`searchBangumiBySeason: "${baseTitle}" S${season} → candidates[${season-1}] 不存在（只有 ${candidates.length} 条 TV）`);
+      return [];
+    }
 
     const nativeTitle = target.title_native || target.name;
-    if (!nativeTitle) return [];
+    if (!nativeTitle) {
+      logger.debug(`searchBangumiBySeason: "${baseTitle}" S${season} → target 无 nativeTitle`);
+      return [];
+    }
 
     logger.info(`Season lookup: "${baseTitle}" S${season} → "${nativeTitle}" (${target.seasonYear || '?'} ${target.season || '?'}, ${target.format})`);
     return await searchBangumi(bangumi, nativeTitle, config);
@@ -240,7 +292,12 @@ async function searchBangumiBySeason(registry, bangumi, baseTitle, season, confi
  */
 async function matchSeason(registry, keyword, folderParsed, videoCount, config) {
   const bangumi = registry.get('bangumi');
-  if (!bangumi) return null;
+  if (!bangumi) {
+    logger.error('matchSeason: bangumi scraper not found in registry');
+    return null;
+  }
+
+  logger.info(`=== matchSeason 入口 === keyword="${keyword}" cleanTitle="${folderParsed.cleanTitle}" season=${folderParsed.season} specialSuffix="${folderParsed.specialSuffix||''}"`);
 
   // 1. Build search terms (multiple variations)
   const searchTerms = buildSearchTerms(folderParsed, keyword);
@@ -251,32 +308,48 @@ async function matchSeason(registry, keyword, folderParsed, videoCount, config) 
   //    find the N-th entry's native title → precise Bangumi match.
   let results = [];
   if (folderParsed.season) {
+    logger.info(`matchSeason: 有 season=${folderParsed.season} → 进入 searchBangumiBySeason 路径`);
     results = await searchBangumiBySeason(registry, bangumi, folderParsed.cleanTitle, folderParsed.season, config);
+    logger.info(`matchSeason: searchBangumiBySeason 返回 ${results.length} 条结果`);
+  } else {
+    logger.info(`matchSeason: 无 season → 跳过 searchBangumiBySeason，进入 fallback 路径`);
   }
 
   // 3. Fallback: normal search term loop
   if (results.length === 0) {
+    logger.info(`matchSeason: fallback 路径开始，searchTerms=[${searchTerms.join(', ')}]`);
     for (const term of searchTerms) {
       // Base title → use AniList route (gets native JP/CJK title → Bangumi)
       // Other terms (season marker, suffix) → Bangumi directly
       const isBaseTitle = term === (folderParsed.cleanTitle || folderParsed.title);
+      logger.info(`matchSeason: fallback 迭代 term="${term}" isBaseTitle=${isBaseTitle}`);
       if (isBaseTitle) {
         results = await searchViaAniList(registry, bangumi, term, config);
       } else {
         results = await searchBangumi(bangumi, term, config);
       }
+      logger.info(`matchSeason: fallback term="${term}" → ${results.length} 条结果`);
       if (results.length > 0) break;
     }
   }
-  if (results.length === 0) return null;
+  if (results.length === 0) {
+    logger.info(`matchSeason: 全部路径无结果 → 返回 null`);
+    return null;
+  }
+  logger.info(`matchSeason: 共 ${results.length} 条候选结果`);
 
   // 4. Pick best match using Sorensen-Dice
   const best = pickBestBySimilarity(folderParsed.cleanTitle, results);
+  logger.info(`matchSeason: pickBestBySimilarity → id=${best.id} name="${best.name_cn || best.name}"`);
 
   // 5. Get full detail
   const detail = await bangumi.getSubjectDetail(best.id);
-  if (!detail) return null;
+  if (!detail) {
+    logger.info(`matchSeason: getSubjectDetail(${best.id}) 返回 null`);
+    return null;
+  }
 
+  logger.info(`matchSeason: ✅ 成功匹配 → id=${best.id} title="${detail.name_cn || detail.name}" season=${folderParsed.season || null}`);
   return {
     ...detail,
     source: 'bangumi',

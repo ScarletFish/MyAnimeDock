@@ -240,15 +240,17 @@ class AniListScraper {
     if (this._registry) {
       const cached = this._registry._searchCache?.get(keyword);
       if (cached && Date.now() - cached.timestamp < this._registry._cacheTTL) {
+        logger.debug(`anilist.search: 缓存命中 keyword="${keyword}" → ${cached.results.length} 条`);
         return cached.results;
       }
     }
+    logger.debug(`anilist.search: 请求 API keyword="${keyword}"`);
     try {
       const data = await this.graphqlRequest(SEARCH_QUERY, {
         search: keyword,
         type: 'ANIME',
       });
-      return (data?.Page?.media || []).map(m => ({
+      const results = (data?.Page?.media || []).map(m => ({
         id: m.id,
         bannerImage: m.bannerImage || null,
         name: m.title.romaji || m.title.english,
@@ -274,6 +276,11 @@ class AniListScraper {
         })),
         source: 'anilist',
       }));
+      logger.debug(`anilist.search: API 返回 ${results.length} 条, top="${results[0]?.name || '无'}"`);
+      results.forEach((r, i) => {
+        logger.debug(`  result[${i}]: id=${r.id} name="${r.name}" format=${r.format} ${r.seasonYear||'?'} ${r.season||'?'}`);
+      });
+      return results;
     } catch (e) {
       logger.error('search failed:', e.message);
       return [];

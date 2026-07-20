@@ -10,24 +10,30 @@ function resolveFolderParsed(anime) {
   const { parseFolderName } = require('../scanner');
   let fp = parseFolderName(anime.folderName);
   const isStructural = !fp.cjkTitle && (!fp.title || /^(?:Season\s*\d+|S\d+|第\d+季)$/i.test(fp.title.trim()));
+  const logger = require('../logger').child('[ROUTE]');
+  logger.debug(`resolveFolderParsed: id="${anime.id}" folderName="${anime.folderName}" isStructural=${isStructural} season=${fp.season} cleanTitle="${fp.cleanTitle}"`);
   if (isStructural) {
     const leafSeason = fp.season;
     if (anime.folderPath) {
       const parentDir = path.basename(path.dirname(anime.folderPath));
       if (parentDir && parentDir !== '.') {
         const parentParsed = parseFolderName(parentDir);
+        logger.debug(`resolveFolderParsed: parentDir="${parentDir}" parentSeason=${parentParsed.season} parentCleanTitle="${parentParsed.cleanTitle}"`);
         if (parentParsed.cjkTitle || parentParsed.cleanTitle) {
           fp = { ...parentParsed, season: leafSeason || parentParsed.season };
+          logger.debug(`resolveFolderParsed: 使用父目录信息 → season=${fp.season} cleanTitle="${fp.cleanTitle}"`);
         }
       }
     }
     if (!fp.cjkTitle && !fp.cleanTitle) {
       const titleParsed = parseFolderName(anime.title);
+      logger.debug(`resolveFolderParsed: 回退到 anime.title="${anime.title}" → season=${titleParsed.season} cleanTitle="${titleParsed.cleanTitle}"`);
       if (titleParsed.cjkTitle || titleParsed.cleanTitle) {
         fp = { ...titleParsed, season: leafSeason || titleParsed.season };
       }
     }
   }
+  logger.debug(`resolveFolderParsed: 最终 → season=${fp.season} cleanTitle="${fp.cleanTitle}" cjkTitle="${fp.cjkTitle || ''}"`);
   return fp;
 }
 

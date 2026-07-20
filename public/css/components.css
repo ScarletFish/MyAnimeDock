@@ -1377,6 +1377,12 @@ input[type="range"]::-webkit-slider-thumb {
   outline: none;
 }
 
+/* Force: ID specificity beats *:focus-visible global rule */
+#contextMenu,
+#contextMenu * {
+  outline: none !important;
+}
+
 .context-menu-item svg {
   width: 14px;
   height: 14px;

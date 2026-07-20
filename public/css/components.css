@@ -1368,6 +1368,10 @@ input[type="range"]::-webkit-slider-thumb {
   transition: background 100ms;
   white-space: nowrap;
   position: relative;
+}
+
+.context-menu-item:focus,
+.context-menu-item:focus-visible {
   outline: none;
 }
 

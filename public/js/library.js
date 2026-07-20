@@ -307,8 +307,7 @@ function sortLibraryItems(items) {
   var FORMAT_RANK = { TV: 0, OVA: 1, SP: 2, MOVIE: 3 };
 
   function getBaseKey(a) {
-    // Group by bangumiTitle (Chinese title from Bangumi) or title
-    return (a.bangumiTitle || a.title || a.id || '').toLowerCase();
+    return (a.title || a.id || '').toLowerCase();
   }
   function getSeasonRank(a) {
     var p = (a.platform || '').toUpperCase();

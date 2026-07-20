@@ -241,6 +241,8 @@ POST /api/bangumi/fetch (for library items — already imported)
       ├─ 如果已有 anilistId → 直接用 ID 调 fetchMetadata 刷新
       ├─ 如果 anilistId === -1 → 重置为 null 重新搜索（手动同步可重试）
       ├─ 如果无 anilistId → 按标题优先级搜 AniList（Jp→Cn→En）
+      │   ├─ 搜索前 toHiragana() 归一化（片假名→平假名，解决 Bangumi 返回
+      │   │   カタカナ如 "ハイ" 而 AniList 用 "はい" 导致搜索为空的问题）
       │   ├─ Sørensen-Dice ≥ 0.5 匹配成功 → fetchMetadata + downloadBanner
       │   └─ 匹配失败 → 标记 anilistId = -1
       ├─ 下载 banner 到 DATA_DIR/banners/ 目录
@@ -485,6 +487,10 @@ POST /api/discovery/unlink
 | `db.saveAll(data)` | all tables in parallel | Composite fallback for multi-table saves |
 | `saveScannedTree(tree)` | `scanned-tree.json` (sync) | Scan, exclude, unlink, metadata |
 
+**saveLibrary uniqueness checks**: Before upserting each anime, `saveLibrary` checks:
+- `bangumiId` uniqueness — if another anime already owns the same `bangumiId`, skip the current entry
+- `anilistId` uniqueness — if another anime already owns the same `anilistId`, clear the old owner's AniList fields (current record wins; manual match takes priority)
+
 ### Call Site → Save Function Mapping
 
 | Scenario | Save function used |
@@ -577,7 +583,7 @@ http.createServer((req, res) => {
 | `server/mpv-controller.js` | 178 | mpv process spawn, IPC progress tracking, error/crash reporting |
 | `server/bangumi-sync.js` | 206 | Bangumi sync orchestration: Pull→Merge→Push, OAuth status push |
 | `server/scrapers/index.js` | 470 | ScraperRegistry: multi-source metadata aggregation, syncAnilist() helper |
-| `server/scrapers/anilist.js` | — | Anilist GraphQL client: search, fetchMetadata, downloadBanner, season chain extraction |
+| `server/scrapers/anilist.js` | — | Anilist GraphQL client: search, fetchMetadata, downloadBanner, season chain extraction (async, two-batch sequel discovery). `enabled()` defaults to true when apiSources exists but no anilist entry. |
 | `server/scrapers/bangumi.js` | — | Bangumi API client + cover download |
 | `server/scrapers/tmdb.js` | — | TMDB API client + cover download |
 | `server/scrapers/node-fetch.js` | — | Node.js http/https fetch polyfill (pkg-compatible) |
@@ -624,3 +630,7 @@ http.createServer((req, res) => {
 19. **Banner path conversion**: `anilistBanner` stores the absolute filesystem path (e.g., `C:\Users\...\banners\al-12345.jpg`). The frontend converts this to a URL path `/banners/al-12345.jpg` via `path.basename()` + `/banners/` prefix, matched by `handleBannerImage` in server.js.
 20. **Backfill endpoint**: `POST /api/library/sync-anilist-backfill` iterates all library items without `anilistId`, calls `syncAnilist()` on each with batch save every 5 items. Returns `{ total, succeeded, failed, skipped }`. Non-blocking but slow for large libraries.
 18. **ep.progress is always 0-1**: The Episode model has `progress Float @default(0) // 0-1`. mpv IPC reports time-pos in seconds; the `onProgress` callback normalizes via `Math.min(1, Math.max(0, timePos / duration))` before storing. When resuming, convert 0-1 progress to seconds using `ep.duration * progress` for `--start` and `progressStart`.
+21. **AniList enabled() defaults to true**: `AniListScraper.enabled(config)` returns true when `apiSources` exists but has no anilist entry, or when anilist entry has no `enabled` field. Only `enabled: false` explicitly disables it. This matches the comment "AniList is free, enabled by default".
+22. **anilistId uniqueness in saveLibrary**: `saveLibrary()` checks `anilistId` uniqueness before upsert. If another anime already owns the same `anilistId`, the old owner's AniList fields are cleared (current record wins). This supports manual re-matching where the user intentionally overrides an existing AniList association.
+23. **syncAnilist katakana normalization**: `syncAnilist()` applies `toHiragana()` (Unicode offset U+30A1-30F6 → U+3041-3096) to search terms before querying AniList. This handles Bangumi returning katakana titles (e.g., "ハイ") that AniList stores as hiragana ("はい"), which would otherwise return 0 search results.
+24. **Retry bypasses bangumiId skip**: The SSE and batch sync endpoints no longer skip items that already have a `bangumiId`. This allows re-matching of previously matched items (e.g., fixing a wrong match or updating metadata). The frontend filters by status (pending/failed) to avoid redundant work.

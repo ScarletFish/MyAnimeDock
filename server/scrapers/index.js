@@ -454,11 +454,11 @@ async function syncAnilist(anime, config, bannerDir, coverDir) {
   if (!anilistId) {
     const romaji = extractRomajiTitle(anime.infobox);
     const searchTitles = [
-      romaji,                  // 罗马音 → AniList 拉丁文字搜索最准
-      anime.bangumiTitleJp,    // 日文原名
-      anime.bangumiTitleEn,    // 英文标题
-      anime.title,             // 中文标题
-      anime.bangumiTitle,      // Bangumi 主标题
+      romaji,                    // 罗马音 → AniList 拉丁文字搜索最准
+      anime.bangumiTitleJp,      // 日文原名
+      anime.bangumiTitleEn,      // 英文标题
+      anime.title,               // 中文标题
+      anime.bangumiTitle,        // Bangumi 主标题
     ].filter(Boolean);
     // Deduplicate
     const seen = new Set();
@@ -466,7 +466,13 @@ async function syncAnilist(anime, config, bannerDir, coverDir) {
 
     for (const t of unique) {
       try {
-        const results = await anilist.search(t, source);
+        let results = await anilist.search(t, source);
+        // Fallback: strip trailing chars until we get results
+        let fallback = t;
+        while (results.length === 0 && fallback.length > 2) {
+          fallback = fallback.slice(0, -1).replace(/[!！?？☆★~～、。]$/, '').trim();
+          if (fallback.length > 2) results = await anilist.search(fallback, source);
+        }
         if (results.length === 0) continue;
         const bestItem = pickBestBySimilarity(t, results);
         if (bestItem) {

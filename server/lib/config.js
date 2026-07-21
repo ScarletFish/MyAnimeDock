@@ -46,16 +46,8 @@ function loadConfig() {
           key: '',
         });
       }
-      if (cfg.scrapers.tmdb?.enabled !== false && cfg.tmdbApiKey) {
-        sources.push({
-          type: 'tmdb',
-          url: 'https://api.themoviedb.org/3',
-          key: cfg.tmdbApiKey,
-        });
-      }
       cfg.apiSources = sources.length > 0 ? sources : DEFAULT_CONFIG.apiSources;
       delete cfg.scrapers;
-      delete cfg.tmdbApiKey;
       saveConfig(cfg);
     }
     return { ...DEFAULT_CONFIG, ...cfg };

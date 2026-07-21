@@ -393,7 +393,7 @@ class ScraperRegistry {
   getSources(config) {
     if (!config) return [];
     if (config.apiSources && Array.isArray(config.apiSources)) {
-      return config.apiSources.filter(s => s.type !== 'tmdb');
+      return [...config.apiSources];
     }
     // Legacy format fallback
     const sources = [];

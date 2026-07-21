@@ -67,7 +67,7 @@ server/            → Tauri sidecar (Node.js backend)
 ├── mpv-controller.js → IPC 进度追踪
 ├── logger.js      → [TAG] 结构化日志
 ├── bangumi-sync.js→ Pull→Merge→Push 同步
-└── scrapers/      → Bangumi 主源 + AniList(罗马音) + TMDB(可选)
+└── scrapers/      → Bangumi 主源 + AniList(罗马音)
 src-tauri/         → Tauri v2 desktop shell (Rust)
 ├── src/main.rs    → Sidecar spawning + window management
 └── tauri.conf.json + capabilities/ + icons/
@@ -94,7 +94,7 @@ scripts/           → copy-sidecar-deps.js, migrate-to-sqlite.js
 - **API 调用**: `await API.get('/api/...')`, `API.post()`, `API.del()`（`api.js` 封装）
 - **XSS 防护**: 所有用户数据用 `escHtml()` / `escAttr()` 包裹
 - **封面动画**: GSAP Flip（`detail.js` 中 `animateHeroCoverFlip()`），创建 `position:fixed` overlay → `Flip.getState()` → DOM 变化 → `Flip.from(state, { absolute: true })`
-- **元数据来源：只有 Bangumi**: Bangumi 是唯一元数据来源（标题、封面、简介、评分、标签）。AniList 仅用于罗马音标题 + seasonChain 季度链。TMDB 为可选图片源。
+- **元数据来源：只有 Bangumi**: Bangumi 是唯一元数据来源（标题、封面、简介、评分、标签）。AniList 仅用于罗马音标题 + seasonChain 季度链。
 - **播放会话追踪**: `activePlays` Map（内存），每 10s 精细化更新 SQLite，mpv 关闭时落盘
 - **细粒度数据持久化**: 每个 API 端点只写入实际修改的 SQLite 表，避免全量 `saveData()` 导致 nodemon 误重启
 - **bangumiId 精准匹配**: `extractBgmId(name)` 从文件夹名提取 `[bgmN]` 数字 ID 作为主键（`String(bangumiId)`），手动导入项使用 `parsedTitle + Season`

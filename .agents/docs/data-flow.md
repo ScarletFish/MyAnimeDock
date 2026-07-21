@@ -193,9 +193,6 @@ POST /api/bangumi/fetch (for library items — already imported)
       │   │       ├─ Check cache: if exists → return path
       │   │       ├─ fetch image → buffer → write to covers/
       │   │       └─ Return absolute localCover path
-      │   └─ tmdb.js:
-      │       ├─ Same pattern (TMDB image base + seriesId)
-      │       └─ Requires tmdbApiKey in config
       └─ Returns: { source, bangumiId, bangumiTitle, bangumiTitleJp,
                      summary, coverUrl, localCover, rating }
   → Object.assign(anime, meta) — update library anime record
@@ -548,7 +545,6 @@ http.createServer((req, res) => {
 | `server/scrapers/index.js` | 470 | ScraperRegistry: multi-source metadata aggregation, syncAnilist() helper |
 | `server/scrapers/anilist.js` | — | Anilist GraphQL client: search (with toHiragana normalization), fetchMetadata, downloadBanner. `enabled()` defaults to true when apiSources exists but no anilist entry. |
 | `server/scrapers/bangumi.js` | — | Bangumi API client + cover download |
-| `server/scrapers/tmdb.js` | — | TMDB API client + cover download |
 | `server/scrapers/node-fetch.js` | — | Node.js http/https fetch polyfill (pkg-compatible) |
 | `scripts/copy-sidecar-deps.js` | — | Build: copies Prisma engine + ffmpeg.exe to sidecar-modules/ |
 | `public/js/api.js` | — | Frontend fetch() wrapper (API.get, API.post, API.del) |

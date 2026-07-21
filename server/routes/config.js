@@ -66,9 +66,6 @@ module.exports = {
             key: '',
           });
         }
-        if (parsed.scrapers.tmdb?.enabled !== false && parsed.tmdbApiKey) {
-          sources.push({ type: 'tmdb', url: 'https://api.themoviedb.org/3', key: parsed.tmdbApiKey });
-        }
         config.apiSources = sources.length > 0 ? sources : state.config.apiSources;
       }
       saveConfig(config);

@@ -814,6 +814,7 @@ async function mmApplyFix(animeId, resultIndex) {
       if (a.matchedSeason != null) item.matchedSeason = a.matchedSeason;
       item.anilistId = a.anilistId;
       item.anilistBanner = a.anilistBanner || null;
+      mmNeedsRefresh = true;
     } else {
       item.status = 'failed';
       item.error = '获取元数据返回空';

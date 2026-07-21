@@ -856,6 +856,7 @@ async function attachBangumiSubject(animeId, subjectId) {
     AppState.set('currentAnime', currentAnime);
     renderDetail();
     closeModal('syncModal');
+    if (typeof loadLibrary === 'function') loadLibrary();
     showToast('Bangumi 元数据获取成功', 'success');
   } catch (e) {
     showToast('获取失败: ' + e.message, 'error');

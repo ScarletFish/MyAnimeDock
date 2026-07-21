@@ -295,7 +295,7 @@ function renderDetail() {
     bannerBg.appendChild(bannerImg);
     detailView.insertBefore(bannerBg, detailView.querySelector('.detail-content'));
   }
-  detailView.classList.toggle('detail-no-banner', !anime.anilistBanner);
+  detailView.classList.toggle('detail-no-banner', !anime.anilistBanner || anime.anilistBanner === '__none__');
 
   document.getElementById('detailTitle').textContent = anime.bangumiTitle || anime.title;
 

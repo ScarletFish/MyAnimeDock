@@ -5,7 +5,7 @@ const assert = require('node:assert');
 const {
   normalizeTitle, sorensenDice, toHiragana, isPrimarilyRomaji,
   pickBestBySimilarity, extractRomajiTitle,
-  resolveAnilistId, syncAnilistDetail, registry,
+  syncAnilistDetail, registry,
 } = require('../scrapers');
 const { parseFolderName } = require('../scanner');
 
@@ -236,26 +236,6 @@ describe('parseFolderName — real dataset', () => {
   });
 });
 
-// ── resolveAnilistId (mocked) ──
-describe('resolveAnilistId — mocked', () => {
-  it('returns existing anilistId without searching', async () => {
-    const anime = { anilistId: 12345, title: 'Test' };
-    const id = await resolveAnilistId(anime, {});
-    assert.equal(id, 12345);
-  });
-
-  it('returns null for anilistId = -1 (already attempted)', async () => {
-    const anime = { anilistId: -1, title: 'Test' };
-    const id = await resolveAnilistId(anime, {});
-    assert.equal(id, null);
-  });
-
-  it('returns null for null anime', async () => {
-    const id = await resolveAnilistId(null, {});
-    assert.equal(id, null);
-  });
-});
-
 // ── syncAnilistDetail (mocked) ──
 describe('syncAnilistDetail — mocked', () => {
   it('returns null for anime without anilistId', async () => {
@@ -276,91 +256,7 @@ describe('syncAnilistDetail — mocked', () => {
   });
 });
 
-// ── resolveAnilistId (mock API) ──
-describe('resolveAnilistId — mock API', () => {
-  it('finds match from romaji title', async () => {
-    const { restore } = mockAnilist({
-      search: async (keyword) => {
-        if (/yuru/i.test(keyword)) {
-          return [{
-            id: 28900,
-            name: 'Yuru Yuri',
-            name_cn: 'Yuru Yuri',
-            title_native: 'ゆるゆり',
-            bannerImage: null,
-          }];
-        }
-        return [];
-      },
-    });
-    try {
-      const anime = { title: 'Yuru Yuri', bangumiTitle: 'Yuru Yuri' };
-      const id = await resolveAnilistId(anime, MATCHING_CONFIG);
-      assert.equal(id, 28900);
-      assert.equal(anime.anilistId, 28900);
-    } finally { restore(); }
-  });
 
-  it('sets anilistId = -1 when no match found', async () => {
-    const { restore } = mockAnilist({
-      search: async () => [],
-    });
-    try {
-      const anime = { title: 'Nonexistent Title XYZ' };
-      const id = await resolveAnilistId(anime, MATCHING_CONFIG);
-      assert.equal(id, null);
-      assert.equal(anime.anilistId, -1);
-    } finally { restore(); }
-  });
-
-  it('tries multiple title variants (romaji → jp → en → cn)', async () => {
-    const searched = [];
-    const { restore } = mockAnilist({
-      search: async (keyword) => {
-        searched.push(keyword);
-        // Match on English title "Oshi no Ko"
-        if (/^oshi no ko$/i.test(keyword)) {
-          return [{
-            id: 150672,
-            name: 'Oshi no Ko',
-            name_cn: 'Oshi no Ko',
-            title_native: '推しの子',
-            bannerImage: 'https://example.com/banner.jpg',
-          }];
-        }
-        return [];
-      },
-    });
-    try {
-      const anime = {
-        title: '推しの子',
-        bangumiTitleJp: '推しの子',
-        bangumiTitleEn: 'Oshi no Ko',
-        bangumiTitle: '推しの子',
-      };
-      const id = await resolveAnilistId(anime, MATCHING_CONFIG);
-      assert.equal(id, 150672);
-      assert.ok(searched.length >= 2, `should try multiple titles, tried ${searched.length}`);
-    } finally { restore(); }
-  });
-
-  it('skips low similarity scores (< 0.5)', async () => {
-    const { restore } = mockAnilist({
-      search: async () => [{
-        id: 999,
-        name: 'Completely Different Show',
-        name_cn: '完全不同的作品',
-        title_native: '完全不同的作品',
-      }],
-    });
-    try {
-      const anime = { title: 'Yuru Yuri' };
-      const id = await resolveAnilistId(anime, MATCHING_CONFIG);
-      assert.equal(id, null);
-      assert.equal(anime.anilistId, -1);
-    } finally { restore(); }
-  });
-});
 
 // ── syncAnilistDetail (mock API) ──
 describe('syncAnilistDetail — mock API', () => {
@@ -411,13 +307,4 @@ describe('syncAnilistDetail — mock API', () => {
   });
 });
 
-// ── 真实 API 冒烟测试 ──
-describe('resolveAnilistId — real API smoke test', () => {
-  it('finds Nukitashi via AniList API', async () => {
-    // "Nukitashi" is Latin-only, AniList returns name_cn in English → 匹配得分高
-    const anime = { title: 'Nukitashi The Animation', bangumiTitle: 'Nukitashi The Animation' };
-    const id = await resolveAnilistId(anime, MATCHING_CONFIG);
-    assert.ok(id && id > 0, `expected a valid anilistId, got ${id}`);
-    assert.equal(anime.anilistId, id);
-  });
-});
+

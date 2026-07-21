@@ -177,18 +177,12 @@ async function searchViaAniList(registry, bangumi, searchTerm, config) {
   try {
     const source = config.apiSources?.find(s => s.type === 'anilist');
     logger.debug(`searchViaAniList: "${searchTerm}" → 搜索 AniList...`);
-    let anilistResults = await anilist.search(searchTerm, source);
+    const anilistResults = await anilist.search(searchTerm, source);
     logger.debug(`searchViaAniList: "${searchTerm}" → AniList 返回 ${anilistResults.length} 条结果`);
     if (anilistResults.length === 0) {
-      logger.warn(`searchViaAniList: AniList 返回 0 结果（可能被限流），3s 后重试...`);
-      await new Promise(r => setTimeout(r, 3000));
-      anilistResults = await anilist.search(searchTerm, source);
-      if (anilistResults.length === 0) {
-        logger.warn(`searchViaAniList: "${searchTerm}" → 重试仍无结果，降级直接搜 Bangumi`);
-        const retryResults = await searchBangumi(bangumi, searchTerm, config);
-        return { bangumiResults: retryResults, anilistId: null };
-      }
-      logger.info(`searchViaAniList: 重试成功，获取到 ${anilistResults.length} 条`);
+      logger.warn(`searchViaAniList: "${searchTerm}" → 0 结果，降级直接搜 Bangumi`);
+      const fallbackResults = await searchBangumi(bangumi, searchTerm, config);
+      return { bangumiResults: fallbackResults, anilistId: null };
     }
 
     // AniList 只用于获取日文标题，搜索结果不直接使用
@@ -213,10 +207,12 @@ async function searchViaAniList(registry, bangumi, searchTerm, config) {
 
 /**
  * Pick best match from search results using Sorensen-Dice
+ * 根据搜索词脚本选择匹配字段：拉丁词对 name（罗马音），东亚词对 name_cn（本地名）
  */
 function pickBestBySimilarity(cleanTitle, results) {
+  const useName = isPrimarilyRomaji(cleanTitle);
   return results.reduce((best, r) => {
-    const matchTitle = r.name_cn || r.name || '';
+    const matchTitle = useName ? (r.name || r.name_cn || '') : (r.name_cn || r.name || '');
     const score = sorensenDice(cleanTitle, matchTitle);
     return score > best.score ? { item: r, score } : best;
   }, { item: results[0], score: 0 }).item;
@@ -329,8 +325,9 @@ async function matchSeason(registry, keyword, folderParsed, videoCount, config) 
       // Base title → use AniList route (gets native JP/CJK title → Bangumi)
       // Other terms (season marker, suffix) → Bangumi directly
       const isBaseTitle = term === (folderParsed.cleanTitle || folderParsed.title);
-      logger.info(`matchSeason: fallback 迭代 term="${term}" isBaseTitle=${isBaseTitle}`);
-      if (isBaseTitle) {
+      logger.info(`matchSeason: fallback 迭代 term="${term}" isBaseTitle=${isBaseTitle} isCJK=${!isPrimarilyRomaji(term)}`);
+      if (isBaseTitle && isPrimarilyRomaji(term)) {
+        // 罗马音/英文 → 走 AniList 桥拿日文原名再搜 Bangumi
         const alResult = await searchViaAniList(registry, bangumi, term, config);
         results = alResult.bangumiResults;
         if (alResult.anilistId) matchedAnilistId = alResult.anilistId;
@@ -495,91 +492,7 @@ function extractRomajiTitle(infobox) {
   return null;
 }
 
-/**
- * Resolve AniList ID for an anime by searching multiple title variants.
- * Lightweight — no metadata fetch, no banner download.
- * Modifies anime.anilistId in place (-1 on failure). Returns anilistId or null.
- */
-async function resolveAnilistId(anime, config) {
-  if (!anime) return null;
-  if (anime.anilistId === -1) return null;
 
-  const anilist = registry.get('anilist');
-  if (!anilist || !anilist.enabled(config)) return null;
-  const source = config.apiSources?.find(s => s.type === 'anilist');
-
-  let anilistId = anime.anilistId;
-  if (anilistId) return anilistId;
-
-  // 搜索词按精度分两级：
-  //   高精度（同脚本，与 AniList 字段直接对应）→ 优先尝试，命中即停
-  //   降级（跨脚本，匹配率较低）→ 高精度全失败时才用
-  const romaji = extractRomajiTitle(anime.infobox);
-  const primaryTerms = [
-    romaji,
-    anime.bangumiTitleJp,
-  ].filter(Boolean);
-  const fallbackTerms = [
-    anime.bangumiTitleEn,
-    anime.title,
-    anime.bangumiTitle,
-    anime.folderName,
-  ].filter(Boolean);
-
-  // 去重（跨级去重，避免降级重复搜高精度已经失败了的词）
-  const seen = new Set();
-  const primary = primaryTerms.filter(t => { const k = t.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; });
-  const fallback = fallbackTerms.filter(t => { const k = t.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; });
-
-  async function trySearch(terms) {
-    for (const t of terms) {
-      try {
-        // 先试原文（罗马音/katakana），原文搜不到再试 hiragana 降级
-        const queries = [...new Set([t, toHiragana(t)].filter(Boolean))];
-        for (const query of queries) {
-          const results = await anilist.search(query, source);
-          if (results.length === 0) continue;
-          const bestItem = pickBestBySimilarity(t, results);
-          if (bestItem) {
-            const matchTitle = bestItem.name_cn || bestItem.name || '';
-            const score = sorensenDice(t, matchTitle);
-            if (score >= 0.5) {
-              anilistId = bestItem.id;
-              // 搜索结果已包含 bannerImage 和 title_english，直接保存
-              // 避免后续 syncAnilistDetail 再次调 DETAIL_QUERY
-              if (bestItem.bannerImage) {
-                anime.anilistBanner = bestItem.bannerImage;
-              }
-              if (bestItem.title_english) {
-                anime.anilistTitleEn = bestItem.title_english;
-              }
-              return true;
-            }
-          }
-        }
-      } catch (e) {
-        logger.warn(`AniList search failed for "${t}": ${e.message}`);
-      }
-    }
-    return false;
-  }
-
-  // 1. 高精度词：romaji / 日文名 → 匹配则直接返回
-  if (await trySearch(primary)) {
-    anime.anilistId = anilistId;
-    return anilistId;
-  }
-
-  // 2. 降级词：英文 / 文件夹名 / 中文名
-  if (await trySearch(fallback)) {
-    anime.anilistId = anilistId;
-    return anilistId;
-  }
-
-  anime.anilistId = -1;
-  logger.info(`resolveAnilistId: no match for "${anime.title}" (bgmId=${anime.bangumiId})`);
-  return null;
-}
 
 /**
  * Fetch AniList metadata + download banner for an anime that already has anilistId.
@@ -615,27 +528,65 @@ async function syncAnilistDetail(anime, config, bannerDir, coverDir) {
 }
 
 /**
- * Full AniList sync: resolve ID + fetch metadata + download banner.
- * For user-initiated actions (backfill, bangumi-fetch, stream sync) where
- * doing everything in one call is acceptable.
+ * 用文件夹名搜 AniList 找 anilistId，顺便预提取 banner（避免 DETAIL_QUERY）。
+ * 修改 anime.anilistId / .anilistBanner / .anilistTitleEn。
+ * 返回 { anilistId, localBanner, anilistTitleEn } 或 null。
  */
 async function syncAnilist(anime, config, bannerDir, coverDir) {
   if (!anime) return null;
   if (anime.anilistId === -1) return null;
 
-  const anilistId = await resolveAnilistId(anime, config);
-  if (!anilistId) return null;
+  // 已有 anilistId → 直接下载 banner
+  if (anime.anilistId) {
+    return syncAnilistDetail(anime, config, bannerDir, coverDir);
+  }
 
-  // resolveAnilistId 已从搜索结果提取 banner 和英文标题 → 跳过 DETAIL_QUERY
-  if (anime.anilistBanner) {
-    const anilist = registry.get('anilist');
-    // 后台下载 banner（非阻塞）
-    if (anilist && anime.anilistBanner.startsWith('http')) {
-      anilist.downloadBanner(anime.anilistBanner, bannerDir, anilistId).catch(() => {});
+  const anilist = registry.get('anilist');
+  if (!anilist || !anilist.enabled(config)) return null;
+  const source = config.apiSources?.find(s => s.type === 'anilist');
+
+  const searchTerm = anime.bangumiTitleJp || anime.folderName || extractRomajiTitle(anime.infobox);
+  if (!searchTerm) return null;
+
+  const results = await anilist.search(searchTerm, source);
+  if (!results || results.length === 0) {
+    anime.anilistId = -1;
+    return null;
+  }
+
+  const bestItem = pickBestBySimilarity(searchTerm, results);
+  if (!bestItem) {
+    anime.anilistId = -1;
+    return null;
+  }
+
+  const matchField = isPrimarilyRomaji(searchTerm) ? 'name' : 'name_cn';
+  const matchTitle = bestItem[matchField] || bestItem.name || bestItem.name_cn || '';
+  const score = sorensenDice(searchTerm, matchTitle);
+  if (score < 0.5) {
+    anime.anilistId = -1;
+    return null;
+  }
+
+  const anilistId = bestItem.id;
+  anime.anilistId = anilistId;
+
+  // 预提取 banner（搜索结果已含 bannerImage，跳过 DETAIL_QUERY）
+  if (bestItem.bannerImage) {
+    anime.anilistBanner = bestItem.bannerImage;
+    if (bestItem.bannerImage.startsWith('http')) {
+      anilist.downloadBanner(bestItem.bannerImage, bannerDir, anilistId).catch(() => {});
     }
+  }
+  if (bestItem.title_english) {
+    anime.anilistTitleEn = bestItem.title_english;
+  }
+
+  if (anime.anilistBanner) {
     return { anilistId, localBanner: anime.anilistBanner, anilistTitleEn: anime.anilistTitleEn };
   }
 
+  // 搜索结果没 banner → 调 DETAIL_QUERY 拿
   return syncAnilistDetail(anime, config, bannerDir, coverDir);
 }
 
@@ -654,7 +605,6 @@ module.exports = {
   detectSpecialType,
   extractBaseAndSuffix,
   parallelMap,
-  resolveAnilistId,
   syncAnilistDetail,
   syncAnilist,
   extractRomajiTitle,

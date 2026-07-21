@@ -180,7 +180,7 @@ module.exports = {
     res.on('close', () => { cancelledSyncSessions.set(sessionId, true); });
 
     (async () => {
-      const { registry, matchSeason, parallelMap, resolveAnilistId } = require('../scrapers');
+      const { registry, matchSeason, parallelMap, pickBestBySimilarity, isPrimarilyRomaji, sorensenDice } = require('../scrapers');
       const coverDir = path.join(DATA_DIR, 'covers');
       const bannerDir = path.join(DATA_DIR, 'banners');
       const toSync = [];
@@ -199,7 +199,7 @@ module.exports = {
           let timedOut = false;
           const itemPromise = (async () => {
             const baseName = folderParsed.cleanTitle || folderParsed.cjkTitle || anime.folderName || anime.title || '未知';
-            let meta, matchedSeason;
+            let meta, matchedSeason, match;
             // 已知 bangumiId 跳过搜索，直接取元数据
             if (anime.bangumiId) {
               send('matching', { animeId, searchTerm: baseName });
@@ -209,7 +209,7 @@ module.exports = {
             } else {
               const searchTerm = folderParsed.season ? `${baseName} (S${folderParsed.season})` : baseName;
               send('matching', { animeId, searchTerm });
-              const match = await matchSeason(registry, folderParsed.cleanTitle, folderParsed, videoCount, config);
+              match = await matchSeason(registry, folderParsed.cleanTitle, folderParsed, videoCount, config);
               if (timedOut) return;
               if (!match) { send('progress', { animeId, success: false, error: '未找到匹配结果' }); return; }
               send('fetching', { animeId, matchSource: match.source || 'unknown', matchTitle: match.title || match.name || '' });
@@ -222,23 +222,42 @@ module.exports = {
             Object.assign(anime, meta);
           // Cover resize removed — browser handles display scaling
             if (matchedSeason != null) anime.matchedSeason = matchedSeason;
-            // 从 matchSeason 直接保存 AniList ID（searchViaAniList 已查到但之前丢弃了）
+            // 从 matchSeason 直存 anilistId（罗马音走 AniList 桥）
             if (match && match.anilistId) {
               anime.anilistId = match.anilistId;
               if (match.anilistBanner) anime.anilistBanner = match.anilistBanner;
               if (match.anilistTitleEn) anime.anilistTitleEn = match.anilistTitleEn;
             }
-            if (timedOut) return;
-            send('progress', { animeId, success: true, meta, matchedSeason });
-            // 只在流内解析 anilistId（搜索结果已预取 banner），不阻塞调 DETAIL
-            if (anime.anilistId === -1) anime.anilistId = null;
-            if (!anime.anilistId) {
+            // 仍无 anilistId → 用 Bangumi 日文原名搜 AniList 拿 banner
+            if (!anime.anilistId || anime.anilistId === -1) {
               try {
-                await resolveAnilistId(anime, config);
+                const anilist = registry.get('anilist');
+                if (anilist && anilist.enabled(config)) {
+                  const source = config.apiSources?.find(s => s.type === 'anilist');
+                  const searchTerm = anime.bangumiTitleJp || anime.folderName || folderParsed.cleanTitle;
+                  if (searchTerm) {
+                    const results = await anilist.search(searchTerm, source);
+                    if (results && results.length > 0) {
+                      const bestItem = pickBestBySimilarity(searchTerm, results);
+                      if (bestItem) {
+                        const matchField = isPrimarilyRomaji(searchTerm) ? 'name' : 'name_cn';
+                        const matchTitle = bestItem[matchField] || bestItem.name || bestItem.name_cn || '';
+                        if (sorensenDice(searchTerm, matchTitle) >= 0.5) {
+                          anime.anilistId = bestItem.id;
+                          if (bestItem.bannerImage) anime.anilistBanner = bestItem.bannerImage;
+                          if (bestItem.title_english) anime.anilistTitleEn = bestItem.title_english;
+                        }
+                      }
+                    }
+                  }
+                }
               } catch (e) {
-                logger.error('AniList resolve failed: ' + e.message);
+                logger.error(`AniList search failed for ${animeId}: ${e.message}`);
               }
             }
+            if (timedOut) return;
+            send('progress', { animeId, success: true, meta, matchedSeason });
+            if (anime.anilistId === -1) anime.anilistId = null;
           })();
           const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('处理超时')), 60000));
           await Promise.race([itemPromise, timeout]);

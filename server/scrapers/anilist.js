@@ -315,7 +315,7 @@ class AniListScraper {
         results.forEach((r, i) => {
           logger.debug(`  result[${i}]: id=${r.id} name="${r.name}" format=${r.format} ${r.seasonYear||'?'} ${r.season||'?'}`);
         });
-        // 写入搜索缓存，后续相同关键词直接命中（resolveAnilistId 等自动受益）
+        // 写入搜索缓存，后续相同关键词直接命中
         if (this._registry?._searchCache) {
           this._registry._searchCache.set(keyword, { results, timestamp: Date.now() });
         }

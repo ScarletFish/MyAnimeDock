@@ -292,6 +292,12 @@ function renderDetail() {
       ? anime.anilistBanner
       : `/banners/${path.basename(anime.anilistBanner)}`;
     bannerImg.alt = '';
+    // Wide banners: shift vertical position upward to keep face visible
+    bannerImg.onload = function() {
+      const ratio = this.naturalWidth / this.naturalHeight;
+      if (ratio > 2.5) this.style.objectPosition = 'center 25%';
+      else if (ratio > 1.8) this.style.objectPosition = 'center 35%';
+    };
     bannerBg.appendChild(bannerImg);
     detailView.insertBefore(bannerBg, detailView.querySelector('.detail-content'));
   }

@@ -282,7 +282,7 @@ function renderDetail() {
   const detailView = document.getElementById('detailView');
   const existingBg = detailView.querySelector('.detail-banner-bg');
   if (existingBg) existingBg.remove();
-  if (anime.anilistBanner) {
+  if (anime.anilistBanner && anime.anilistBanner !== '__none__') {
     const bannerBg = document.createElement('div');
     bannerBg.className = 'detail-banner-bg';
     const bannerImg = document.createElement('img');

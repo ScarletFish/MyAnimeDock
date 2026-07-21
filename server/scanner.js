@@ -6,8 +6,8 @@ const VIDEO_EXTS = new Set(['.mkv', '.mp4', '.avi', '.mov', '.webm']);
 const anitomy = new Parser();
 
 // Non-episode video patterns: NCOP, NCED, PV, CM, Menu, Preview, Trailer
-// Note: \b requires word boundary, so NCOP1/NCED2 do not match — use "NCOP 1" instead
-const EXTRA_VIDEO_RE = /\b(NCOP|NCED|PV\s*\d*|CM[ \d]*|Menu\d*|Preview|Trailer)\b/i;
+// Note: NCOP1/NCED2 etc. now match because `\d*` moves the word boundary past digits
+const EXTRA_VIDEO_RE = /\b(NCOP\d*|NCED\d*|PV\s*\d*|CM[ \d]*|Menu\d*|Preview|Trailer)\b/i;
 
 function isExtraVideo(fileName) {
   return EXTRA_VIDEO_RE.test(fileName.replace(/\[[^\]]*\]/g, ' '));

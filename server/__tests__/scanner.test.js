@@ -142,14 +142,12 @@ describe('Scanner — Pure Functions', { concurrency: false }, () => {
   // ===== isExtraVideo =====
   describe('isExtraVideo', () => {
     it('NCOP', () => { assert.ok(isExtraVideo('NCOP.mkv')); });
-    it('NCOP with number (no word boundary after NCOP)', () => {
-      // Note: regex \bNCOP\b requires word boundary after NCOP
-      // "NCOP1" has no boundary between NCOP and 1
-      assert.ok(!isExtraVideo('NCOP1.mkv'), 'NCOP1 does not match \\bNCOP\\b');
+    it('NCOP with number (attached)', () => {
+      assert.ok(isExtraVideo('NCOP1.mkv'), 'NCOP1 now matches via NCOP\\d*');
     });
     it('NCED', () => { assert.ok(isExtraVideo('NCED.mkv')); });
-    it('NCED with number (same limitation)', () => {
-      assert.ok(!isExtraVideo('NCED2.mkv'));
+    it('NCED with number (attached)', () => {
+      assert.ok(isExtraVideo('NCED2.mkv'));
     });
     it('NCED (space before number)', () => { assert.ok(isExtraVideo('NCED 2.mkv')); });
     it('PV', () => { assert.ok(isExtraVideo('PV01.mkv')); });

@@ -557,16 +557,25 @@ http.createServer((req, res) => {
 
 ## 14. AniList 双源同步 — 所有触发路径一览
 
-AniList 同步拆分为两步：**resolveAnilistId**（轻量，仅搜索取 ID）和 **syncAnilistDetail**（重量，metadata + banner）。导入时只做第一步，banner 在详情页懒加载。
+AniList 同步拆分为三步：**resolveAnilistId**（轻量，仅搜索取 ID + 预取 banner）→ **batchGetDetails**（批量补缺 banner）→ **syncAnilistDetail**（重量，单条目 metadata + banner）。
 
 | 触发方式 | 端点/位置 | 调用方式 | 函数 | 备注 |
 |---------|-----------|---------|------|------|
 | 发现页手动导入 | `POST /api/import` → `discovery.js` | 元数据落盘后 `.then()` | `syncAnilist` | [bgmN] 跳过搜索，直接取元数据 |
-| 详情页 banner 懒加载 | `GET /api/anime/:id` → `library.js` | 响应后异步 | `syncAnilistDetail` | `anilistId` 有但 `anilistBanner` 缺失时触发 |
-| 详情页刷元数据 | `POST /api/bangumi/fetch` → `bangumi.js` | fire-and-forget `.then()` | `syncAnilist` | 重置 `-1` 重新搜索，含完整同步 |
-| AniList 批量回填 | `POST /api/library/sync-anilist-backfill` → `library.js` | `await` 串行，每 5 部落盘 | `syncAnilist` | 传参 `result` 含成功/跳过/失败 |
-| SSE 流式同步 | `POST /api/library/sync/stream` → `library.js` | `parallelMap` | `syncAnilist` | [bgmN] 跳过 matchSeason，ID 直取 |
-| 详情页搜索框/自动匹配 | `POST /api/bangumi/search` → `bangumi.js` | `searchAll()` | — (缓存) | 搜 Bangumi 前也从 `searchAll` 经过，命中缓存跳过 API |
+| 详情页 banner 懒加载 | `GET /api/anime/:id` → `library.js` | 响应后异步 | `syncAnilistDetail` | 仅 `anilistId` 存在且缺 banner 时触发，不会重复 search |
+| 详情页刷元数据 | `POST /api/bangumi/fetch` → `bangumi.js` | `await` | `syncAnilist` | 重置 `-1` 重新搜索，含完整同步 |
+| AniList 批量回填 | `POST /api/library/sync-anilist-backfill` → `library.js` | `parallelMap`，每 5 部落盘 | `syncAnilist` | 传参 `result` 含成功/跳过/失败 |
+| SSE 流式同步 | `GET /api/library/sync/stream` → `library.js` | `parallelMap` | `resolveAnilistId`(流内) + `batchGetDetails`(流末) | [bgmN] 跳过 matchSeason，ID 直取。流末一次批量补 banner |
+
+### 搜索优化策略
+
+AniList SEARCH 请求做了多层优化减少 API 调用：
+
+1. **搜索词分级**：两档优先搜索（romaji / 日文名 → 英文 / 中文 / 文件夹名），前者命中即停，不尝试后者
+2. **搜索结果预取 banner**：`resolveAnilistId` 从 SEARCH 结果直接提取 `bannerImage` + `title_english`，对 ~80%+ 条目免去后续 DETAIL_QUERY
+3. **去重缓存**：`registry._searchCache`（5 分钟 TTL）缓存 SEARCH 结果；`anilist._pendingSearches` Map 共享相同关键词的 in-flight Promise
+4. **批量 DETAIL**：流末一次 `batchGetDetails(chunk)`（50 条/批）补全剩余缺 banner 的条目，代替 N 次独立 DETAIL_QUERY
+5. **Retry-After 感知**：429 响应优先用 `Retry-After` / `X-RateLimit-Reset` 头确定等待时间，不用固定指数退避
 
 ## 15. Thumbnail Queue
 
@@ -575,8 +584,7 @@ AniList 同步拆分为两步：**resolveAnilistId**（轻量，仅搜索取 ID�
 | 触发点 | 文件位置 | 方式 | 优先级 |
 |--------|---------|------|--------|
 | Discovery 导入 | `discovery.js` handleImport | 响应后异步 | FIFO（队尾） |
-| MetaMatch 同步（JSON） | `library.js` handleLibrarySync | 响应后异步 | FIFO（队尾） |
-| MetaMatch 同步（SSE） | `library.js` handleLibrarySyncStream | stream `done` 后 | FIFO（队尾） |
+| MetaMatch 同步 | `library.js` handleLibrarySyncStream | stream `done` 后 | FIFO（队尾） |
 | 详情页加载 | `library.js` handleGetAnimeDetail | 响应后异步 | **插队**（队首） |
 
 ### 队列行为
@@ -599,9 +607,9 @@ server/thumbnail-queue.js
       └─ _drain() → 空闲循环 × 3 并发
 ```
 
-**通用搜索缓存**：`registry._searchCache`（5 分钟 TTL）由 `searchAll()` 写入，`anilist.search()` 优先读缓存再调 API。缓存是惰性填充的——只在实际发生搜索时写入，不再有扫描时后台预取。
+**通用搜索缓存**：`registry._searchCache`（5 分钟 TTL）由 `searchAll()` 写入，`anilist.search()` 优先读缓存再调 API。缓存是惰性填充的——只在实际发生搜索时写入。
 
-**AniList 限流保护**：`anilist.js` 内置全局请求队列（每次请求间隔 1.5s）+ 429 自动重试（指数退避 1.5s→3s→6s，最多 3 次）。导入时 21 部动漫的 `resolveAnilistId` 并发调用，通过共享的 `_lastRequestTime` 自动串行化，不会触发限流。
+**AniList 限流保护**：`anilist.js` 内置全局请求队列（每次请求间隔 2s，匹配 30 req/min 限流）+ 429 自动重试。429 时优先用 `Retry-After` / `X-RateLimit-Reset` 头确定等待时间（fallback 指数退避 2s→4s→8s，最多 3 次）。同关键词的并发搜索通过 `_pendingSearches` Map 自动去重，不重复发请求。
 
 ## Key Gotchas
 
@@ -628,4 +636,6 @@ server/thumbnail-queue.js
 21. **AniList enabled() defaults to true**: `AniListScraper.enabled(config)` returns true when `apiSources` exists but has no anilist entry, or when anilist entry has no `enabled` field. Only `enabled: false` explicitly disables it. This matches the comment "AniList is free, enabled by default".
 22. **anilistId uniqueness in saveLibrary**: `saveLibrary()` checks `anilistId` uniqueness before upsert. If another anime already owns the same `anilistId`, the old owner's AniList fields are cleared (current record wins). This supports manual re-matching where the user intentionally overrides an existing AniList association.
 23. **syncAnilist katakana normalization**: `syncAnilist()` applies `toHiragana()` (Unicode offset U+30A1-30F6 → U+3041-3096) to search terms before querying AniList. This handles Bangumi returning katakana titles (e.g., "ハイ") that AniList stores as hiragana ("はい"), which would otherwise return 0 search results.
-24. **[bgmN] MetaMatch 跳过搜索**: SSE 流式同步和批量同步中，有 `bangumiId` 的条目直接 `fetchMetadata('bangumi', id)` 取元数据，跳过 `matchSeason()` 的多轮搜索 + 季度链。`matchedSeason` 从条目已有值保留。非 [bgmN] 条目仍走完整搜索路径。
+24. **[bgmN] MetaMatch 跳过搜索**: SSE 流式同步中，有 `bangumiId` 的条目直接 `fetchMetadata('bangumi', id)` 取元数据，跳过 `matchSeason()` 的多轮搜索 + 季度链。`matchedSeason` 从条目已有值保留。非 [bgmN] 条目仍走完整搜索路径。
+25. **`saveLibrary()` normalizes anilistId=-1 → null**: `db.saveLibrary()` converts `anilistId` 的 sentinel 值 `-1` 为 `null` 再写入 SQLite。`db.updateAnime()` 不做此归一化（保留 `-1` 在 DB 中）。详情页懒加载 banner 只对 `anilistId` 非空且非 `-1` 的条目触发，避免无限重试。
+26. **SSE-only MetaMatch**: MetaMatch 批量匹配只有 SSE 流式路径（`/api/library/sync/stream`），无 batch POST fallback。不再有 `POST /api/library/sync`（`handleLibrarySync` 已删除）。`mmCanStream()` 检测函数和 `mmSyncViaBatch()` 一并删除。

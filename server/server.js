@@ -194,7 +194,6 @@ const routeTable = [
   // Library
   { method: 'GET', path: '/api/library', handler: H.handleGetLibrary },
   { method: 'POST', path: '/api/library/sync-anilist-backfill', handler: H.handleAnilistBackfill },
-  { method: 'POST', path: '/api/library/sync', handler: H.handleLibrarySync },
   { method: 'GET', path: '/api/library/sync/stream', handler: H.handleLibrarySyncStream },
   { method: 'OPTIONS', path: '/api/library/sync/stream', handler: (req, res) => {
     res.writeHead(204, {

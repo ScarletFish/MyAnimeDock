@@ -501,44 +501,70 @@ async function resolveAnilistId(anime, config) {
   let anilistId = anime.anilistId;
   if (anilistId) return anilistId;
 
+  // 搜索词按精度分两级：
+  //   高精度（同脚本，与 AniList 字段直接对应）→ 优先尝试，命中即停
+  //   降级（跨脚本，匹配率较低）→ 高精度全失败时才用
   const romaji = extractRomajiTitle(anime.infobox);
-  const searchTitles = [
+  const primaryTerms = [
     romaji,
     anime.bangumiTitleJp,
+  ].filter(Boolean);
+  const fallbackTerms = [
     anime.bangumiTitleEn,
     anime.title,
     anime.bangumiTitle,
   ].filter(Boolean);
+
+  // 去重（跨级去重，避免降级重复搜高精度已经失败了的词）
   const seen = new Set();
-  const unique = searchTitles.filter(t => { const k = t.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; });
+  const primary = primaryTerms.filter(t => { const k = t.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; });
+  const fallback = fallbackTerms.filter(t => { const k = t.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; });
 
-  for (const t of unique) {
-    try {
-      const query = toHiragana(t);
-      const results = await anilist.search(query, source);
-      if (results.length === 0) continue;
-      const bestItem = pickBestBySimilarity(t, results);
-      if (bestItem) {
-        const matchTitle = bestItem.name_cn || bestItem.name || '';
-        const score = sorensenDice(t, matchTitle);
-        if (score >= 0.5) {
-          anilistId = bestItem.id;
-          break;
+  async function trySearch(terms) {
+    for (const t of terms) {
+      try {
+        const query = toHiragana(t);
+        const results = await anilist.search(query, source);
+        if (results.length === 0) continue;
+        const bestItem = pickBestBySimilarity(t, results);
+        if (bestItem) {
+          const matchTitle = bestItem.name_cn || bestItem.name || '';
+          const score = sorensenDice(t, matchTitle);
+          if (score >= 0.5) {
+            anilistId = bestItem.id;
+            // 搜索结果已包含 bannerImage 和 title_english，直接保存
+            // 避免后续 syncAnilistDetail 再次调 DETAIL_QUERY
+            if (bestItem.bannerImage) {
+              anime.anilistBanner = bestItem.bannerImage;
+            }
+            if (bestItem.title_english) {
+              anime.anilistTitleEn = bestItem.title_english;
+            }
+            return true;
+          }
         }
+      } catch (e) {
+        logger.warn(`AniList search failed for "${t}": ${e.message}`);
       }
-    } catch (e) {
-      logger.warn(`AniList search failed for "${t}": ${e.message}`);
     }
+    return false;
   }
 
-  if (!anilistId) {
-    anime.anilistId = -1;
-    logger.info(`resolveAnilistId: no match for "${anime.title}" (bgmId=${anime.bangumiId})`);
-    return null;
+  // 1. 高精度词：romaji / 日文名 → 匹配则直接返回
+  if (await trySearch(primary)) {
+    anime.anilistId = anilistId;
+    return anilistId;
   }
 
-  anime.anilistId = anilistId;
-  return anilistId;
+  // 2. 降级词：英文 / 文件夹名 / 中文名
+  if (await trySearch(fallback)) {
+    anime.anilistId = anilistId;
+    return anilistId;
+  }
+
+  anime.anilistId = -1;
+  logger.info(`resolveAnilistId: no match for "${anime.title}" (bgmId=${anime.bangumiId})`);
+  return null;
 }
 
 /**
@@ -585,6 +611,16 @@ async function syncAnilist(anime, config, bannerDir, coverDir) {
 
   const anilistId = await resolveAnilistId(anime, config);
   if (!anilistId) return null;
+
+  // resolveAnilistId 已从搜索结果提取 banner 和英文标题 → 跳过 DETAIL_QUERY
+  if (anime.anilistBanner) {
+    const anilist = registry.get('anilist');
+    // 后台下载 banner（非阻塞）
+    if (anilist && anime.anilistBanner.startsWith('http')) {
+      anilist.downloadBanner(anime.anilistBanner, bannerDir, anilistId).catch(() => {});
+    }
+    return { anilistId, localBanner: anime.anilistBanner, anilistTitleEn: anime.anilistTitleEn };
+  }
 
   return syncAnilistDetail(anime, config, bannerDir, coverDir);
 }

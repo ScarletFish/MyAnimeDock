@@ -8,9 +8,9 @@ const ANILIST_API = 'https://graphql.anilist.co';
 const ANILIST_IMAGE_BASE = 'https://s4.anilist.co/file';
 const TIMEOUT = 5000;
 
-// Rate limiter: ensure minimum 1.5s gap between requests
+// Rate limiter: ensure minimum 2s gap between requests (AniList 30 req/min limit)
 let _lastRequestTime = 0;
-const MIN_REQUEST_INTERVAL = 1500;
+const MIN_REQUEST_INTERVAL = 2000;
 const MAX_RETRIES = 2;
 const RETRY_BASE_DELAY = 1500;
 
@@ -63,6 +63,15 @@ async function tryFetch(url, options = {}) {
       const res = await fetchWithTimeout(url, options);
       if (res.ok) return res;
       const text = await res.text();
+      if (res.status === 429) {
+        const retryAfter = res.headers.get('Retry-After');
+        const rateLimitReset = res.headers.get('X-RateLimit-Reset');
+        const err = new Error(`AniList API error (429): ${text.substring(0, 200)}`);
+        err.status = 429;
+        err.retryAfter = retryAfter ? parseInt(retryAfter) : null;
+        err.rateLimitReset = rateLimitReset ? parseInt(rateLimitReset) : null;
+        throw err;
+      }
       if (text.includes('fetch failed') || text.includes('ECONNREFUSED')) {
         useCurlFallback = true;
         curlFallbackUntil = Date.now() + CURL_COOLDOWN;
@@ -167,6 +176,7 @@ query ($ids: [Int!]) {
   Page(perPage: 50) {
     media(id_in: $ids, type: ANIME) {
       id
+      bannerImage
       title { romaji english native }
       coverImage { large }
       meanScore
@@ -206,11 +216,6 @@ class AniListScraper {
 
   async graphqlRequest(query, variables = {}) {
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-      if (attempt > 0) {
-        const delay = RETRY_BASE_DELAY * Math.pow(2, attempt - 1);
-        logger.info(`Retry ${attempt}/${MAX_RETRIES} after ${delay}ms`);
-        await new Promise(r => setTimeout(r, delay));
-      }
       await rateLimitWait();
       const body = JSON.stringify({ query, variables });
       try {
@@ -225,10 +230,29 @@ class AniListScraper {
         }
         return data.data;
       } catch (e) {
-        if (e.message.includes('429') && attempt < MAX_RETRIES) {
-          logger.warn(`AniList 429 rate limited, will retry (${attempt + 1}/${MAX_RETRIES})`);
+        if (attempt >= MAX_RETRIES) throw e;
+
+        // 结构化 429（含 Retry-After / X-RateLimit-Reset 头）
+        if (e.status === 429) {
+          const retryMs = e.retryAfter
+            ? e.retryAfter * 1000
+            : e.rateLimitReset
+              ? Math.max(1000, e.rateLimitReset * 1000 - Date.now())
+              : RETRY_BASE_DELAY * Math.pow(2, attempt);
+          const retrySec = Math.ceil(retryMs / 1000);
+          logger.warn(`AniList 429 rate limited, waiting ${retrySec}s (${attempt + 1}/${MAX_RETRIES})`);
+          await new Promise(r => setTimeout(r, retryMs));
           continue;
         }
+
+        // 非结构化 429（curl fallback 等路径）
+        if (e.message.includes('429')) {
+          const delay = RETRY_BASE_DELAY * Math.pow(2, attempt);
+          logger.warn(`AniList 429 (fallback), retry in ${delay}ms (${attempt + 1}/${MAX_RETRIES})`);
+          await new Promise(r => setTimeout(r, delay));
+          continue;
+        }
+
         throw e;
       }
     }
@@ -236,6 +260,15 @@ class AniListScraper {
 
   async search(keyword, source) {
     if (source) this.setSource(source);
+
+    // 请求去重：相同 keyword 的进行中请求共享 Promise（parallelMap 并发时重用）
+    if (!this._pendingSearches) this._pendingSearches = new Map();
+    const dedupKey = `${this.apiBase}:${keyword}`;
+    if (this._pendingSearches.has(dedupKey)) {
+      logger.debug(`anilist.search: 去重 keyword="${keyword}" → 复用进行中请求`);
+      return this._pendingSearches.get(dedupKey);
+    }
+
     // Check search cache first
     if (this._registry) {
       const cached = this._registry._searchCache?.get(keyword);
@@ -244,47 +277,59 @@ class AniListScraper {
         return cached.results;
       }
     }
-    logger.debug(`anilist.search: 请求 API keyword="${keyword}"`);
-    try {
-      const data = await this.graphqlRequest(SEARCH_QUERY, {
-        search: keyword,
-        type: 'ANIME',
-      });
-      const results = (data?.Page?.media || []).map(m => ({
-        id: m.id,
-        bannerImage: m.bannerImage || null,
-        name: m.title.romaji || m.title.english,
-        name_cn: m.title.native || m.title.romaji,
-        original_name: m.title.native,
-        title_romaji: m.title.romaji,
-        title_english: m.title.english,
-        title_native: m.title.native,
-        coverUrl: m.coverImage?.large || m.coverImage?.medium || null,
-        rating: m.meanScore ? Number((m.meanScore / 10).toFixed(1)) : null,
-        episodes: m.episodes,
-        status: m.status,
-        format: m.format,
-        season: m.season,
-        seasonYear: m.seasonYear,
-        relations: (m.relations?.edges || []).map(e => ({
-          relationType: e.relationType,
-          id: e.node.id,
-          title: e.node.title.romaji,
-          title_native: e.node.title.native,
-          format: e.node.format,
-          episodes: e.node.episodes,
-        })),
-        source: 'anilist',
-      }));
-      logger.debug(`anilist.search: API 返回 ${results.length} 条, top="${results[0]?.name || '无'}"`);
-      results.forEach((r, i) => {
-        logger.debug(`  result[${i}]: id=${r.id} name="${r.name}" format=${r.format} ${r.seasonYear||'?'} ${r.season||'?'}`);
-      });
-      return results;
-    } catch (e) {
-      logger.error('search failed:', e.message);
-      return [];
-    }
+
+    const promise = (async () => {
+      logger.debug(`anilist.search: 请求 API keyword="${keyword}"`);
+      try {
+        const data = await this.graphqlRequest(SEARCH_QUERY, {
+          search: keyword,
+          type: 'ANIME',
+        });
+        const results = (data?.Page?.media || []).map(m => ({
+          id: m.id,
+          bannerImage: m.bannerImage || null,
+          name: m.title.romaji || m.title.english,
+          name_cn: m.title.native || m.title.romaji,
+          original_name: m.title.native,
+          title_romaji: m.title.romaji,
+          title_english: m.title.english,
+          title_native: m.title.native,
+          coverUrl: m.coverImage?.large || m.coverImage?.medium || null,
+          rating: m.meanScore ? Number((m.meanScore / 10).toFixed(1)) : null,
+          episodes: m.episodes,
+          status: m.status,
+          format: m.format,
+          season: m.season,
+          seasonYear: m.seasonYear,
+          relations: (m.relations?.edges || []).map(e => ({
+            relationType: e.relationType,
+            id: e.node.id,
+            title: e.node.title.romaji,
+            title_native: e.node.title.native,
+            format: e.node.format,
+            episodes: e.node.episodes,
+          })),
+          source: 'anilist',
+        }));
+        logger.debug(`anilist.search: API 返回 ${results.length} 条, top="${results[0]?.name || '无'}"`);
+        results.forEach((r, i) => {
+          logger.debug(`  result[${i}]: id=${r.id} name="${r.name}" format=${r.format} ${r.seasonYear||'?'} ${r.season||'?'}`);
+        });
+        // 写入搜索缓存，后续相同关键词直接命中（resolveAnilistId 等自动受益）
+        if (this._registry?._searchCache) {
+          this._registry._searchCache.set(keyword, { results, timestamp: Date.now() });
+        }
+        return results;
+      } catch (e) {
+        logger.error('search failed:', e.message);
+        return [];
+      } finally {
+        this._pendingSearches.delete(dedupKey);
+      }
+    })();
+
+    this._pendingSearches.set(dedupKey, promise);
+    return promise;
   }
 
   async getDetail(id) {

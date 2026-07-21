@@ -87,7 +87,7 @@ async function mmLoadModalData() {
       specialSuffix: a.specialSuffix || null,
       parsedSeason: a.matchedSeason || a.season || (a.specialSuffix ? null : 1),
       episodeCount: a.episodes ? a.episodes.length : 0,
-      status: 'pending',
+      status: a.bangumiId ? 'matched' : 'pending',
       error: null,
       pinyinTitle: a.pinyinTitle || '',
       matchedSeason: a.matchedSeason || null,
@@ -105,6 +105,8 @@ async function mmLoadModalData() {
       localCover: a.localCover || null,
       bangumiTitle: a.bangumiTitle,
       season: a.matchedSeason || a.season,
+      anilistId: a.anilistId,
+      anilistBanner: a.anilistBanner || null,
     }));
 
     mmUpdateUI();
@@ -608,6 +610,39 @@ function mmRenderPanel(item) {
     }
   }
 
+  // ID 绑定信息
+  let idInfoHtml = '';
+  if (item.status === 'matched') {
+    const bgmId = item.meta?.bangumiId;
+    const alId = item.anilistId;
+    const hasBanner = item.anilistBanner ? '✅ 已获取' : '❌ 未获取';
+    const parts = [];
+    if (bgmId) {
+      parts.push(`<span class="mm-panel-id-item">
+        <span class="mm-panel-id-label">Bangumi</span>
+        <code class="mm-panel-id-value">${escHtml(String(bgmId))}</code>
+        <a class="mm-panel-id-link" href="https://bgm.tv/subject/${bgmId}" target="_blank" rel="noopener">打开</a>
+      </span>`);
+    }
+    if (alId != null && alId !== -1) {
+      parts.push(`<span class="mm-panel-id-item">
+        <span class="mm-panel-id-label">AniList</span>
+        <code class="mm-panel-id-value">${escHtml(String(alId))}</code>
+        <a class="mm-panel-id-link" href="https://anilist.co/anime/${alId}" target="_blank" rel="noopener">打开</a>
+      </span>`);
+    } else {
+      parts.push(`<span class="mm-panel-id-item">
+        <span class="mm-panel-id-label">AniList</span>
+        <span class="mm-panel-id-value">—</span>
+      </span>`);
+    }
+    parts.push(`<span class="mm-panel-id-item"><span class="mm-panel-id-label">Banner</span><span class="mm-panel-id-value">${hasBanner}</span></span>`);
+    idInfoHtml = `<div class="mm-panel-section">
+      <div class="mm-panel-label">ID 绑定</div>
+      <div class="mm-panel-ids">${parts.join('')}</div>
+    </div>`;
+  }
+
   // Error
   let errorHtml = '';
   if (item.status === 'failed' && item.error) {
@@ -639,9 +674,7 @@ function mmRenderPanel(item) {
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
         重新搜索</button>`;
     } else if (item.status === 'failed') {
-      actionsHtml = `<button class="btn mm-panel-action-btn" onclick="mmStartResearch('${item.animeId}')">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-        重试匹配</button>`;
+      // 失败不提供"重试匹配"按钮——搜不到重试也没用，走手动修正
     }
   }
 
@@ -676,6 +709,7 @@ function mmRenderPanel(item) {
     </div>
     <div class="mm-panel-scroll">
       ${summaryHtml}
+      ${idInfoHtml}
       ${errorHtml}
       ${keywordsHtml}
       ${actionsHtml ? `<div class="mm-panel-actions">${actionsHtml}</div>` : ''}
@@ -710,12 +744,15 @@ async function mmSearchForFix(animeId) {
     }
 
     mmFixResults = results;
-    resultsDiv.innerHTML = results.map((r, i) => {
+    const typeMap = { 1: '书籍', 2: 'TV', 3: '动画', 4: 'OVA', 5: 'Web', 6: '真人' };
+    resultsDiv.innerHTML = `<div class="mm-fix-result-count">找到 ${results.length} 条结果</div>` +
+      results.map((r, i) => {
       const title = r.name_cn || r.name || r.title || '—';
       const subtitle = r.name || '';
       const coverSrc = r.images?.small || r.images?.grid || r.coverUrl || r.image?.large || r.image?.medium || '';
       const year = r.date || '';
       const rating = r.rating?.score ? r.rating.score.toFixed(1) : (r.score || '');
+      const typeLabel = r.type ? (typeMap[r.type] || r.type) : '';
       return `
         <div class="search-result-item" onclick="mmApplyFix('${animeId}', ${i})">
           <img class="search-result-cover" src="${escAttr(coverSrc)}" alt=""
@@ -723,7 +760,7 @@ async function mmSearchForFix(animeId) {
           <div class="search-result-info">
             <div class="search-result-title">${escHtml(title)}</div>
             ${subtitle ? `<div class="search-result-subtitle">${escHtml(subtitle)}</div>` : ''}
-            <div class="search-result-meta">${year}${rating ? ' · ★' + rating : ''}</div>
+            <div class="search-result-meta">${year}${rating ? ' · ★' + rating : ''}${typeLabel ? `<span class="result-type-badge">${escHtml(typeLabel)}</span>` : ''}</div>
           </div>
           <button class="btn btn-primary search-result-btn">选择</button>
         </div>`;
@@ -766,6 +803,8 @@ async function mmApplyFix(animeId, resultIndex) {
       item.coverUrl = a.coverUrl || a.localCover || item.coverUrl;
       item.error = null;
       if (a.matchedSeason != null) item.matchedSeason = a.matchedSeason;
+      item.anilistId = a.anilistId;
+      item.anilistBanner = a.anilistBanner || null;
     } else {
       item.status = 'failed';
       item.error = '获取元数据返回空';
@@ -812,11 +851,7 @@ async function mmStartSync(animeIds) {
   const syncIds = itemsToSync.map(i => i.animeId);
 
   try {
-    if (typeof EventSource !== 'undefined' && await mmCanStream()) {
-      await mmSyncViaSSE(syncIds);
-    } else {
-      await mmSyncViaBatch(syncIds);
-    }
+    await mmSyncViaSSE(syncIds);
   } catch (e) {
     if (!mmSyncCancelled) {
       showToast('同步失败: ' + e.message, 'error');
@@ -868,15 +903,6 @@ function mmCancelSync() {
     mmSyncResolve = null;
   }
   mmUpdateMainAction();
-}
-
-async function mmCanStream() {
-  try {
-    const res = await fetch('/api/library/sync/stream', { method: 'OPTIONS' });
-    return res.ok;
-  } catch {
-    return false;
-  }
 }
 
 // ─── Sync Log Functions ───
@@ -1041,61 +1067,8 @@ async function mmSyncViaSSE(animeIds) {
   });
 }
 
-async function mmSyncViaBatch(animeIds) {
-  const controller = new AbortController();
-  const checkCancel = setInterval(() => {
-    if (mmSyncCancelled) controller.abort();
-  }, 500);
-
-  try {
-    const result = await API.post('/api/library/sync', { animeIds }, controller.signal);
-
-    if (!result?.results) {
-      mmItems.forEach(i => {
-        if (i.status === 'matching') i.status = 'failed';
-      });
-      return;
-    }
-
-    for (const r of result.results) {
-      const item = mmItems.find(i => i.animeId === r.animeId);
-      if (!item) continue;
-
-      if (r.success) {
-        if (r.skipped) {
-          item.status = 'matched';
-        } else if (r.meta) {
-          item.status = 'matched';
-          item.meta = r.meta;
-          item.coverUrl = r.meta.coverUrl || null;
-          item.error = null;
-          if (r.matchedSeason != null) item.matchedSeason = r.matchedSeason;
-          mmAddSyncLogEntry(r.animeId, r.title || item.title || item.folderName || '未知', 'matched', r.meta.bangumiTitle || r.meta.title || '匹配成功');
-        } else {
-          item.status = 'failed';
-          item.error = '无元数据返回';
-          mmAddSyncLogEntry(r.animeId, r.title || item.title || item.folderName || '未知', 'failed', '无元数据返回');
-        }
-      } else {
-        item.status = 'failed';
-        item.error = r.error || '未知错误';
-        mmAddSyncLogEntry(r.animeId, r.title || item.title || item.folderName || '未知', 'failed', r.error || '未知错误');
-      }
-    }
-  } catch (e) {
-    if (e.name === 'AbortError') {
-      mmItems.forEach(i => {
-        if (i.status === 'matching') i.status = 'pending';
-      });
-    } else {
-      throw e;
-    }
-  } finally {
-    clearInterval(checkCancel);
-  }
-}
-
 // ─── Re-search single item ───
+// 委托给 mmStartSync，复用 SSE 实时进度和同步日志展示
 
 async function mmStartResearch(animeId) {
   const item = mmItems.find(i => i.animeId === animeId);
@@ -1105,36 +1078,7 @@ async function mmStartResearch(animeId) {
   item.error = null;
   item.meta = null;
   mmUpdateUI();
-
-  mmSyncInProgress = true;
-  mmUpdateMainAction();
-
-  try {
-    const result = await API.post('/api/library/sync', { animeIds: [animeId] });
-    if (result?.results?.[0]) {
-      const r = result.results[0];
-      if (r.success && r.meta) {
-        item.status = 'matched';
-        item.meta = r.meta;
-        item.coverUrl = r.meta.coverUrl || null;
-        item.error = null;
-      } else {
-        item.status = 'failed';
-        item.error = r.error || '匹配失败';
-      }
-    } else {
-      item.status = 'failed';
-      item.error = '无返回结果';
-    }
-  } catch (e) {
-    item.status = 'failed';
-    item.error = e.message;
-    showToast('重新搜索失败: ' + e.message, 'error');
-  }
-
-  mmSyncInProgress = false;
-  mmUpdateUI();
-  mmUpdateMainAction();
+  mmStartSync([animeId]);
 }
 
 // ─── Expose globals ───

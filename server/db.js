@@ -476,7 +476,7 @@ async function saveLibrary(data) {
           pinyinTitle: a.pinyinTitle,
           metadata: metadataStr,
           matchedSeason: a.matchedSeason ?? null,
-          anilistId: a.anilistId ?? null,
+          anilistId: a.anilistId != null && a.anilistId !== -1 ? a.anilistId : null,
           anilistBanner: a.anilistBanner ?? null,
           anilistCover: a.anilistCover ?? null,
           anilistTitleEn: a.anilistTitleEn ?? null,

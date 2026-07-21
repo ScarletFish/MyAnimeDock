@@ -1542,6 +1542,44 @@
   font-family: var(--font-body);
   border: 1px solid var(--border);
 }
+.mm-panel-section {
+  margin-top: var(--space-4);
+}
+.mm-panel-ids {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  background: var(--bg-surface);
+  border-radius: var(--radius-sm);
+  border-left: 2px solid rgba(var(--accent-rgb), 0.3);
+  padding: var(--space-3);
+}
+.mm-panel-id-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: calc(0.75rem * var(--scale));
+  color: var(--fg-secondary);
+}
+.mm-panel-id-label {
+  color: var(--fg-muted);
+}
+.mm-panel-id-value {
+  font-family: var(--font-mono);
+  color: var(--fg-primary);
+  background: var(--bg-elevated);
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+.mm-panel-id-link {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: calc(0.6875rem * var(--scale));
+  margin-left: 2px;
+}
+.mm-panel-id-link:hover {
+  text-decoration: underline;
+}
 .mm-panel-scroll {
   flex: 1;
   overflow-y: auto;
@@ -1584,7 +1622,7 @@
 }
 
 /* ─── Fix Search ─── */
-.mm-fix-section { margin-top: var(--space-1); }
+.mm-fix-section { margin-top: var(--space-1); border-top: 1px solid var(--border); padding-top: var(--space-4); }
 .mm-fix-search {
   display: flex;
   gap: var(--space-2);
@@ -1610,12 +1648,39 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  max-height: 320px;
-  overflow-y: auto;
   margin-top: var(--space-2);
-  scrollbar-width: none;
 }
-.mm-fix-results::-webkit-scrollbar { display: none; }
+
+/* ─── Fix Search Result Overrides (panel context) ─── */
+.mm-fix-result-count {
+  font-size: calc(0.75rem * var(--scale));
+  color: var(--fg-muted);
+  margin-bottom: var(--space-2);
+}
+.mm-fix-results .search-result-item {
+  background: var(--bg-elevated);
+  padding: 12px 16px;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+.mm-fix-results .search-result-item:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+.mm-fix-results .search-result-cover {
+  width: 56px;
+  height: 80px;
+}
+.result-type-badge {
+  display: inline-block;
+  font-size: calc(0.65rem * var(--scale));
+  font-weight: var(--fw-semibold);
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.1);
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  margin-left: 6px;
+  vertical-align: middle;
+  line-height: 1.4;
+}
 
 /* ─── MetaMatch Modal ─── */
 

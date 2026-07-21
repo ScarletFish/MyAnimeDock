@@ -94,7 +94,7 @@ scripts/           → copy-sidecar-deps.js, migrate-to-sqlite.js
 - **API 调用**: `await API.get('/api/...')`, `API.post()`, `API.del()`（`api.js` 封装）
 - **XSS 防护**: 所有用户数据用 `escHtml()` / `escAttr()` 包裹
 - **封面动画**: GSAP Flip（`detail.js` 中 `animateHeroCoverFlip()`），创建 `position:fixed` overlay → `Flip.getState()` → DOM 变化 → `Flip.from(state, { absolute: true })`
-- **元数据来源：只有 Bangumi**: Bangumi 是唯一元数据来源（标题、封面、简介、评分、标签）。AniList 仅用于罗马音标题 + seasonChain 季度链。
+- **元数据来源：只有 Bangumi**: Bangumi 是唯一元数据来源（标题、封面、简介、评分、标签）。AniList 仅用于罗马音标题 + seasonChain 季度链 + banner 图。
 - **播放会话追踪**: `activePlays` Map（内存），每 10s 精细化更新 SQLite，mpv 关闭时落盘
 - **细粒度数据持久化**: 每个 API 端点只写入实际修改的 SQLite 表，避免全量 `saveData()` 导致 nodemon 误重启
 - **bangumiId 精准匹配**: `extractBgmId(name)` 从文件夹名提取 `[bgmN]` 数字 ID 作为主键（`String(bangumiId)`），手动导入项使用 `parsedTitle + Season`
@@ -103,7 +103,7 @@ scripts/           → copy-sidecar-deps.js, migrate-to-sqlite.js
 - **多主题系统**: 6 种色彩主题（default/amber/ocean/sakura/emerald/violet）+ 独立 dark/light 模式，底部 dock 选择器切换即时生效
 - **GSAP 引用**: `public/vendor/gsap/`（从 `node_modules/gsap/dist/` 拷贝），不经过 npm 构建；`index.html` 中 `<script>` 直接加载
 - **Discovery 扁平扫描**: `data.scannedTree` 存扁平 leaf 数组（含 `parentChain`），旧树格式在 `/api/browse` 时自动展平
-- **MetaMatch 批量匹配**: `metamatch.js` 列表+面板布局，SSE 流式同步 `/api/library/sync/stream`，支持取消、重试
+- **MetaMatch 批量匹配**: `metamatch.js` 列表+面板布局，SSE 流式同步（仅 `/api/library/sync/stream`，无 batch fallback）。有 `bangumiId` 的条目跳过搜索直取元数据。AniList ID 在流内 resolve + 流末批量 `batchGetDetails` 补 banner。支持取消、重试、手动修正。同步日志实时展示 searching→fetching→matched/failed 三阶段进度。
 - **MyList 状态管理**: 导入时自动创建 MyList 条目（默认 `watching`），删除动画时自动标记 `completed`
 - **Modal 弹窗模式**: `.modal-overlay` 包裹 `.modal`，overlay `onclick` 支持点击遮罩层关闭；右上角 `.modal-close-btn` 显式关闭
 - **UI 组件工厂**（`components.js`）: `createDropdown({ containerId, options, storageKey, onSelect })` 统一下拉菜单（状态 + 渲染 + click-outside）；`createFilterBar({ container, options, initial, onChange })` 统一筛选栏。新增 UI 优先用工厂，避免重复写 toggle/render/click-outside

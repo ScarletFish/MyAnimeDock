@@ -242,7 +242,7 @@ module.exports = {
         }
         processed++;
         if (processed % 5 === 0) await Promise.all([db.saveLibrary(data), saveScannedTree(data.scannedTree)]);
-      }, 2);
+      }, 5);
 
       // 批量补全缺 banner 的条目（一次 `id_in` 查询处理最多 50 条，代替 N 次独立 DETAIL_QUERY）
       const anilistScraper = registry.get('anilist');

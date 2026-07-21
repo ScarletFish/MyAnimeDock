@@ -518,8 +518,13 @@ async function syncAnilistDetail(anime, config, bannerDir, coverDir) {
 
   if (meta.bannerImage) {
     anime.anilistBanner = meta.bannerImage;
-    // Background cache: download banner locally (non-blocking)
-    anilist.downloadBanner(meta.bannerImage, bannerDir, anilistId).catch(() => {});
+    // Download banner locally — on cache hit returns local path immediately
+    try {
+      const localPath = await anilist.downloadBanner(meta.bannerImage, bannerDir, anilistId);
+      if (localPath) anime.anilistBanner = localPath;
+    } catch (_) {
+      // Remote URL remains as fallback
+    }
   } else {
     anime.anilistBanner = '__none__'; // 标记为"已确认无横幅"，避免重复查询
   }
@@ -577,7 +582,10 @@ async function syncAnilist(anime, config, bannerDir, coverDir) {
   if (bestItem.bannerImage) {
     anime.anilistBanner = bestItem.bannerImage;
     if (bestItem.bannerImage.startsWith('http')) {
-      anilist.downloadBanner(bestItem.bannerImage, bannerDir, anilistId).catch(() => {});
+      try {
+        const localPath = await anilist.downloadBanner(bestItem.bannerImage, bannerDir, anilistId);
+        if (localPath) anime.anilistBanner = localPath;
+      } catch (_) {}
     }
   }
   if (bestItem.title_english) {

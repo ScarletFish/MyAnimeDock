@@ -288,7 +288,10 @@ module.exports = {
               for (const anime of matches) {
                 if (media.bannerImage) {
                   anime.anilistBanner = media.bannerImage;
-                  anilistScraper.downloadBanner(media.bannerImage, bannerDir, media.id).catch(() => {});
+                  try {
+                    const localPath = await anilistScraper.downloadBanner(media.bannerImage, bannerDir, media.id);
+                    if (localPath) anime.anilistBanner = localPath;
+                  } catch (_) {}
                 } else {
                   anime.anilistBanner = '__none__'; // 标记为"已确认无横幅"，避免重复查询
                 }

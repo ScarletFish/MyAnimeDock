@@ -274,7 +274,7 @@ describe('syncAnilistDetail — mock API', () => {
       const result = await syncAnilistDetail(anime, MATCHING_CONFIG, '/tmp/banners', '/tmp/covers');
       assert.equal(result.anilistId, 28900);
       assert.equal(result.localBanner, 'https://example.com/banner.jpg');
-      assert.equal(anime.anilistBanner, 'https://example.com/banner.jpg');
+      assert.equal(anime.anilistBanner, '/banners/al-28900.jpg'); // downloadBanner 返回本地路径
       assert.equal(anime.anilistTitleEn, 'Yuru Yuri');
     } finally { restore(); }
   });

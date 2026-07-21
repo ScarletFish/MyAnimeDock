@@ -170,7 +170,8 @@ async function searchViaAniList(registry, bangumi, searchTerm, config) {
   const anilist = registry.get('anilist');
   if (!anilist || !anilist.enabled(config)) {
     logger.debug(`searchViaAniList: "${searchTerm}" → AniList 不可用，直搜 Bangumi`);
-    return searchBangumi(bangumi, searchTerm, config);
+    const fallbackResults = await searchBangumi(bangumi, searchTerm, config);
+    return { bangumiResults: fallbackResults, anilistId: null };
   }
 
   try {
@@ -184,7 +185,8 @@ async function searchViaAniList(registry, bangumi, searchTerm, config) {
       anilistResults = await anilist.search(searchTerm, source);
       if (anilistResults.length === 0) {
         logger.warn(`searchViaAniList: "${searchTerm}" → 重试仍无结果，降级直接搜 Bangumi`);
-        return searchBangumi(bangumi, searchTerm, config);
+        const retryResults = await searchBangumi(bangumi, searchTerm, config);
+        return { bangumiResults: retryResults, anilistId: null };
       }
       logger.info(`searchViaAniList: 重试成功，获取到 ${anilistResults.length} 条`);
     }
@@ -196,15 +198,16 @@ async function searchViaAniList(registry, bangumi, searchTerm, config) {
       const bangumiResults = await searchBangumi(bangumi, jpTitle, config);
       if (bangumiResults.length > 0) {
         logger.debug(`searchViaAniList: "${searchTerm}" → 通过日文标题 "${jpTitle}" 找到 ${bangumiResults.length} 个 Bangumi 结果`);
-        return bangumiResults;
+        return { bangumiResults, anilistId: anilistResults[0].id };
       }
       logger.debug(`searchViaAniList: "${searchTerm}" → 日文标题 "${jpTitle}" 在 Bangumi 无结果`);
     }
 
-    return [];
+    return { bangumiResults: [], anilistId: null };
   } catch (e) {
     logger.error('AniList search failed, fallback to Bangumi:', e.message);
-    return searchBangumi(bangumi, searchTerm, config);
+    const errorResults = await searchBangumi(bangumi, searchTerm, config);
+    return { bangumiResults: errorResults, anilistId: null };
   }
 }
 
@@ -228,7 +231,7 @@ async function searchBangumiBySeason(registry, bangumi, baseTitle, season, confi
   const anilist = registry.get('anilist');
   if (!anilist || !anilist.enabled(config)) {
     logger.debug(`searchBangumiBySeason: "${baseTitle}" S${season} → AniList 不可用`);
-    return [];
+    return { bangumiResults: [], anilistId: null };
   }
 
   try {
@@ -245,7 +248,7 @@ async function searchBangumiBySeason(registry, bangumi, baseTitle, season, confi
       logger.debug(`searchBangumiBySeason: 重试后 AniList 返回 ${alResults.length} 条`);
       if (alResults.length === 0) {
         logger.warn(`searchBangumiBySeason: "${baseTitle}" S${season} → 重试仍无结果，放弃 season 路径`);
-        return [];
+        return { bangumiResults: [], anilistId: null };
       }
       logger.info(`searchBangumiBySeason: 重试成功，进入 season 匹配`);
     }
@@ -269,20 +272,21 @@ async function searchBangumiBySeason(registry, bangumi, baseTitle, season, confi
     const target = candidates[season - 1];
     if (!target) {
       logger.debug(`searchBangumiBySeason: "${baseTitle}" S${season} → candidates[${season-1}] 不存在（只有 ${candidates.length} 条 TV）`);
-      return [];
+      return { bangumiResults: [], anilistId: null };
     }
 
     const nativeTitle = target.title_native || target.name;
     if (!nativeTitle) {
       logger.debug(`searchBangumiBySeason: "${baseTitle}" S${season} → target 无 nativeTitle`);
-      return [];
+      return { bangumiResults: [], anilistId: null };
     }
 
     logger.info(`Season lookup: "${baseTitle}" S${season} → "${nativeTitle}" (${target.seasonYear || '?'} ${target.season || '?'}, ${target.format})`);
-    return await searchBangumi(bangumi, nativeTitle, config);
+    const bgResults = await searchBangumi(bangumi, nativeTitle, config);
+    return { bangumiResults: bgResults, anilistId: target.id };
   } catch (e) {
     logger.error('Season-specific AniList lookup failed:', e.message);
-    return [];
+    return { bangumiResults: [], anilistId: null };
   }
 }
 
@@ -307,9 +311,12 @@ async function matchSeason(registry, keyword, folderParsed, videoCount, config) 
   //    AniList provides seasonYear/season metadata → sort temporally →
   //    find the N-th entry's native title → precise Bangumi match.
   let results = [];
+  let matchedAnilistId = null;
   if (folderParsed.season) {
     logger.info(`matchSeason: 有 season=${folderParsed.season} → 进入 searchBangumiBySeason 路径`);
-    results = await searchBangumiBySeason(registry, bangumi, folderParsed.cleanTitle, folderParsed.season, config);
+    const seasonResult = await searchBangumiBySeason(registry, bangumi, folderParsed.cleanTitle, folderParsed.season, config);
+    results = seasonResult.bangumiResults;
+    matchedAnilistId = seasonResult.anilistId;
     logger.info(`matchSeason: searchBangumiBySeason 返回 ${results.length} 条结果`);
   } else {
     logger.info(`matchSeason: 无 season → 跳过 searchBangumiBySeason，进入 fallback 路径`);
@@ -324,7 +331,9 @@ async function matchSeason(registry, keyword, folderParsed, videoCount, config) 
       const isBaseTitle = term === (folderParsed.cleanTitle || folderParsed.title);
       logger.info(`matchSeason: fallback 迭代 term="${term}" isBaseTitle=${isBaseTitle}`);
       if (isBaseTitle) {
-        results = await searchViaAniList(registry, bangumi, term, config);
+        const alResult = await searchViaAniList(registry, bangumi, term, config);
+        results = alResult.bangumiResults;
+        if (alResult.anilistId) matchedAnilistId = alResult.anilistId;
       } else {
         results = await searchBangumi(bangumi, term, config);
       }
@@ -355,6 +364,7 @@ async function matchSeason(registry, keyword, folderParsed, videoCount, config) 
     source: 'bangumi',
     matchedSeason: folderParsed.season || null,
     _detail: detail,
+    anilistId: matchedAnilistId,
   };
 }
 
@@ -513,6 +523,7 @@ async function resolveAnilistId(anime, config) {
     anime.bangumiTitleEn,
     anime.title,
     anime.bangumiTitle,
+    anime.folderName,
   ].filter(Boolean);
 
   // 去重（跨级去重，避免降级重复搜高精度已经失败了的词）
@@ -523,24 +534,27 @@ async function resolveAnilistId(anime, config) {
   async function trySearch(terms) {
     for (const t of terms) {
       try {
-        const query = toHiragana(t);
-        const results = await anilist.search(query, source);
-        if (results.length === 0) continue;
-        const bestItem = pickBestBySimilarity(t, results);
-        if (bestItem) {
-          const matchTitle = bestItem.name_cn || bestItem.name || '';
-          const score = sorensenDice(t, matchTitle);
-          if (score >= 0.5) {
-            anilistId = bestItem.id;
-            // 搜索结果已包含 bannerImage 和 title_english，直接保存
-            // 避免后续 syncAnilistDetail 再次调 DETAIL_QUERY
-            if (bestItem.bannerImage) {
-              anime.anilistBanner = bestItem.bannerImage;
+        // 先试原文（罗马音/katakana），原文搜不到再试 hiragana 降级
+        const queries = [...new Set([t, toHiragana(t)].filter(Boolean))];
+        for (const query of queries) {
+          const results = await anilist.search(query, source);
+          if (results.length === 0) continue;
+          const bestItem = pickBestBySimilarity(t, results);
+          if (bestItem) {
+            const matchTitle = bestItem.name_cn || bestItem.name || '';
+            const score = sorensenDice(t, matchTitle);
+            if (score >= 0.5) {
+              anilistId = bestItem.id;
+              // 搜索结果已包含 bannerImage 和 title_english，直接保存
+              // 避免后续 syncAnilistDetail 再次调 DETAIL_QUERY
+              if (bestItem.bannerImage) {
+                anime.anilistBanner = bestItem.bannerImage;
+              }
+              if (bestItem.title_english) {
+                anime.anilistTitleEn = bestItem.title_english;
+              }
+              return true;
             }
-            if (bestItem.title_english) {
-              anime.anilistTitleEn = bestItem.title_english;
-            }
-            return true;
           }
         }
       } catch (e) {

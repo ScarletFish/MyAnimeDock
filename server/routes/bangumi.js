@@ -12,9 +12,18 @@ module.exports = {
       let { keyword } = JSON.parse(body);
       if (!keyword) { jsonResp(res, 400, { error: 'keyword is required' }); return; }
       keyword = keyword.replace(/[~～]/g, '').trim();
-      const { registry } = require('../scrapers');
-      const results = await registry.searchAll(keyword, config);
-      jsonResp(res, 200, { results: results.filter(r => r.source !== 'anilist') });
+      const { registry, searchViaAniList } = require('../scrapers');
+      let results = await registry.searchAll(keyword, config);
+      results = results.filter(r => r.source !== 'anilist');
+      // Bangumi 直搜无结果时，走 AniList 桥接反查日文名（与批量匹配路径一致）
+      if (results.length === 0) {
+        const bangumi = registry.get('bangumi');
+        if (bangumi) {
+          const bridge = await searchViaAniList(registry, bangumi, keyword, config);
+          results = bridge.bangumiResults;
+        }
+      }
+      jsonResp(res, 200, { results });
     } catch (e) {
       jsonResp(res, 500, { error: e.message });
     }
@@ -52,6 +61,7 @@ module.exports = {
       Object.assign(anime, meta);
       if (matchInfo) {
         if (matchInfo.matchedSeason != null) anime.matchedSeason = matchInfo.matchedSeason;
+        if (matchInfo.anilistId) anime.anilistId = matchInfo.anilistId;
       }
       // AniList 双源同步（手动同步时重置 -1 重新搜索）
       const bannerDir = path.join(DATA_DIR, 'banners');

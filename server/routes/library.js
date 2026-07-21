@@ -222,6 +222,12 @@ module.exports = {
             Object.assign(anime, meta);
           // Cover resize removed — browser handles display scaling
             if (matchedSeason != null) anime.matchedSeason = matchedSeason;
+            // 从 matchSeason 直接保存 AniList ID（searchViaAniList 已查到但之前丢弃了）
+            if (match && match.anilistId) {
+              anime.anilistId = match.anilistId;
+              if (match.anilistBanner) anime.anilistBanner = match.anilistBanner;
+              if (match.anilistTitleEn) anime.anilistTitleEn = match.anilistTitleEn;
+            }
             if (timedOut) return;
             send('progress', { animeId, success: true, meta, matchedSeason });
             // 只在流内解析 anilistId（搜索结果已预取 banner），不阻塞调 DETAIL

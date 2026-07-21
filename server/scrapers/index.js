@@ -520,6 +520,8 @@ async function syncAnilistDetail(anime, config, bannerDir, coverDir) {
     anime.anilistBanner = meta.bannerImage;
     // Background cache: download banner locally (non-blocking)
     anilist.downloadBanner(meta.bannerImage, bannerDir, anilistId).catch(() => {});
+  } else {
+    anime.anilistBanner = '__none__'; // 标记为"已确认无横幅"，避免重复查询
   }
   if (meta.anilistTitleEn) anime.anilistTitleEn = meta.anilistTitleEn;
 

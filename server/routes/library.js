@@ -111,7 +111,8 @@ module.exports = {
 
     // 懒加载 banner：已有 anilistId 但缺 banner 时异步补全（不阻塞响应）
     // 仅针对有 anilistId 的条目 —— SSE 同步和 handleBangumiFetch 已处理 AniList 解析
-    if (anime.anilistId && anime.anilistId !== -1 && !anime.anilistBanner) {
+    // 跳过已确认无横幅的条目（anilistBanner === '__none__'）
+    if (anime.anilistId && anime.anilistId !== -1 && !anime.anilistBanner && anime.anilistBanner !== '__none__') {
       const { syncAnilistDetail } = require('../scrapers');
       const bannerDir = path.join(DATA_DIR, 'banners');
       const coverDir = path.join(DATA_DIR, 'covers');
@@ -269,9 +270,12 @@ module.exports = {
         if (processed % 5 === 0) await Promise.all([db.saveLibrary(data), saveScannedTree(data.scannedTree)]);
       }, 5);
 
+      // 通知前端进入收尾阶段（banner 获取等）
+      send('finalizing', { message: '正在获取封面横幅…' });
+
       // 批量补全缺 banner 的条目（一次 `id_in` 查询处理最多 50 条，代替 N 次独立 DETAIL_QUERY）
       const anilistScraper = registry.get('anilist');
-      const needBanner = data.library.filter(a => a.anilistId && a.anilistId !== -1 && !a.anilistBanner);
+      const needBanner = data.library.filter(a => a.anilistId && a.anilistId !== -1 && !a.anilistBanner && a.anilistBanner !== '__none__');
       if (needBanner.length > 0 && anilistScraper) {
         const ids = [...new Set(needBanner.map(a => a.anilistId))];
         logger.info(`Batch AniList detail: ${ids.length} ids (${needBanner.length} items)`);
@@ -285,6 +289,8 @@ module.exports = {
                 if (media.bannerImage) {
                   anime.anilistBanner = media.bannerImage;
                   anilistScraper.downloadBanner(media.bannerImage, bannerDir, media.id).catch(() => {});
+                } else {
+                  anime.anilistBanner = '__none__'; // 标记为"已确认无横幅"，避免重复查询
                 }
                 if (media.title?.english) anime.anilistTitleEn = media.title.english;
               }

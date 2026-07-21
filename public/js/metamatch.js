@@ -24,6 +24,15 @@ function mmOpenModal() {
   if (!modal) return;
   openModal(modal, {
     onClose: function() {
+      // 同步中关闭弹窗 → 确认对话框
+      if (mmSyncInProgress) {
+        if (!confirm('匹配尚未完成，退出将中断正在进行的匹配。\n已匹配的条目数据不会丢失，未完成的条目可重新匹配。\n\n确定退出？')) {
+          // 用户取消关闭 → 重新显示弹窗
+          modal.classList.add('show');
+          document.body.style.overflow = 'hidden';
+          return;
+        }
+      }
       mmClosePanel();
       mmSelectedId = null;
       mmSelectedIds.clear();
@@ -615,7 +624,7 @@ function mmRenderPanel(item) {
   if (item.status === 'matched') {
     const bgmId = item.meta?.bangumiId;
     const alId = item.anilistId;
-    const hasBanner = item.anilistBanner ? '✅ 已获取' : '❌ 未获取';
+    const hasBanner = item.anilistBanner === '__none__' ? '— 该条目无横幅' : (item.anilistBanner ? '✅ 已获取' : '❌ 未获取');
     const parts = [];
     if (bgmId) {
       parts.push(`<span class="mm-panel-id-item">
@@ -1031,6 +1040,23 @@ async function mmSyncViaSSE(animeIds) {
       } catch (_) {}
     });
 
+    es.addEventListener('finalizing', (e) => {
+      if (mmSyncCancelled) return;
+      try {
+        const data = JSON.parse(e.data);
+        // 在同步日志末尾添加一条收尾状态
+        const msg = data.message || '正在完成收尾工作…';
+        // 检查是否已有 finalizing 条目，避免重复
+        const existing = mmSyncLog.find(entry => entry.animeId === '__finalizing__');
+        if (existing) {
+          existing.detail = msg;
+        } else {
+          mmSyncLog.push({ animeId: '__finalizing__', searchTerm: '收尾', status: 'fetching', detail: msg });
+        }
+        mmRenderSyncLog();
+      } catch (_) {}
+    });
+
     es.addEventListener('cancelled', () => {
       cleanup();
     });
@@ -1039,6 +1065,9 @@ async function mmSyncViaSSE(animeIds) {
       es.close();
       mmSSESource = null;
       mmSyncResolve = null;
+      // 移除收尾状态条目
+      const fi = mmSyncLog.findIndex(e => e.animeId === '__finalizing__');
+      if (fi !== -1) mmSyncLog.splice(fi, 1);
       if (!mmSyncCancelled) {
         let changed = false;
         mmItems.forEach(i => {

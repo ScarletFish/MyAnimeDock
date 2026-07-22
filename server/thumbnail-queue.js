@@ -8,6 +8,19 @@ const { getFfmpegPath } = require('./lib/utils');
 const { DATA_DIR } = require('./lib/config');
 const logger = require('./logger').child('[THUMBQ]');
 
+/** Thumbnail cache hash seed — change to invalidate all cached thumbnails */
+const THUMB_HASH_SEED = 'v1';
+
+/** Remove a 0-byte thumbnail file so it gets regenerated next time */
+function _cleanupZeroByte(thumbPath) {
+  try {
+    if (fs.existsSync(thumbPath) && fs.statSync(thumbPath).size === 0) {
+      logger.warn(`Thumbnail is 0 bytes, deleting: ${thumbPath}`);
+      fs.unlinkSync(thumbPath);
+    }
+  } catch { /* best-effort cleanup */ }
+}
+
 class ThumbnailQueue {
   /**
    * @param {Map} activePlays — server.js 的 activePlays Map，用于空闲检测
@@ -76,7 +89,7 @@ class ThumbnailQueue {
   // ── 内部 ──
 
   _thumbHash(filePath) {
-    return crypto.createHash('md5').update(filePath + 'mid').digest('hex');
+    return crypto.createHash('md5').update(filePath + THUMB_HASH_SEED).digest('hex');
   }
 
   _scheduleDrain() {
@@ -89,27 +102,33 @@ class ThumbnailQueue {
     this._drainTimer = null;
     if (this._processing) return;
     this._processing = true;
+    try {
+      while (this._queue.length > 0) {
+        // mpv 运行时暂停，30s 后重试
+        if (this._activePlays.size > 0) {
+          logger.info('mpv active, pausing thumbnail queue');
+          this._drainTimer = setTimeout(() => this._drain(), 30000);
+          return;
+        }
 
-    while (this._queue.length > 0) {
-      // mpv 运行时暂停，30s 后重试
-      if (this._activePlays.size > 0) {
-        logger.info('mpv active, pausing thumbnail queue');
-        this._drainTimer = setTimeout(() => this._drain(), 30000);
-        this._processing = false;
-        return;
+        const batch = this._queue.splice(0, this._concurrency);
+        await Promise.all(batch.map(item => this._generate(item)));
       }
-
-      const batch = this._queue.splice(0, this._concurrency);
-      await Promise.all(batch.map(item => this._generate(item)));
+    } finally {
+      this._processing = false;
     }
-
-    this._processing = false;
     logger.info('Thumbnail queue drained');
   }
 
   _generate({ filePath, duration }) {
     const ffmpegPath = getFfmpegPath();
     if (!ffmpegPath) return Promise.resolve();
+
+    // 源文件可能在入队后被删除/移动
+    if (!fs.existsSync(filePath)) {
+      logger.warn(`Source file gone, skipping thumbnail: ${filePath}`);
+      return Promise.resolve();
+    }
 
     // 取 25% 位置，下限 30s 上限 120s
     let time = 60;
@@ -129,9 +148,28 @@ class ThumbnailQueue {
         '-ss', String(time), '-i', filePath,
         '-vframes', '1', '-q:v', '5', '-y', thumbPath, '-loglevel', 'error',
       ]);
-      const timeout = setTimeout(() => { ff.kill(); resolve(); }, 60000);
-      ff.on('close', () => { clearTimeout(timeout); resolve(); });
-      ff.on('error', () => { clearTimeout(timeout); resolve(); });
+      let resolved = false;
+      const timeout = setTimeout(() => { ff.kill(); resolve(); resolved = true; }, 60000);
+      ff.on('close', (code) => {
+        if (resolved) return;
+        resolved = true;
+        clearTimeout(timeout);
+        if (code !== 0) {
+          logger.warn(`ffmpeg exit code ${code} for ${filePath}`);
+          _cleanupZeroByte(thumbPath);
+          return resolve();
+        }
+        // 验证输出文件可用（非 0 字节）
+        _cleanupZeroByte(thumbPath);
+        resolve();
+      });
+      ff.on('error', (err) => {
+        if (resolved) return;
+        resolved = true;
+        clearTimeout(timeout);
+        logger.warn(`ffmpeg spawn error for ${filePath}: ${err.message}`);
+        resolve();
+      });
     });
   }
 }

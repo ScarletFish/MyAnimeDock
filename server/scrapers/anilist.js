@@ -1,12 +1,11 @@
 const fs = require('fs');
 const path = require('path');
-const { spawnSync } = require('child_process');
-const { nodeFetch } = require('./node-fetch');
 const logger = require('../logger').child('[ANILIST]');
+
+const { curlFetch, fetchWithTimeout, downloadImage, isNetworkError, isCurlFallbackActive, activateCurlFallback, DEFAULT_TIMEOUT, USER_AGENT } = require('../lib/http-fetch');
 
 const ANILIST_API = 'https://graphql.anilist.co';
 const ANILIST_IMAGE_BASE = 'https://s4.anilist.co/file';
-const TIMEOUT = 5000;
 
 // Rate limiter: ensure minimum 2s gap between requests (AniList 30 req/min limit)
 let _lastRequestTime = 0;
@@ -21,82 +20,6 @@ async function rateLimitWait() {
     await new Promise(r => setTimeout(r, MIN_REQUEST_INTERVAL - elapsed));
   }
   _lastRequestTime = Date.now();
-}
-
-let useCurlFallback = false;
-let curlFallbackUntil = 0;
-const CURL_COOLDOWN = 60000;
-
-function curlFetch(url, body) {
-  const args = ['-s', '--max-time', '8', '-X', 'POST',
-    '-H', 'Content-Type: application/json',
-    '-d', body,
-    '-H', 'Accept: application/json',
-    url];
-  const result = spawnSync('curl', args, { timeout: 10000, encoding: 'utf-8' });
-  if (result.error) throw new Error(`curl 调用失败: ${result.error.message}`);
-  if (result.stderr) logger.error('curl stderr:', result.stderr);
-  if (!result.stdout || !result.stdout.trim()) throw new Error('curl 返回空响应');
-  return JSON.parse(result.stdout);
-}
-
-async function fetchWithTimeout(url, options = {}) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT);
-  try {
-    const fetcher = typeof fetch === 'function' ? fetch : nodeFetch;
-    const res = await fetcher(url, { ...options, signal: controller.signal });
-    return res;
-  } catch (e) {
-    if (e.name === 'AbortError') throw new Error('AniList API 请求超时');
-    if (e.code === 'ECONNREFUSED') throw new Error('无法连接到 AniList API');
-    throw e;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-async function tryFetch(url, options = {}) {
-  if (!useCurlFallback || Date.now() > curlFallbackUntil) {
-    useCurlFallback = false;
-    try {
-      const res = await fetchWithTimeout(url, options);
-      if (res.ok) return res;
-      const text = await res.text();
-      if (res.status === 429) {
-        const retryAfter = res.headers.get('Retry-After');
-        const rateLimitReset = res.headers.get('X-RateLimit-Reset');
-        const err = new Error(`AniList API error (429): ${text.substring(0, 200)}`);
-        err.status = 429;
-        err.retryAfter = retryAfter ? parseInt(retryAfter) : null;
-        err.rateLimitReset = rateLimitReset ? parseInt(rateLimitReset) : null;
-        throw err;
-      }
-      if (text.includes('fetch failed') || text.includes('ECONNREFUSED')) {
-        useCurlFallback = true;
-        curlFallbackUntil = Date.now() + CURL_COOLDOWN;
-        logger.info('Network fetch failed, falling back to curl');
-      } else {
-        throw new Error(`AniList API error (${res.status}): ${text.substring(0, 200)}`);
-      }
-    } catch (e) {
-      if (e.message.includes('fetch failed') || e.message.includes('ECONNREFUSED') || e.message.includes('ENOTFOUND') || e.message.includes('请求超时')) {
-        useCurlFallback = true;
-        curlFallbackUntil = Date.now() + CURL_COOLDOWN;
-        logger.info('Network fetch failed, falling back to curl');
-      } else {
-        throw e;
-      }
-    }
-  }
-
-  const body = options.body || null;
-  try {
-    return { json: () => Promise.resolve(curlFetch(url, body)) };
-  } catch (e) {
-    useCurlFallback = false;
-    throw e;
-  }
 }
 
 // GraphQL Queries
@@ -214,12 +137,44 @@ class AniListScraper {
     return this;
   }
 
+  async tryFetch(url, options = {}) {
+    if (!isCurlFallbackActive()) {
+      try {
+        const res = await fetchWithTimeout(url, options);
+        if (res.ok) return res;
+        const text = await res.text();
+        if (res.status === 429) {
+          const err = new Error(`AniList API error (429): ${text.substring(0, 200)}`);
+          err.status = 429;
+          err.retryAfter = res.headers.get('Retry-After') ? parseInt(res.headers.get('Retry-After')) : null;
+          err.rateLimitReset = res.headers.get('X-RateLimit-Reset') ? parseInt(res.headers.get('X-RateLimit-Reset')) : null;
+          throw err;
+        }
+        if (text.includes('fetch failed') || text.includes('ECONNREFUSED')) {
+          activateCurlFallback();
+        } else {
+          throw new Error(`AniList API error (${res.status}): ${text.substring(0, 200)}`);
+        }
+      } catch (e) {
+        if (e.status === 429) throw e; // Let graphqlRequest handle rate limits
+        if (isNetworkError(e)) {
+          activateCurlFallback();
+        } else {
+          throw e;
+        }
+      }
+    }
+
+    const body = options.body || null;
+    return { json: () => curlFetch('POST', url, body) };
+  }
+
   async graphqlRequest(query, variables = {}) {
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       await rateLimitWait();
       const body = JSON.stringify({ query, variables });
       try {
-        const res = await tryFetch(this.apiBase, {
+        const res = await this.tryFetch(this.apiBase, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
           body,
@@ -345,53 +300,21 @@ class AniListScraper {
 
   async downloadCover(imageUrl, coverDir, subjectId) {
     if (!imageUrl) return null;
-    if (!fs.existsSync(coverDir)) fs.mkdirSync(coverDir, { recursive: true });
-
     const ext = path.extname(new URL(imageUrl).pathname) || '.jpg';
     const filename = `anilist-${subjectId}${ext}`;
-    const filepath = path.join(coverDir, filename);
-
-    if (fs.existsSync(filepath)) return filepath;
-
-    let buffer;
-    if (useCurlFallback) {
-      const result = spawnSync('curl', ['-s', '--max-time', String(TIMEOUT/1000), imageUrl], { timeout: TIMEOUT });
-      if (result.error) throw new Error(`封面下载失败: ${result.error.message}`);
-      buffer = result.stdout;
-    } else {
-      const res = await fetchWithTimeout(imageUrl);
-      if (!res.ok) throw new Error(`Cover download failed: ${res.status}`);
-      buffer = Buffer.from(await res.arrayBuffer());
-    }
-    fs.writeFileSync(filepath, buffer);
-    if (ext.match(/\.(jpg|jpeg|png|webp)$/i)) {
-      try { require('../lib/utils').preGenerateCovers(filepath); } catch (_) {}
-    }
-    return filepath;
+    return downloadImage(imageUrl, coverDir, filename, {
+      onSaved: (fp) => {
+        if (ext.match(/\.(jpg|jpeg|png|webp)$/i)) {
+          try { require('../lib/utils').preGenerateCovers(fp); } catch (_) {}
+        }
+      },
+    });
   }
 
   async downloadBanner(imageUrl, bannerDir, subjectId) {
     if (!imageUrl) return null;
-    if (!fs.existsSync(bannerDir)) fs.mkdirSync(bannerDir, { recursive: true });
-
-    const ext = '.jpg';
-    const filename = `al-${subjectId}${ext}`;
-    const filepath = path.join(bannerDir, filename);
-
-    if (fs.existsSync(filepath)) return filepath;
-
-    let buffer;
-    if (useCurlFallback) {
-      const result = spawnSync('curl', ['-s', '--max-time', String(TIMEOUT/1000), imageUrl], { timeout: TIMEOUT });
-      if (result.error) throw new Error(`Banner download failed: ${result.error.message}`);
-      buffer = result.stdout;
-    } else {
-      const res = await fetchWithTimeout(imageUrl);
-      if (!res.ok) throw new Error(`Banner download failed: ${res.status}`);
-      buffer = Buffer.from(await res.arrayBuffer());
-    }
-    fs.writeFileSync(filepath, buffer);
-    return filepath;
+    const filename = `al-${subjectId}.jpg`;
+    return downloadImage(imageUrl, bannerDir, filename, { timeout: DEFAULT_TIMEOUT });
   }
 
   async fetchMetadata(title, coverDir, subjectId) {

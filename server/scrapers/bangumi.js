@@ -1,77 +1,7 @@
 const fs = require('fs');
 const path = require('path');
-const { spawnSync } = require('child_process');
-const { nodeFetch } = require('./node-fetch');
 const logger = require('../logger').child('[BANGUMI]');
-
-const USER_AGENT = 'anime-manager (https://github.com/ScarletFish/Gallery)';
-const TIMEOUT = 5000;
-
-let useCurlFallback = false;
-let curlFallbackUntil = 0;
-const CURL_COOLDOWN = 60000;
-
-function curlFetch(method, url, body) {
-  const args = ['-s', '--max-time', '8', '-X', method];
-  if (body) args.push('-H', 'Content-Type: application/json', '-d', body);
-  args.push('-H', `User-Agent: ${USER_AGENT}`, url);
-  const result = spawnSync('curl', args, { timeout: 10000, encoding: 'utf-8' });
-  if (result.error) throw new Error(`curl 调用失败: ${result.error.message}`);
-  if (result.stderr) logger.error('curl stderr:', result.stderr);
-  if (!result.stdout || !result.stdout.trim()) throw new Error('curl 返回空响应');
-  return JSON.parse(result.stdout);
-}
-
-async function fetchWithTimeout(url, options = {}) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT);
-  try {
-    const fetcher = typeof fetch === 'function' ? fetch : nodeFetch;
-    const res = await fetcher(url, { ...options, signal: controller.signal });
-    return res;
-  } catch (e) {
-    if (e.name === 'AbortError') throw new Error('Bangumi API 请求超时');
-    if (e.code === 'ECONNREFUSED') throw new Error('无法连接到 Bangumi API，请检查网络');
-    throw e;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-async function tryFetch(url, options = {}) {
-  if (!useCurlFallback || Date.now() > curlFallbackUntil) {
-    useCurlFallback = false;
-    try {
-      const res = await fetchWithTimeout(url, options);
-      if (res.ok) return res;
-      const text = await res.text();
-      if (text.includes('illegal base64 data') || text.includes('can\'t decode request body') || (res.status === 403 && text.includes('<html'))) {
-        useCurlFallback = true;
-        curlFallbackUntil = Date.now() + CURL_COOLDOWN;
-        logger.info('Detected proxy/Cloudflare interference (HTTP ' + res.status + '), falling back to curl');
-      } else {
-        throw new Error(`Bangumi API error (${res.status}): ${text.substring(0, 200)}`);
-      }
-    } catch (e) {
-      if (e.message.includes('fetch failed') || e.message.includes('ECONNREFUSED') || e.message.includes('ENOTFOUND') || e.message.includes('请求超时')) {
-        useCurlFallback = true;
-        curlFallbackUntil = Date.now() + CURL_COOLDOWN;
-        logger.info('Network fetch failed, falling back to curl');
-      } else {
-        throw e;
-      }
-    }
-  }
-
-  const method = (options.method || 'GET').toUpperCase();
-  const body = options.body || null;
-  try {
-    return { json: () => Promise.resolve(curlFetch(method, url, body)) };
-  } catch (e) {
-    useCurlFallback = false;
-    throw e;
-  }
-}
+const { curlFetch, fetchWithTimeout, downloadImage, isNetworkError, isCloudflareInterference, isCurlFallbackActive, activateCurlFallback, USER_AGENT } = require('../lib/http-fetch');
 
 class BangumiScraper {
   constructor() {
@@ -82,31 +12,45 @@ class BangumiScraper {
   /**
    * Check if config has at least one bangumi source
    */
-  enabled(config) {
+enabled(config) {
     if (config?.apiSources) {
-      const src = config.apiSources.find(s => s.type === 'bangumi');
-      if (src?.url) this.apiBase = src.url.replace(/\/+$/, '');
-      return !!src;
-    }
-    // Legacy fallback
-    if (config?.scrapers?.bangumi?.apiBase) {
-      this.apiBase = config.scrapers.bangumi.apiBase.replace(/\/+$/, '');
+      return !!config.apiSources.find(s => s.type === 'bangumi');
     }
     return config?.scrapers?.bangumi?.enabled !== false;
   }
 
-  /**
-   * Set active source from apiSources entry
-   */
   setSource(source) {
     if (source?.url) this.apiBase = source.url.replace(/\/+$/, '');
     return this;
   }
 
-  async search(keyword, source) {
+  async tryFetch(url, options = {}) {
+    if (!isCurlFallbackActive()) {
+      try {
+        const res = await fetchWithTimeout(url, options);
+        if (res.ok) return res;
+        const text = await res.text();
+        if (isCloudflareInterference(res.status, text)) {
+          activateCurlFallback();
+        } else {
+          throw new Error(`Bangumi API error (${res.status}): ${text.substring(0, 200)}`);
+        }
+      } catch (e) {
+        if (!isNetworkError(e)) throw e;
+        activateCurlFallback();
+      }
+    }
+
+    // Fall through to curl for Cloudflare/network failures
+    const method = (options.method || 'GET').toUpperCase();
+    const body = options.body || null;
+    return { json: () => curlFetch(method, url, body) };
+  }
+
+async search(keyword, source) {
     if (source) this.setSource(source);
     const url = `${this.apiBase}/v0/search/subjects`;
-    const res = await tryFetch(url, {
+    const res = await this.tryFetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'User-Agent': USER_AGENT },
       body: JSON.stringify({ keyword }),
@@ -117,36 +61,22 @@ class BangumiScraper {
 
   async getSubjectDetail(id) {
     const url = `${this.apiBase}/v0/subjects/${id}`;
-    const res = await tryFetch(url, { headers: { 'User-Agent': USER_AGENT } });
+    const res = await this.tryFetch(url, { headers: { 'User-Agent': USER_AGENT } });
     return res.json();
   }
 
   async downloadCover(imageUrl, coverDir, subjectId) {
     if (!imageUrl) return null;
-    if (!fs.existsSync(coverDir)) fs.mkdirSync(coverDir, { recursive: true });
-
     const urlPath = new URL(imageUrl).pathname;
     const ext = path.extname(urlPath) || '.jpg';
     const filename = `${subjectId}${ext}`;
-    const filepath = path.join(coverDir, filename);
-
-    if (fs.existsSync(filepath)) return filepath;
-
-    let buffer;
-    if (useCurlFallback) {
-      const result = spawnSync('curl', ['-s', '--max-time', String(TIMEOUT/1000), imageUrl], { timeout: TIMEOUT });
-      if (result.error) throw new Error(`封面下载失败: ${result.error.message}`);
-      buffer = result.stdout;
-    } else {
-      const res = await fetchWithTimeout(imageUrl);
-      if (!res.ok) throw new Error(`Cover download failed: ${res.status}`);
-      buffer = Buffer.from(await res.arrayBuffer());
-    }
-    fs.writeFileSync(filepath, buffer);
-    if (ext.match(/\.(jpg|jpeg|png|webp)$/i)) {
-      try { require('../lib/utils').preGenerateCovers(filepath); } catch (_) {}
-    }
-    return filepath;
+    return downloadImage(imageUrl, coverDir, filename, {
+      onSaved: (fp) => {
+        if (ext.match(/\.(jpg|jpeg|png|webp)$/i)) {
+          try { require('../lib/utils').preGenerateCovers(fp); } catch (_) {}
+        }
+      },
+    });
   }
 
   /**
@@ -252,13 +182,13 @@ class BangumiScraper {
 
   async getCharacters(subjectId) {
     const url = `${this.apiBase}/v0/subjects/${subjectId}/characters`;
-    const res = await tryFetch(url, { headers: { 'User-Agent': USER_AGENT } });
+    const res = await this.tryFetch(url, { headers: { 'User-Agent': USER_AGENT } });
     return res.json();
   }
 
   async getPersons(subjectId) {
     const url = `${this.apiBase}/v0/subjects/${subjectId}/persons`;
-    const res = await tryFetch(url, { headers: { 'User-Agent': USER_AGENT } });
+    const res = await this.tryFetch(url, { headers: { 'User-Agent': USER_AGENT } });
     return res.json();
   }
 
@@ -268,7 +198,7 @@ class BangumiScraper {
    */
   async getSubjectRelations(subjectId) {
     const url = `${this.apiBase}/v0/subjects/${subjectId}/subjects`;
-    const res = await tryFetch(url, { headers: { 'User-Agent': USER_AGENT } });
+    const res = await this.tryFetch(url, { headers: { 'User-Agent': USER_AGENT } });
     return res.json(); // [{id, type, name, name_cn, relation, ...}]
   }
 }

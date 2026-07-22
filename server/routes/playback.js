@@ -134,6 +134,7 @@ module.exports = {
               if (cbSid !== sessionId) return;
               const active = activePlays.get(fp);
               if (!active) return;
+              if (active.sessionId !== cbSid) return; // 旧 session 异步清理时避免操作新 session 的数据
               const ep = active.episode;
               ep.progress = progress;
               if (duration > 0) ep.duration = duration;

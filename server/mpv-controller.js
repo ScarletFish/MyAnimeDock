@@ -6,7 +6,7 @@ const fs = require('fs');
 const logger = require('./logger').child('[MPV]');
 
 const WATCHED_RATIO = 0.9;
-let sessionIdCounter = 0;
+const MAX_IPC_RETRIES = 7;
 
 function startMpv(mpvPath, filePath, position, callbacks, sessionId) {
     let currentPos = position || 0;
@@ -43,21 +43,32 @@ function startMpv(mpvPath, filePath, position, callbacks, sessionId) {
     } catch (e) {
         logger.error('mpv spawn threw:', e.message);
         if (callbacks.onError) callbacks.onError(`mpv 启动异常: ${e.message}`);
-        return { stop: () => {}, kill: () => {} };
+        return { stop: () => {} };
     }
     logger.info(`mpv spawned with pid=${mpvProcess.pid}`);
 
     function ipcWrite(obj) {
-        if (ipcClient && running) {
+        if (!ipcClient || !running) return;
+        try {
             ipcClient.write(JSON.stringify(obj) + '\n');
+        } catch (e) {
+            logger.warn('ipcWrite failed:', e.message);
         }
     }
 
+    let ipcRetries = 0;
+
     function connectIPC() {
         if (!running) return;
+        if (ipcRetries >= MAX_IPC_RETRIES) {
+            logger.error('IPC connection failed after max retries');
+            if (callbacks.onError) callbacks.onError('无法连接到 mpv 播放器进程');
+            return;
+        }
 
         ipcClient = net.connect(pipePath, () => {
             logger.info(`IPC connected to ${pipeName}`);
+            ipcRetries = 0;
             ipcWrite({ command: ['observe_property', 1, 'time-pos'] });
             ipcWrite({ command: ['observe_property', 2, 'duration'] });
             ipcWrite({ command: ['observe_property', 3, 'pause'] });
@@ -93,14 +104,24 @@ function startMpv(mpvPath, filePath, position, callbacks, sessionId) {
                             isPaused = msg.data;
                         }
                     }
-                } catch (e) {}
+                } catch (e) {
+                    logger.debug('IPC parse error:', line.substring(0, 100));
+                }
             }
         });
 
         ipcClient.on('error', (err) => {
             logger.error('IPC error:', err.message);
+            try { ipcClient.destroy(); } catch (_) {}
             ipcClient = null;
-            if (running) setTimeout(connectIPC, 1000);
+            ipcRetries++;
+            if (running && ipcRetries < MAX_IPC_RETRIES) {
+                const delay = Math.min(1000 * Math.pow(1.5, ipcRetries - 1), 10000);
+                setTimeout(connectIPC, delay);
+            } else if (running) {
+                logger.error('IPC connection failed after max retries');
+                if (callbacks.onError) callbacks.onError('无法连接到 mpv 播放器进程');
+            }
         });
 
         ipcClient.on('close', () => { ipcClient = null; });
@@ -158,21 +179,20 @@ function startMpv(mpvPath, filePath, position, callbacks, sessionId) {
     });
 
     return {
-        stop: () => { if (running && mpvProcess) mpvProcess.kill(); },
-        kill: () => { if (running && mpvProcess) { mpvProcess.kill(); running = false; } }
+        stop: () => { if (running && mpvProcess) mpvProcess.kill(); }
     };
 }
 
 let activeSession = null;
 
 function start(mpvPath, filePath, position, callbacks, sessionId) {
-    if (activeSession) { activeSession.kill(); activeSession = null; }
+    if (activeSession) { activeSession.stop(); activeSession = null; }
     activeSession = startMpv(mpvPath, filePath, position, callbacks, sessionId);
     return activeSession;
 }
 
 function stopCurrent() {
-    if (activeSession) { activeSession.kill(); activeSession = null; }
+    if (activeSession) { activeSession.stop(); activeSession = null; }
 }
 
 function checkMpvAvailable(mpvPath) {

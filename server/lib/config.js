@@ -70,11 +70,11 @@ function loadScannedTree() {
   }
 }
 
-function saveScannedTree(tree) {
+async function saveScannedTree(tree) {
   try {
-    fs.writeFileSync(SCANNED_TREE_PATH, JSON.stringify(tree, null, 2), 'utf-8');
+    await fs.promises.writeFile(SCANNED_TREE_PATH, JSON.stringify(tree, null, 2), 'utf-8');
   } catch (e) {
-    // logger not available here, error swallowed
+    console.error(`[Config] saveScannedTree: ${e.message}`);
   }
 }
 

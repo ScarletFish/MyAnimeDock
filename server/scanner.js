@@ -13,45 +13,54 @@ function isExtraVideo(fileName) {
   return EXTRA_VIDEO_RE.test(fileName.replace(/\[[^\]]*\]/g, ' '));
 }
 
-const CJK_RE = /[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]/g;
+// No `g` flag: test() without `g` is not stateful and avoids false negatives
+// when the same regex instance is reused across multiple calls.
+const CJK_RE = /[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]/;
 
 function hasLatinLetters(str) {
   return (str || '').replace(/[^a-zA-Z]/g, '').length >= 3;
 }
 
-// ── File operations ────────────────────────────────────────────
+// ── File operations (async) ─────────────────────────────────────
 
 /**
- * Find all video files recursively in a directory
+ * Find all video files recursively in a directory.
+ * Now async — does not block the event loop.
  */
-function findVideos(dir) {
+async function findVideos(dir) {
   const results = [];
   try {
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    const entries = await fs.promises.readdir(dir, { withFileTypes: true });
     for (const entry of entries) {
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) {
-        results.push(...findVideos(full));
+        results.push(...await findVideos(full));
       } else if (VIDEO_EXTS.has(path.extname(entry.name).toLowerCase())) {
-        const stat = fs.statSync(full);
+        const stat = await fs.promises.stat(full);
         results.push({ path: full, name: entry.name, size: stat.size });
       }
     }
-  } catch (e) { /* skip unreadable dirs */ }
+  } catch (e) {
+    // Skip unreadable dirs but log for debugging
+    console.error(`[Scanner] findVideos: cannot read ${dir}: ${e.message}`);
+  }
   return results;
 }
 
 /**
- * Check if a directory has video files directly (not in sub-directories)
+ * Check if a directory has video files directly (not in sub-directories).
  */
-function hasDirectVideos(dir) {
+async function hasDirectVideos(dir) {
   try {
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    const entries = await fs.promises.readdir(dir, { withFileTypes: true });
     return entries.some(e => !e.isDirectory() && VIDEO_EXTS.has(path.extname(e.name).toLowerCase()));
-  } catch (e) { return false; }
+  } catch (e) {
+    console.error(`[Scanner] hasDirectVideos: cannot read ${dir}: ${e.message}`);
+    return false;
+  }
 }
 
-// ── Folder name parsing ───────────────────────────────────────
+// ── Folder name parsing ─────────────────────────────────────────
 
 /**
  * Parse folder name to extract structured anime info using anitomy.
@@ -222,8 +231,8 @@ function fallbackToVideoTitle(parsed, videos) {
  * parentChain is an array of ancestor folder names from mediaDir to parent.
  * parentName is the immediate parent folder name (may differ from chain[-1]).
  */
-function buildLeaf(dirPath, name, parentName, parentChain) {
-  const allVideos = findVideos(dirPath);
+async function buildLeaf(dirPath, name, parentName, parentChain) {
+  const allVideos = await findVideos(dirPath);
   if (allVideos.length === 0) return null;
 
   let parsed = parseFolderName(name);
@@ -297,47 +306,49 @@ function buildLeaf(dirPath, name, parentName, parentChain) {
  * When `collect` is provided, each discovered leaf is also pushed to the collector
  * (enabling `scanMediaDirFlat` without a separate recursive implementation).
  */
-function walkDirs(dirPath, chain, collect) {
+async function walkDirs(dirPath, chain, collect) {
   const children = [];
   const parentName = path.basename(dirPath);
   try {
-    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+    const entries = await fs.promises.readdir(dirPath, { withFileTypes: true });
     const dirs = entries.filter(e => e.isDirectory() && e.name !== 'covers');
     for (const entry of dirs) {
       const fullPath = path.join(dirPath, entry.name);
-      if (hasDirectVideos(fullPath)) {
-        const leaf = buildLeaf(fullPath, entry.name, parentName, chain);
+      if (await hasDirectVideos(fullPath)) {
+        const leaf = await buildLeaf(fullPath, entry.name, parentName, chain);
         if (leaf) {
           if (collect) collect(leaf);
           children.push(leaf);
         }
       } else {
-        const sub = walkDirs(fullPath, [...(chain || []), entry.name], collect);
+        const sub = await walkDirs(fullPath, [...(chain || []), entry.name], collect);
         if (sub.length > 0) {
           children.push({ name: entry.name, path: fullPath, type: 'branch', children: sub });
         }
       }
     }
-  } catch (e) { /* skip unreadable dirs */ }
+  } catch (e) {
+    console.error(`[Scanner] walkDirs: cannot read ${dirPath}: ${e.message}`);
+  }
   return children;
 }
 
 /**
  * Recursively scan a directory's sub-directories for anime entries (tree).
  */
-function scanDir(dirPath, chain) {
+async function scanDir(dirPath, chain) {
   return walkDirs(dirPath, chain || [], null);
 }
 
 /**
  * Scan a single top-level directory and return its tree node.
  */
-function scanTopDir(mediaDir, dirName) {
+async function scanTopDir(mediaDir, dirName) {
   const fullPath = path.join(mediaDir, dirName);
-  if (hasDirectVideos(fullPath)) {
+  if (await hasDirectVideos(fullPath)) {
     return buildLeaf(fullPath, dirName, null, []);
   }
-  const children = scanDir(fullPath, [dirName]);
+  const children = await scanDir(fullPath, [dirName]);
   if (children.length > 0) {
     return { name: dirName, path: fullPath, type: 'branch', children };
   }
@@ -347,12 +358,13 @@ function scanTopDir(mediaDir, dirName) {
 /**
  * Scan media dir and return a flat array of leaf nodes.
  */
-function scanMediaDirFlat(mediaDir) {
+async function scanMediaDirFlat(mediaDir) {
   const results = [];
   try {
-    walkDirs(mediaDir, [], l => results.push(l));
+    await walkDirs(mediaDir, [], l => results.push(l));
   } catch (e) {
-    throw new Error('Failed to scan media directory: ' + e.message);
+    // Preserve stack: re-throw with original error as cause
+    throw new Error(`Failed to scan media directory: ${e.message}`, { cause: e });
   }
   return results;
 }

@@ -6,7 +6,7 @@ const { saveScannedTree, DATA_DIR } = require('../lib/config');
 const { syncAnilist } = require('../scrapers');
 
 module.exports = {
-  handleBrowse(req, res, state) {
+  async handleBrowse(req, res, state) {
     const { data, config, logger } = state;
     if (!config.mediaDir) {
       jsonResp(res, 200, { tree: [], mediaDir: '' });
@@ -28,7 +28,7 @@ module.exports = {
         };
         tree = flatten(tree);
         data.scannedTree = tree;
-        saveScannedTree(data.scannedTree);
+        await saveScannedTree(data.scannedTree);
       }
       for (const n of tree) {
         if (n.type === 'leaf' && n.parsedSeason === 1) n.parsedSeason = null;
@@ -48,7 +48,7 @@ module.exports = {
     }
   },
 
-  handleScan(req, res, state) {
+  async handleScan(req, res, state) {
     const { data, config, logger, pendingNotifications } = state;
     if (!config.mediaDir) {
       jsonResp(res, 400, { error: 'Media directory not configured' });
@@ -62,7 +62,7 @@ module.exports = {
     const send = (obj) => res.write(`data: ${JSON.stringify(obj)}\n\n`);
     try {
       const { scanTopDir } = require('../scanner');
-      const entries = fs.readdirSync(config.mediaDir, { withFileTypes: true });
+      const entries = await fs.promises.readdir(config.mediaDir, { withFileTypes: true });
       const dirs = entries.filter(e => e.isDirectory() && e.name !== 'covers');
       const total = dirs.length;
       const tree = [];
@@ -71,7 +71,7 @@ module.exports = {
       for (let i = 0; i < dirs.length; i++) {
         const entry = dirs[i];
         send({ type: 'progress', current: i + 1, total, folder: entry.name });
-        const node = scanTopDir(config.mediaDir, entry.name);
+        const node = await scanTopDir(config.mediaDir, entry.name);
         if (node) {
           (function flatten(n) {
             if (n.type === 'leaf') {
@@ -100,7 +100,7 @@ module.exports = {
         }
       }
       data.scannedTree = tree;
-      saveScannedTree(data.scannedTree);
+      await saveScannedTree(data.scannedTree);
       send({ type: 'done', tree });
     } catch (e) {
       send({ type: 'error', message: e.message });
@@ -122,7 +122,7 @@ module.exports = {
       for (const item of items) {
         const { folderPath, folderName, parsedTitle, parsedSeason, specialSuffix } = item;
         if (!folderPath || !folderName) continue;
-        const videos = findVideos(folderPath);
+        const videos = await findVideos(folderPath);
         const episodeFiles = videos.filter(v => !isExtraVideo(v.name));
         const scannedNode = data.scannedTree.find(n => n.path === folderPath);
         const existing = data.library.find(a => a.folderPath === folderPath);
@@ -175,7 +175,7 @@ module.exports = {
       // 先存初始数据（暂无封面的条目）
       await db.saveLibrary(data);
       await db.saveMyList(data);
-      saveScannedTree(data.scannedTree);
+      await saveScannedTree(data.scannedTree);
       jsonResp(res, 200, { ok: true, imported });
       // 后台拉取 AniList banner（不影响封面显示）
       const bannerDir = path.join(DATA_DIR, 'banners');
@@ -223,9 +223,9 @@ module.exports = {
         scannedNode.rating = null;
         scannedNode.metadataSource = null;
       }
-      saveScannedTree(data.scannedTree);
-      db.saveLibrary(data);
-      db.saveMyList(data);
+      await saveScannedTree(data.scannedTree);
+      await db.saveLibrary(data);
+      await db.saveMyList(data);
       jsonResp(res, 200, { ok: true });
     } catch (e) {
       jsonResp(res, 400, { error: 'Invalid request body' });
@@ -241,7 +241,7 @@ module.exports = {
       const node = data.scannedTree.find(n => n.path === folderPath);
       if (!node) { jsonResp(res, 404, { error: 'Node not found in scanned tree' }); return; }
       node.excluded = true;
-      saveScannedTree(data.scannedTree);
+      await saveScannedTree(data.scannedTree);
       jsonResp(res, 200, { ok: true });
     } catch (e) {
       jsonResp(res, 400, { error: 'Invalid request body' });
@@ -257,7 +257,7 @@ module.exports = {
       const node = data.scannedTree.find(n => n.path === folderPath);
       if (!node) { jsonResp(res, 404, { error: 'Node not found in scanned tree' }); return; }
       node.excluded = false;
-      saveScannedTree(data.scannedTree);
+      await saveScannedTree(data.scannedTree);
       jsonResp(res, 200, { ok: true });
     } catch (e) {
       jsonResp(res, 400, { error: 'Invalid request body' });

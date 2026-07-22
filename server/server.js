@@ -113,12 +113,11 @@ bangumiPersonal.onTokenChange = (payload) => {
 const bangumiSync = new BangumiSync(bangumiPersonal);
 
 // ── 数据持久化函数 ──
-function saveData(data) {
-  const p1 = db.saveAll(data);
-  if (data.scannedTree !== undefined) {
-    saveScannedTree(data.scannedTree);
-  }
-  return p1;
+async function saveData(data) {
+  await Promise.all([
+    db.saveAll(data),
+    data.scannedTree !== undefined ? saveScannedTree(data.scannedTree) : Promise.resolve(),
+  ]);
 }
 
 async function flushSaves() {
@@ -348,7 +347,7 @@ async function init() {
       const oldData = JSON.parse(oldRaw);
       if (oldData.scannedTree && Array.isArray(oldData.scannedTree) && oldData.scannedTree.length > 0) {
         scannedTree = oldData.scannedTree;
-        saveScannedTree(scannedTree);
+        await saveScannedTree(scannedTree);
         logger.info(`Migrated scannedTree from anime-data.json (${scannedTree.length} nodes)`);
       }
     } catch (e) {

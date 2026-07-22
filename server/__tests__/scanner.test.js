@@ -213,84 +213,84 @@ describe('Scanner — Filesystem Integration', { concurrency: false }, () => {
 
   // ===== findVideos =====
   describe('findVideos', () => {
-    it('finds video files in a directory', () => {
+    it('finds video files in a directory', async () => {
       fs.mkdirSync(path.join(rootDir, 'anime'), { recursive: true });
       touchVideo(rootDir, 'anime/ep01.mkv');
       touchVideo(rootDir, 'anime/ep02.mp4');
-      const videos = findVideos(path.join(rootDir, 'anime'));
+      const videos = await findVideos(path.join(rootDir, 'anime'));
       assert.equal(videos.length, 2);
       assert.ok(videos.every(v => v.path && v.name && v.size >= 0));
     });
 
-    it('finds videos recursively in subdirectories', () => {
+    it('finds videos recursively in subdirectories', async () => {
       fs.mkdirSync(path.join(rootDir, 'anime', 'sub'), { recursive: true });
       touchVideo(rootDir, 'anime/ep01.mkv');
       touchVideo(rootDir, 'anime/sub/ep02.avi');
-      const videos = findVideos(path.join(rootDir, 'anime'));
+      const videos = await findVideos(path.join(rootDir, 'anime'));
       assert.equal(videos.length, 2);
     });
 
-    it('filters out non-video files', () => {
+    it('filters out non-video files', async () => {
       fs.mkdirSync(path.join(rootDir, 'anime'), { recursive: true });
       touchVideo(rootDir, 'anime/ep01.mkv');
-      touchVideo(rootDir, 'anime/cover.jpg');     // not a video ext
+      touchVideo(rootDir, 'anime/cover.jpg');
       touchVideo(rootDir, 'anime/readme.txt');
       fs.writeFileSync(path.join(rootDir, 'anime/.hiddenfile'), '');
-      const videos = findVideos(path.join(rootDir, 'anime'));
+      const videos = await findVideos(path.join(rootDir, 'anime'));
       assert.equal(videos.length, 1);
     });
 
-    it('returns empty array for directory with no video files', () => {
+    it('returns empty array for directory with no video files', async () => {
       fs.mkdirSync(path.join(rootDir, 'empty'), { recursive: true });
       touchVideo(rootDir, 'empty/readme.txt');
-      const videos = findVideos(path.join(rootDir, 'empty'));
+      const videos = await findVideos(path.join(rootDir, 'empty'));
       assert.equal(videos.length, 0);
     });
 
-    it('returns empty array for non-existent directory', () => {
-      const videos = findVideos(path.join(rootDir, 'nonexistent'));
+    it('returns empty array for non-existent directory', async () => {
+      const videos = await findVideos(path.join(rootDir, 'nonexistent'));
       assert.deepEqual(videos, []);
     });
   });
 
   // ===== hasDirectVideos =====
   describe('hasDirectVideos', () => {
-    it('returns true when directory has video files', () => {
+    it('returns true when directory has video files', async () => {
       fs.mkdirSync(path.join(rootDir, 'a'), { recursive: true });
       touchVideo(rootDir, 'a/ep01.mkv');
-      assert.ok(hasDirectVideos(path.join(rootDir, 'a')));
+      assert.ok(await hasDirectVideos(path.join(rootDir, 'a')));
     });
 
-    it('returns false for empty directory', () => {
+    it('returns false for empty directory', async () => {
       fs.mkdirSync(path.join(rootDir, 'b'), { recursive: true });
-      assert.ok(!hasDirectVideos(path.join(rootDir, 'b')));
+      assert.ok(!(await hasDirectVideos(path.join(rootDir, 'b'))));
     });
 
-    it('returns false for directory with only sub-folders', () => {
+    it('returns false for directory with only sub-folders', async () => {
       fs.mkdirSync(path.join(rootDir, 'c', 'sub'), { recursive: true });
       touchVideo(rootDir, 'c/sub/ep01.mkv');
       // c has no videos directly, only a sub-folder has them
-      assert.ok(!hasDirectVideos(path.join(rootDir, 'c')));
+      assert.ok(!(await hasDirectVideos(path.join(rootDir, 'c'))));
     });
 
-    it('returns false for non-existent directory', () => {
-      assert.ok(!hasDirectVideos(path.join(rootDir, 'nonexistent')));
+    it('returns false for non-existent directory', async () => {
+      assert.ok(!(await hasDirectVideos(path.join(rootDir, 'nonexistent'))));
     });
 
-    it('detects .webm as video', () => {
+    it('detects .webm as video', async () => {
       fs.mkdirSync(path.join(rootDir, 'd'), { recursive: true });
       touchVideo(rootDir, 'd/clip.webm');
-      assert.ok(hasDirectVideos(path.join(rootDir, 'd')));
+      assert.ok(await hasDirectVideos(path.join(rootDir, 'd')));
     });
   });
 
   // ===== buildLeaf is internal — tested indirectly via scanMediaDirFlat =====
   describe('buildLeaf (via scanMediaDirFlat)', () => {
-    it('builds a leaf node from a simple anime folder', () => {
+    it('builds a leaf node from a simple anime folder', async () => {
       fs.mkdirSync(path.join(rootDir, 'AnimeTitle'), { recursive: true });
       touchVideo(rootDir, 'AnimeTitle/ep01.mkv');
       touchVideo(rootDir, 'AnimeTitle/ep02.mkv');
-      const leaves = scanMediaDirFlat(rootDir);
+      const leaves = await scanMediaDirFlat(rootDir);
       assert.equal(leaves.length, 1);
       const leaf = leaves[0];
       assert.equal(leaf.type, 'leaf');
@@ -300,20 +300,20 @@ describe('Scanner — Filesystem Integration', { concurrency: false }, () => {
       assert.ok(leaf.parsedTitle, 'should have parsedTitle');
     });
 
-    it('builds leaf with parent chain', () => {
+    it('builds leaf with parent chain', async () => {
       fs.mkdirSync(path.join(rootDir, 'Group', 'AnimeB'), { recursive: true });
       touchVideo(rootDir, 'Group/AnimeB/ep01.mkv');
-      const leaves = scanMediaDirFlat(rootDir);
+      const leaves = await scanMediaDirFlat(rootDir);
       assert.equal(leaves.length, 1);
       assert.deepEqual(leaves[0].parentChain, ['Group']);
     });
 
-    it('includes extras in totalVideoFiles but not videoCount', () => {
+    it('includes extras in totalVideoFiles but not videoCount', async () => {
       fs.mkdirSync(path.join(rootDir, 'AnimeC'), { recursive: true });
       touchVideo(rootDir, 'AnimeC/ep01.mkv');
       touchVideo(rootDir, 'AnimeC/ep02.mkv');
       touchVideo(rootDir, 'AnimeC/NCOP.mkv');  // extra (NCOP without number)
-      const leaves = scanMediaDirFlat(rootDir);
+      const leaves = await scanMediaDirFlat(rootDir);
       assert.equal(leaves.length, 1);
       assert.equal(leaves[0].videoCount, 2);
       assert.equal(leaves[0].totalVideoFiles, 3);
@@ -322,16 +322,16 @@ describe('Scanner — Filesystem Integration', { concurrency: false }, () => {
       assert.ok(extra, 'NCOP.mkv should be in videos list');
     });
 
-    it('returns no leaves for empty folder', () => {
+    it('returns no leaves for empty folder', async () => {
       fs.mkdirSync(path.join(rootDir, 'Empty'), { recursive: true });
-      const leaves = scanMediaDirFlat(rootDir);
+      const leaves = await scanMediaDirFlat(rootDir);
       assert.equal(leaves.length, 0);
     });
 
-    it('sets bangumiId when [bgmN] in name', () => {
+    it('sets bangumiId when [bgmN] in name', async () => {
       fs.mkdirSync(path.join(rootDir, 'Title [bgm12345]'), { recursive: true });
       touchVideo(rootDir, 'Title [bgm12345]/ep01.mkv');
-      const leaves = scanMediaDirFlat(rootDir);
+      const leaves = await scanMediaDirFlat(rootDir);
       assert.equal(leaves.length, 1);
       assert.equal(leaves[0].bangumiId, 12345);
     });
@@ -339,7 +339,7 @@ describe('Scanner — Filesystem Integration', { concurrency: false }, () => {
 
   // ===== scanMediaDirFlat =====
   describe('scanMediaDirFlat', () => {
-    it('returns flat array of all leaf nodes', () => {
+    it('returns flat array of all leaf nodes', async () => {
       // root
       //   AnimeA/     ← direct videos
       //     ep01.mkv
@@ -351,7 +351,7 @@ describe('Scanner — Filesystem Integration', { concurrency: false }, () => {
       fs.mkdirSync(path.join(rootDir, 'Group', 'AnimeB'), { recursive: true });
       touchVideo(rootDir, 'Group/AnimeB/ep01.mkv');
 
-      const results = scanMediaDirFlat(rootDir);
+      const results = await scanMediaDirFlat(rootDir);
       assert.equal(results.length, 2);
 
       const animeA = results.find(l => l.name === 'AnimeA');
@@ -364,24 +364,24 @@ describe('Scanner — Filesystem Integration', { concurrency: false }, () => {
       assert.deepEqual(animeB.parentChain, ['Group']);
     });
 
-    it('skips empty directories', () => {
+    it('skips empty directories', async () => {
       fs.mkdirSync(path.join(rootDir, 'Empty'), { recursive: true });
       fs.mkdirSync(path.join(rootDir, 'AnimeA'), { recursive: true });
       touchVideo(rootDir, 'AnimeA/ep01.mkv');
-      const results = scanMediaDirFlat(rootDir);
+      const results = await scanMediaDirFlat(rootDir);
       assert.equal(results.length, 1);
     });
 
-    it('skips covers directory', () => {
+    it('skips covers directory', async () => {
       fs.mkdirSync(path.join(rootDir, 'covers'), { recursive: true });
       touchVideo(rootDir, 'covers/cover.jpg');
       fs.mkdirSync(path.join(rootDir, 'AnimeA'), { recursive: true });
       touchVideo(rootDir, 'AnimeA/ep01.mkv');
-      const results = scanMediaDirFlat(rootDir);
+      const results = await scanMediaDirFlat(rootDir);
       assert.equal(results.length, 1);
     });
 
-    it('handles deeply nested structure', () => {
+    it('handles deeply nested structure', async () => {
       // root
       //   Franchise/
       //     Season 1/
@@ -392,12 +392,12 @@ describe('Scanner — Filesystem Integration', { concurrency: false }, () => {
       fs.mkdirSync(path.join(rootDir, 'Franchise', 'Season 2'), { recursive: true });
       touchVideo(rootDir, 'Franchise/Season 1/ep01.mkv');
       touchVideo(rootDir, 'Franchise/Season 2/ep01.mkv');
-      const results = scanMediaDirFlat(rootDir);
+      const results = await scanMediaDirFlat(rootDir);
       assert.equal(results.length, 2);
     });
 
-    it('returns empty array for non-existent mediaDir (error caught internally)', () => {
-      const results = scanMediaDirFlat(path.join(rootDir, 'nonexistent'));
+    it('returns empty array for non-existent mediaDir (error caught internally)', async () => {
+      const results = await scanMediaDirFlat(path.join(rootDir, 'nonexistent'));
       assert.deepEqual(results, []);
     });
   });

@@ -1,0 +1,184 @@
+// server/__tests__/routes/mylist.test.js
+// Route handler integration tests for mylist.js
+// Tests that handlers respond with correct status codes and body shapes,
+// and that db save functions are called where expected.
+const { describe, it, before } = require('node:test');
+const assert = require('node:assert');
+const { mockReq, mockRes, mockState } = require('../helpers/mock-http');
+const mylist = require('../../routes/mylist');
+
+describe('mylist route handlers', () => {
+  describe('handleGetMyList', () => {
+    it('returns 200 with merged data when library and myList both exist', () => {
+      const state = mockState({
+        data: {
+          library: [{ id: 'anime-1', title: 'Test Anime', bangumiId: '123', episodes: [{ number: 1, watched: false }, { number: 2, watched: true }] }],
+          myList: [{ animeId: 'anime-1', status: 'watching', rating: 8 }],
+        },
+      });
+      const req = mockReq({ url: '/api/mylist' });
+      const res = mockRes();
+      mylist.handleGetMyList(req, res, state);
+      assert.strictEqual(res._status, 200);
+      assert.ok(Array.isArray(res._body));
+      assert.strictEqual(res._body.length, 1);
+      assert.strictEqual(res._body[0].title, 'Test Anime');
+      assert.strictEqual(res._body[0].status, 'watching');
+      assert.strictEqual(res._body[0].episodeCount, 2);
+      assert.strictEqual(res._body[0].episodesWatched, 1);
+    });
+
+    it('returns 200 with wishlist items when no matching library entry', () => {
+      const state = mockState({
+        data: {
+          library: [],
+          myList: [{ id: 'wish-456', bangumiId: 456, title: 'Wish Anime', status: 'wish' }],
+        },
+      });
+      const req = mockReq({ url: '/api/mylist' });
+      const res = mockRes();
+      mylist.handleGetMyList(req, res, state);
+      assert.strictEqual(res._status, 200);
+      assert.strictEqual(res._body[0].source, 'wishlist');
+      assert.strictEqual(res._body[0].hasLocalFiles, false);
+    });
+  });
+
+  describe('handleUpdateMyListStatus', () => {
+    it('returns 200 and calls saveMyList on valid status update', async () => {
+      let saved = false;
+      const state = mockState({
+        data: { myList: [{ animeId: 'anime-1', status: 'watching' }] },
+        db: { saveMyList: async () => { saved = true; } },
+      });
+      const req = mockReq({ url: '/api/mylist/anime-1/status', method: 'PUT', body: JSON.stringify({ status: 'completed' }) });
+      const res = mockRes();
+      await mylist.handleUpdateMyListStatus(req, res, state);
+      assert.strictEqual(res._status, 200);
+      assert.ok(res._body.ok);
+      assert.ok(saved, 'saveMyList was called');
+    });
+
+    it('returns 400 for invalid status value', async () => {
+      const state = mockState();
+      const req = mockReq({ url: '/api/mylist/anime-1/status', method: 'PUT', body: JSON.stringify({ status: 'invalid' }) });
+      const res = mockRes();
+      await mylist.handleUpdateMyListStatus(req, res, state);
+      assert.strictEqual(res._status, 400);
+      assert.ok(res._body.error);
+    });
+
+    it('returns 400 for missing status field', async () => {
+      const state = mockState();
+      const req = mockReq({ url: '/api/mylist/anime-1/status', method: 'PUT', body: JSON.stringify({}) });
+      const res = mockRes();
+      await mylist.handleUpdateMyListStatus(req, res, state);
+      assert.strictEqual(res._status, 400);
+    });
+  });
+
+  describe('handlePostWishlist', () => {
+    it('returns 200 and saves new wishlist entry', async () => {
+      let saved = false;
+      let savedData = null;
+      const state = mockState({
+        data: { myList: [] },
+        db: {
+          saveMyList: async (data) => {
+            saved = true;
+            savedData = data;
+          },
+        },
+      });
+      const req = mockReq({ url: '/api/wishlist', method: 'POST', body: JSON.stringify({ bangumiId: 789, title: 'Wish Me' }) });
+      const res = mockRes();
+      await mylist.handlePostWishlist(req, res, state);
+      assert.strictEqual(res._status, 200);
+      assert.ok(res._body.ok);
+      assert.ok(saved, 'saveMyList was called');
+      assert.ok(savedData.myList.some(m => m.bangumiId === 789));
+    });
+
+    it('returns 400 when bangumiId is missing', async () => {
+      const state = mockState({ data: { myList: [] } });
+      const req = mockReq({ url: '/api/wishlist', method: 'POST', body: JSON.stringify({ title: 'No ID' }) });
+      const res = mockRes();
+      await mylist.handlePostWishlist(req, res, state);
+      assert.strictEqual(res._status, 400);
+    });
+
+    it('returns 200 with existing entry if duplicate bangumiId', async () => {
+      const state = mockState({
+        data: { myList: [{ bangumiId: 789, title: 'Existing', status: 'wish' }] },
+      });
+      const req = mockReq({ url: '/api/wishlist', method: 'POST', body: JSON.stringify({ bangumiId: 789, title: 'Existing' }) });
+      const res = mockRes();
+      await mylist.handlePostWishlist(req, res, state);
+      assert.strictEqual(res._status, 200);
+      assert.ok(res._body.myList);
+    });
+  });
+
+  describe('handleDeleteMyListItem', () => {
+    it('returns 200 and removes item from myList', async () => {
+      let saved = false;
+      const state = mockState({
+        data: { myList: [{ id: 'del-1', animeId: 'anime-1' }] },
+        db: { saveMyList: async () => { saved = true; } },
+      });
+      const req = mockReq({ url: '/api/mylist/del-1', method: 'DELETE' });
+      const res = mockRes();
+      await mylist.handleDeleteMyListItem(req, res, state);
+      assert.strictEqual(res._status, 200);
+      assert.ok(saved, 'saveMyList was called');
+      assert.strictEqual(state.data.myList.length, 0);
+    });
+  });
+
+  describe('handleDeleteWishlistItem', () => {
+    it('returns 404 when item not found', async () => {
+      const state = mockState({ data: { myList: [] } });
+      const req = mockReq({ url: '/api/wishlist/nonexistent', method: 'DELETE' });
+      const res = mockRes();
+      await mylist.handleDeleteWishlistItem(req, res, state);
+      assert.strictEqual(res._status, 404);
+    });
+
+    it('returns 200 and removes wishlist item', async () => {
+      const state = mockState({
+        data: { myList: [{ id: 'wish-1', bangumiId: 1, title: 'Test', status: 'wish' }] },
+        db: { saveMyList: async () => {} },
+      });
+      const req = mockReq({ url: '/api/wishlist/wish-1', method: 'DELETE' });
+      const res = mockRes();
+      await mylist.handleDeleteWishlistItem(req, res, state);
+      assert.strictEqual(res._status, 200);
+      assert.strictEqual(state.data.myList.length, 0);
+    });
+  });
+
+  describe('handleUpdateMyListItem', () => {
+    it('returns 200 and updates allowed fields', async () => {
+      let saved = false;
+      const state = mockState({
+        data: { myList: [{ id: 'item-1', animeId: 'anime-1', rating: 5, status: 'watching' }] },
+        db: { updateMyListItem: async () => { saved = true; } },
+      });
+      const req = mockReq({ url: '/api/mylist/item-1', method: 'PUT', body: JSON.stringify({ rating: 9, notes: 'Great!' }) });
+      const res = mockRes();
+      await mylist.handleUpdateMyListItem(req, res, state);
+      assert.strictEqual(res._status, 200);
+      assert.ok(saved, 'updateMyListItem was called');
+      assert.strictEqual(state.data.myList[0].rating, 9);
+      assert.strictEqual(state.data.myList[0].notes, 'Great!');
+    });
+
+    it('returns 400 when no valid fields provided', async () => {
+      const state = mockState({ data: { myList: [] } });
+      const req = mockReq({ url: '/api/mylist/item-1', method: 'PUT', body: JSON.stringify({ invalidField: true }) });
+      const res = mockRes();
+      await mylist.handleUpdateMyListItem(req, res, state);
+      assert.strictEqual(res._status, 400);
+    });
+  });
+});

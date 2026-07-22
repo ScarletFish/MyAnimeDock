@@ -1,0 +1,181 @@
+# 后端开发规范 — Backend
+
+## 核心原则
+
+**单机单实例、前后端同仓同发**：没有外部客户端，没有多版本部署。
+
+- API 响应字段改了就改——**不保留旧字段**，不加 deprecated 过渡期，不做向后兼容
+- 前端和后端一起改，一起验证
+- 旧代码/旧字段/旧路由 → 直接删。留着的死代码是未来的 bug 源
+- 唯一的"兼容"场景：SQLite 数据库 schema 迁移（通过 Prisma migration，只加字段不改现有数据）
+
+## 架构概要
+
+```
+server/
+├── server.js           → HTTP 服务入口，路由注册 + 中间件
+├── db.js               → Prisma/SQLite 封装层
+├── scanner.js           → 媒体目录扫描 + 文件夹名解析
+├── mpv-controller.js    → mpv IPC 播放进度追踪
+├── thumbnail-queue.js   → ffmpeg 缩略图生成队列
+├── logger.js            → [TAG] 结构化日志
+├── bangumi-sync.js      → Push→Merge→Pull 同步引擎
+├── scrapers/            → 元数据抓取器
+├── routes/              → 路由处理模块（8 个 .js）
+└── lib/
+    └── http-fetch.js    → 共享 HTTP 请求层
+```
+
+## 路由层约定
+
+### 文件结构
+
+每个路由文件导出一个函数，接收 `(req, res)`，注册方式：
+
+```js
+// server.js
+const mylistRoutes = require('./routes/mylist');
+app.get('/api/mylist', mylistRoutes.handleGetMyList);
+```
+
+### 路由处理模式
+
+```js
+// routes/example.js
+async function handleAction(req, res) {
+  try {
+    const { id } = req.query;          // GET 参数
+    const body = await parseBody(req); // POST body
+    const data = await doWork(id, body);
+    respondJson(res, 200, data);
+  } catch (err) {
+    respondError(res, 500, err.message);
+  }
+}
+module.exports = { handleAction };
+```
+
+### 规则
+
+| 规则 | 说明 |
+|------|------|
+| 每个 handler 必须 try/catch | 未捕获的 rejection → process.on('unhandledRejection') 兜底，但不应依赖 |
+| 用 `respondJson` / `respondError` / `respondFile` | 统一响应格式 |
+| 路由不直接调 scrapers | scrapers 只通过 `bangumi-sync.js` 或 `routes/library.js` 调用 |
+| 路由不直接写文件 | 写操作委托给 `db.js` 的方法 |
+| 查询参数用 URL 编码 | 路径参数先 `encodeURIComponent` 再拼入 URL |
+| 文件名：kebab-case | `db-manager.js` 而非 `dbManager.js` |
+
+## DB 层约定（db.js）
+
+### 细粒度写入原则
+
+**只写实际修改的表**，禁止无差别调全量 `saveData()`：
+
+```js
+// ✅ 正确
+db.saveLibrary(library);          // 只写 Anime 表
+db.updateEpisodesWatched(...);    // 只写 Episode.progress
+db.saveMemories(memories);        // 只写 Memory 表
+db.updateMyItemStatus(id, 'completed'); // 只写 MyList.status
+
+// ❌ 错误
+db.saveData(library, null, myList, memories); // 全量写，nodemon 误触发重启
+```
+
+### 生命周期
+
+```
+db.loadData() → 读 SQLite 初始化
+  └─ anime, myList, episodes, memories, config, scannedTree
+
+写入路径 (任一):
+  db.saveLibrary(library)          → anime + episodes
+  db.saveMemories(memories)        → memories
+  db.savePlaySessions(sessions)    → playSessions（精细化 10s 间隔 + mpv 关闭 final）
+  db.updateEpisodeProgress(...)    → 单集进度
+  db.updateEpisodesWatched(...)    → 批量标记已看
+  db.updateMyItemStatus(id, s)    → myList 状态
+  db.updateMyListItem(id, item)   → myList 条目
+  db.deletePlaySession(id)        → 删除会话
+  db.saveScannedTree(tree)        → JSON 文件同步写入
+```
+
+### Prisma 注意事项
+
+- `prisma/schema.prisma` 定义表结构
+- 修改 schema → `npm run prisma:migrate` 创建迁移 + `npm run prisma:generate` 重生成客户端
+- 连接串固定 `file:./anime.db`
+- 引擎：pkg 模式下通过 `PRISMA_QUERY_ENGINE_LIBRARY` 环境变量指定
+
+## Scanner 约定
+
+- `parseFolderName(name)` — 纯函数，从文件夹名提取 `{ title, year, season, bangumiId, anilistId, label }`
+- `extractBgmId(name)` — 提取 `[bgmN]` 格式的数字 ID，`String(bangumiId)` 为主键
+- `findVideos(dir)` — 递归查找视频文件（mp4/mkv/avi/mov/wmv）
+- `scanMediaDirFlat(dir)` — 扫描返回扁平 leaf 数组（含 `parentChain`）
+- 手动导入项使用 `parsedTitle + Season` 作 ID
+
+### isExtraVideo 判断
+
+视频文件是否"额外内容"（NCED/OVA/PV 等），基于文件名模式匹配。
+
+## mpv-controller 约定
+
+- `activePlays` Map（内存）追踪当前播放会话
+- 每 10s 精细化更新 SQLite
+- mpv IPC 管道通过 `--input-ipc-server` 通信
+- mpv 关闭时发 `final: true` 标记，触发最终落盘 + Map 清理
+- 播放路径编码：`escAttr` → HTML `dataset` → JSON.parse 全链路
+
+## Thumbnail 约定
+
+- `thumbnail-queue.js`：队列 + 去重 + 限并发（默认 2）
+- 依赖 `ffmpeg` 在 PATH 中可用
+- 生成缓存到 `thumbs/` 目录
+- ffmpeg 命令：`ffmpeg -ss {time} -i {video} -vframes 1 -vf scale=320:-1 {output}`
+- 首次请求可能延迟（同步等待生成）
+
+## http-fetch 共享层
+
+```js
+const httpFetch = require('../lib/http-fetch');
+const data = await httpFetch.fetch(url, { headers, retries: 2 });
+```
+
+封装在 `server/lib/http-fetch.js`，统一超时/重试/错误处理。约 80% 的重复 HTTP 调用代码已抽取至此。
+
+## Bangumi 同步
+
+- `bangumi-sync.js`：Pull → Merge → Push 三阶段
+- Pull：从 Bangumi API 拉取用户收藏
+- Merge：与本地 library 做差异合并
+- Push：变更写回 SQLite
+- 走 `/api/library/sync/stream` SSE 流式同步，前端 `metamatch.js` 展示实时进度
+
+## 配置
+
+`server/config.json`（基于 `config.example.json` 复制）：
+
+```json
+{
+  "mediaDir": "",
+  "playerMode": "mpv",
+  "mpvPath": "mpv",
+  "theme": "default",
+  "themeMode": "dark",
+  "autoMarkWatched": true,
+  "uiScale": 1.25
+}
+```
+
+## 错误处理链
+
+```
+route handler try/catch
+  → respondError(res, code, message)
+  → logger.error('[TAG]', err)
+  └─ 未捕获 → process.on('unhandledRejection') → process.exit(1)
+```
+
+恢复：重启 sidecar（Rust 监控线程自动检测退出后关闭 Tauri 窗口）。

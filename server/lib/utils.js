@@ -2,7 +2,7 @@
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
-const logger = require('./logger').child('[UTILS]');
+const logger = require('../logger').child('[UTILS]');
 let ffmpegPath = (() => {
   try { return require('ffmpeg-static') || 'ffmpeg'; } catch { return 'ffmpeg'; }
 })();

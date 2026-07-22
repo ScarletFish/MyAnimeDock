@@ -16,7 +16,7 @@ const assert = require('node:assert');
 ## 运行测试
 
 ```bash
-cd server && npm test            # 全量测试（当前 198 tests: 25 DB + 65 scanner + 66 scrapers + 42 playback）
+cd server && npm test            # 全量测试（当前 222 tests: 25 DB + 65 scanner + 66 scrapers + 42 playback 等）
 cd server && npx node --test --test-name-pattern="parseFolderName" __tests__/scanner.test.js  # 筛选单个 describe
 cd server && npx node --test --test-name-pattern="NCOP" __tests__/scanner.test.js              # 筛选单个 it
 cd server && node --test __tests__/scrapers.test.js                                           # 仅匹配逻辑测试（改匹配时用）

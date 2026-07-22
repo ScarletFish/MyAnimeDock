@@ -172,5 +172,5 @@ Phase 3 — API + 前端
 
 Phase 4 — 回填 + 文档
   □ 为已有库条目跑批处理回填 anilistId
-  □ 更新 .agents/docs/data-flow.md
+  □ 更新 docs/data-flow.md
 ```

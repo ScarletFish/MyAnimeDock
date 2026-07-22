@@ -20,6 +20,9 @@ opencode.json
 SHOKO_ANIDB_UPGRADE_PLAN.md
 opencode.ps1
 
+# Agent skill definitions (editor-specific, not project code)
+.agents/skills/
+
 # Tauri / Rust
 src-tauri/target/
 src-tauri/Cargo.lock

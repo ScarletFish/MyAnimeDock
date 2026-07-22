@@ -9,25 +9,25 @@ Vanilla JS SPA + Node.js HTTP server. 自托管动漫媒体库管理器。
 **禁止跳过需求确认直接写代码。**
 
 1. **需求确认** → `skill("req-implement-test")` 提炼需求表，用户确认
-2. **理解数据流** → 涉及数据/API/模型改动时先读 `.agents/docs/data-flow.md`
-3. **架构探索** → 小改动读代码，跨模块读 `.agents/docs/code-explorer.md`，新功能 `skill("code-architect")`
+2. **理解数据流** → 涉及数据/API/模型改动时先读 `docs/data-flow.md`
+3. **架构探索** → 小改动读代码，跨模块读 `docs/code-explorer.md`，新功能 `skill("code-architect")`
 4. **实现** → 按项目规范（Key Patterns / CSS 缩放）
-5. **验证** → 数据相关 `cd server && npm test`；测试编写见 `.agents/docs/testing.md`
+5. **验证** → 数据相关 `cd server && npm test`；测试编写见 `docs/testing.md`
 6. **审查** → `skill("code-reviewer")`；外部输入时加 `skill("security-review")`
 7. **回归测试** → 见 [Testing](#testing) 节
-8. **文档更新** → 改 API/数据模型/持久化时同步更新 `.agents/docs/` 对应文档
+8. **文档更新** → 改 API/数据模型/持久化时同步更新 `docs/` 对应文档
 
 ### 技能速查
 
 | 场景 | 加载 |
 |------|------|
 | 需求不明确 | `skill("req-implement-test")` |
-| 数据流/API/模型 | 读 `.agents/docs/data-flow.md` |
-| 探索代码路径 | 读 `.agents/docs/code-explorer.md` |
+| 数据流/API/模型 | 读 `docs/data-flow.md` |
+| 探索代码路径 | 读 `docs/code-explorer.md` |
 | 新功能设计 | `skill("code-architect")` |
 | 代码审查 | `skill("code-reviewer")` |
 | 安全审查（外部输入） | `skill("security-review")` |
-| 测试编写 | 读 `.agents/docs/testing.md` |
+| 测试编写 | 读 `docs/testing.md` |
 
 ## Commands
 
@@ -52,7 +52,7 @@ start.bat             # Windows 菜单：开发/构建/清理/prisma 操作
 cd server && npm test    # 全量测试（224 tests）
 ```
 
-完整 API 端点参考见 `.agents/docs/data-flow.md`（14 个主要数据流，40+ 端点）。
+完整 API 端点参考见 `docs/data-flow.md`（14 个主要数据流，40+ 端点）。
 
 ## Architecture
 
@@ -85,7 +85,7 @@ scripts/           → copy-sidecar-deps.js, migrate-to-sqlite.js
 
 **视图切换**: CSS `hidden` class toggle，无客户端路由器。
 
-**scannedTree 叶子节点字段**见 `.agents/docs/data-flow.md`（Scan / Discovery Flow 节）。
+**scannedTree 叶子节点字段**见 `docs/data-flow.md`（Scan / Discovery Flow 节）。
 
 **网格卡片尺寸基准**: `GRID_CARD_BASE = 180`（`library.js`），实际渲染尺寸 = `180 × gridZoom × --scale`。默认 gridZoom=1 → 225px @1.25（详情封面的 75%）。Ctrl+滚轮独立缩放（50%-200%），`localStorage` 持久化。`repeat(auto-fill, minmax(size, 1fr))` 自适应列宽。gap = `clamp(0.85rem, 1.2vw, 1.25rem)`。仪表盘各模块以此为锚点对齐。
 
@@ -132,7 +132,7 @@ scripts/           → copy-sidecar-deps.js, migrate-to-sqlite.js
 
 mpv 模式下自动记录播放进度到 SQLite。`activePlays` Map（内存）每 10s 精细化更新 SQLite，mpv 关闭时 `final: true` 标记触发最终保存和 Map 清理。
 
-Play Session 字段定义见 `.agents/docs/data-flow.md`（Play Session Flow 节）。
+Play Session 字段定义见 `docs/data-flow.md`（Play Session Flow 节）。
 
 ## Gotchas
 
@@ -198,7 +198,7 @@ __debug.snapshot(label)       // 快照：view, scrollTop, scrollHeight, 数据�
 
 ## Testing
 
-测试指南见 `.agents/docs/testing.md`（模式惯例、已知行为、陷阱记录）。
+测试指南见 `docs/testing.md`（模式惯例、已知行为、陷阱记录）。
 
 ```bash
 cd server && npm test    # 全量测试（224 tests）

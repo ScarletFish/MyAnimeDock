@@ -139,7 +139,7 @@ module.exports = {
   },
 
   async handlePostWishlist(req, res, state) {
-    const { data, db } = state;
+    const { data, db, logger } = state;
     try {
       const body = await readBody(req);
       const item = JSON.parse(body);
@@ -153,8 +153,12 @@ module.exports = {
         summary: item.summary || null, rating: item.rating || null, status: 'wish',
       };
       data.myList.push(entry);
-      db.saveMyList(data);
-      jsonResp(res, 200, { ok: true, myList: entry });
+      db.saveMyList(data).then(() => {
+        jsonResp(res, 200, { ok: true, myList: entry });
+      }).catch(e => {
+        logger.error('Wishlist save error:', e);
+        jsonResp(res, 500, { error: 'Failed to persist' });
+      });
     } catch (e) {
       jsonResp(res, 400, { error: 'Invalid request body' });
     }

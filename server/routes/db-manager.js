@@ -189,8 +189,6 @@ module.exports = {
   async handleDbClearSessions(req, res, state) {
     try {
       const body = await readBody(req);
-      const { keepProgress } = JSON.parse(body || '{}');
-
       const p = state.db.getPrisma();
       await p.playSession.deleteMany();
 

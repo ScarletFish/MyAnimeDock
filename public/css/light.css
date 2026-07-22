@@ -261,8 +261,19 @@
   background: var(--bg-card);
 }
 :is([data-theme="light"], [data-theme-mode="light"]) .discovery-actions {
-  background: var(--bg-card);
-  border-color: var(--border);
+  /* In light mode --bg-elevated = #ffffff = same as surface.
+     Border is the primary separator; bump opacity for visibility. */
+  background: var(--bg-elevated);
+  border-color: rgba(var(--accent-rgb), 0.22);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .discovery-actions::before {
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(var(--accent-rgb), 0.20) 30%,
+    rgba(var(--accent-rgb), 0.38) 50%,
+    rgba(var(--accent-rgb), 0.20) 70%,
+    transparent 100%
+  );
 }
 :is([data-theme="light"], [data-theme-mode="light"]) .discovery-badge--imported { background: rgba(0, 0, 0, 0.06); }
 :is([data-theme="light"], [data-theme-mode="light"]) .discovery-sibling-group::before { opacity: 0.5; }

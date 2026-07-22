@@ -5,7 +5,7 @@ const assert = require('node:assert');
 const {
   normalizeTitle, sorensenDice, toHiragana, isPrimarilyRomaji,
   pickBestBySimilarity, extractRomajiTitle,
-  syncAnilistDetail, registry,
+  syncAnilistDetail, syncAnilist, registry,
 } = require('../scrapers');
 const { parseFolderName } = require('../scanner');
 
@@ -303,6 +303,114 @@ describe('syncAnilistDetail — mock API', () => {
       const result = await syncAnilistDetail(anime, MATCHING_CONFIG, '/tmp/banners', '/tmp/covers');
       assert.equal(result.anilistId, 28900);
       assert.equal(anime.anilistBanner, 'https://example.com/banner.jpg'); // URL set regardless of download
+    } finally { restore(); }
+  });
+
+  it('sets __none__ when bannerImage is null', async () => {
+    const { restore } = mockAnilist({
+      fetchMetadata: async (title, coverDir, id) => ({
+        anilistId: id,
+        bannerImage: null,
+      }),
+      downloadBanner: async () => '/banners/al-test.jpg',
+    });
+    try {
+      const anime = { anilistId: 28900, title: 'Yuru Yuri' };
+      const result = await syncAnilistDetail(anime, MATCHING_CONFIG, '/tmp/banners', '/tmp/covers');
+      assert.equal(result.anilistId, 28900);
+      assert.equal(result.localBanner, null);
+      assert.equal(anime.anilistBanner, '__none__');
+    } finally { restore(); }
+  });
+});
+
+// ── syncAnilist (mock API) ──
+describe('syncAnilist — mock API', () => {
+  it('search result has banner → downloads and stores local path', async () => {
+    const { restore } = mockAnilist({
+      search: async () => [{
+        id: 28900, name: 'Yuru Yuri', name_cn: 'ゆるゆり',
+        bannerImage: 'https://example.com/banner.jpg',
+        title_english: 'Yuru Yuri',
+      }],
+      downloadBanner: async (url, dir, id) => `/banners/al-${id}.jpg`,
+    });
+    try {
+      const anime = { folderName: 'Yuru Yuri' };
+      const result = await syncAnilist(anime, MATCHING_CONFIG, '/tmp/banners', '/tmp/covers');
+      assert.equal(result.anilistId, 28900);
+      assert.equal(anime.anilistId, 28900);
+      assert.equal(anime.anilistBanner, '/banners/al-28900.jpg');
+      assert.equal(anime.anilistTitleEn, 'Yuru Yuri');
+    } finally { restore(); }
+  });
+
+  it('no search results → anilistId = -1', async () => {
+    const { restore } = mockAnilist({
+      search: async () => [],
+    });
+    try {
+      const anime = { folderName: 'NonExistentAnime' };
+      const result = await syncAnilist(anime, MATCHING_CONFIG, '/tmp/banners', '/tmp/covers');
+      assert.equal(result, null);
+      assert.equal(anime.anilistId, -1);
+    } finally { restore(); }
+  });
+
+  it('search result has banner but download fails → retains remote URL', async () => {
+    const { restore } = mockAnilist({
+      search: async () => [{
+        id: 28900, name: 'Yuru Yuri', name_cn: 'ゆるゆり',
+        bannerImage: 'https://example.com/banner.jpg',
+      }],
+      downloadBanner: async () => { throw new Error('Download failed'); },
+    });
+    try {
+      const anime = { folderName: 'Yuru Yuri' };
+      const result = await syncAnilist(anime, MATCHING_CONFIG, '/tmp/banners', '/tmp/covers');
+      assert.equal(result.anilistId, 28900);
+      assert.equal(anime.anilistBanner, 'https://example.com/banner.jpg'); // remote URL as fallback
+    } finally { restore(); }
+  });
+
+  it('search result has no banner → DETAIL_QUERY fallback → gets banner', async () => {
+    const { restore } = mockAnilist({
+      search: async () => [{
+        id: 28900, name: 'Yuru Yuri', name_cn: 'ゆるゆり',
+        // no bannerImage
+      }],
+      fetchMetadata: async (title, coverDir, id) => ({
+        anilistId: id,
+        bannerImage: 'https://example.com/banner.jpg',
+        anilistTitleEn: 'Yuru Yuri',
+      }),
+      downloadBanner: async (url, dir, id) => `/banners/al-${id}.jpg`,
+    });
+    try {
+      const anime = { folderName: 'Yuru Yuri' };
+      const result = await syncAnilist(anime, MATCHING_CONFIG, '/tmp/banners', '/tmp/covers');
+      assert.equal(result.anilistId, 28900);
+      assert.equal(anime.anilistId, 28900);
+      assert.equal(anime.anilistBanner, '/banners/al-28900.jpg');
+      assert.equal(anime.anilistTitleEn, 'Yuru Yuri');
+    } finally { restore(); }
+  });
+
+  it('already has anilistId → delegates to syncAnilistDetail', async () => {
+    const { restore } = mockAnilist({
+      fetchMetadata: async (title, coverDir, id) => ({
+        anilistId: id,
+        bannerImage: 'https://example.com/banner.jpg',
+        anilistTitleEn: 'Yuru Yuri',
+      }),
+      downloadBanner: async (url, dir, id) => `/banners/al-${id}.jpg`,
+    });
+    try {
+      const anime = { anilistId: 28900, title: 'Yuru Yuri', folderName: 'Yuru Yuri' };
+      const result = await syncAnilist(anime, MATCHING_CONFIG, '/tmp/banners', '/tmp/covers');
+      assert.equal(result.anilistId, 28900);
+      assert.equal(anime.anilistBanner, '/banners/al-28900.jpg');
+      assert.equal(anime.anilistTitleEn, 'Yuru Yuri');
     } finally { restore(); }
   });
 });

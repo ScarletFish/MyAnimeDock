@@ -2,6 +2,7 @@
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
+const logger = require('./logger').child('[UTILS]');
 let ffmpegPath = (() => {
   try { return require('ffmpeg-static') || 'ffmpeg'; } catch { return 'ffmpeg'; }
 })();
@@ -24,6 +25,9 @@ const mime = {
   '.avi': 'video/x-msvideo',
   '.mov': 'video/quicktime',
   '.webm': 'video/webm',
+  '.svg': 'image/svg+xml',
+  '.woff2': 'font/woff2',
+  '.ttf': 'font/ttf',
 };
 
 function setFfmpegPath(p) {
@@ -57,7 +61,14 @@ function preGenerateCovers(coverPath) {
         '-y', cachePath,
         '-loglevel', 'error',
       ]);
-      ff.on('error', () => {});
+      ff.on('close', (code) => {
+        if (code !== 0) {
+          logger.warn(`preGenerateCovers exit code ${code} for ${coverPath} (${w}w)`);
+        }
+      });
+      ff.on('error', (err) => {
+        logger.warn(`preGenerateCovers spawn error: ${err.message}`);
+      });
     } catch (_) {}
   }
 }
@@ -164,13 +175,14 @@ async function cleanupOldCache(dataDir) {
   for (const dir of dirs) {
     try {
       if (!fs.existsSync(dir)) continue;
-      const files = fs.readdirSync(dir);
-      for (const f of files) {
-        const fp = path.join(dir, f);
+      const entries = await fs.promises.readdir(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (!entry.isFile()) continue;
+        const fp = path.join(dir, entry.name);
         try {
-          const stat = fs.statSync(fp);
-          if (stat.isFile() && (now - stat.mtimeMs) > maxAge) {
-            fs.unlinkSync(fp);
+          const stat = await fs.promises.stat(fp);
+          if ((now - stat.mtimeMs) > maxAge) {
+            await fs.promises.unlink(fp);
             total++;
           }
         } catch (_) {}

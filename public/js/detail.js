@@ -502,24 +502,15 @@ function renderWishlistDetail(anime) {
 
 function findWatchEpisode(anime) {
   if (!anime.episodes || anime.episodes.length === 0) return null;
-
-  // 找到progress > 0且progress最大的集数（最后观看的）
-  let lastWatched = null;
-  let maxProgress = 0;
+  let first = null;
   for (const ep of anime.episodes) {
-    if (ep.progress > 0 && ep.progress >= maxProgress) {
-      maxProgress = ep.progress;
-      lastWatched = ep;
-    }
+    if (!first) first = ep;
+    if (!ep.watched && ep.progress > 0) return ep;
   }
-
-  // 直接返回最后观看的集数，不考虑watched状态
-  if (lastWatched) {
-    return lastWatched;
+  for (const ep of anime.episodes) {
+    if (!ep.watched) return ep;
   }
-
-  // 如果所有集数都没看过，显示第一集
-  return anime.episodes[0];
+  return null;
 }
 
 function renderSummary(anime) {
@@ -782,17 +773,6 @@ async function playEpisode(filePath, position = 0) {
   try {
     await API.post('/api/play', { filePath, position });
     showToast('正在播放...', 'info');
-    // 更新前端的进度数据，确保"继续播放"显示正确的集数
-    if (currentAnime && currentAnime.episodes) {
-      const ep = currentAnime.episodes.find(e => e.filePath === filePath);
-      if (ep) {
-        ep.progress = position || 0;
-        // 重新渲染继续播放按钮
-        renderPlayButton(currentAnime);
-        // 通知dashboard刷新
-        if (typeof loadLibrary === 'function') loadLibrary();
-      }
-    }
   } catch (e) {
     showToast('播放失败: ' + e.message, 'error');
   }

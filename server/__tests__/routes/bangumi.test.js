@@ -287,8 +287,7 @@ describe('bangumi route handlers', () => {
 
   describe('handleBangumiFetch', () => {
     // Lazy requires: scrapers (registry, matchSeason) + scanner (parseFolderName)
-    // Top-level syncAnilist is real — success path would call real API.
-    // Test 400/404 validation paths only.
+    // Top-level syncAnilist is real — success path mocks folderName to skip anilist.
     let origScrapers, origScanner;
 
     before(() => {
@@ -336,6 +335,60 @@ describe('bangumi route handlers', () => {
       const res = mockRes();
       await bangumi.handleBangumiFetch(req, res, state);
       assert.strictEqual(res._status, 404);
+    });
+
+    it('returns 200 with fetched metadata (subjectId provided, skips match)', async () => {
+      const anime = {
+        id: 'test-fetch-id',
+        title: 'Test Anime',
+        folderName: '', // empty → syncAnilist search term is falsy → returns null early
+        episodes: [],
+      };
+
+      // Override scrapers mock's fetchMetadata to return data
+      const sp = require.resolve('../../scrapers');
+      const origFetchMeta = require.cache[sp].exports.registry.fetchMetadata;
+      require.cache[sp].exports.registry.fetchMetadata = async () => ({
+        bangumiId: 12345,
+        source: 'bangumi',
+        episodes: [{ ep: 1, title: 'EP1', filePath: '/videos/ep1.mkv' }],
+        summary: 'A test anime',
+      });
+
+      // Mock saveScannedTree on config module
+      const cp = require.resolve('../../lib/config');
+      let saveScannedTreeCalled = false;
+      const origSaveTree = require.cache[cp].exports.saveScannedTree;
+      require.cache[cp].exports.saveScannedTree = async () => { saveScannedTreeCalled = true; };
+
+      let pushStatusCalled = false;
+      const state = mockState({
+        data: { library: [anime], scannedTree: {} },
+        config: {},
+        db: { saveLibrary: async () => {} },
+        bangumiSync: { pushStatusChange: async () => { pushStatusCalled = true; } },
+        logger: { error: () => {} },
+      });
+
+      const req = mockReq({
+        url: '/api/bangumi/fetch',
+        method: 'POST',
+        body: JSON.stringify({ animeId: 'test-fetch-id', subjectId: '54321' }),
+      });
+      const res = mockRes();
+
+      await bangumi.handleBangumiFetch(req, res, state);
+
+      // Restore mocks
+      require.cache[sp].exports.registry.fetchMetadata = origFetchMeta;
+      require.cache[cp].exports.saveScannedTree = origSaveTree;
+
+      assert.strictEqual(res._status, 200);
+      assert.strictEqual(res._body.ok, true);
+      assert.strictEqual(res._body.anime.bangumiId, 12345);
+      assert.strictEqual(state.data.library[0].bangumiId, 12345);
+      assert.ok(saveScannedTreeCalled, 'saveScannedTree should be called');
+      assert.ok(pushStatusCalled, 'pushStatusChange should be called (new bangumiId)');
     });
   });
 });

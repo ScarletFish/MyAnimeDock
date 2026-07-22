@@ -3,7 +3,10 @@
 // Tests non-destructive handlers that use mock db + state.
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
+const fs = require('fs');
+const path = require('path');
 const { mockReq, mockRes, mockState } = require('../helpers/mock-http');
+const { DATA_DIR } = require('../../lib/config');
 const dbmgr = require('../../routes/db-manager');
 
 describe('db-manager route handlers', () => {
@@ -130,10 +133,9 @@ describe('db-manager route handlers', () => {
 
 // handleDbBackup streams binary via fs.createReadStream.pipe(res) — skipped
 // handleDbBackupAll reads real DB/config/scanned-tree files — skipped (destructive)
-// handleDbRestore writes to real DB file — only test validation path
 
   describe('handleDbRestore', () => {
-    it('returns 500 for invalid base64 data (SQLite header validation)', async () => {
+    it('returns 400 for invalid base64 data (SQLite header validation)', async () => {
       const state = mockState({
         db: { shutdown: async () => {} },
       });
@@ -153,6 +155,78 @@ describe('db-manager route handlers', () => {
       const res = mockRes();
       await dbmgr.handleDbRestore(req, res, state);
       assert.strictEqual(res._status, 400);
+    });
+
+    it('returns 200 for valid SQLite restore (fs monkey-patched to avoid real DB write)', async () => {
+      // Compute DB_FILE path matching db-manager.js logic (dev mode = non-pkg)
+      const APP_ROOT = path.resolve(__dirname, '..', '..', '..');
+      const DB_FILE = path.join(APP_ROOT, 'prisma', 'anime.db');
+      const backupDir = path.join(DATA_DIR, 'backups');
+
+      // Create a minimal buffer with valid SQLite header
+      const sqliteBuf = Buffer.alloc(4096);
+      sqliteBuf.write('SQLite format 3\0', 0, 16, 'utf8');
+      sqliteBuf[16] = 0x10; sqliteBuf[17] = 0x00; // page size 4096 big-endian
+      sqliteBuf[18] = 0x01; // write version
+      sqliteBuf[19] = 0x01; // read version
+      const validBase64 = sqliteBuf.toString('base64');
+
+      // Monkey-patch fs to avoid touching the real DB file
+      const origExistsSync = fs.existsSync;
+      const origCopyFileSync = fs.copyFileSync;
+
+      fs.existsSync = (p) => {
+        if (p === DB_FILE) return false; // pretend no existing DB → skip auto-backup
+        return origExistsSync(p);
+      };
+      fs.copyFileSync = (src, dest) => {
+        if (dest === DB_FILE) return; // never overwrite the real DB
+        return origCopyFileSync(src, dest);
+      };
+
+      let shutdownCalled = false;
+      let ensureSchemaCalled = false;
+      const mockLoadData = { library: [{ id: 'restored-1', title: 'Restored' }] };
+
+      const state = mockState({
+        data: { library: [] },
+        db: {
+          shutdown: async () => { shutdownCalled = true; },
+          ensureSchema: async () => { ensureSchemaCalled = true; },
+          loadData: async () => mockLoadData,
+        },
+      });
+
+      const req = mockReq({
+        url: '/api/db/restore',
+        method: 'POST',
+        body: JSON.stringify({ file: validBase64 }),
+      });
+      const res = mockRes();
+
+      await dbmgr.handleDbRestore(req, res, state);
+
+      // Restore fs
+      fs.existsSync = origExistsSync;
+      fs.copyFileSync = origCopyFileSync;
+
+      // Cleanup backup dir
+      try {
+        const tempFile = path.join(backupDir, 'restore-temp.db');
+        if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
+        if (fs.existsSync(backupDir)) {
+          const remaining = fs.readdirSync(backupDir);
+          if (remaining.length === 0) fs.rmdirSync(backupDir);
+        }
+      } catch (_) {}
+
+      assert.strictEqual(res._status, 200);
+      assert.strictEqual(res._body.ok, true);
+      assert.strictEqual(res._body.message, '数据库恢复成功');
+      assert.ok(shutdownCalled, 'db.shutdown should be called');
+      assert.ok(ensureSchemaCalled, 'db.ensureSchema should be called');
+      assert.strictEqual(state.data.library.length, 1);
+      assert.strictEqual(state.data.library[0].id, 'restored-1');
     });
   });
 

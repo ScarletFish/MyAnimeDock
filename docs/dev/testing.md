@@ -85,15 +85,15 @@ assert.deepStrictEqual(parseFolderName('[bgm5] Title (2024)'), {
 
 | 文件 | 测试数 | 覆盖 Handler | mock 策略 |
 |------|--------|-------------|-----------|
-| `mylist.test.js` | 13 | 6/6 (全部) | 仅 state mock |
+| `mylist.test.js` | 13 | 6/7 | 仅 state mock |
 | `config.test.js` | 14 | 4/4 | 仅 state mock |
 | `stats.test.js` | 19 | 6/6 | 仅 state mock |
-| `db-manager.test.js` | 13 | 6/9 | state.db mock; 跳过二进制流/文件重写 |
-| `discovery.test.js` | 23 | 5/6 | 仅 state mock + require.cache mock for scanner |
-| `library.test.js` | 9 | 3/5 | 仅 state mock; 跳过 SSE/scrapers |
-| `bangumi.test.js` | 17 | 6/8 | require.cache mock for scrapers + scanner |
-| `playback.test.js` | 12 | 3/4 | require.cache mock for mpv-controller |
-| **合计** | **119** | **39/48** | **81% handler 覆盖，69% 含跳过** |
+| `db-manager.test.js` | 13 | 6/8 | state.db mock + fs monkey-patch; 跳过二进制流/文件读取 |
+| `discovery.test.js` | 23 | 5/6 | state mock + require.cache mock for scanner; 跳过 SSE |
+| `library.test.js` | 9 | 3/5 | state mock; 跳过 SSE/AniList |
+| `bangumi.test.js` | 18 | 8/9 | require.cache mock for scrapers + scanner |
+| `playback.test.js` | 16 | 4/4 | require.cache mock for mpv-controller + ffmpeg error path |
+| **合计** | **125** | **42/49** | **86% handler 覆盖** |
 
 ### Mock-http 模式
 
@@ -120,9 +120,11 @@ assert.strictEqual(res._body.ok, true);
 
 ### 当前限制
 
-- 涉及 `require('../scrapers')`、`require('../scanner')`、`require('../mpv-controller')` 等 lazy require 的 handler 暂跳过（需要 `require.cache` mock 或 `mock.module()`）
-- `handleDbBackup` 使用 `fs.createReadStream.pipe(res)` 二进制流，无法用 mockRes 测试
+- `handleDbBackup` / `handleDbBackupAll` 使用 `fs.createReadStream.pipe(res)` 二进制流或读真实文件，跳过程序测试
 - Route 测试写入真实磁盘（`saveConfig`、`saveScannedTree`），需注意测试顺序不干扰 DB 测试
+- 涉及 `child_process.spawn` 等 destructured 内置模块的 handler 无法直接 mock（需用 ffmpeg error path 或 real spawn 测试）
+- `handleBangumiAuthCallback` 涉及 OAuth redirect + HTML 渲染，跳过单元测试
+- `handleScan` / `handleLibrarySyncStream` SSE-heavy，手动测试更高效
 
 ## Mock 原则
 

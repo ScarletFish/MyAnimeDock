@@ -233,8 +233,62 @@ describe('playback route handlers', () => {
       await playback.handlePlay(req, res, state);
       assert.strictEqual(res._status, 200);
       assert.ok(res._body.ok);
-      // Should have created a play session
       assert.strictEqual(state.data.playSessions.length, 1);
+    });
+  });
+
+  describe('handleThumbnail', () => {
+    // Playback module destructures spawn at load time, so we can't mock
+    // child_process.spawn externally. Instead test validation paths + error path
+    // (system without ffmpeg — spawn errors → 500 'ffmpeg not available').
+    let tmpFile;
+
+    before(() => {
+      tmpFile = path.join(os.tmpdir(), 'test-thumb-' + Date.now() + '.mp4');
+      fs.writeFileSync(tmpFile, 'dummy');
+    });
+
+    after(() => {
+      try { fs.unlinkSync(tmpFile); } catch (_) {}
+    });
+
+    it('returns 404 when path param missing', () => {
+      const state = mockState();
+      const req = mockReq({ url: '/api/thumbnail' });
+      const res = mockRes();
+      playback.handleThumbnail(req, res, state);
+      assert.strictEqual(res._status, 404);
+    });
+
+    it('returns 404 when video file does not exist', () => {
+      const state = mockState();
+      const req = mockReq({ url: '/api/thumbnail?path=/nonexistent.mp4&time=60' });
+      const res = mockRes();
+      playback.handleThumbnail(req, res, state);
+      assert.strictEqual(res._status, 404);
+    });
+
+    it('returns 500 with ffmpeg error when ffmpeg is not available (time param)', async () => {
+      const state = mockState();
+      const req = mockReq({ url: '/api/thumbnail?path=' + encodeURIComponent(tmpFile) + '&time=60' });
+      const res = mockRes();
+      playback.handleThumbnail(req, res, state);
+      // The handler calls _generateThumb which spawns ffmpeg.
+      // Without ffmpeg in PATH, spawn emits 'error' → 500.
+      await new Promise(r => setTimeout(r, 100));
+      assert.strictEqual(res._status, 500);
+      assert.ok(res._body?.error, 'should have error message: ' + JSON.stringify(res._body));
+    });
+
+    it('returns 500 with ffmpeg error for mid probe (async callback)', async () => {
+      const state = mockState();
+      const req = mockReq({ url: '/api/thumbnail?path=' + encodeURIComponent(tmpFile) + '&time=mid' });
+      const res = mockRes();
+      playback.handleThumbnail(req, res, state);
+      // mid path: _probeDuration spawns ffmpeg -i → error → cb(null) → _generateThumb spawns again → error → 500
+      await new Promise(r => setTimeout(r, 200));
+      assert.strictEqual(res._status, 500);
+      assert.ok(res._body?.error, 'should have error message: ' + JSON.stringify(res._body));
     });
   });
 });

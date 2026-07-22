@@ -38,6 +38,12 @@ module.exports = {
           jsonResp(res, 400, { error: 'Directory does not exist: ' + resolved });
           return;
         }
+        // 切换媒体目录时，清除所有anime的banner缓存，触发重新同步
+        if (state.data && state.data.library) {
+          for (const anime of state.data.library) {
+            anime.anilistBanner = null;
+          }
+        }
         config.mediaDir = resolved;
       }
       config.playerMode = 'mpv';

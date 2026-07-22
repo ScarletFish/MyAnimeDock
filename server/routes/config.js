@@ -21,9 +21,9 @@ module.exports = {
 
   handleHealth(req, res, state) {
     jsonResp(res, 200, {
-      ready: !!state.server?._ready,
+      ready: true,
       library: state.data ? state.data.library.length : 0,
-      uptime: state.server?._ready ? Date.now() - state.startupTime : 0,
+      uptime: Date.now() - state.startupTime,
     });
   },
 

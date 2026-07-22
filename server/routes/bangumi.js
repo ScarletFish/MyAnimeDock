@@ -62,6 +62,10 @@ module.exports = {
       if (matchInfo) {
         if (matchInfo.matchedSeason != null) anime.matchedSeason = matchInfo.matchedSeason;
         if (matchInfo.anilistId) anime.anilistId = matchInfo.anilistId;
+      } else {
+        // 手动指定了 subjectId（修正），清空旧 anilist 数据让 syncAnilist 重新搜索
+        anime.anilistId = null;
+        anime.anilistBanner = null;
       }
       // AniList 双源同步（手动同步时重置 -1 重新搜索）
       const bannerDir = path.join(DATA_DIR, 'banners');

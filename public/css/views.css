@@ -1528,6 +1528,10 @@
   background: var(--bg-surface);
   border-radius: var(--radius-sm);
   border-left: 2px solid rgba(var(--accent-rgb), 0.3);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .mm-panel-error {
   padding: var(--space-3);
@@ -1568,15 +1572,15 @@
 }
 .mm-panel-ids {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  flex-direction: column;
+  gap: 8px;
   background: var(--bg-surface);
   border-radius: var(--radius-sm);
   border-left: 2px solid rgba(var(--accent-rgb), 0.3);
   padding: var(--space-3);
 }
 .mm-panel-id-item {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 4px;
   font-size: calc(0.75rem * var(--scale));

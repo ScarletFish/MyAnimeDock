@@ -96,7 +96,9 @@ module.exports = {
         config.bangumiLastSync = result.lastSyncTime;
         saveConfig(config);
       }
-      if (result.created > 0 || result.wishlistAdded > 0) db.saveMyList(data);
+      if (result.created > 0 || result.wishlistAdded > 0) {
+        try { await db.saveMyList(data); } catch (e) { logger.error('MyList save after sync failed:', e.message); }
+      }
       jsonResp(res, 200, result);
     } catch (e) {
       jsonResp(res, 400, { error: e.message });

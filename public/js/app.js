@@ -708,9 +708,9 @@ function showConfirm(message) {
     overlay.className = 'modal-overlay';
     overlay.style.zIndex = '9999';
     overlay.innerHTML = `
-      <div class="modal" style="max-width:420px;text-align:center">
-        <p style="margin:0 0 24px;line-height:1.6;color:var(--text1);font-size:15px">${message}</p>
-        <div class="modal-actions" style="justify-content:center;gap:12px">
+      <div class="modal" style="max-width:380px;padding:var(--space-6) var(--space-8) var(--space-5)">
+        <p style="margin:0 0 18px;line-height:1.7;color:var(--text1);font-size:15px;text-align:left">${message}</p>
+        <div class="modal-actions" style="display:flex;align-items:center;justify-content:space-between">
           <button class="btn btn-ghost confirm-cancel" style="min-width:80px">取消</button>
           <button class="btn btn-danger confirm-ok" style="min-width:80px">确认</button>
         </div>

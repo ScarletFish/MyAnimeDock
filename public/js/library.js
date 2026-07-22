@@ -477,7 +477,7 @@ async function contextDeleteAnime() {
   if (!animeId) return;
   const anime = libraryData.find(a => a.id === animeId);
   const title = anime ? anime.title : animeId;
-  if (!(await showConfirm(`确定要彻底删除「${title}」吗？<br>数据将被清除，不可恢复。`))) return;
+  if (!(await showConfirm(`确定移出「${title}」？<br>仅从库中移除，不影响本地文件。`))) return;
   try {
     await API.del(`/api/anime/${encodeURIComponent(animeId)}`);
     showToast('已删除', 'success');

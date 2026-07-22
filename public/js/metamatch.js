@@ -80,7 +80,6 @@ async function mmLoadModalData() {
     mmSyncInProgress = false;
     mmSelectedIds.clear();
     mmSelectionOrder = [];
-    document.getElementById('mmPanelEmpty').style.display = 'flex';
     document.getElementById('mmPanelContent').style.display = 'none';
 
     const libData = await API.get('/api/library');
@@ -130,12 +129,10 @@ async function mmLoadModalData() {
 function mmShowEmpty(msg) {
   const list = document.getElementById('mmGrid');
   const empty = document.getElementById('mmEmpty');
-  const panelEmpty = document.getElementById('mmPanelEmpty');
   const panelContent = document.getElementById('mmPanelContent');
 
   if (list) { list.innerHTML = ''; list.style.display = 'none'; }
   if (empty) { empty.style.display = 'flex'; const p = empty.querySelector('p'); if (p) p.textContent = msg || '没有需要匹配的条目'; }
-  if (panelEmpty) panelEmpty.style.display = 'flex';
   if (panelContent) panelContent.style.display = 'none';
   const panel = document.getElementById('mmPanel');
   if (panel) panel.classList.remove('open');
@@ -323,7 +320,8 @@ function mmUpdateUIImmediate() {
 
   if (mmSelectedId && !mmItems.some(i => i.animeId === mmSelectedId)) {
     mmSelectedId = null;
-    mmShowPanelEmpty();
+    mmHideSyncLog();
+    mmClosePanel();
   } else if (mmSelectedId) {
     const item = mmItems.find(i => i.animeId === mmSelectedId);
     if (item) mmRenderPanel(item);
@@ -399,8 +397,6 @@ function mmSelectForPanel(animeId) {
   if (item) {
     mmHideSyncLog();
     const panelContent = document.getElementById('mmPanelContent');
-    const empty = document.getElementById('mmPanelEmpty');
-    if (empty) empty.style.display = 'none';
     if (panelContent) panelContent.style.display = 'block';
     mmRenderPanel(item);
   }
@@ -410,7 +406,7 @@ function mmDeselectPanel() {
   mmSelectedId = null;
   document.querySelectorAll('.mm-row').forEach(row => row.classList.remove('mm-row--selected'));
   mmHideSyncLog();
-  mmShowPanelEmpty();
+  mmClosePanel();
 }
 
 function mmClearSelection() {
@@ -489,7 +485,7 @@ function mmMainAction() {
     });
     mmUpdateUI();
     mmUpdateMainAction();
-    mmStartSync(ids);
+    mmMatchItems(ids);
     return;
   }
 
@@ -500,12 +496,12 @@ function mmMainAction() {
     failedItems.forEach(i => { i.status = 'pending'; i.error = null; });
     mmUpdateUI();
     mmUpdateMainAction();
-    mmStartSync(ids);
+    mmMatchItems(ids);
     return;
   }
 
   // Priority 3: match all pending
-  mmStartSync();
+  mmMatchItems();
 }
 
 // ─── Panel Slide Animation ───
@@ -564,25 +560,11 @@ function mmRowClick(event, animeId) {
   mmUpdateRowSelection();
 }
 
-function mmShowPanelEmpty() {
-  mmHideSyncLog();
-  mmClosePanel(() => {
-    // 如果动画期间已选择了新条目，不覆盖
-    if (mmPanelOpen) return;
-    const empty = document.getElementById('mmPanelEmpty');
-    const content = document.getElementById('mmPanelContent');
-    if (empty) empty.style.display = 'flex';
-    if (content) content.style.display = 'none';
-  });
-}
-
 // ─── Panel Rendering ───
 
 function mmRenderPanel(item) {
   mmOpenPanel();
-  const empty = document.getElementById('mmPanelEmpty');
   const content = document.getElementById('mmPanelContent');
-  if (empty) empty.style.display = 'none';
   if (!content) return;
   content.style.display = 'flex';
 
@@ -645,7 +627,7 @@ function mmRenderPanel(item) {
         <span class="mm-panel-id-value">—</span>
       </span>`);
     }
-    parts.push(`<span class="mm-panel-id-item"><span class="mm-panel-id-label">Banner</span><span class="mm-panel-id-value">${hasBanner}</span></span>`);
+    parts.push(`<span class="mm-panel-id-item"><span class="mm-panel-id-label">横幅</span><span class="mm-panel-id-value">${hasBanner}</span></span>`);
     idInfoHtml = `<div class="mm-panel-section">
       <div class="mm-panel-label">ID 绑定</div>
       <div class="mm-panel-ids">${parts.join('')}</div>
@@ -675,25 +657,19 @@ function mmRenderPanel(item) {
       </div>`;
   }
 
-  // Actions
-  let actionsHtml = '';
-  if (!mmSyncInProgress) {
-    if (item.status === 'matched') {
-      actionsHtml = `<button class="btn mm-panel-action-btn" onclick="mmStartResearch('${item.animeId}')">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        重新搜索</button>`;
-    } else if (item.status === 'failed') {
-      // 失败不提供"重试匹配"按钮——搜不到重试也没用，走手动修正
-    }
-  }
-
-  // Fix search — only for non-matched (pending/failed)
+  // Fix search — unified section for all items
   let fixHtml = '';
-  if (!mmSyncInProgress && item.status !== 'matched') {
+  if (!mmSyncInProgress) {
     const defaultKeyword = (item.specialSuffix || item.title || item.folderName || '').replace(/[~～]/g, '').trim();
+    const researchBtn = item.status === 'matched'
+      ? `<button class="btn mm-fix-research-btn" onclick="mmStartResearch('${item.animeId}')" title="用当前关键词重新匹配">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          重新匹配</button>`
+      : '';
     fixHtml = `
       <div class="mm-fix-section">
-        <div class="mm-panel-label">手动搜索修正</div>
+        <div class="mm-panel-label">修正匹配</div>
+        ${researchBtn ? `<div class="mm-fix-research">${researchBtn}</div>` : ''}
         <div class="mm-fix-search">
           <input type="text" id="mmFixKeyword" placeholder="输入搜索词..." value="${escAttr(defaultKeyword)}" onkeydown="if(event.key==='Enter')mmSearchForFix('${item.animeId}')">
           <button class="btn btn-primary mm-fix-search-btn" onclick="mmSearchForFix('${item.animeId}')">
@@ -721,7 +697,6 @@ function mmRenderPanel(item) {
       ${idInfoHtml}
       ${errorHtml}
       ${keywordsHtml}
-      ${actionsHtml ? `<div class="mm-panel-actions">${actionsHtml}</div>` : ''}
       ${fixHtml}
     </div>`;
 }
@@ -767,8 +742,8 @@ async function mmSearchForFix(animeId) {
           <img class="search-result-cover" src="${escAttr(coverSrc)}" alt=""
             loading="lazy" decoding="async" onerror="this.style.display='none'">
           <div class="search-result-info">
-            <div class="search-result-title">${escHtml(title)}</div>
-            ${subtitle ? `<div class="search-result-subtitle">${escHtml(subtitle)}</div>` : ''}
+            <div class="search-result-title" data-tooltip="${escAttr(title)}">${escHtml(title)}</div>
+            ${subtitle ? `<div class="search-result-subtitle" data-tooltip="${escAttr(subtitle)}">${escHtml(subtitle)}</div>` : ''}
             <div class="search-result-meta">${year}${rating ? ' · ★' + rating : ''}${typeLabel ? `<span class="result-type-badge">${escHtml(typeLabel)}</span>` : ''}</div>
           </div>
           <button class="btn btn-primary search-result-btn">选择</button>
@@ -786,6 +761,15 @@ async function mmApplyFix(animeId, resultIndex) {
   const item = mmItems.find(i => i.animeId === animeId);
   if (!item) return;
 
+  // 显示简化日志面板
+  mmSyncInProgress = true;
+  mmSyncCancelled = false;
+  mmSyncLog = [];
+  mmUpdateMainAction();
+  mmShowSyncLog();
+
+  const title = result.name_cn || result.name || result.title || '未知';
+  mmAddSyncLogEntry(animeId, title, 'fetching', '正在获取元数据…');
   item.status = 'matching';
   mmUpdateUI();
 
@@ -815,13 +799,16 @@ async function mmApplyFix(animeId, resultIndex) {
       item.anilistId = a.anilistId;
       item.anilistBanner = a.anilistBanner || null;
       mmNeedsRefresh = true;
+      mmAddSyncLogEntry(animeId, null, 'matched', a.bangumiTitle || title);
     } else {
       item.status = 'failed';
       item.error = '获取元数据返回空';
+      mmAddSyncLogEntry(animeId, null, 'failed', '获取元数据返回空');
     }
   } catch (e) {
     item.status = 'failed';
     item.error = e.message;
+    mmAddSyncLogEntry(animeId, null, 'failed', e.message);
     showToast('应用匹配失败: ' + e.message, 'error');
   }
 
@@ -829,17 +816,47 @@ async function mmApplyFix(animeId, resultIndex) {
   const resultsDiv = document.getElementById('mmFixResults');
   if (resultsDiv) resultsDiv.innerHTML = '';
 
+  mmSyncInProgress = false;
   mmUpdateUI();
+  mmUpdateMainAction();
+
+  // 显示简化日志摘要
+  const matched = mmSyncLog.filter(e => e.status === 'matched').length;
+  const failed = mmSyncLog.filter(e => e.status === 'failed').length;
+  if (mmSyncLog.length > 0) {
+    mmRenderSyncSummary(matched, failed, mmSyncLog.length);
+  }
+
+  if (matched > 0 && typeof loadLibrary === 'function') {
+    loadLibrary();
+    // 刷新 MetaMatch 弹窗数据，确保 anilistId/banner 等字段更新
+    const prevSelectedId = mmSelectedId;
+    mmLoadModalData().then(() => {
+      if (prevSelectedId) {
+        const item = mmItems.find(i => i.animeId === prevSelectedId);
+        if (item) mmSelectForPanel(prevSelectedId);
+      }
+    });
+  }
 }
 
-// ─── Sync: Start / Retry ───
+// ─── Sync: Unified Matching Function ───
 
-async function mmStartSync(animeIds) {
+/**
+ * 统一匹配入口，支持单个/多个 ID，可选简化日志模式
+ * @param {string|string[]} animeIds - 单个 animeId 或数组
+ * @param {Object} [options] - 可选参数
+ * @param {boolean} [options.simplified=false] - 简化日志模式（手动修正时使用）
+ * @param {string} [options.subjectId] - 直接指定 Bangumi subjectId（跳过搜索）
+ * @param {string} [options.source] - 数据源（配合 subjectId 使用）
+ */
+async function mmMatchItems(animeIds, options = {}) {
   if (mmSyncInProgress) return;
 
+  const ids = animeIds ? (Array.isArray(animeIds) ? animeIds : [animeIds]) : [];
   let itemsToSync;
-  if (animeIds && animeIds.length > 0) {
-    itemsToSync = mmItems.filter(i => animeIds.includes(i.animeId) && ['pending', 'failed'].includes(i.status));
+  if (ids.length > 0) {
+    itemsToSync = mmItems.filter(i => ids.includes(i.animeId) && ['pending', 'failed'].includes(i.status));
   } else {
     itemsToSync = mmItems.filter(i => i.status === 'pending' || i.status === 'failed');
   }
@@ -861,7 +878,7 @@ async function mmStartSync(animeIds) {
   const syncIds = itemsToSync.map(i => i.animeId);
 
   try {
-    await mmSyncViaSSE(syncIds);
+    await mmSyncViaSSE(syncIds, options);
   } catch (e) {
     if (!mmSyncCancelled) {
       showToast('同步失败: ' + e.message, 'error');
@@ -871,8 +888,7 @@ async function mmStartSync(animeIds) {
     });
   }
 
-  // On cancellation: reset any items still stuck in 'matching' (they were being processed
-  // when EventSource was closed) and fix sync log entries
+  // On cancellation: reset any items still stuck in 'matching'
   if (mmSyncCancelled) {
     mmItems.forEach(i => {
       if (i.status === 'matching') i.status = 'pending';
@@ -897,6 +913,14 @@ async function mmStartSync(animeIds) {
   if (!mmSyncCancelled && matched > 0 && typeof loadLibrary === 'function') {
     mmNeedsRefresh = true;
     loadLibrary();
+    // 刷新 MetaMatch 弹窗数据，确保 anilistId/banner 等字段更新
+    const prevSelectedId = mmSelectedId;
+    mmLoadModalData().then(() => {
+      if (prevSelectedId) {
+        const item = mmItems.find(i => i.animeId === prevSelectedId);
+        if (item) mmSelectForPanel(prevSelectedId);
+      }
+    });
   }
 }
 
@@ -964,8 +988,6 @@ function mmRenderSyncLog() {
 function mmShowSyncLog() {
   const panelContent = document.getElementById('mmPanelContent');
   const panelSyncLog = document.getElementById('mmPanelSyncLog');
-  const empty = document.getElementById('mmPanelEmpty');
-  if (empty) empty.style.display = 'none';
   if (panelContent) panelContent.style.display = 'none';
   if (panelSyncLog) panelSyncLog.style.display = 'flex';
   mmOpenPanel();
@@ -989,18 +1011,21 @@ function mmRenderSyncSummary(matched, failed, total) {
     (failed === 0 ? '<div class="mm-panel-synclog-summary-msg">所有条目均已成功匹配</div>' : '<div class="mm-panel-synclog-summary-msg">失败的条目可点击下方「仅重试失败项」重新匹配</div>');
 }
 
-async function mmSyncViaSSE(animeIds) {
+async function mmSyncViaSSE(animeIds, options = {}) {
   return new Promise((resolve) => {
-    mmSyncResolve = resolve; // allow mmCancelSync to force-resolve when EventSource.close() doesn't fire 'error'
+    mmSyncResolve = resolve;
     const url = '/api/library/sync/stream?ids=' + encodeURIComponent(JSON.stringify(animeIds));
     const es = new EventSource(url);
     mmSSESource = es;
+    const simplified = options.simplified || false;
 
     es.addEventListener('matching', (e) => {
       if (mmSyncCancelled) return;
       try {
         const data = JSON.parse(e.data);
-        mmAddSyncLogEntry(data.animeId, data.searchTerm, 'searching', '正在搜索匹配…');
+        if (!simplified) {
+          mmAddSyncLogEntry(data.animeId, data.searchTerm, 'searching', '正在搜索匹配…');
+        }
       } catch (_) {}
     });
 
@@ -1031,13 +1056,18 @@ async function mmSyncViaSSE(animeIds) {
       if (mmSyncCancelled) return;
       try {
         const data = JSON.parse(e.data);
-        // Update sync log entry: searching → fetching
-        const existing = mmSyncLog.find(entry => entry.animeId === data.animeId);
-        if (existing) {
-          existing.status = 'fetching';
-          existing.detail = `正在获取元数据（${data.matchSource || '?'}）`;
+        if (simplified) {
+          // 简化模式：直接添加一条 fetching 日志
+          mmAddSyncLogEntry(data.animeId, data.searchTerm || '匹配', 'fetching', `正在获取元数据（${data.matchSource || '?'}）`);
+        } else {
+          // 完整模式：更新已有条目状态
+          const existing = mmSyncLog.find(entry => entry.animeId === data.animeId);
+          if (existing) {
+            existing.status = 'fetching';
+            existing.detail = `正在获取元数据（${data.matchSource || '?'}）`;
+          }
+          mmRenderSyncLog();
         }
-        mmRenderSyncLog();
       } catch (_) {}
     });
 
@@ -1098,7 +1128,7 @@ async function mmSyncViaSSE(animeIds) {
 }
 
 // ─── Re-search single item ───
-// 委托给 mmStartSync，复用 SSE 实时进度和同步日志展示
+// 直接调用 mmMatchItems，避免 mmUpdateUI 节流导致 sync log 被覆盖
 
 async function mmStartResearch(animeId) {
   const item = mmItems.find(i => i.animeId === animeId);
@@ -1107,8 +1137,8 @@ async function mmStartResearch(animeId) {
   item.status = 'pending';
   item.error = null;
   item.meta = null;
-  mmUpdateUI();
-  mmStartSync([animeId]);
+  // 不调用 mmUpdateUI()，由 mmMatchItems 内部统一处理 UI 更新
+  mmMatchItems([animeId]);
 }
 
 // ─── Expose globals ───
@@ -1122,3 +1152,4 @@ window.mmSearchForFix = mmSearchForFix;
 window.mmApplyFix = mmApplyFix;
 window.mmStartResearch = mmStartResearch;
 window.mmToggleSelect = mmToggleSelect;
+window.mmMatchItems = mmMatchItems;

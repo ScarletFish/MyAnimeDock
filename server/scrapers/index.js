@@ -287,6 +287,41 @@ async function searchBangumiBySeason(registry, bangumi, baseTitle, season, confi
 }
 
 /**
+ * Given an anilistId, search AniList for the franchise's base title,
+ * sort entries chronologically, and find this entry's season number.
+ * Returns 1-indexed season number or null.
+ */
+async function findSeasonByAnilistId(registry, baseTitle, anilistId, config) {
+  const anilist = registry.get('anilist');
+  if (!anilist || !anilist.enabled(config) || !baseTitle || !anilistId) return null;
+  try {
+    const source = config.apiSources?.find(s => s.type === 'anilist');
+    const alResults = await anilist.search(baseTitle, source);
+    if (alResults.length === 0) return null;
+
+    const SEASON_ORDER = { WINTER: 1, SPRING: 2, SUMMER: 3, FALL: 4 };
+    const sorted = [...alResults].sort((a, b) => {
+      const ya = a.seasonYear || 9999, yb = b.seasonYear || 9999;
+      if (ya !== yb) return ya - yb;
+      return (SEASON_ORDER[a.season] || 0) - (SEASON_ORDER[b.season] || 0);
+    });
+
+    // Prefer TV entries, fall back to any format
+    let candidates = sorted.filter(r => r.format === 'TV');
+    if (candidates.length === 0) candidates = sorted;
+
+    const idx = candidates.findIndex(c => c.id === anilistId);
+    if (idx === -1) return null;
+    const season = idx + 1;
+    logger.info(`findSeasonByAnilistId: "${baseTitle}" anilistId=${anilistId} → S${season} (${candidates.length} candidates)`);
+    return season;
+  } catch (e) {
+    logger.warn(`findSeasonByAnilistId: "${baseTitle}" anilistId=${anilistId} → ${e.message}`);
+    return null;
+  }
+}
+
+/**
  * Main entry: single-phase matching
  * Search by title → pick best → get detail
  */
@@ -355,11 +390,21 @@ async function matchSeason(registry, keyword, folderParsed, videoCount, config) 
     return null;
   }
 
-  logger.info(`matchSeason: ✅ 成功匹配 → id=${best.id} title="${detail.name_cn || detail.name}" season=${folderParsed.season || null}`);
+  // 6. Resolve season from AniList if folder parsing didn't provide it
+  let matchedSeason = folderParsed.season || null;
+  if (!matchedSeason && matchedAnilistId) {
+    const resolved = await findSeasonByAnilistId(registry, folderParsed.cleanTitle || folderParsed.title, matchedAnilistId, config);
+    if (resolved) {
+      matchedSeason = resolved;
+      logger.info(`matchSeason: 从 AniList 解析 season=${resolved}`);
+    }
+  }
+
+  logger.info(`matchSeason: ✅ 成功匹配 → id=${best.id} title="${detail.name_cn || detail.name}" season=${matchedSeason}`);
   return {
     ...detail,
     source: 'bangumi',
-    matchedSeason: folderParsed.season || null,
+    matchedSeason,
     _detail: detail,
     anilistId: matchedAnilistId,
   };
@@ -604,6 +649,7 @@ module.exports = {
   registry,
   ScraperRegistry,
   matchSeason,
+  findSeasonByAnilistId,
   searchViaAniList,
   searchBangumi,
   searchBangumiBySeason,

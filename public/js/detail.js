@@ -870,7 +870,7 @@ async function attachBangumiSubject(animeId, subjectId) {
 
 async function deleteAnime() {
   if (!currentAnime) return;
-  if (!(await showConfirm(`确定要彻底删除「${currentAnime.title}」吗？<br>数据将被清除，不可恢复。`))) return;
+  if (!(await showConfirm(`确定移出「${currentAnime.title}」？<br>仅从库中移除，不影响本地文件。`))) return;
 
   try {
     await API.del(`/api/anime/${encodeURIComponent(currentAnime.id)}`);

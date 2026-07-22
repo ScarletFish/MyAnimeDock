@@ -256,6 +256,19 @@ module.exports = {
                 logger.error(`AniList search failed for ${animeId}: ${e.message}`);
               }
             }
+            // 匹配后仍无 matchedSeason → 尝试用新解析的 anilistId 推算季度
+            if (matchedSeason == null && anime.anilistId && anime.anilistId !== -1) {
+              try {
+                const { findSeasonByAnilistId } = require('../scrapers');
+                const resolved = await findSeasonByAnilistId(registry, folderParsed.cleanTitle || folderParsed.title, anime.anilistId, config);
+                if (resolved) {
+                  matchedSeason = resolved;
+                  anime.matchedSeason = resolved;
+                }
+              } catch (e) {
+                logger.warn(`AniList season resolution failed for ${animeId}: ${e.message}`);
+              }
+            }
             if (timedOut) return;
             send('progress', { animeId, success: true, meta, matchedSeason });
             if (anime.anilistId === -1) anime.anilistId = null;

@@ -502,15 +502,34 @@ function renderWishlistDetail(anime) {
 
 function findWatchEpisode(anime) {
   if (!anime.episodes || anime.episodes.length === 0) return null;
-  let first = null;
+
+  // 优先级1：找到progress > 0且progress最大的集数（最后观看的）
+  let lastWatched = null;
+  let maxProgress = 0;
   for (const ep of anime.episodes) {
-    if (!first) first = ep;
-    if (!ep.watched && ep.progress > 0) return ep;
+    if (ep.progress > 0 && ep.progress >= maxProgress) {
+      maxProgress = ep.progress;
+      lastWatched = ep;
+    }
   }
-  for (const ep of anime.episodes) {
-    if (!ep.watched) return ep;
+
+  // 如果找到最后观看的集数，且未看完（progress < 0.9），返回该集数
+  if (lastWatched && !lastWatched.watched) {
+    return lastWatched;
   }
-  return null;
+
+  // 如果最后观看的集数已看完（progress >= 0.9），返回下一集
+  if (lastWatched && lastWatched.watched) {
+    const lastWatchedIdx = anime.episodes.indexOf(lastWatched);
+    if (lastWatchedIdx < anime.episodes.length - 1) {
+      return anime.episodes[lastWatchedIdx + 1];
+    }
+    // 如果是最后一集，返回null（显示"已全部观看完毕"）
+    return null;
+  }
+
+  // 优先级2：如果所有集数都没看过，显示第一集
+  return anime.episodes[0];
 }
 
 function renderSummary(anime) {

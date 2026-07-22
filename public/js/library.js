@@ -224,7 +224,7 @@ function renderStatsSection(data, container) {
 function findContinueEpisode(anime) {
   if (!anime.episodes || anime.episodes.length === 0) return null;
 
-  // 优先级1：找到progress > 0且progress最大的集数（最后观看的）
+  // 找到progress > 0且progress最大的集数（最后观看的）
   var lastWatched = null;
   var maxProgress = 0;
   for (var i = 0; i < anime.episodes.length; i++) {
@@ -235,22 +235,12 @@ function findContinueEpisode(anime) {
     }
   }
 
-  // 如果找到最后观看的集数，且未看完（progress < 0.9），返回该集数
-  if (lastWatched && !lastWatched.watched) {
+  // 直接返回最后观看的集数，不考虑watched状态
+  if (lastWatched) {
     return lastWatched;
   }
 
-  // 如果最后观看的集数已看完（progress >= 0.9），返回下一集
-  if (lastWatched && lastWatched.watched) {
-    var lastWatchedIdx = anime.episodes.indexOf(lastWatched);
-    if (lastWatchedIdx < anime.episodes.length - 1) {
-      return anime.episodes[lastWatchedIdx + 1];
-    }
-    // 如果是最后一集，返回最后一集（重新播放）
-    return lastWatched;
-  }
-
-  // 优先级2：如果所有集数都没看过，显示第一集
+  // 如果所有集数都没看过，显示第一集
   return anime.episodes[0];
 }
 

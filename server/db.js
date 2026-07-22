@@ -421,7 +421,7 @@ async function saveAll(data) {
   ]);
 }
 
-async function saveLibrary(data) {
+async function saveLibrary(data, changedIds = null) {
   if (!data) return;
   const p = getPrisma();
   try {
@@ -437,7 +437,12 @@ async function saveLibrary(data) {
         }
       }
 
-      for (const a of data.library) {
+      // If changedIds provided, only upsert those items (still handle deletions above)
+      const toProcess = changedIds
+        ? data.library.filter(a => changedIds.has(a.id))
+        : data.library;
+
+      for (const a of toProcess) {
         let ratingVal = a.rating;
         if (ratingVal != null && typeof ratingVal !== 'number') {
           ratingVal = parseFloat(ratingVal);
@@ -532,7 +537,8 @@ async function saveLibrary(data) {
         }
       }
     }, { timeout: 15000 });
-    logger.info(`Synced library: ${data.library.length} anime`);
+    const savedCount = changedIds ? changedIds.size : data.library.length;
+    logger.info(`Synced library: ${savedCount} anime${changedIds ? ` (incremental, ${data.library.length} total)` : ''}`);
   } catch (e) {
     logger.error('SQLite library save error:', e.message);
     throw e;
@@ -644,16 +650,19 @@ async function savePlaySessions(data) {
   const p = getPrisma();
   try {
     await p.$transaction(async (tx) => {
-      const currentIds = new Set(data.library.map(a => a.id));
-      if (currentIds.size > 0) {
+      // Query valid anime IDs from DB (not data.library) to avoid deleting
+      // sessions for existing anime when memory state is stale
+      const validRows = await tx.anime.findMany({ select: { id: true } });
+      const validIds = new Set(validRows.map(a => a.id));
+      if (validIds.size > 0) {
         await tx.playSession.deleteMany({
-          where: { animeId: { notIn: Array.from(currentIds) } },
+          where: { animeId: { notIn: Array.from(validIds) } },
         });
       } else {
         await tx.playSession.deleteMany();
       }
 
-      const validSessions = (data.playSessions || []).filter(s => currentIds.has(s.animeId));
+      const validSessions = (data.playSessions || []).filter(s => validIds.has(s.animeId));
       for (const s of validSessions) {
         await tx.playSession.upsert({
           where: { sessionId: s.sessionId },
@@ -690,67 +699,77 @@ async function updateEpisodeProgress(animeId, epNumber, fields) {
     if (fields.progress !== undefined) data.progress = fields.progress;
     if (fields.duration !== undefined) data.duration = fields.duration;
     if (fields.watched !== undefined) data.watched = fields.watched;
-    if (Object.keys(data).length === 0) return;
+    if (Object.keys(data).length === 0) return true;
     await p.episode.updateMany({
       where: { animeId, number: epNumber },
       data,
     });
+    return true;
   } catch (e) {
     logger.error('Episode progress update error:', e.message);
+    return false;
   }
 }
 
 async function updatePlaySession(sessionId, fields) {
   try {
-    if (!sessionId) return;
+    if (!sessionId) return true;
     const p = getPrisma();
     const data = {};
     if (fields.endTime !== undefined) data.endTime = new Date(fields.endTime);
     if (fields.duration !== undefined) data.duration = fields.duration;
     if (fields.clockTime !== undefined) data.clockTime = fields.clockTime;
-    if (Object.keys(data).length === 0) return;
+    if (Object.keys(data).length === 0) return true;
     await p.playSession.updateMany({
       where: { sessionId },
       data,
     });
+    return true;
   } catch (e) {
     logger.error('PlaySession update error:', e.message);
+    return false;
   }
 }
 
 async function updateAnime(id, fields) {
   try {
-    if (!id || !fields || Object.keys(fields).length === 0) return;
+    if (!id || !fields || Object.keys(fields).length === 0) return true;
     const p = getPrisma();
     await p.anime.updateMany({
       where: { id },
       data: fields,
     });
+    return true;
   } catch (e) {
     logger.error('Anime update error:', e.message);
+    return false;
   }
 }
 
 async function deletePlaySession(sessionId) {
   try {
-    if (!sessionId) return;
+    if (!sessionId) return true;
     const p = getPrisma();
     await p.playSession.deleteMany({ where: { sessionId } });
+    return true;
   } catch (e) {
     logger.error('PlaySession delete error:', e.message);
+    return false;
   }
 }
 
 async function updateEpisodesWatched(animeId, episodeNumbers) {
   try {
-    if (!episodeNumbers.length) return;
+    if (!episodeNumbers.length) return true;
     const p = getPrisma();
     await p.episode.updateMany({
       where: { animeId, number: { in: episodeNumbers } },
       data: { watched: true },
     });
+    return true;
   } catch (e) {
     logger.error('Episodes watched batch update error:', e.message);
+    return false;
   }
 }
 
@@ -765,15 +784,17 @@ async function updateMyListItem(animeId, fields) {
     if (fields.progress !== undefined) data.progress = fields.progress;
     if (fields.startedAt !== undefined) data.startedAt = fields.startedAt ? new Date(fields.startedAt) : null;
     if (fields.completedAt !== undefined) data.completedAt = fields.completedAt ? new Date(fields.completedAt) : null;
-    if (Object.keys(data).length === 0) return;
+    if (Object.keys(data).length === 0) return true;
     await p.myList.upsert({
       where: { animeId },
       create: { id: animeId, animeId, ...data },
       update: data,
     });
     logger.info(`Updated MyList item: ${animeId}`);
+    return true;
   } catch (e) {
     logger.error('MyList item update error:', e.message);
+    return false;
   }
 }
 

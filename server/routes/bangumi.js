@@ -79,7 +79,7 @@ module.exports = {
         bangumiSync.pushStatusChange(anime.id, data);
       }
       const { saveScannedTree } = require('../lib/config');
-      await Promise.all([db.saveLibrary(data), saveScannedTree(data.scannedTree)]);
+      await Promise.all([db.saveLibrary(data, new Set([anime.id])), saveScannedTree(data.scannedTree)]);
       jsonResp(res, 200, { ok: true, anime });
     } catch (e) {
       jsonResp(res, 500, { error: e.message });

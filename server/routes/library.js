@@ -67,7 +67,8 @@ async function runAnilistBackfill(state) {
     }
   }, 2);
 
-  await db.saveLibrary(data);
+  const backfillIds = new Set(candidates.map(a => a.id));
+  await db.saveLibrary(data, backfillIds);
 
   const succeeded = results.filter(r => r === 'succeeded').length;
   const skipped = results.filter(r => r === 'skipped').length;
@@ -149,7 +150,7 @@ module.exports = {
       scannedNode.rating = null;
       scannedNode.metadataSource = null;
     }
-    Promise.all([db.saveLibrary(data), db.saveMyList(data), saveScannedTree(data.scannedTree)])
+    Promise.all([db.saveLibrary(data, new Set()), db.saveMyList(data), saveScannedTree(data.scannedTree)])
       .then(() => jsonResp(res, 200, { ok: true }))
       .catch(e => { logger.error('Delete save error:', e); jsonResp(res, 500, { error: 'Failed to persist' }); });
   },
@@ -192,6 +193,7 @@ module.exports = {
         toSync.push({ animeId, anime });
       }
       let processed = 0;
+      const syncedIds = new Set();
       await parallelMap(toSync, async ({ animeId, anime }) => {
         if (cancelledSyncSessions.get(sessionId) || res.writableEnded) return;
         try {
@@ -239,15 +241,12 @@ module.exports = {
                   if (searchTerm) {
                     const results = await anilist.search(searchTerm, source);
                     if (results && results.length > 0) {
-                      const bestItem = pickBestBySimilarity(searchTerm, results);
-                      if (bestItem) {
-                        const matchField = isPrimarilyRomaji(searchTerm) ? 'name' : 'name_cn';
-                        const matchTitle = bestItem[matchField] || bestItem.name || bestItem.name_cn || '';
-                        if (sorensenDice(searchTerm, matchTitle) >= 0.5) {
-                          anime.anilistId = bestItem.id;
-                          if (bestItem.bannerImage) anime.anilistBanner = bestItem.bannerImage;
-                          if (bestItem.title_english) anime.anilistTitleEn = bestItem.title_english;
-                        }
+                      const bestMatch = pickBestBySimilarity(searchTerm, results);
+                      if (bestMatch.item && bestMatch.score >= 0.5) {
+                        const bestItem = bestMatch.item;
+                        anime.anilistId = bestItem.id;
+                        if (bestItem.bannerImage) anime.anilistBanner = bestItem.bannerImage;
+                        if (bestItem.title_english) anime.anilistTitleEn = bestItem.title_english;
                       }
                     }
                   }
@@ -280,7 +279,8 @@ module.exports = {
           send('progress', { animeId, success: false, error: e.message });
         }
         processed++;
-        if (processed % 5 === 0) await Promise.all([db.saveLibrary(data), saveScannedTree(data.scannedTree)]);
+        syncedIds.add(animeId);
+        if (processed % 5 === 0) await Promise.all([db.saveLibrary(data, syncedIds), saveScannedTree(data.scannedTree)]);
       }, 5);
 
       // 通知前端进入收尾阶段（banner 获取等）
@@ -317,7 +317,7 @@ module.exports = {
         }
       }
 
-      await Promise.all([db.saveLibrary(data), saveScannedTree(data.scannedTree)]);
+      await Promise.all([db.saveLibrary(data, syncedIds), saveScannedTree(data.scannedTree)]);
       const { registry: reg } = require('../scrapers');
       reg.clearSearchCache();
       cancelledSyncSessions.delete(sessionId);

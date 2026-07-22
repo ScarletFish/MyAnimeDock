@@ -215,7 +215,7 @@ function pickBestBySimilarity(cleanTitle, results) {
     const matchTitle = useName ? (r.name || r.name_cn || '') : (r.name_cn || r.name || '');
     const score = sorensenDice(cleanTitle, matchTitle);
     return score > best.score ? { item: r, score } : best;
-  }, { item: results[0], score: 0 }).item;
+  }, { item: results[0], score: 0 });
 }
 
 /**
@@ -380,8 +380,9 @@ async function matchSeason(registry, keyword, folderParsed, videoCount, config) 
   logger.info(`matchSeason: 共 ${results.length} 条候选结果`);
 
   // 4. Pick best match using Sorensen-Dice
-  const best = pickBestBySimilarity(folderParsed.cleanTitle, results);
-  logger.info(`matchSeason: pickBestBySimilarity → id=${best.id} name="${best.name_cn || best.name}"`);
+  const matchResult = pickBestBySimilarity(folderParsed.cleanTitle, results);
+  const best = matchResult.item;
+  logger.info(`matchSeason: pickBestBySimilarity → id=${best.id} name="${best.name_cn || best.name}" score=${matchResult.score.toFixed(3)}`);
 
   // 5. Get full detail
   const detail = await bangumi.getSubjectDetail(best.id);
@@ -606,16 +607,14 @@ async function syncAnilist(anime, config, bannerDir, coverDir) {
     return null;
   }
 
-  const bestItem = pickBestBySimilarity(searchTerm, results);
-  if (!bestItem) {
+  const matchResult = pickBestBySimilarity(searchTerm, results);
+  if (!matchResult.item) {
     anime.anilistId = -1;
     return null;
   }
+  const bestItem = matchResult.item;
 
-  const matchField = isPrimarilyRomaji(searchTerm) ? 'name' : 'name_cn';
-  const matchTitle = bestItem[matchField] || bestItem.name || bestItem.name_cn || '';
-  const score = sorensenDice(searchTerm, matchTitle);
-  if (score < 0.5) {
+  if (matchResult.score < 0.5) {
     anime.anilistId = -1;
     return null;
   }

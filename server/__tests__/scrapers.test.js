@@ -167,7 +167,7 @@ describe('pickBestBySimilarity', () => {
       { id: 1, name_cn: '推しの子', name: 'Oshi no Ko' },
       { id: 2, name_cn: '别的作品', name: 'Something Else' },
     ];
-    const best = pickBestBySimilarity('Oshi no Ko', results);
+    const { item: best } = pickBestBySimilarity('Oshi no Ko', results);
     assert.equal(best.id, 1);
   });
   it('picks by name_cn when available', () => {
@@ -175,7 +175,7 @@ describe('pickBestBySimilarity', () => {
       { id: 1, name_cn: 'ゆるゆり', name: 'Yuru Yuri' },
       { id: 2, name_cn: '别的', name: 'Other' },
     ];
-    const best = pickBestBySimilarity('Yuru Yuri', results);
+    const { item: best } = pickBestBySimilarity('Yuru Yuri', results);
     assert.equal(best.id, 1);
   });
 });

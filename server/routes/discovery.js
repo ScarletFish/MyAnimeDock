@@ -173,7 +173,7 @@ module.exports = {
         }
       }
       // 先存初始数据（暂无封面的条目）
-      await db.saveLibrary(data);
+      await db.saveLibrary(data, new Set(imported));
       await db.saveMyList(data);
       await saveScannedTree(data.scannedTree);
       jsonResp(res, 200, { ok: true, imported });
@@ -187,7 +187,7 @@ module.exports = {
         }
         if (anime && anime.bangumiId) {
           syncAnilist(anime, config, bannerDir, coverDir)
-            .then(() => db.saveLibrary(data))
+            .then(() => db.saveLibrary(data, new Set([anime.id])))
             .catch(e => logger.warn(`AniList sync failed for ${id}: ${e.message}`));
         }
       });
@@ -224,7 +224,7 @@ module.exports = {
         scannedNode.metadataSource = null;
       }
       await saveScannedTree(data.scannedTree);
-      await db.saveLibrary(data);
+      await db.saveLibrary(data, new Set());
       await db.saveMyList(data);
       jsonResp(res, 200, { ok: true });
     } catch (e) {

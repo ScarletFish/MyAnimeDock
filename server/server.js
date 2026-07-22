@@ -120,10 +120,6 @@ async function saveData(data) {
   ]);
 }
 
-async function flushSaves() {
-  // saveAll is synchronous, just await current
-}
-
 // ── 路由 handler 导入 ──
 const H = Object.assign(
   {},
@@ -137,7 +133,7 @@ const H = Object.assign(
   require('./routes/db-manager')
 );
 
-// ── 内联 handler（关闭、封面、静态文件）──
+// ── 内联 handler（关闭、封面、静态文件、CORS）──
 function handleQuit(req, res, state) {
   const { db, logger } = state;
   jsonResp(res, 200, { ok: true, shutdown: true });
@@ -156,6 +152,14 @@ function handleBannerImage(req, res, _state) {
   const urlPath = new URL(req.url, 'http://localhost').pathname;
   const bannerPath = path.join(DATA_DIR, decodeURIComponent(urlPath));
   serveImage(bannerPath, req.url, res);
+}
+
+function handleCorsPreflight(req, res) {
+  res.writeHead(204, {
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Origin': '*',
+  });
+  res.end();
 }
 
 function handleStaticFiles(req, res, _state) {
@@ -194,13 +198,7 @@ const routeTable = [
   { method: 'GET', path: '/api/library', handler: H.handleGetLibrary },
   { method: 'POST', path: '/api/library/sync-anilist-backfill', handler: H.handleAnilistBackfill },
   { method: 'GET', path: '/api/library/sync/stream', handler: H.handleLibrarySyncStream },
-  { method: 'OPTIONS', path: '/api/library/sync/stream', handler: (req, res) => {
-    res.writeHead(204, {
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
-      'Access-Control-Allow-Origin': '*',
-    });
-    res.end();
-  }},
+  { method: 'OPTIONS', path: '/api/library/sync/stream', handler: handleCorsPreflight },
   // Anime detail (order matters: /sessions before /:id)
   { method: 'GET', pattern: /^\/api\/anime\/(.+?)\/sessions$/, handler: H.handleAnimeSessions },
   { method: 'GET', pattern: /^\/api\/anime\/(.+)$/, handler: H.handleGetAnimeDetail },
@@ -366,7 +364,7 @@ async function init() {
     try {
       await new Promise((resolve, reject) => {
         const s = server.listen(candidate, () => { actualPort = candidate; resolve(); });
-        s.on('error', (e) => { if (e.code === 'EADDRINUSE') reject(e); else throw e; });
+        s.on('error', (e) => { if (e.code === 'EADDRINUSE') reject(e); else reject(e); });
       });
       break;
     } catch (e) {
@@ -380,11 +378,12 @@ async function init() {
   if (actualPort === null) {
     throw new Error(`Ports ${BASE_PORT}-${BASE_PORT + PORT_RANGE - 1} all in use, cannot start server`);
   }
-  server._ready = true;
 
   // Write actual port for Rust sidecar consumption
   const portFile = path.join(DATA_DIR, '.port');
-  try { fs.writeFileSync(portFile, String(actualPort), 'utf-8'); } catch (e) {}
+  try { fs.writeFileSync(portFile, String(actualPort), 'utf-8'); } catch (e) {
+    logger.error(`Failed to write .port file: ${e.message}`);
+  }
   console.log(`PORT=${actualPort}`);  // stdout for sidecar stdout capture
 
   const elapsed = Date.now() - startTime;

@@ -310,22 +310,6 @@ async function validateCovers(data) {
 
 // ── 初始化 ──
 async function init() {
-  // Kill stale port 3456 process
-  try {
-    const out = require('child_process').execSync(
-      `netstat -ano | findstr ":${PORT} " | findstr LISTENING`,
-      { encoding: 'utf8', timeout: 3000, stdio: ['ignore', 'pipe', 'ignore'] }
-    ).trim();
-    for (const line of out.split('\n').filter(Boolean)) {
-      const pid = line.trim().split(/\s+/).pop();
-      if (pid && pid !== '0' && !isNaN(pid)) {
-        require('child_process').execSync(`taskkill /F /PID ${pid}`, { timeout: 3000, stdio: ['ignore', 'pipe', 'ignore'] });
-        bootLog(`Killed stale process on port ${PORT} (PID ${pid})`);
-        await new Promise(r => setTimeout(r, 200));
-      }
-    }
-  } catch (_) {}
-
   const startTime = Date.now();
   startupTime = startTime;
 
@@ -373,12 +357,38 @@ async function init() {
   // Phase 3: Cover validation
   validateCovers(data).catch(e => logger.warn('Cover validation error:', e.message));
 
-  // Phase 4: Start serving
-  await new Promise(resolve => server.listen(PORT, resolve));
+  // Phase 4: Start serving (try ports 3456→3460, fallback on EADDRINUSE)
+  const PORT_RANGE = 5;
+  const BASE_PORT = 3456;
+  let actualPort = null;
+  for (let i = 0; i < PORT_RANGE; i++) {
+    const candidate = BASE_PORT + i;
+    try {
+      await new Promise((resolve, reject) => {
+        const s = server.listen(candidate, () => { actualPort = candidate; resolve(); });
+        s.on('error', (e) => { if (e.code === 'EADDRINUSE') reject(e); else throw e; });
+      });
+      break;
+    } catch (e) {
+      if (e.code === 'EADDRINUSE' && i < PORT_RANGE - 1) {
+        logger.warn(`Port ${candidate} in use, trying ${candidate + 1}...`);
+      } else {
+        throw e;
+      }
+    }
+  }
+  if (actualPort === null) {
+    throw new Error(`Ports ${BASE_PORT}-${BASE_PORT + PORT_RANGE - 1} all in use, cannot start server`);
+  }
   server._ready = true;
 
+  // Write actual port for Rust sidecar consumption
+  const portFile = path.join(DATA_DIR, '.port');
+  try { fs.writeFileSync(portFile, String(actualPort), 'utf-8'); } catch (e) {}
+  console.log(`PORT=${actualPort}`);  // stdout for sidecar stdout capture
+
   const elapsed = Date.now() - startTime;
-  logger.info(`Ready in ${elapsed}ms — ${data.library.length} anime, port ${PORT}`);
+  logger.info(`Ready in ${elapsed}ms — ${data.library.length} anime, port ${actualPort}`);
   if (config.mediaDir) {
     logger.info(`Media directory: ${config.mediaDir}`);
   }

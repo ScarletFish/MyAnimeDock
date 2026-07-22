@@ -23,6 +23,47 @@ fn should_spawn_sidecar() -> bool {
     !cfg!(debug_assertions) || std::env::var("TAURI_PROD").is_ok()
 }
 
+/// 获取 .port 文件路径（与 Node.js 端 DATA_DIR 保持一致）。
+/// 生产模式：%APPDATA%/MyAnimeDock/.port
+/// 开发模式：server/.port（仅在手动启动时有用，sidecar 模式不读）
+fn port_file_path() -> PathBuf {
+    if cfg!(debug_assertions) {
+        // dev 模式：server/.port（与 server/lib/config.js DATA_DIR 一致）
+        let exe_dir = std::env::current_exe()
+            .ok()
+            .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+            .unwrap_or_else(|| PathBuf::from("."));
+        exe_dir.join("server").join(".port")
+    } else {
+        // 生产模式：%APPDATA%/MyAnimeDock/.port
+        let appdata = std::env::var("APPDATA").unwrap_or_else(|_| ".".to_string());
+        PathBuf::from(appdata).join("MyAnimeDock").join(".port")
+    }
+}
+
+/// 读取 .port 文件获取实际端口号，最多等待 10 秒。
+/// 如果文件始终不存在（非 sidecar 场景），回退到默认端口 3456。
+fn read_actual_port() -> u16 {
+    let port_file = port_file_path();
+    for _ in 0..20 {
+        if port_file.exists() {
+            match std::fs::read_to_string(&port_file) {
+                Ok(s) => {
+                    if let Ok(port) = s.trim().parse::<u16>() {
+                        return port;
+                    }
+                    warn!("Invalid .port content: '{}', using default 3456", s.trim());
+                    return 3456;
+                }
+                Err(e) => warn!("Failed to read .port: {}", e),
+            }
+        }
+        std::thread::sleep(Duration::from_millis(500));
+    }
+    warn!(".port file not found after 10s, falling back to 3456");
+    3456
+}
+
 fn main() {
     env_logger::init();
     tauri::Builder::default()
@@ -95,12 +136,13 @@ fn main() {
                 });
             }
             
-            // 等待 server 就绪（轮询 /api/health，等待 ready: true）
+            // 等待 server 就绪（先读 .port 文件获取实际端口，再轮询 /api/health）
             let handle_clone = handle.clone();
             std::thread::spawn(move || {
                 info!("Waiting for server to be ready...");
-                wait_for_server_ready(&handle_clone);
-                info!("Server is ready, showing window");
+                let port = read_actual_port();
+                wait_for_server_ready(port, &handle_clone);
+                info!("Server is ready on port {}, showing window", port);
                 
                 // server 就绪后，导航到 sidecar 页面并显示窗口
                 // 窗口初始隐藏（visible: false），等 DB 加载完后再展示
@@ -108,7 +150,9 @@ fn main() {
                 let mut shown = false;
                 for _i in 0..max_nav_attempts {
                     if let Some(window) = handle_clone.get_webview_window("main") {
-                        let _ = window.eval("window.location.replace('http://localhost:3456')");
+                        let url = format!("http://localhost:{}", port);
+                        let js = format!("window.location.replace('{}')", url);
+                        let _ = window.eval(&js);
                         let _ = window.show();
                         shown = true;
                         break;
@@ -177,14 +221,15 @@ fn get_sidecar_path(handle: &tauri::AppHandle) -> Result<PathBuf, Box<dyn std::e
     Err("Sidecar executable not found".into())
 }
 
-fn wait_for_server_ready(handle: &tauri::AppHandle) {
+fn wait_for_server_ready(port: u16, handle: &tauri::AppHandle) {
+    let url = format!("http://localhost:{}/api/health", port);
     for attempt in 1..=45 {
-        if let Ok(resp) = ureq::get("http://localhost:3456/api/health").call() {
+        if let Ok(resp) = ureq::get(&url).call() {
             if resp.status() == 200 {
                 // Parse response to check ready flag
                 if let Ok(body) = resp.into_body().read_to_string() {
                     if body.contains("\"ready\":true") {
-                        info!("Server ready after {attempt} attempts");
+                        info!("Server ready after {attempt} attempts on port {port}");
                         return;
                     }
                 }
@@ -192,7 +237,7 @@ fn wait_for_server_ready(handle: &tauri::AppHandle) {
         }
         std::thread::sleep(Duration::from_millis(500));
     }
-    warn!("Server did not become ready within timeout");
+    warn!("Server did not become ready within timeout on port {port}");
     // 即使 server 未就绪，也显示窗口（用户可以看到错误信息）
     if let Some(window) = handle.get_webview_window("main") {
         let _ = window.show();

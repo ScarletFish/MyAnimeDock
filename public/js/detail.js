@@ -112,10 +112,10 @@ function startDetailRefresh() {
         var _allDone = currentAnime.episodes && currentAnime.episodes.length > 0
           && currentAnime.episodes.every(function(e) { return e.watched; });
         if (_allDone && currentAnime.myListStatus === 'completed') {
-          showToast('已看完所有剧集，已标记为「已完成」', 'success');
-        } else {
-          showToast('播放已结束，进度已更新', 'success');
+          showToast('播放已结束，已看完所有剧集', 'success');
+          return;
         }
+        showToast('播放已结束，进度已更新', 'success');
       }
       wasMpvActive = st.active;
     } catch (e) {}

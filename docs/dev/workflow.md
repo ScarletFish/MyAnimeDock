@@ -243,6 +243,7 @@ MyAnimeDock 功能开发/修 bug 的标准流程。**禁止跳过阶段直接写
 - [ ] 改 API/数据模型/持久化 → 同步更新 `docs/data-flow.md`
 - [ ] 改 scanner → 同步更新 `docs/code-explorer.md`
 - [ ] 改测试约定 → 同步更新 `docs/testing.md`
+- [ ] **发现隐式业务逻辑/实现细节** → 同步更新对应 `docs/data-flow/` 子文件（如播放决策规则、ep.progress 单位、auto-complete 触发条件等）
 - [ ] 填写 `docs/dev/report.md` 格式的变更总结（改动文件数、行数、测试结果、未解决的问题）
 - [ ] 回归测试（与改动范围匹配的路径，选相关项手动验证）：
   - 后端改动 → `npm run dev:server:watch` 启动无报错 + 改的 API 响应正确

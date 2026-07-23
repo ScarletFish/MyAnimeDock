@@ -187,6 +187,24 @@ document.getElementById('library-grid').innerHTML = renderGrid(items);
 document.getElementById('view-library').innerHTML = renderFullLibrary(items);
 ```
 
+## 视觉一致性 — 详情页模块
+
+**新详情页 section 必须复用现有模块的视觉结构，不得重写一套样式。**
+
+```css
+/* ✅ 正确 — 匹配 .detail-characters 的卡片框 */
+#detailNewSection {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  padding: 1.25rem 1.5rem;
+}
+/* section header 用 .detail-section-header + h3 / .detail-section-title */
+```
+
+标题用 `.detail-section-header` + `<h3>` 体系（flex 行，标题左，操作右）。
+卡片/内容区的 gap、padding、font-size 从已有同类模块取，不猜值。
+
 ## 新增 UI 组件检查清单
 
 - [ ] 用工厂函数（`createDropdown` / `createFilterBar`）还是自己写？

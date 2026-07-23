@@ -12,7 +12,7 @@
 - **Tailwind** ⏳ — 待实施，不受 ESM 影响
 - 项目结构从仓库根目录散放 → `frontend/src/` 统一源码目录 ✅
 
-## 两阶段计划（修正）
+## 两/三阶段计划（修正）
 
 ### Phase 1 — Vite + 目录迁移 ✅ 已完成
 
@@ -53,7 +53,7 @@ Step 1.5  Tauri 配置修正
 
 **目标**：Tailwind v4 逐步替换手写 CSS，保留 8+ 主题系统和 `light.css` 覆盖
 
-**策略**：CSS 变量驱动主题 → `@theme` 桥接到 Tailwind utilities → 混合 `@utility`（组件）+ inline utilities（布局）
+**策略**：CSS 变量驱动主题 → `@theme` 桥接到 Tailwind utilities → inline utilities（布局）
 
 ```
 架构决策：
@@ -62,8 +62,9 @@ Step 1.5  Tauri 配置修正
   插件: @tailwindcss/vite（代替 PostCSS，省一个配置文件）
   主题: A 方案 — @theme 映射 CSS 变量，8+ 主题通过 data-theme 级联自动工作
   Preflight: 关闭，保留自定义 reset（user-select: none 等桌面端行为）
-  组件策略: 混合 — @utility 定义复杂组件（btn/card/modal），
-            内联 utilities 用于布局（flex/grid/padding/margin）
+  组件策略: B 方案 — 跳过 @utility，因 CSS 级联顺序问题
+            （components.css 在 styles.css 之后加载，覆盖 @utility 定义）
+            只转换 inline style 为内联 utilities
   light.css: 保留，Tailwind 无等效的多主题覆盖机制
 ```
 
@@ -114,10 +115,51 @@ export default defineConfig({
 
   --color-border: var(--border);
   --color-border-hover: var(--border-hover);
+
+  /* Spacing: bridge --space-* to p-/m-/gap- utilities */
+  --spacing-1: var(--space-1);
+  --spacing-2: var(--space-2);
+  --spacing-3: var(--space-3);
+  --spacing-4: var(--space-4);
+  --spacing-5: var(--space-5);
+  --spacing-6: var(--space-6);
+  --spacing-8: var(--space-8);
+  --spacing-10: var(--space-10);
+  --spacing-12: var(--space-12);
+
+  /* Border radius */
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+
+  /* Font families */
+  --font-body: var(--font-body);
+  --font-display: var(--font-display);
+  --font-accent: var(--font-accent);
+  --font-mono: var(--font-mono);
+
+  /* Font weights */
+  --font-weight-normal: var(--fw-normal);
+  --font-weight-medium: var(--fw-medium);
+  --font-weight-semibold: var(--fw-semibold);
+  --font-weight-bold: var(--fw-bold);
+  --font-weight-extrabold: var(--fw-extrabold);
+
+  /* Shadows */
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
 }
 ```
 
-现在 `bg-surface`、`text-content`、`border-border`、`bg-accent/20` 等 utility 可用。
+现在以下 utility 可用：
+- 颜色：`bg-surface`、`text-content`、`border-border`、`bg-accent/20` 等
+- 间距：`p-4`、`gap-2`、`mt-6` 等（映射到 `--space-*`，支持缩放）
+- 圆角：`rounded-sm`、`rounded-md`、`rounded-lg`
+- 字体：`font-body`、`font-display`、`font-mono`
+- 字重：`font-normal`、`font-medium`、`font-semibold`、`font-bold`
+- 阴影：`shadow-sm`、`shadow-md`、`shadow-lg`
+
 `data-theme` 切换时 CSS 变量变化 → Tailwind utility 自动跟随，无需 `dark:` 前缀。
 
 验证：`cd frontend && npx vite`，无构建错误即可。
@@ -235,11 +277,24 @@ export default defineConfig({
 
 ## 时间估算
 
-| Phase | 内容 | 预计 |
+| Phase | 内容 | 状态 |
 |-------|------|------|
-| 1 | Vite + 目录迁移 | ~2 天 |
-| 2 | Tailwind v4 迁移 | 6-10 小时 |
-|   Step 0 | 基础搭建 | 30 min |
-|   Step 1 | Component utilities | 1-2 hr |
-|   Step 2 | 视图迁移（8 views） | 4-6 hr |
-|   Step 3 | CSS 清理 | 1 hr |
+| 1 | Vite + 目录迁移 | ✅ |
+| 2 | Tailwind v4 迁移 | ⏳ |
+|   Step 0 | 基础搭建 + @theme 颜色 | ✅ |
+|   Step 1 | Component utilities（跳过，B 策略） | ❌ |
+|   Step 2 | 视图迁移 — inline style 替换 | ⏳ 进度见下 |
+|   Step 3 | CSS 清理 | ⏳ |
+
+Step 2 进度：
+
+| 文件 | style 替换 | 状态 |
+|------|-----------|------|
+| `frontend/index.html` | 颜色/间距/对齐 ~20 处 | ✅ |
+| `frontend/src/js/app.js` | 颜色/对齐 ~3 处 | ✅ |
+| `frontend/src/js/detail.js` | 颜色/间距/对齐 ~8 处 | ✅ |
+| `frontend/src/js/detail-stats.js` | 颜色 ~1 处 | ✅ |
+| `frontend/src/js/metamatch.js` | 颜色 ~3 处 | ✅ |
+| `frontend/src/js/mylist.js` | 颜色 ~1 处 | ✅ |
+| 剩余 JS 模板字符串 | 均为动态/功能性 style（display/background-image） | — |
+| Step 2 剩余工作 | CSS 文件中的 var() 规则需逐条评估是否可转 | ⏳ |

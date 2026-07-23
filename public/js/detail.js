@@ -730,7 +730,7 @@ async function playEpisode(filePath, position = 0) {
 
 async function toggleWatched(animeId, epNumber, watched) {
   try {
-    const result = await API.post('/api/progress', { animeId, episodeNumber: epNumber, watched, progress: watched ? 999999 : 0 });
+    const result = await API.post('/api/progress', { animeId, episodeNumber: epNumber, watched, progress: watched ? undefined : 0 });
     if (currentAnime) {
       const ep = currentAnime.episodes.find(e => e.number === epNumber);
       if (ep) { ep.watched = result.episode.watched; ep.progress = result.episode.progress; }

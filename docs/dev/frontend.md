@@ -2,7 +2,19 @@
 
 ## 架构概要
 
-无构建 vanilla HTML/CSS/JS SPA。GSAP 作为唯一动画库。
+Vite 构建 + 全局 `<script>` 标签（非 ESM）的 vanilla HTML/CSS/JS SPA。
+GSAP 作为唯一动画库。
+
+### 构建方式
+
+Vite 在 **复制模式**（`build.rollupOptions.input` 只处理入口，JS 非 module 不打包）下工作：
+`index.html` 里 19 个 `<script>` 标签被 Vite 按原样复制到 `dist/`，不做 tree-shaking 或 scope 隔离。
+这样避免了 100+ 全局函数跨模块调用的 ESM 迁移风险。
+
+```
+npm run dev              # Vite localhost:3456 + 后端 3457
+npm run build:frontend   # 输出到 frontend/dist/
+```
 
 ### 加载顺序（严格依赖）
 
@@ -14,7 +26,7 @@ state.js → debug.js → ui.js → api.js → components.js
     → onboarding.js → keyboard.js
 ```
 
-`index.html` 中 `<script>` 标签顺序必须与此一致。打破依赖可能导致 `undefined` 引用。
+`frontend/index.html` 中 `<script>` 标签顺序必须与此一致。打破依赖可能导致 `undefined` 引用。
 
 ## 核心模式
 

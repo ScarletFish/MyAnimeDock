@@ -165,7 +165,7 @@ function handleCorsPreflight(req, res) {
 
 function handleStaticFiles(req, res, _state) {
   const urlPath = new URL(req.url, 'http://localhost').pathname;
-  let filePath = path.join(ASSET_DIR, 'public', decodeURIComponent(urlPath));
+  let filePath = path.join(ASSET_DIR, 'frontend', 'dist', decodeURIComponent(urlPath));
   if (fs.existsSync(filePath) && fs.statSync(filePath).isDirectory()) {
     filePath = path.join(filePath, 'index.html');
   }
@@ -359,8 +359,9 @@ async function init() {
   validateCovers(data).catch(e => logger.warn('Cover validation error:', e.message));
 
   // Phase 4: Start serving (try ports 3456→3460, fallback on EADDRINUSE)
+  // BASE_PORT can be overridden via env (e.g. Vite dev on 3456 → backend on 3457)
   const PORT_RANGE = 5;
-  const BASE_PORT = 3456;
+  const BASE_PORT = parseInt(process.env.BASE_PORT, 10) || 3456;
   let actualPort = null;
   for (let i = 0; i < PORT_RANGE; i++) {
     const candidate = BASE_PORT + i;

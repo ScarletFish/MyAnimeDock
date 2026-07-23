@@ -1,49 +1,51 @@
-# Vite + ESM + Tailwind 迁移计划
+# Vite + Tailwind 迁移计划（回顾版）
 
 ## 背景
 
 7125 行手写 CSS, 30 个 JS 全局变量, 无构建工具。随项目增长，样式一致性和开发效率持续下降。
 当前阶段 (功能基本完成) 是框架化的最佳窗口。
 
-## 目标
+## 实际目标
 
-- **Vite** — 开发 HMR, 生产构建压缩
-- **ESM** — import/export 替代全局变量 + script 顺序锁
-- **Tailwind** — utility-first 消除样式不一致，CSS 从 7125 行降到 ~15KB
-- 项目结构从仓库根目录散放 → `frontend/src/` 统一源码目录
+- **Vite** ✅ — 开发 HMR, 生产构建压缩
+- **ESM** ❌ — 放弃；100+ 全局函数跨模块调用，迁移 ESM 需要改 100+ 文件，风险 > 收益
+- **Tailwind** ⏳ — 待实施，不受 ESM 影响
+- 项目结构从仓库根目录散放 → `frontend/src/` 统一源码目录 ✅
 
-## 三阶段计划
+## 两阶段计划（修正）
 
-### Phase 1 — Vite + ESM
+### Phase 1 — Vite + 目录迁移 ✅ 已完成
 
-**目标**：HMR 跑起来、JS 模块化、CSS 原封不动
+**目标**：HMR 跑起来、JS 保持全局 script 标签、CSS 原封不动
 
 ```
-Step 1.1  npm create vite frontend --template vanilla
-          只取骨架配置，不删现有文件
+Step 1.1  手动搭建 Vite 配置（不用 npm create vite 模板）
+          只取 vite.config.js + package.json scripts
 
 Step 1.2  迁移目录结构
-          public/js/*.js    →  frontend/src/
+          public/js/*.js    →  frontend/src/js/
           public/css/*.css  →  frontend/src/css/
           public/index.html →  frontend/index.html（改 script/link 路径）
 
-Step 1.3  JS → ESM 转换
-          给每个 .js 文件加 export
-          在 main.js 里 import 所有模块
-          理顺可能的循环依赖
-          删除 index.html 里 30 个 <script>，只剩 1 个
+Step 1.3  ESM 评估 → 放弃
+          原因：30 个 JS 文件通过 100+ 全局函数互相调用（跨模块引用），
+          每个都需要加 export + 改所有调用处。单文件构建的收益 < 回归风险。
+          结论：保留 <script> 标签加载。Vite 按原样复制到 dist/。
 
-Step 1.4  验证 HMR
-          npm run dev 跑起来，改一行代码看自动刷新
+Step 1.4  npm run dev
+          Vite dev server   → localhost:3456（代理 /api → 3457）
+          后端 server       → localhost:3457（自动降级端口）
+          npm run build:frontend → frontend/dist/ (JS 267KB, CSS 201KB)
 
-Step 1.5  build 验证
-          npm run build → dist/ 输出
-          Tauri 指向 dist/ 作为前端资源
+Step 1.5  Tauri 配置修正
+          devUrl: localhost:5173 → localhost:3456
+          生产静态路径: ASSET_DIR/public/ → ASSET_DIR/frontend/dist/
 ```
 
-**可停点** ✅ 已获得：HMR、模块化、单文件构建
+**关键决策**：放弃 ESM。全局 `<script>` 标签 + Vite 复制模式可行，
+等将来有需要时再考虑单文件构建。
 
-**预计**：3-5 小时
+**耗时**：约 2 天（含多次 bug 修复）
 
 ---
 

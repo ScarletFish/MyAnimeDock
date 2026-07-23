@@ -4,7 +4,7 @@
   "identifier": "MyAnimeDock",
   "build": {
     "devUrl": "http://localhost:3456",
-    "frontendDist": "../public"
+    "frontendDist": "../frontend/dist"
   },
   "app": {
     "withGlobalTauri": true,

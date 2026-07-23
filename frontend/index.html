@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MyAnimeDock</title>
+<link rel="icon" type="image/svg+xml" href="/icon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=Noto+Sans+SC:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script>(function(){var t=localStorage.getItem('theme')||'default',m=localStorage.getItem('themeMode');if(t==='dark'||t==='light'){m=t;t='default'}m=m||'dark';document.documentElement.setAttribute('data-theme',t==='default'?m:t);document.documentElement.setAttribute('data-theme-mode',m)})()</script>
+<link rel="stylesheet" href="/src/css/styles.css">
+<link rel="stylesheet" href="/src/css/components.css">
+<link rel="stylesheet" href="/src/css/detail.css">
+<link rel="stylesheet" href="/src/css/views.css">
+<link rel="stylesheet" href="/src/css/light.css">
+</head>
+<body>
+
+<!-- Title Bar -->
+<div id="titlebar">
+  <div class="titlebar__left">
+    <span class="titlebar__brand" id="titlebarBrand">MyAnimeDock</span>
+    <div class="titlebar__detail-context hidden" id="titlebarDetailContext">
+      <button class="titlebar__back" id="titlebarBack">
+        <svg viewBox="0 0 16 16"><polyline points="10 4 6 8 10 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>返回</span>
+      </button>
+    </div>
+  </div>
+  <div class="titlebar__search" id="titlebarSearch">
+    <div class="titlebar__search-wrap">
+      <svg class="titlebar__search-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="5"/><path d="m11 11 3 3"/></svg>
+      <input type="text" id="globalSearchInput" placeholder="搜索…" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="titlebar__search-results hidden" id="globalSearchResults"></div>
+  </div>
+  <div class="titlebar__controls">
+    <button class="titlebar__btn" id="titlebarMinimize" data-tooltip="最小化">
+      <svg viewBox="0 0 14 14"><line x1="3" y1="7" x2="11" y2="7" stroke="currentColor" stroke-width="1.5"/></svg>
+    </button>
+    <button class="titlebar__btn" id="titlebarMaximize" data-tooltip="最大化">
+      <svg viewBox="0 0 14 14"><rect x="3" y="3" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+    </button>
+    <button class="titlebar__btn titlebar__btn--close" id="titlebarClose" data-tooltip="关闭">
+      <svg viewBox="0 0 14 14"><line x1="4" y1="4" x2="10" y2="10" stroke="currentColor" stroke-width="1.5"/><line x1="10" y1="4" x2="4" y2="10" stroke="currentColor" stroke-width="1.5"/></svg>
+    </button>
+  </div>
+</div>
+
+<div class="body-wrapper">
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sidebar-brand" onclick="toggleThemeDock()" data-tip="主题与视觉设置" role="button" tabindex="0">
+    <div class="sidebar-brand-icon theme-indicator">
+      <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="MyAnimeDock">
+        <rect x="0" y="0" width="16" height="16" rx="3" fill="var(--accent)" stroke="var(--border)" stroke-width="0.5"/>
+        <text x="8" y="13" font-family="Georgia, 'Times New Roman', serif" font-weight="700" font-size="12" fill="var(--bg-elevated)" text-anchor="middle">D</text>
+      </svg>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <button class="nav-btn" id="btnDiscovery" data-tip="发现" onclick="showView('discovery')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"></circle>
+        <path d="m21 21-4.35-4.35"></path>
+      </svg>
+    </button>
+    <button class="nav-btn active" id="btnLibrary" data-tip="动漫库" onclick="showView('library')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path>
+      </svg>
+    </button>
+    <button class="nav-btn" id="btnMyList" data-tip="我的列表" onclick="showView('mylist')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="8" y1="6" x2="21" y2="6"></line>
+        <line x1="8" y1="12" x2="21" y2="12"></line>
+        <line x1="8" y1="18" x2="21" y2="18"></line>
+        <line x1="3" y1="6" x2="3.01" y2="6"></line>
+        <line x1="3" y1="12" x2="3.01" y2="12"></line>
+        <line x1="3" y1="18" x2="3.01" y2="18"></line>
+      </svg>
+    </button>
+    <button class="nav-btn" id="btnStats" data-tip="统计" onclick="showView('stats')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+      </svg>
+    </button>
+  </nav>
+  <div class="sidebar-bottom">
+    <button class="nav-btn" id="btnSettings" data-tip="设置" onclick="openSettings()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+        <circle cx="12" cy="12" r="3"></circle>
+      </svg>
+    </button>
+  </div>
+</aside>
+
+<!-- Floating tooltip for sidebar -->
+<div class="sidebar-tooltip" id="sidebarTooltip">
+  <div class="sidebar-tooltip-arrow"></div>
+  <div class="sidebar-tooltip-text" id="sidebarTooltipText"></div>
+</div>
+
+<!-- Theme Dock Overlay -->
+<div class="theme-dock-overlay" id="themeDockOverlay" onclick="closeThemeDock()"></div>
+
+<!-- Theme Dock -->
+<div class="theme-dock" id="themeDock">
+  <div class="theme-dock-inner">
+    <div class="theme-dock-section">
+      <span class="theme-dock-label">主题色系</span>
+      <div class="theme-picker">
+        <button class="theme-option theme-option--default" data-theme="default" onclick="selectTheme(this, 'default')" data-tooltip="默认"></button>
+        <button class="theme-option theme-option--amber" data-theme="amber" onclick="selectTheme(this, 'amber')" data-tooltip="琥珀"></button>
+        <button class="theme-option theme-option--ocean" data-theme="ocean" onclick="selectTheme(this, 'ocean')" data-tooltip="海洋"></button>
+        <button class="theme-option theme-option--sakura" data-theme="sakura" onclick="selectTheme(this, 'sakura')" data-tooltip="樱花"></button>
+        <button class="theme-option theme-option--emerald" data-theme="emerald" onclick="selectTheme(this, 'emerald')" data-tooltip="翡翠"></button>
+        <button class="theme-option theme-option--violet" data-theme="violet" onclick="selectTheme(this, 'violet')" data-tooltip="紫罗兰"></button>
+      </div>
+    </div>
+    <div class="theme-dock-separator"></div>
+    <div class="theme-dock-section">
+      <div class="theme-mode-toggle" style="margin-top:0">
+        <span class="theme-toggle-label theme-toggle-label--active" id="dockLabelDark">深色</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="dockThemeMode" onchange="handleDockThemeModeToggle(this)">
+          <span class="toggle-slider"></span>
+        </label>
+        <span class="theme-toggle-label theme-toggle-label--inactive" id="dockLabelLight">浅色</span>
+      </div>
+    </div>
+    <div class="theme-dock-separator"></div>
+    <div class="theme-dock-section theme-dock-section--zoom">
+      <span class="theme-dock-label">缩放</span>
+      <input type="range" id="dockZoom" min="75" max="125" step="5" value="100" oninput="handleDockZoom(this)">
+      <span class="theme-dock-zoom-value" id="dockZoomLabel">100%</span>
+    </div>
+    <div class="theme-dock-separator"></div>
+    <div class="theme-dock-section">
+      <span class="theme-dock-label">减少动画</span>
+      <label class="toggle-switch">
+        <input type="checkbox" id="dockReduceMotion" onchange="handleReduceMotionToggle(this)">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+  </div>
+  <button class="theme-dock-close" onclick="closeThemeDock()" data-tooltip="关闭">✕</button>
+</div>
+
+<!-- Main Content -->
+<main class="main-content">
+
+  <!-- Discovery View -->
+  <section class="view hidden" id="discoveryView">
+    <div class="view-header" id="discoveryHero">
+      <div>
+        <h1>媒体目录</h1>
+        <p class="discovery-hero-path" id="discoveryPath">未配置媒体目录</p>
+      </div>
+      <div class="view-header-right">
+        <div class="discovery-stats-pills" id="discoveryStats" style="display:none">
+          <span class="stat-pill"><span id="statAnime">0</span> 部动漫</span>
+          <span class="stat-pill"><span id="statImported">0</span> 已导入</span>
+        </div>
+        <button class="btn btn-outline discovery-scan-btn" id="discoveryScanBtn" onclick="startScan()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"></path>
+          </svg>
+          <span id="scanBtnText">扫描目录</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="discovery-actions-sentinel" id="discoveryActionsSentinel"></div>
+    <div class="discovery-actions" id="discoveryActions" style="display:none">
+      <div class="discovery-actions-left">
+        <button class="btn btn-outline" id="selectAllBtn" onclick="selectAllCandidates()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8Z"/><path d="M15 3v4a2 2 0 0 0 2 2h4"/></svg>
+          全选
+        </button>
+        <button class="btn btn-outline" onclick="importSelected()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+          导入选中 (<span id="importCount">0</span>)
+        </button>
+      </div>
+      <div class="discovery-actions-right">
+        <div class="filter-group">
+          <button class="filter-btn filter-btn--active" data-filter="all">全部</button>
+          <button class="filter-btn" data-filter="unimported">未导入</button>
+          <button class="filter-btn" data-filter="excluded">已排除</button>
+        </div>
+        <div class="filter-group">
+          <button class="filter-btn" onclick="expandAll()">展开全部</button>
+          <button class="filter-btn" onclick="collapseAll()">折叠全部</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="discovery-grid" id="discoveryGrid"></div>
+
+    <div class="empty-state" id="discoveryEmpty" style="display:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+      </svg>
+      <p id="discoveryEmptyText">未找到媒体目录</p>
+      <p class="empty-hint">请先在设置中配置媒体目录路径</p>
+    </div>
+  </section>
+
+  <!-- Library View -->
+  <section class="view hidden" id="libraryView">
+    <div class="view-header">
+      <h1>动漫库</h1>
+      <div class="view-header-right">
+        <button class="btn btn-outline" onclick="mmOpenModal()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          批量匹配
+        </button>
+      </div>
+    </div>
+    <div class="dashboard" id="libraryDashboard"></div>
+  </section>
+
+  <!-- Stats View -->
+  <section class="view hidden" id="statsView">
+    <div class="view-header">
+      <h1>统计</h1>
+    </div>
+    <div class="stats-grid" id="statsGrid">
+      <!-- Card 1: Word Cloud -->
+      <div class="stats-card stats-card--wordcloud" id="statsWordCloudCard">
+        <div class="stats-card-header">
+          <h2>分类词云</h2>
+          <span class="stats-card-subtitle">Bangumi 类型标签聚合</span>
+          <button class="stats-refresh-btn" onclick="loadStats()" data-tooltip="刷新词云">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+          </button>
+        </div>
+        <div class="stats-card-body">
+          <canvas id="wordCloudCanvas" width="800" height="400"></canvas>
+          <div class="stats-loading" id="statsLoading">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+            加载中…
+          </div>
+          <div class="stats-empty" id="statsEmpty" style="display:none">...</div>
+        </div>
+      </div>
+
+      <!-- Card 2: Watch Activity -->
+      <div class="stats-card stats-card--activity" id="statsActivityCard">
+        <div class="stats-card-header">
+          <h2>观看活跃度</h2>
+          <span class="stats-card-subtitle">最近 6 个月观看时长趋势</span>
+          <button class="stats-refresh-btn" onclick="loadActivityChart()" data-tooltip="刷新图表">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+          </button>
+        </div>
+        <div class="stats-card-body">
+          <div id="activityChartContainer"></div>
+          <div class="stats-loading" id="activityLoading">...</div>
+          <div class="stats-empty" id="activityEmpty" style="display:none">...</div>
+        </div>
+      </div>
+
+      <!-- Card 3: Rating Distribution -->
+      <div class="stats-card stats-card--rating" id="statsRatingCard">
+        <div class="stats-card-header">
+          <h2>评分分布</h2>
+          <span class="stats-card-subtitle">Bangumi 评分偏好一览</span>
+          <button class="stats-refresh-btn" onclick="loadRatingChart()" data-tooltip="刷新图表">...</button>
+        </div>
+        <div class="stats-card-body">
+          <div id="ratingChartContainer"></div>
+          <div class="stats-loading" id="ratingLoading">...</div>
+          <div class="stats-empty" id="ratingEmpty" style="display:none">...</div>
+        </div>
+      </div>
+
+      <!-- Card 4: Season Distribution -->
+      <div class="stats-card stats-card--season" id="statsSeasonCard">
+        <div class="stats-card-header">
+          <h2>季度分布</h2>
+          <span class="stats-card-subtitle">所看番剧在哪个季度最突出</span>
+          <button class="stats-refresh-btn" onclick="loadSeasonChart()" data-tooltip="刷新图表">...</button>
+        </div>
+        <div class="stats-card-body">
+          <div id="seasonChartContainer"></div>
+          <div class="stats-loading" id="seasonChartLoading">...</div>
+          <div class="stats-empty" id="seasonChartEmpty" style="display:none">...</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- My List View -->
+  <section class="view hidden" id="mylistView">
+    <div class="mylist-status-bar" id="mylistStatusBar"></div>
+    <div class="view-header">
+      <h1>我的列表</h1>
+      <div class="mylist-sort-bar" id="mylistSortDropdown"></div>
+    </div>
+    <div id="mylistGrid" class="mylist-grid"></div>
+    <div class="empty-state" id="mylistEmpty" style="display:none">...</div>
+  </section>
+
+  <!-- Anime Detail View -->
+  <section class="view hidden" id="detailView">
+    <div class="detail-nav-overlay" id="detailNavOverlay">
+      <div class="detail-nav-zone detail-nav-left" id="navLeft">...</div>
+      <div class="detail-nav-zone detail-nav-right" id="navRight">...</div>
+    </div>
+    <div class="detail-content">
+      <div id="headerTitle" style="display:none"></div>
+      <div class="detail-banner">
+        <div class="detail-banner-left">
+          <div class="detail-cover-wrap" id="detailCover"></div>
+          <div class="detail-actions">
+            <button class="btn btn-primary" id="btnPlayAnime" onclick="playEpisodeFromCover()"><span id="btnPlayText">播放</span></button>
+            <button class="btn" id="btnFetchBangumi" onclick="syncBangumiMetadata()">同步</button>
+            <button class="btn btn-danger" id="btnDeleteAnime" onclick="deleteAnime()">移除</button>
+          </div>
+        </div>
+        <div class="detail-banner-right">
+          <h1 id="detailTitle"></h1>
+          <div id="detailAlias" class="detail-alias"></div>
+          <div class="detail-info-line" id="detailInfoLine"></div>
+          <div class="detail-tags" id="detailTags"></div>
+          <p id="detailSummary" class="detail-summary"></p>
+        </div>
+      </div>
+      <div class="episode-list-section" id="episodeHeatmap">
+        <div class="episode-list-header">
+          <div class="episode-header-left">
+            <h3>剧集列表</h3>
+            <span class="episode-count" id="episodeCount"></span>
+          </div>
+        </div>
+        <div class="episode-list-scroll" id="episodeHeatmapGrid"></div>
+      </div>
+
+      <div class="detail-characters" id="detailCharacters" style="display:none">
+        <div class="detail-section-header">
+          <h3>角色·声优</h3>
+        </div>
+        <div class="detail-char-wrap" id="detailCharWrap">
+          <div class="detail-char-grid" id="detailCharGrid"></div>
+          <button class="detail-char-toggle" onclick="toggleExpand('detailCharWrap')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+        </div>
+      </div>
+      <div id="detailRelations" class="detail-section" style="display:none">
+        <div class="detail-section-header">
+          <span class="detail-section-title">关联作品</span>
+        </div>
+        <div class="relation-scroll" id="relationScroll"></div>
+      </div>
+      <div id="detailRecommendations" class="detail-section" style="display:none">
+        <div class="detail-section-header">
+          <span class="detail-section-title">推荐</span>
+        </div>
+        <div class="relation-scroll" id="recommendationScroll"></div>
+      </div>
+      <div class="watch-stats" id="watchStats">
+        <div class="watch-stats-header"><h3>观看统计</h3></div>
+        <div class="watch-stats-chart-wrap">
+          <canvas class="watch-stats-chart" id="watchStatsChart" width="1200" height="320"></canvas>
+          <div class="watch-stats-empty" id="watchStatsEmpty"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+<!-- MetaMatch Modal -->
+<div class="modal-overlay modal-overlay--metamatch" id="metaMatchModal">
+  <div class="modal modal--metamatch">
+    <div class="modal-m-topbar">
+      <h2>批量元数据匹配</h2>
+      <div class="modal-m-badges">
+        <span class="stat-badge"><span class="num" id="mmStatTotal">0</span> 全部</span>
+        <span class="stat-badge pending"><span class="num" id="mmStatPending">0</span> 待处理</span>
+        <span class="stat-badge failed"><span class="num" id="mmStatFailed">0</span> 失败</span>
+        <span class="stat-badge matched"><span class="num" id="mmStatMatched">0</span> 已匹配</span>
+        <span class="stat-badge matching"><span class="num" id="mmStatMatching">0</span> 匹配中</span>
+      </div>
+      <button class="modal-close-btn" onclick="closeModal('metaMatchModal')" aria-label="关闭">✕</button>
+    </div>
+    <div class="modal-m-progress"><div class="fill" id="mmModalProgress" style="width:0%"></div></div>
+    <div class="modal-m-filterbar">
+      <button class="btn btn-outline" id="mmMainActionBtn" onclick="mmMainAction()">自动匹配全部</button>
+      <span class="mm-shift-tip" id="mmShiftTip" style="display:none">Shift+点击 多选</span>
+      <div class="spacer"></div>
+      <button class="mm-filter-dot mm-filter-dot--active" data-mmfilter="all" onclick="mmSetFilter('all')"><span class="dot dot-all"></span></button>
+      <button class="mm-filter-dot" data-mmfilter="pending" onclick="mmSetFilter('pending')"><span class="dot dot-pending"></span></button>
+      <button class="mm-filter-dot" data-mmfilter="failed" onclick="mmSetFilter('failed')"><span class="dot dot-failed"></span></button>
+      <button class="mm-filter-dot" data-mmfilter="matched" onclick="mmSetFilter('matched')"><span class="dot dot-matched"></span></button>
+      <div class="mm-list-search">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" id="mmGridSearch" placeholder="搜索条目..." oninput="mmFilterGrid()">
+      </div>
+      <button class="btn btn-sm btn-ghost" id="mmCancelBtn" onclick="mmCancelSync()" style="display:none">停止</button>
+    </div>
+    <div class="modal-m-body">
+      <div class="mm-left">
+        <div class="mm-list" id="mmGrid"></div>
+        <div class="mm-list-empty" id="mmEmpty" style="display:none">...</div>
+      </div>
+      <div class="mm-panel" id="mmPanel">
+        <div class="mm-panel-content" id="mmPanelContent" style="display:none"></div>
+        <div class="mm-panel-synclog" id="mmPanelSyncLog" style="display:none">...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Status Modal -->
+<div class="modal-overlay" id="statusModal" onclick="if(event.target===this)closeModal('statusModal')">
+  <div class="modal status-modal">
+    <div class="status-modal-bg-wrap">
+      <div class="status-modal-bg" id="statusModalBg"></div>
+      <div class="status-modal-overlay"></div>
+    </div>
+    <button class="status-modal-close" onclick="closeModal('statusModal')">✕</button>
+    <div class="status-modal-inner">
+      <h2 class="status-modal-heading" id="statusModalTitle">标记状态</h2>
+      <div class="status-modal-body">
+        <div class="field-row">
+          <div class="field-cell">
+            <label class="field-label">状态</label>
+            <div class="status-dd" id="statusDd">
+              <button type="button" class="status-dd-trigger" id="statusDdTrigger" onclick="toggleStatusDropdown(event)">
+                <span class="status-dd-text" id="statusDdText">计划中</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="status-dd-menu" id="statusDdMenu">
+                <button type="button" class="status-dd-opt" data-value="watching" onclick="selectStatusOption(this)">进行中</button>
+                <button type="button" class="status-dd-opt" data-value="wish" onclick="selectStatusOption(this)">计划中</button>
+                <button type="button" class="status-dd-opt" data-value="completed" onclick="selectStatusOption(this)">已完成</button>
+                <button type="button" class="status-dd-opt" data-value="on_hold" onclick="selectStatusOption(this)">搁置</button>
+                <button type="button" class="status-dd-opt" data-value="dropped" onclick="selectStatusOption(this)">抛弃</button>
+              </div>
+            </div>
+          </div>
+          <div class="field-cell">
+            <label class="field-label">评分</label>
+            <div class="num-stepper" id="ratingStepper" data-min="0" data-max="10" data-step="0.5">
+              <button type="button" class="num-stepper-btn" onclick="stepperChange(this, -0.5)">−</button>
+              <span class="num-stepper-val" id="ratingDisplay">—</span>
+              <button type="button" class="num-stepper-btn" onclick="stepperChange(this, 0.5)">+</button>
+            </div>
+          </div>
+          <div class="field-cell">
+            <label class="field-label">进度 (集)</label>
+            <div class="num-stepper" id="progressStepper" data-min="0" data-max="999" data-step="1">
+              <button type="button" class="num-stepper-btn" onclick="stepperChange(this, -1)">−</button>
+              <span class="num-stepper-val" id="progressDisplay">—</span>
+              <button type="button" class="num-stepper-btn" onclick="stepperChange(this, 1)">+</button>
+            </div>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field-cell">
+            <label class="field-label">开始日期</label>
+            <div class="date-segments" data-date="startedAt">
+              <input type="text" class="date-seg date-seg--y" maxlength="4" placeholder="YYYY" inputmode="numeric" oninput="segAutoTab(this)">
+              <span class="date-sep">/</span>
+              <input type="text" class="date-seg date-seg--m" maxlength="2" placeholder="MM" inputmode="numeric" oninput="segAutoTab(this)">
+              <span class="date-sep">/</span>
+              <input type="text" class="date-seg date-seg--d" maxlength="2" placeholder="DD" inputmode="numeric">
+            </div>
+          </div>
+          <div class="field-cell">
+            <label class="field-label">结束日期</label>
+            <div class="date-segments" data-date="completedAt">...</div>
+          </div>
+          <div class="field-cell">
+            <label class="field-label">笔记</label>
+            <input type="text" id="notesInput" class="notes-input" placeholder="简短记录..." maxlength="200">
+          </div>
+        </div>
+      </div>
+      <div class="status-modal-footer">
+        <button class="btn btn-primary" onclick="saveStatusModal()">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Sync Metadata Modal -->
+<div class="modal-overlay" id="syncModal">
+  <div class="modal modal--large">
+    <h2>同步元数据</h2>
+    <div class="form-group">
+      <label for="syncKeyword">搜索关键词</label>
+      <div style="display: flex; gap: 8px;">
+        <input type="text" id="syncKeyword" placeholder="输入搜索词..." style="flex: 1;">
+        <button class="btn btn-primary" onclick="searchBangumiWithKeyword()">搜索</button>
+      </div>
+    </div>
+    <div class="bangumi-search-results" id="syncSearchResults"></div>
+    <button class="modal-close-btn" onclick="closeModal('syncModal')">✕</button>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal modal--settings">
+    <div class="settings-header">
+      <div class="settings-header-top">
+        <h2>设置</h2>
+        <button class="btn-icon visual-settings-btn" onclick="closeModal('settingsModal'); openVisualDock()">视觉</button>
+      </div>
+      <nav class="settings-tabs" role="tablist">
+        <button class="settings-tab active" data-tab="basic" role="tab" aria-selected="true" onclick="switchSettingsTab(this, 'basic')">基本</button>
+        <button class="settings-tab" data-tab="playback" role="tab" aria-selected="false" onclick="switchSettingsTab(this, 'playback')">播放</button>
+        <button class="settings-tab" data-tab="scraper" role="tab" aria-selected="false" onclick="switchSettingsTab(this, 'scraper')">刮削</button>
+        <button class="settings-tab" data-tab="dashboard" role="tab" aria-selected="false" onclick="switchSettingsTab(this, 'dashboard')">动漫库</button>
+        <button class="settings-tab" data-tab="database" role="tab" aria-selected="false" onclick="switchSettingsTab(this, 'database')">数据库</button>
+      </nav>
+    </div>
+    <div class="settings-panels">
+      <div class="settings-panel active" id="tab-basic">
+        <div class="form-group">
+          <label for="settingsMediaDir">媒体目录路径</label>
+          <div class="input-with-btn">
+            <input type="text" id="settingsMediaDir" placeholder="E:/Anime">
+            <button class="btn btn-sm" onclick="browseFolder('settingsMediaDir')">浏览</button>
+          </div>
+        </div>
+      </div>
+      <div class="settings-panel" id="tab-playback">...</div>
+      <div class="settings-panel" id="tab-scraper">...</div>
+      <div class="settings-panel" id="tab-dashboard">...</div>
+      <div class="settings-panel" id="tab-database">...</div>
+    </div>
+    <div id="settingsError" class="error-msg"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('settingsModal')">取消</button>
+      <button class="btn btn-primary" onclick="saveSettings()">保存</button>
+    </div>
+  </div>
+</div>
+
+</main>
+
+</div> <!-- /body-wrapper -->
+
+<!-- Context Menu -->
+<div class="context-menu" id="contextMenu">
+  <div class="context-menu-item context-menu-danger" id="ctxDelete">移除</div>
+</div>
+
+<!-- Toast -->
+<div class="toast-container" id="toastContainer" role="alert" aria-live="polite"></div>
+
+<!-- Onboarding overlay -->
+<div id="onboardingOverlay" class="onboarding-overlay hidden">...</div>
+
+<!-- Keyboard shortcuts help -->
+<div id="kbdHelpOverlay" class="kbd-help-overlay hidden">...</div>
+
+<!-- Vendor scripts (loaded before ESM entry) -->
+<script src="/vendor/d3/d3.min.js"></script>
+<script src="/vendor/wordcloud/wordcloud2.js"></script>
+<script src="/vendor/gsap/gsap.min.js"></script>
+<script src="/vendor/gsap/Flip.min.js"></script>
+<script src="/vendor/gsap/ScrollTrigger.min.js"></script>
+
+<!-- Scripts loaded in dependency order (globals, not ESM) -->
+<script src="/src/js/state.js"></script>
+<script src="/src/js/debug.js"></script>
+<script src="/src/js/ui.js"></script>
+<script src="/src/js/api.js"></script>
+<script src="/src/js/components.js"></script>
+<script src="/src/js/discovery.js"></script>
+<script src="/src/js/library.js"></script>
+<script src="/src/js/detail-pagination.js"></script>
+<script src="/src/js/detail-stats.js"></script>
+<script src="/src/js/detail-nav.js"></script>
+<script src="/src/js/detail.js"></script>
+<script src="/src/js/mylist.js"></script>
+<script src="/src/js/metamatch.js"></script>
+<script src="/src/js/stats.js"></script>
+<script src="/src/js/titlebar.js"></script>
+<script src="/src/js/app.js"></script>
+<script src="/src/js/search.js"></script>
+<script src="/src/js/onboarding.js"></script>
+<script src="/src/js/keyboard.js"></script>
+</body>
+</html>

@@ -154,7 +154,13 @@ module.exports = {
               if (final) {
                 if (active.anime) {
                   const myEntry = (data.myList || []).find(m => m.animeId === active.anime.id);
-                  if (myEntry && myEntry.status !== 'watching') {
+                  const allWatched = active.anime.episodes && active.anime.episodes.length > 0
+                    && active.anime.episodes.every(e => e.watched);
+                  if (allWatched && myEntry) {
+                    myEntry.status = 'completed';
+                    myEntry.completedAt = new Date().toISOString();
+                    db.saveMyList(data);
+                  } else if (myEntry && myEntry.status !== 'watching') {
                     myEntry.status = 'watching';
                     db.saveMyList(data);
                   }

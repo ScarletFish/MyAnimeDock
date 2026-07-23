@@ -1,300 +1,111 @@
-# Vite + Tailwind 迁移计划（回顾版）
+# Vite + Tailwind 迁移计划
 
 ## 背景
 
-7125 行手写 CSS, 30 个 JS 全局变量, 无构建工具。随项目增长，样式一致性和开发效率持续下降。
-当前阶段 (功能基本完成) 是框架化的最佳窗口。
+~7900 行手写 CSS（5 个文件），30 个 JS 全局变量，无构建工具。
+随项目增长，样式一致性和开发效率持续下降。
 
 ## 实际目标
 
 - **Vite** ✅ — 开发 HMR, 生产构建压缩
-- **ESM** ❌ — 放弃；100+ 全局函数跨模块调用，迁移 ESM 需要改 100+ 文件，风险 > 收益
-- **Tailwind** ⏳ — 待实施，不受 ESM 影响
-- 项目结构从仓库根目录散放 → `frontend/src/` 统一源码目录 ✅
+- **ESM** ❌ — 放弃；100+ 全局函数跨模块调用，迁移风险 > 收益
+- **Tailwind** ⏳ — CSS 变量桥接 → 组件级替换手写 CSS
+- 项目结构 `frontend/src/` 统一源码目录 ✅
 
-## 两/三阶段计划（修正）
-
-### Phase 1 — Vite + 目录迁移 ✅ 已完成
-
-**目标**：HMR 跑起来、JS 保持全局 script 标签、CSS 原封不动
+## 架构现状
 
 ```
-Step 1.1  手动搭建 Vite 配置（不用 npm create vite 模板）
-          只取 vite.config.js + package.json scripts
-
-Step 1.2  迁移目录结构
-          public/js/*.js    →  frontend/src/js/
-          public/css/*.css  →  frontend/src/css/
-          public/index.html →  frontend/index.html（改 script/link 路径）
-
-Step 1.3  ESM 评估 → 放弃
-          原因：30 个 JS 文件通过 100+ 全局函数互相调用（跨模块引用），
-          每个都需要加 export + 改所有调用处。单文件构建的收益 < 回归风险。
-          结论：保留 <script> 标签加载。Vite 按原样复制到 dist/。
-
-Step 1.4  npm run dev
-          Vite dev server   → localhost:3456（代理 /api → 3457）
-          后端 server       → localhost:3457（自动降级端口）
-          npm run build:frontend → frontend/dist/ (JS 267KB, CSS 201KB)
-
-Step 1.5  Tauri 配置修正
-          devUrl: localhost:5173 → localhost:3456
-          生产静态路径: ASSET_DIR/public/ → ASSET_DIR/frontend/dist/
+styles.css      48 KB / 1866 行  ← @theme + reset + CSS 变量 + base
+components.css  46 KB / 2019 行  ← 按钮、弹窗、卡片、表单、toast...
+detail.css      26 KB / 1129 行  ← 详情页专用
+views.css       58 KB / 2485 行  ← 发现、列表、统计、metamatch
+light.css       20 KB / 436 行   ← 浅色主题覆盖（保留不动）
 ```
 
-**关键决策**：放弃 ESM。全局 `<script>` 标签 + Vite 复制模式可行，
-等将来有需要时再考虑单文件构建。
+CSS 变量已全部桥接到 `@theme`，Tailwind 编译通过，`data-theme` 切换自动跟随。
 
-**耗时**：约 2 天（含多次 bug 修复）
+## 组件迁移策略（已修正）
 
----
+**核心问题**：`<link>` 加载顺序 `styles.css` → `components.css` → ... 
+导致老 CSS 规则在浏览器中覆盖 `styles.css` 中定义的 `@utility`。
 
-### Phase 2 — Tailwind v4 迁移
+**方案**：逐个组件迁移。对每个组件：
 
-**目标**：Tailwind v4 逐步替换手写 CSS，保留 8+ 主题系统和 `light.css` 覆盖
+1. 在 `styles.css` 中写 `@utility` 定义（可混合 `@apply` + 原生 CSS）
+2. **从 `components.css` 中删除**对应的老 CSS 规则
+3. 验证该组件在所有视图中样式无损
+4. 提交
 
-**策略**：CSS 变量驱动主题 → `@theme` 桥接到 Tailwind utilities → inline utilities（布局）
+这样 `@utility` 就成了唯一来源，没有级联冲突。
 
-```
-架构决策：
+## Phase 2 — Tailwind v4 迁移
 
-  版本: Tailwind v4（CSS-first，无 tailwind.config.js）
-  插件: @tailwindcss/vite（代替 PostCSS，省一个配置文件）
-  主题: A 方案 — @theme 映射 CSS 变量，8+ 主题通过 data-theme 级联自动工作
-  Preflight: 关闭，保留自定义 reset（user-select: none 等桌面端行为）
-  组件策略: B 方案 — 跳过 @utility，因 CSS 级联顺序问题
-            （components.css 在 styles.css 之后加载，覆盖 @utility 定义）
-            只转换 inline style 为内联 utilities
-  light.css: 保留，Tailwind 无等效的多主题覆盖机制
-```
+### Step 0 — 基础搭建 ✅ Done
 
-#### Step 0 — 基础搭建
+`@tailwindcss/vite` 集成、`@theme` 桥接（颜色/间距/圆角/字体/字重/阴影）。
 
-```shell
-cd frontend && npm install tailwindcss @tailwindcss/vite
-```
+### Step 1 — 组件迁移（当前阶段）
 
-在 `vite.config.js` 加插件（不需要 postcss.config.js / tailwind.config.js）：
+迁移顺序（复杂度递增，每步可独立验证）：
 
-```js
-import tailwindcss from '@tailwindcss/vite';
-export default defineConfig({
-  plugins: [tailwindcss(), concatJsPlugin()],
-  // ...
-});
-```
+| # | 组件 | 文件 | 规则数 | 覆盖范围 |
+|---|------|------|--------|----------|
+| 1 | 按钮系统 | `components.css:1-83` | ~80行 | 全站 |
+| 2 | 弹窗/模态框 | `components.css` | | 全站 |
+| 3 | Toast 通知 | | | |
+| 4 | 表单/输入/标签 | | | |
+| 5 | 卡片/网格 | | | |
+| 6 | 侧栏/导航 | | | |
+| 7 | 发现页组件 | `components.css` + `views.css` | | |
+| 8 | 详情页组件 | `detail.css` | | |
+| 9 | 统计页组件 | `views.css` | | |
+| 10 | MetaMatch | `views.css` | | |
 
-在 `styles.css` 最顶部注入 Tailwind + @theme 桥接：
-
-```css
-@import "tailwindcss/theme";   /* 只取主题变量和 utilities，跳过 preflight */
-@import "tailwindcss/utilities";
-
-/* 保留手写 reset（* { margin:0; padding:0; box-sizing:border-box; user-select:none }）
-   如愿意可改 @import "tailwindcss" 让 preflight 接管 */
-
-@theme {
-  --color-surface-deep: var(--bg-deep);
-  --color-surface: var(--bg-base);
-  --color-surface-elevated: var(--bg-elevated);
-  --color-surface-raised: var(--bg-surface);
-  --color-card: var(--bg-card);
-
-  --color-content: var(--fg-primary);
-  --color-content-secondary: var(--fg-secondary);
-  --color-content-muted: var(--fg-muted);
-
-  --color-accent: var(--accent);
-  --color-accent-soft: var(--accent-soft);
-  --color-accent-secondary: var(--accent-secondary);
-
-  --color-success: var(--success);
-  --color-warning: var(--warning);
-  --color-error: var(--error);
-  --color-info: var(--info);
-
-  --color-border: var(--border);
-  --color-border-hover: var(--border-hover);
-
-  /* Spacing: bridge --space-* to p-/m-/gap- utilities */
-  --spacing-1: var(--space-1);
-  --spacing-2: var(--space-2);
-  --spacing-3: var(--space-3);
-  --spacing-4: var(--space-4);
-  --spacing-5: var(--space-5);
-  --spacing-6: var(--space-6);
-  --spacing-8: var(--space-8);
-  --spacing-10: var(--space-10);
-  --spacing-12: var(--space-12);
-
-  /* Border radius */
-  --radius-sm: var(--radius-sm);
-  --radius-md: var(--radius-md);
-  --radius-lg: var(--radius-lg);
-
-  /* Font families */
-  --font-body: var(--font-body);
-  --font-display: var(--font-display);
-  --font-accent: var(--font-accent);
-  --font-mono: var(--font-mono);
-
-  /* Font weights */
-  --font-weight-normal: var(--fw-normal);
-  --font-weight-medium: var(--fw-medium);
-  --font-weight-semibold: var(--fw-semibold);
-  --font-weight-bold: var(--fw-bold);
-  --font-weight-extrabold: var(--fw-extrabold);
-
-  /* Shadows */
-  --shadow-sm: var(--shadow-sm);
-  --shadow-md: var(--shadow-md);
-  --shadow-lg: var(--shadow-lg);
-}
-```
-
-现在以下 utility 可用：
-- 颜色：`bg-surface`、`text-content`、`border-border`、`bg-accent/20` 等
-- 间距：`p-4`、`gap-2`、`mt-6` 等（映射到 `--space-*`，支持缩放）
-- 圆角：`rounded-sm`、`rounded-md`、`rounded-lg`
-- 字体：`font-body`、`font-display`、`font-mono`
-- 字重：`font-normal`、`font-medium`、`font-semibold`、`font-bold`
-- 阴影：`shadow-sm`、`shadow-md`、`shadow-lg`
-
-`data-theme` 切换时 CSS 变量变化 → Tailwind utility 自动跟随，无需 `dark:` 前缀。
-
-验证：`cd frontend && npx vite`，无构建错误即可。
-
-#### Step 1 — Component Utilities
-
-用 `@utility` 保持现有 HTML class 名称不变，内部 `@apply` 映射到 Tailwind。
-这样 JS 模板字符串中的 `class="btn btn-primary"` 不必改动。
-
-```css
-/* ── 按钮系统 ── */
-@utility btn {
-  @apply inline-flex items-center justify-center gap-1.5 rounded-md text-sm font-medium
-         transition-all duration-fast ease-out cursor-pointer select-none;
-}
-@utility btn-primary {
-  @apply btn bg-accent text-white border-transparent;
-  @apply hover:bg-accent/90 active:bg-accent/80;
-}
-@utility btn-ghost {
-  @apply btn bg-transparent text-content-secondary border-border/10;
-  @apply hover:bg-surface-elevated hover:text-content;
-}
-@utility btn-danger {
-  @apply btn bg-error/10 text-error border-error/20;
-  @apply hover:bg-error/20;
-}
-@utility btn-sm   { @apply h-8 px-3 text-xs; }
-@utility btn-icon  { @apply btn h-9 w-9 p-0; }
-
-/* ── 卡片系统 ── */
-@utility anime-card {
-  @apply rounded-lg overflow-hidden cursor-pointer transition-all duration-fast ease-out
-         bg-card border border-border/0 hover:border-accent/20 hover:shadow-md;
-}
-@utility anime-card-cover  { @apply w-full aspect-[3/4] object-cover; }
-@utility anime-card-title  { @apply text-sm font-semibold text-content truncate; }
-@utility anime-card-sub    { @apply text-xs text-content-muted; }
-
-/* ── 模态框 ── */
-@utility modal {
-  @apply fixed inset-0 z-50 flex items-center justify-center;
-}
-@utility modal-content {
-  @apply bg-surface-raised rounded-xl shadow-lg border border-border/10
-         max-w-lg w-full max-h-[85vh] overflow-y-auto;
-}
-
-/* ── Toast ── */
-@utility toast {
-  @apply fixed bottom-6 right-6 z-[9999] flex items-start gap-3
-         bg-surface-elevated/95 backdrop-blur-md rounded-lg shadow-lg
-         border border-border/10 px-5 py-4 min-w-[300px] max-w-[420px];
-}
-
-/* 其他共享组件按需添加 */
-```
-
-每加一个 utility 后验证一个使用它的页面。
-
-#### Step 2 — 视图 HTML 迁移（逐 view）
-
-替换 JS 模板字符串中的内联布局样式（`style="..."` → Tailwind class）。
-**组件 class 不必动**（已在 Step 1 由 `@utility` 接管）。
-
-迁移顺序（复杂度递增）：
-
-| 优先级 | View | 文件 | 策略 |
-|--------|------|------|------|
-| 🥇 | Settings/DB | `app.js` | 排练，最小可验证 |
-| 🥈 | 详情页·info bar | `detail.js` | 最常用，独立 |
-| 🥉 | 详情页·episode cards | `detail-stats.js` | 配合 info bar |
-| 4 | 发现页 | `discovery.js` | 复杂结构 |
-| 5 | 媒体库 | `library.js` | 网格+排序 |
-| 6 | 我的列表 | `mylist.js` | |
-| 7 | 仪表盘/stats | `stats.js`, `app.js` | |
-| 8 | 共享组件 | `components.js` | 排序下拉等 |
-
-每个 view 的操作模式：
+每个组件的操作模式：
 
 ```
-1. 打开对应的 JS 文件
-2. 找到模板字符串 HTML 片段
-3. 布局类（flex/grid/padding/margin）→ Tailwind inline utilities
-   `'<div style="display:flex;gap:8px">'` → `'<div class="flex gap-2">'`
-4. 组件类（btn/card/modal）→ 保持原样（已在 Step 1 定义 @utility）
-   `'<button class="btn btn-primary">'` → 不变
-5. 条件 class → 保持 JS 逻辑，class 名不变
-   `class="btn${active ? ' btn-primary' : ''}"` → 不变
-6. 每段替换后肉眼验证样式无损
+1. 读取老 CSS 规则（.btn, .modal 等），理解完整样式
+2. 在 styles.css @theme 后写 @utility 定义
+   @utility btn {
+     @apply inline-flex items-center gap-2 ...;  /* Tailwind 部分 */
+     padding: 8px 18px;                           /* 自定义值用原生 CSS */
+     font-size: calc(0.8125rem * var(--scale));
+   }
+3. 从 components.css 中删除对应的老规则
+4. 肉眼检查该组件在每个页面的表现
+5. 构建确认无报错（npm run build 或 Vite HMR）
+6. 提交
 ```
 
-#### Step 3 — CSS 清理
+### Step 2 — 视图 inline style 替换 ✅ Done
 
-1. 搜索 CSS 文件中已被 `@utility` 覆盖的规则，逐条删除
-2. 每删一批跑 `npx vite build` 确保无 class 丢失
-3. 最终保留：主题 CSS 变量 + `light.css` 覆盖 + `@keyframes` 动画 + 伪元素
-4. 跑 `npm run build` 验证最终产物
+将 JS 模板字符串和 HTML 中的 `style="..."` 布局属性转为 Tailwind utilities。
+已完成全部可转换项（~20 处），剩余的均为动态/功能性 style（display:none 等）。
 
----
+### Step 3 — CSS 清理
 
-### Phase 3 — 收尾检测 ✅ 合并到 Phase 2 Step 3
+随 Step 1 自然完成——每迁移一个组件，对应的老 CSS 即被删除。
+最终保留：`light.css` 主题覆盖 + `@keyframes` 动画 + 伪元素 + 无法用 utility 表达的复杂规则。
 
-已合并到 Step 3（删除旧规则 + build 验证）。不再单独列一个阶段。
+## 架构决策
 
----
+| 决策 | 结论 |
+|------|------|
+| Tailwind 版本 | v4（CSS-first，无 config 文件） |
+| 插件 | `@tailwindcss/vite`（免 PostCSS） |
+| 主题 | `@theme` 映射 CSS 变量 → data-theme 级联自动工作 |
+| Preflight | 关闭，保留手写 reset（user-select:none 桌面行为） |
+| 组件策略 | `@utility` + 逐组件删除老 CSS（解决级联冲突） |
+| light.css | 保留，Tailwind 无等效的多主题覆盖机制 |
+| ESM | 放弃，保留 `<script>` 全局标签加载 |
 
-## 为什么是 Tailwind v4 不是 v3/UnoCSS
+## 当前进度
 
-- **Tailwind v4**: CSS-first 配置（`@theme`），`@tailwindcss/vite` 免 PostCSS，
-  `@custom-variant` 支持多主题，比 v3 更适合我们的场景
-- **CSS 变量桥接**: `@theme { --color-xxx: var(--xxx); }` 直接引用现有变量，
-  8+ 主题通过 `data-theme` 级联无缝工作，不需要 `dark:` 前缀
-- **放弃 UnoCSS**: 单维护者项目，Tailwind 的生态/文档/长期维护更可靠
-
-## 时间估算
-
-| Phase | 内容 | 状态 |
-|-------|------|------|
-| 1 | Vite + 目录迁移 | ✅ |
-| 2 | Tailwind v4 迁移 | ⏳ |
-|   Step 0 | 基础搭建 + @theme 颜色 | ✅ |
-|   Step 1 | Component utilities（跳过，B 策略） | ❌ |
-|   Step 2 | 视图迁移 — inline style 替换 | ⏳ 进度见下 |
-|   Step 3 | CSS 清理 | ⏳ |
-
-Step 2 进度：
-
-| 文件 | style 替换 | 状态 |
-|------|-----------|------|
-| `frontend/index.html` | 颜色/间距/对齐 ~20 处 | ✅ |
-| `frontend/src/js/app.js` | 颜色/对齐 ~3 处 | ✅ |
-| `frontend/src/js/detail.js` | 颜色/间距/对齐 ~8 处 | ✅ |
-| `frontend/src/js/detail-stats.js` | 颜色 ~1 处 | ✅ |
-| `frontend/src/js/metamatch.js` | 颜色 ~3 处 | ✅ |
-| `frontend/src/js/mylist.js` | 颜色 ~1 处 | ✅ |
-| 剩余 JS 模板字符串 | 均为动态/功能性 style（display/background-image） | — |
-| Step 2 剩余工作 | CSS 文件中的 var() 规则需逐条评估是否可转 | ⏳ |
+| 项目 | 状态 |
+|------|------|
+| Vite 构建 | ✅ |
+| @theme 桥接 | ✅ |
+| inline style 替换 | ✅ |
+| Step 1 按钮迁移 | ⬅️ 进行中 |
+| Step 1 剩余组件 | ⏳ |
+| Step 3 CSS 清理 | ⏳ 随 Step 1 自然完成 |

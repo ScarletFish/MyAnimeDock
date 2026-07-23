@@ -497,33 +497,6 @@ html[data-reduce-motion="true"] .detail-enter-active #watchStats {
 
 /* (old .episode-item / .episode-status classes removed — replaced by .episode-card above) */
 
-.btn-xs {
-  padding: 4px 10px;
-  font-size: calc(0.719rem * var(--scale));
-  line-height: 1.4;
-}
-
-.btn-accent {
-  background: var(--accent-gradient);
-  color: #fff;
-}
-
-.btn-accent:hover {
-  background: var(--accent-soft);
-  box-shadow: 0 0 16px var(--accent-glow);
-}
-
-.btn-ghost {
-  background: transparent;
-  color: var(--fg-secondary);
-  border: 1px solid var(--border);
-}
-.btn-ghost:hover {
-  background: var(--bg-surface);
-  border-color: var(--border-hover);
-  color: var(--fg-primary);
-}
-
 /* ─── Episode List (cinematic horizontal scroll) ─── */
 .episode-list-section {
   background: var(--bg-elevated);

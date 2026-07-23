@@ -1108,11 +1108,6 @@
   display: flex;
   gap: var(--space-2);
 }
-.btn-sm {
-  padding: 5px 12px !important;
-  font-size: calc(0.75rem * var(--scale)) !important;
-}
-
 /* ─── Split Body ─── */
 .mm-content {
   display: flex;

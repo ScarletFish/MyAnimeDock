@@ -369,6 +369,7 @@
           <div class="watch-stats-empty" id="watchStatsEmpty"></div>
         </div>
       </div>
+      <div class="archive-magazine" id="archiveDetail" style="display:none"></div>
     </div>
   </section>
 
@@ -509,7 +510,10 @@
     <div class="settings-header">
       <div class="settings-header-top">
         <h2>设置</h2>
-        <button class="btn-icon visual-settings-btn" onclick="closeModal('settingsModal'); openVisualDock()">视觉</button>
+        <button class="btn-icon visual-settings-btn" onclick="closeModal('settingsModal'); openVisualDock()" data-tooltip="主题与视觉设置" aria-label="主题与视觉设置">
+          <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="16" height="16" rx="3" fill="var(--accent)" stroke="var(--accent)" stroke-width="0.5"/><text x="8" y="13" font-family="Georgia,'Times New Roman',serif" font-weight="700" font-size="12" fill="var(--bg-elevated)" text-anchor="middle">D</text></svg>
+          <span>视觉</span>
+        </button>
       </div>
       <nav class="settings-tabs" role="tablist">
         <button class="settings-tab active" data-tab="basic" role="tab" aria-selected="true" onclick="switchSettingsTab(this, 'basic')">基本</button>
@@ -529,10 +533,152 @@
           </div>
         </div>
       </div>
-      <div class="settings-panel" id="tab-playback">...</div>
-      <div class="settings-panel" id="tab-scraper">...</div>
-      <div class="settings-panel" id="tab-dashboard">...</div>
-      <div class="settings-panel" id="tab-database">...</div>
+      <!-- Tab: 播放 -->
+      <div class="settings-panel" id="tab-playback">
+        <div class="form-group" id="mpvPathGroup">
+          <label for="settingsMpvPath">mpv 可执行文件路径</label>
+          <div class="input-with-btn">
+            <input type="text" id="settingsMpvPath" placeholder="mpv">
+            <button class="btn btn-sm" onclick="browseFile('settingsMpvPath')">浏览</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="settingsAutoMark">
+            <span class="checkbox-visual"></span>
+            <span>播放下一集时自动标记前序集数为已观看</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Tab: 刮削 -->
+      <div class="settings-panel" id="tab-scraper">
+        <div class="form-group">
+          <label>Bangumi</label>
+          <div class="api-source-card api-source-card--fixed">
+            <div class="api-source-body">
+              <div class="api-source-type">
+                <span class="api-source-badge api-source-badge--bangumi">Bangumi</span>
+              </div>
+              <div class="api-source-fields">
+                <input type="text" class="api-source-url" id="bangumiUrl" placeholder="API 地址" value="https://api.bangumi.lol">
+                <p class="form-hint">默认使用镜像站 api.bangumi.lol，官方源为 api.bgm.tv</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Bangumi 个人绑定已隐藏（bgm.tv 国内不可达，OAuth 无法完成） -->
+        <div class="form-group" style="display:none">
+          <label>Bangumi 个人绑定</label>
+          <div class="api-source-card api-source-card--fixed">
+            <div class="api-source-body">
+              <div class="api-source-type">
+                <span class="api-source-badge api-source-badge--bangumi">OAuth</span>
+              </div>
+              <div class="api-source-fields" style="gap:8px">
+                <input type="text" id="bangumiClientId" placeholder="Client ID" class="api-source-url">
+                <input type="password" id="bangumiClientSecret" placeholder="Client Secret" class="api-source-url">
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                  <button class="btn btn-sm" onclick="bangumiBind()" id="bangumiBindBtn">绑定 Bangumi</button>
+                  <button class="btn btn-sm btn-danger" onclick="bangumiUnbind()" id="bangumiUnbindBtn" style="display:none">解除绑定</button>
+                  <button class="btn btn-sm" onclick="bangumiSync()" id="bangumiSyncBtn" style="display:none">同步 MyList</button>
+                  <span id="bangumiAuthStatus" class="form-hint" style="margin:0;font-size:12px"></span>
+                  <span id="bangumiSyncStatus" class="form-hint" style="margin:0;font-size:12px;display:none"></span>
+                </div>
+                <p class="form-hint">需要先在 <a href="https://bgm.tv/dev" target="_blank" rel="noopener">bgm.tv/dev</a> 创建应用，填入 Client ID/Secret，点击绑定后浏览器会跳转到 Bangumi 授权页面</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>AniList</label>
+          <div class="api-source-card api-source-card--fixed">
+            <div class="api-source-body">
+              <div class="api-source-type">
+                <span class="api-source-badge api-source-badge--anilist">AniList</span>
+                <label class="toggle-switch" style="margin-left:8px">
+                  <input type="checkbox" id="anilistEnabled">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="api-source-fields">
+                <p class="form-hint">双源匹配：AniList 提供罗马音 + banner 图，Bangumi 提供元数据。无需 API Key。</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: 动漫库 -->
+      <div class="settings-panel" id="tab-dashboard">
+        <div class="form-group">
+          <label>动漫库模块</label>
+          <p class="form-hint" style="margin-top:0">勾选要在首页显示的模块，拖拽或点击箭头调整顺序</p>
+          <div class="dashboard-layout-list" id="dashboardLayoutList"></div>
+        </div>
+      </div>
+
+      <!-- Tab: 数据库 -->
+      <div class="settings-panel" id="tab-database">
+        <div class="form-group">
+          <label>数据库概览</label>
+          <div id="dbInfoContainer">
+            <p class="form-hint">加载中...</p>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>备份与恢复</label>
+          <div class="db-action-row">
+            <button class="btn btn-sm" onclick="dbBackup()" id="btnDbBackup">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 8v5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V8"/><path d="M5 5l3-3 3 3"/><path d="M8 2v9"/></svg>
+              下载 DB 备份
+            </button>
+            <button class="btn btn-sm" onclick="dbBackupAll()" id="btnDbBackupAll">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 8v5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V8"/><path d="M5 5l3-3 3 3"/><path d="M8 2v9"/></svg>
+              完整备份（含配置）
+            </button>
+            <button class="btn btn-sm" onclick="document.getElementById('restoreFileInput').click()">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8v5a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V8"/><path d="M5 11l3 3 3-3"/><path d="M8 14V2"/></svg>
+              恢复备份
+            </button>
+            <input type="file" id="restoreFileInput" accept=".db" style="display:none" onchange="dbRestore(this)">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>缓存管理</label>
+          <p class="form-hint">系统会自动清理超过 14 天的缓存</p>
+          <div id="dbCacheContainer">
+            <p class="form-hint">加载中...</p>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>维护操作</label>
+          <div class="db-action-row">
+            <button class="btn btn-sm" onclick="dbClearSessions()" id="btnDbClearSessions">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4h14"/><path d="M3 4v9a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4"/><path d="M6 4V2h4v2"/></svg>
+              清除播放记录
+            </button>
+            <button class="btn btn-sm" onclick="dbVacuum()" id="btnDbVacuum" data-tooltip="压缩数据库文件大小，回收已删除数据的磁盘空间">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="7"/><path d="M8 5v3"/><path d="M8 11h.01"/></svg>
+              优化数据库（VACUUM）
+            </button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="db-danger-label">危险操作</label>
+          <div class="db-action-row">
+            <button class="btn btn-sm btn-danger" onclick="dbReset()" id="btnDbReset">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l4 4"/><path d="M10 6l-4 4"/><circle cx="8" cy="8" r="7"/></svg>
+              重置数据库
+            </button>
+          </div>
+          <p class="form-hint db-danger-hint">重置会清空所有动漫数据、播放记录和列表。操作前会自动备份当前数据库。</p>
+        </div>
+      </div>
     </div>
     <div id="settingsError" class="error-msg"></div>
     <div class="modal-actions">

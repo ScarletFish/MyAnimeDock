@@ -485,7 +485,7 @@ async function refreshDbInfo() {
           '</div>';
         }
         cacheHtml += '</div>' +
-          '<div class="db-action-row" style="margin-top:8px">' +
+          '<div class="db-action-row mt-2">' +
             '<button class="btn btn-sm" onclick="dbClearCache(\'thumbs\')" data-tooltip="超过14天的缩略图系统会自动清理，一般无需手动操作">清除缩略图</button>' +
             '<button class="btn btn-sm" onclick="dbClearCache(\'covers\')" data-tooltip="超过14天的缩放缓存系统会自动清理，原图保留">清除封面缓存</button>' +
             '<button class="btn btn-sm" onclick="dbClearCache(\'banners\')" data-tooltip="横幅图片缓存，需要时自动重新下载">清除横幅缓存</button>' +
@@ -497,7 +497,7 @@ async function refreshDbInfo() {
       }
     }
   } catch (e) {
-    container.innerHTML = '<p class="form-hint" style="color:var(--error)">加载失败: ' + escHtml(e.message) + '</p>';
+    container.innerHTML = '<p class="form-hint text-error">加载失败: ' + escHtml(e.message) + '</p>';
   }
 }
 
@@ -703,10 +703,10 @@ function showConfirm(message) {
     overlay.style.zIndex = '9999';
     overlay.innerHTML = `
       <div class="modal" style="max-width:380px;padding:var(--space-6) var(--space-8) var(--space-5)">
-        <p style="margin:0 0 18px;line-height:1.7;color:var(--text1);font-size:15px;text-align:left">${message}</p>
-        <div class="modal-actions" style="display:flex;align-items:center;justify-content:space-between">
-          <button class="btn btn-ghost confirm-cancel" style="min-width:80px">取消</button>
-          <button class="btn btn-danger confirm-ok" style="min-width:80px">确认</button>
+        <p style="margin:0 0 18px;line-height:1.7;font-size:15px;text-align:left" class="text-content">${message}</p>
+        <div class="modal-actions flex items-center justify-between">
+          <button class="btn btn-ghost confirm-cancel min-w-[80px]">取消</button>
+          <button class="btn btn-danger confirm-ok min-w-[80px]">确认</button>
         </div>
       </div>
     `;

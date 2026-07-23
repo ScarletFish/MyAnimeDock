@@ -1,3 +1,31 @@
+@import "tailwindcss/theme";
+@import "tailwindcss/utilities";
+
+@theme {
+  --color-surface-deep: var(--bg-deep);
+  --color-surface: var(--bg-base);
+  --color-surface-elevated: var(--bg-elevated);
+  --color-surface-raised: var(--bg-surface);
+  --color-card: var(--bg-card);
+
+  --color-content: var(--fg-primary);
+  --color-content-secondary: var(--fg-secondary);
+  --color-content-muted: var(--fg-muted);
+
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-secondary: var(--accent-secondary);
+
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-error: var(--error);
+  --color-info: var(--info);
+
+  --color-border: var(--border);
+  --color-border-hover: var(--border-hover);
+}
+
+/* ── Reset (preflight 关闭，手工保留) ── */
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-user-select: none; user-select: none; }
 input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: auto; }
 

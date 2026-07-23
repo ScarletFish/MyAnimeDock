@@ -772,7 +772,7 @@ async function searchBangumiWithKeyword() {
     return;
   }
   
-  resultsEl.innerHTML = '<p style="text-align:center;color:var(--text2);padding:16px">搜索中...</p>';
+  resultsEl.innerHTML = '<p style="text-align:center;padding:16px" class="text-content">搜索中...</p>';
   
   try {
     const result = await API.post('/api/bangumi/search', { keyword });
@@ -793,7 +793,7 @@ function showSearchResults(results, animeId) {
     el.innerHTML = '<p class="search-result-empty">未找到匹配结果</p>';
     return;
   }
-  el.innerHTML = '<h4 style="margin:0 0 12px 0;color:var(--text1)">请选择匹配的条目：</h4>' +
+  el.innerHTML = '<h4 style="margin:0 0 12px 0" class="text-content">请选择匹配的条目：</h4>' +
     results.map(r => `
       <div class="search-result-item" onclick="attachBangumiSubject('${animeId}', ${r.id})">
         <img class="search-result-cover" src="${r.images?.small || r.images?.grid || ''}" alt=""
@@ -810,7 +810,7 @@ function showSearchResults(results, animeId) {
 
 async function attachBangumiSubject(animeId, subjectId) {
   const resultsEl = document.getElementById('syncSearchResults');
-  resultsEl.innerHTML = '<p style="text-align:center;color:var(--text2);padding:16px">正在获取元数据...</p>';
+  resultsEl.innerHTML = '<p style="text-align:center;padding:16px" class="text-content">正在获取元数据...</p>';
   try {
     const result = await API.post('/api/bangumi/fetch', { animeId, subjectId });
     currentAnime = result.anime;

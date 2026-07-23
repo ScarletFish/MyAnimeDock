@@ -10,7 +10,7 @@ function renderEpisodeHeatmap(anime, animate) {
   const dotsContainer = document.getElementById('episodeDots');
 
   if (!anime.episodes || anime.episodes.length === 0) {
-    grid.innerHTML = '<p style="color:var(--fg-muted);padding:1rem;text-align:center">暂无剧集信息</p>';
+    grid.innerHTML = '<p class="text-content-muted p-4 text-center">暂无剧集信息</p>';
     header.textContent = '剧集列表';
     if (countEl) countEl.textContent = '';
     if (dotsContainer) dotsContainer.innerHTML = '';

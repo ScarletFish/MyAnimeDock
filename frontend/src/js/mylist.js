@@ -583,7 +583,7 @@ async function removeMyListItem(id) {
   hideContextMenu();
   const item = mylistData.find(i => i.id === id);
   const name = item ? (item.bangumiTitle || item.title || id) : id;
-  if (!(await showConfirm(`将「${name}」从列表中移除？<br><small style="color:var(--text2)">动漫库中的条目不受影响</small>`))) return;
+  if (!(await showConfirm(`将「${name}」从列表中移除？<br><small class="text-content">动漫库中的条目不受影响</small>`))) return;
   try {
     await API.del(`/api/mylist/${encodeURIComponent(id)}`);
     showToast('已移除', 'info');

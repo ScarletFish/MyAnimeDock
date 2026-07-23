@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
+import tailwindcss from '@tailwindcss/vite';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -81,5 +82,5 @@ export default defineConfig({
     emptyOutDir: true,
     cssMinify: false,
   },
-  plugins: [concatJsPlugin()],
+  plugins: [tailwindcss(), concatJsPlugin()],
 });

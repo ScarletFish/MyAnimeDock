@@ -131,7 +131,94 @@ GET /api/anime/:id/sessions
 
 - `activePlays` Map 是内存的，服务器重启丢失。已落盘的 playSessions 保留在 SQLite
 - mpv 启动错误通过 Promise + 2s timeout 捕获，超时为"启动中"而非错误
-- `ep.progress` 是 0-1 浮点数，入库前从秒归一化；`session.progressStart` 始终是秒
+- `session.progressStart` 始终是秒；`duration = peakPos - progressStart`，两端单位一致
 - UTC/local time：session startTime 存的是 `new Date().toISOString()`，取用时必须用 local 访问器（`getFullYear/getMonth/getDate`），不能用 `toISOString().slice()` 做 UTC 转换
 - **手动 toggle watched 不会触发 auto-complete**。auto-complete 只在 mpv 进程关闭的 `final` 回调中执行。这意味着如果用户通过右击标记最后一集 watched，myListStatus 不会自动变为 completed
 - **无 myList 条目的动画**：播放后不会自动创建 myList 记录。status 更新仅作用于已有的 myList 条目
+
+## 隐式实现细节
+
+### `ep.progress` 的单位
+`server/routes/playback.js:139`
+
+`ep.progress` 没有固定的单位——它存的是最后一次写入的值：
+
+| 来源 | 值 | 说明 |
+|------|----|------|
+| mpv `onProgress` | 秒数 | `currentPos` 来自 mpv `time-pos`，后续前端用 `ep.progress / ep.duration * 100` 算百分比 |
+| 手动 toggle watched | `999999` | `detail.js toggleWatched()` 的哨兵值，表示"已看完" |
+| 重置 watched | `0` | 同上 |
+
+播放续播时有转换守护（`playback.js:96-98`）：如果 `0 < position < 1` 则按比例换算秒，否则直接当秒用。
+这允许前端在任何场景下直接传 `ep.progress`，server 自己判断格式。
+
+### Session 二次绑定验证
+`server/routes/playback.js:133,137`
+
+`onProgress` 回调中有两层 sessionId 校验避免异步污染：
+
+```
+① cbSid !== sessionId        ← callback 的 session 不属于当前 handlePlay 调用
+② active.sessionId !== cbSid  ← activePlays 中的 session 已被新播放替换
+```
+
+典型场景：用户快速切换播放不同文件，旧 mpv 进程的 `onProgress` 到达时不应修改新 session 的数据。
+
+### 单例 mpv 进程
+`server/mpv-controller.js:186-192`
+
+`startMpv()` 的包装函数 `start()` 先 `stopCurrent()` 再创建新进程。任意时刻最多一个 mpv 窗口。
+`stopCurrent()` 通过 `process.kill()` 关闭旧进程，旧进程的 `close` 事件会触发 `final:true` 回调并落盘。
+
+### `--keep-open=yes`
+`server/mpv-controller.js:34`
+
+mpv 播完不会自动关闭，用户必须手动关窗口。`final: true` 事件只在窗口关闭时触发。
+
+### 错误退出时的双路径回调
+`server/mpv-controller.js:145-169`
+
+mpv 异常退出（`code !== 0`）时**两条路径都会执行**：
+
+| 回调 | 作用 |
+|------|------|
+| `onError` | 清理 session + 通知前端（仅 crash 场景：`lived < 3s`）|
+| `onProgress({final: true})` | 落盘当前进度 + auto-complete 检查 |
+
+`onError` 的清理和 `onProgress` 的数据落盘不会冲突——`onError` 删 session 记录，`final` 写 episode 进度。
+
+### Crash 判定门限
+`server/mpv-controller.js:150-153`
+
+```
+code !== 0 && lived < 3000ms  →  算 crash，报告给前端
+code !== 0 && lived >= 3000ms → 正常退出（用户 kill），不报错
+```
+
+3 秒阈值区分"启动闪退"和"用户主动关闭"。长寿命进程非 0 退出（如 `SIGTERM`）不会触发前端错误提示。
+
+### IPC 重试退避
+`server/mpv-controller.js:61-128`
+
+```
+每次重试: delay = min(1000 × 1.5^(n-1), 10000) ms
+最多: 7 次
+总窗口: ~1 + 1.5 + 2.25 + 3.375 + 5.062 + 7.594 + 10 ≈ 30 秒
+```
+
+首次连接延迟 500ms（line 130）。连接成功后 `ipcRetries` 重置为 0。
+
+### 窗口置顶策略
+`server/mpv-controller.js:35,76-85`
+
+- 启动参数 `--ontop` 确保 mpv 窗口在所有窗口之上
+- 2 秒后通过 IPC 发 `set ontop no` 解除置顶
+- 避免 mpv 永久挡在其他窗口前面
+
+### 进度轮询精度
+`server/mpv-controller.js:132-143`
+
+`onProgress` 每 10 秒固定间隔发送，非事件驱动。这意味着：
+- 两次轮询间的进度变化丢失（最多丢失 10 秒）
+- 关窗口时的 `final:true` 回调**会补发最后一次的位置**（`currentPos` + `peakPos`）
+- `peakPos` 是 session 期间的最高 `time-pos`，用于计算 `session.duration`（`peakPos - progressStart`）

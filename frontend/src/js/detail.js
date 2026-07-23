@@ -490,7 +490,7 @@ function renderWishlistDetail(anime) {
   const archiveEl = document.getElementById('archiveDetail');
   archiveEl.innerHTML = `
     <div class="archive-magazine-essay">
-      <div class="archive-magazine-thoughts" style="font-size:0.875rem;color:var(--text2);line-height:1.7">此条目来自愿望单，目前没有本地文件。</div>
+      <div class="archive-magazine-thoughts text-sm text-content leading-[1.7]">此条目来自愿望单，目前没有本地文件。</div>
     </div>
     <div class="archive-magazine-meta">
       ${anime.rating ? `
@@ -503,7 +503,7 @@ function renderWishlistDetail(anime) {
         <span class="archive-magazine-stat-label">来源</span>
       </div>
     </div>
-    <div class="wishlist-detail-actions" style="margin-top:1rem">
+    <div class="wishlist-detail-actions mt-4">
       <a class="btn btn-primary" href="https://bgm.tv/subject/${anime.bangumiId}" target="_blank" rel="noopener">
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
         在 Bangumi 中打开
@@ -772,7 +772,7 @@ async function searchBangumiWithKeyword() {
     return;
   }
   
-  resultsEl.innerHTML = '<p style="text-align:center;padding:16px" class="text-content">搜索中...</p>';
+  resultsEl.innerHTML = '<p class="text-center p-4 text-content">搜索中...</p>';
   
   try {
     const result = await API.post('/api/bangumi/search', { keyword });
@@ -793,7 +793,7 @@ function showSearchResults(results, animeId) {
     el.innerHTML = '<p class="search-result-empty">未找到匹配结果</p>';
     return;
   }
-  el.innerHTML = '<h4 style="margin:0 0 12px 0" class="text-content">请选择匹配的条目：</h4>' +
+  el.innerHTML = '<h4 class="m-0 mb-3 text-content">请选择匹配的条目：</h4>' +
     results.map(r => `
       <div class="search-result-item" onclick="attachBangumiSubject('${animeId}', ${r.id})">
         <img class="search-result-cover" src="${r.images?.small || r.images?.grid || ''}" alt=""
@@ -810,7 +810,7 @@ function showSearchResults(results, animeId) {
 
 async function attachBangumiSubject(animeId, subjectId) {
   const resultsEl = document.getElementById('syncSearchResults');
-  resultsEl.innerHTML = '<p style="text-align:center;padding:16px" class="text-content">正在获取元数据...</p>';
+  resultsEl.innerHTML = '<p class="text-center p-4 text-content">正在获取元数据...</p>';
   try {
     const result = await API.post('/api/bangumi/fetch', { animeId, subjectId });
     currentAnime = result.anime;

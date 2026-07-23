@@ -187,6 +187,117 @@ document.getElementById('library-grid').innerHTML = renderGrid(items);
 document.getElementById('view-library').innerHTML = renderFullLibrary(items);
 ```
 
+## 设计 Token 参考
+
+所有 UI 代码必须使用 CSS 自定义属性（定义在 `public/styles.css:4-76`），**不许写死值**。
+
+### 颜色
+
+```css
+/* 背景层级 */
+--bg-deep: #050505;       /* 最深背景 — 页面外围 */
+--bg-base: #0f0f0f;       /* 页面主背景 */
+--bg-surface: #161616;    /* 卡片/面板背景（与 bg-card 同色） */
+--bg-elevated: #1e1e1e;   /* 提升卡片 — 详情页模块、下拉框、模态框 */
+
+/* 文字 */
+--fg-primary: #e0dbd4;    /* 主文字（标题、正文） */
+--fg-secondary: #9c9187;  /* 次要文字（label、副标题） */
+--fg-muted: #8a7a70;      /* 弱化文字（占位、描述） */
+
+/* 主题强调色 */
+--accent: #e13a5a;        /* 主强调色 */
+--accent-soft: #ff6b8a;   /* 悬浮态 accent */
+--accent-gradient: linear-gradient(135deg, #e13a5a, #ff2d55);
+--accent-rgb: 225, 58, 90;/* 用于 rgba(var(--accent-rgb), alpha) */
+
+/* 语义色 */
+--success: #22c55e;       /* 已观看、播放中 */
+--warning: #f59e0b;       /* 待处理 */
+--error: #ef4444;          /* 错误、删除、危险操作 */
+--info: #a78bfa;           /* 信息标签 */
+
+/* 边框 */
+--border: rgba(225, 58, 90, 0.08);        /* 默认边框 */
+--border-hover: rgba(225, 58, 90, 0.16);  /* 悬浮态边框 */
+
+/* 玻璃效果 */
+--glass-bg: rgba(18, 18, 18, 0.82);       /* 毛玻璃背景色 */
+--glass-blur: blur(24px);                 /* 毛玻璃模糊量 */
+
+/* 阴影 */
+--shadow-sm: 0 2px 8px rgba(0,0,0,0.5);   /* 小卡片阴影 */
+--shadow-md: 0 4px 24px rgba(0,0,0,0.6);  /* 模态框/下拉框阴影 */
+--shadow-lg: 0 8px 48px rgba(0,0,0,0.7);  /* 大浮层阴影 */
+```
+
+### 间距
+
+所有间距由 `--scale` 缩放，必须用 `var(--space-*)`，不许写 `px`/`rem`：
+
+```css
+--space-1: calc(0.25rem * var(--scale));   /* 4px  @scale=1 */
+--space-2: calc(0.50rem * var(--scale));   /* 8px */
+--space-3: calc(0.75rem * var(--scale));   /* 12px */
+--space-4: calc(1.00rem * var(--scale));   /* 16px */
+--space-5: calc(1.25rem * var(--scale));   /* 20px */
+--space-6: calc(1.50rem * var(--scale));   /* 24px */
+--space-8: calc(2.00rem * var(--scale));   /* 32px */
+--space-10: calc(2.50rem * var(--scale));  /* 40px */
+--space-12: calc(3.00rem * var(--scale));  /* 48px */
+```
+
+### 圆角
+
+```css
+--radius-sm: calc(0.375rem * var(--scale));  /* 6px  — 按钮、输入框 */
+--radius-md: calc(0.625rem * var(--scale));  /* 10px — 下拉框、提示框 */
+--radius-lg: calc(1.00rem * var(--scale));   /* 16px — 卡片、模块面板 */
+--radius-xl: calc(1.50rem * var(--scale));   /* 24px — 大模态框、首屏 hero */
+```
+
+### 字体
+
+```css
+--font-display: 'Playfair Display', serif;  /* 大标题/展示 */
+--font-body: 'DM Sans', sans-serif;          /* 正文/说明 */
+--font-mono: 'JetBrains Mono', monospace;    /* 代码/数字 */
+--fw-normal: 400;
+--fw-medium: 500;     /* 按钮文字、标签 */
+--fw-semibold: 600;   /* 标题、重点按钮 */
+--fw-bold: 700;
+--fw-extrabold: 800;
+```
+
+### 动效
+
+```css
+--duration-fast: 180ms;                       /* hover、颜色切换 */
+--duration-normal: 300ms;                     /* 面板展开、淡入淡出 */
+--ease-out: cubic-bezier(0.22, 1, 0.36, 1);  /* 通用减速曲线 */
+--ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);  /* 弹性效果 */
+```
+
+### 组件类名参考
+
+这些组件定义在 `public/css/components.css`，写新 UI 时优先使用，不要重写：
+
+| 场景 | 类名 | 说明 |
+|------|------|------|
+| 按钮 | `.btn` | 默认透明边框按钮 |
+| 按钮—主操作 | `.btn-primary` | accent 渐变填充 |
+| 按钮—危险 | `.btn-danger` | 红色边框 + 红色文字 |
+| 按钮—轮廓 | `.btn-outline` | accent 色边框 + 文字 |
+| 下拉框 | `.sort-dropdown` | 自定义下拉选择器 |
+| 输入框 | `.search-input` / `.filter-input` | 搜索/筛选输入框 |
+| 模态框 | `.modal-overlay` + `.modal-panel` | 全屏半透明遮罩 + 居中面板 |
+| 选择框 | `.select-native` | 原生 `<select>` 样式重置 |
+| 标签 | `.badge` | 角标/状态标签 |
+| 分页 | `.pagination` | 底部页码 |
+| 加载中 | `.loading-spinner` | loading 旋转动画 |
+| toast | `.toast` + `.toast-visible` | 底部提示消息 |
+| 标签组 | `.tags-field` | 标签列表（动画入场） |
+
 ## 视觉一致性 — 详情页模块
 
 **新详情页 section 必须复用现有模块的视觉结构，不得重写一套样式。**

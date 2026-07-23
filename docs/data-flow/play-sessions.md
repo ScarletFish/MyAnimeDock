@@ -40,7 +40,7 @@ mpv 关闭时（`close` 事件），若 `peakPos / duration >= 0.9`，`watched =
 ```
 POST /api/play
   → routes/playback.js:handlePlay()
-  → Body: { filePath, position }  // position = ep.progress, 0-1 float
+  → Body: { filePath, position }  // position = ep.progress, in seconds
   → Validate filePath exists (fs.existsSync)
   → Convert position to seconds:
       if (targetEp.duration && position > 0 && position < 1)
@@ -63,8 +63,8 @@ POST /api/play
       │   ├─ Spawn mpv with IPC pipe (--input-ipc-server)
       │   ├─ onProgress (every 10s) → db.updateEpisodeProgress() + db.updatePlaySession()
       │   │   ├─ mpv time-pos is in SECONDS
-      │   │   ├─ ep.progress = Math.min(1, max(0, timePos / duration))  // normalize to 0-1
-      │   │   ├─ session.duration = peakPos - progressStart  // both in seconds
+      │   │   ├─ ep.progress = currentPos  // 秒数（raw time-pos from mpv）
+      │   │   ├─ session.duration = peakPos - progressStart  // 实际观看内容量（秒）
       │   │   └─ session.clockTime = wall clock (endTime - startTime)
       │   ├─ onError → clean up session, return error to frontend via Promise
       │   └─ onClose (code≠0 && lived<3s) → report crash to frontend
@@ -79,10 +79,9 @@ POST /api/play
       ├─ await Promise with 2s timeout (capture sync spawn errors)
       └─ Return 200 OK or 500 { error: msg }
 
-  NOTE: Frontend sends ep.progress (0-1 float). Server converts to seconds
-  using known ep.duration before passing to mpv --start or storing as
-  progressStart. This ensures duration = peakPos - startSeconds is correct.
-  ep.progress in SQLite is always 0-1 (normalized on every onProgress call).
+  NOTE: Frontend sends ep.progress (seconds). Server checks if 0 < position < 1
+  (legacy ratio guard), otherwise assumes seconds. mpv --start receives seconds.
+  progressStart is also in seconds, so duration = peakPos - progressStart is correct.
 ```
 
 ## 手动更新进度
@@ -163,16 +162,17 @@ GET /api/anime/:id/sessions
 ### `ep.progress` 的单位
 `server/routes/playback.js:139`
 
-`ep.progress` 没有固定的单位——它存的是最后一次写入的值：
+`ep.progress` 统一以**秒**为单位：
 
 | 来源 | 值 | 说明 |
 |------|----|------|
-| mpv `onProgress` | 秒数 | `currentPos` 来自 mpv `time-pos`，后续前端用 `ep.progress / ep.duration * 100` 算百分比 |
-| 手动 toggle watched | `999999` | `detail.js toggleWatched()` 的哨兵值，表示"已看完" |
-| 重置 watched | `0` | 同上 |
+| mpv `onProgress` | 秒数 | `currentPos` 来自 mpv `time-pos`，前端用 `ep.progress / ep.duration * 100` 算百分比 |
+| 主动标记未看完 | `0` | toggle watched OFF 时重置进度 |
 
-播放续播时有转换守护（`playback.js:96-98`）：如果 `0 < position < 1` 则按比例换算秒，否则直接当秒用。
-这允许前端在任何场景下直接传 `ep.progress`，server 自己判断格式。
+注意：
+- `ep.progress > 0` 判断的是**是否有过播放进度**，不区分"正在看"还是"看完重温"
+- toggle watched ON **不修改** `ep.progress`，保留 mpv 最后写入的秒数
+- 播放续播时有兜底（`playback.js:96-98`）：如果 `0 < position < 1` 则按比例换算秒，否则直接当秒用
 
 ### Session 二次绑定验证
 `server/routes/playback.js:133,137`

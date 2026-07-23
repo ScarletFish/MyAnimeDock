@@ -327,3 +327,7 @@ document.getElementById('view-library').innerHTML = renderFullLibrary(items);
 - [ ] 是否有动画？是否用 GSAP？
 - [ ] 响应式：1000px 以下不崩、1920px 以上不太空？
   - 确认 `min-width` / `max-width` / `auto-fill` 行为合理
+- [ ] 颜色/间距/圆角/阴影是否用了 `var(--xxx)` token，没写死值？
+  - 背景 → `var(--bg-*)`，文字 → `var(--fg-*)`，边框 → `var(--border)`
+  - 圆角 → `var(--radius-*)`，间距 → `var(--space-*)`，阴影 → `var(--shadow-*)`
+  - 语义色（成功/错误等）→ `var(--success)` / `var(--error)` / `var(--warning)`

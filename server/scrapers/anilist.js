@@ -76,6 +76,8 @@ query ($id: Int!) {
         node {
           id
           title { romaji english native }
+          coverImage { large }
+          meanScore
           format
           episodes
         }
@@ -113,6 +115,25 @@ query ($ids: [Int!]) {
             format
             episodes
           }
+        }
+      }
+    }
+  }
+}`;
+
+const RECOMMENDATION_QUERY = `
+query ($id: Int!, $perPage: Int) {
+  Media(id: $id, type: ANIME) {
+    recommendations(perPage: $perPage, sort: RATING_DESC) {
+      nodes {
+        rating
+        mediaRecommendation {
+          id
+          title { romaji english native }
+          coverImage { large }
+          meanScore
+          format
+          episodes
         }
       }
     }
@@ -290,6 +311,14 @@ class AniListScraper {
   async getDetail(id) {
     const data = await this.graphqlRequest(DETAIL_QUERY, { id });
     return data?.Media || null;
+  }
+
+  async getRecommendations(id, perPage = 12) {
+    const data = await this.graphqlRequest(RECOMMENDATION_QUERY, { id, perPage });
+    return (data?.Media?.recommendations?.nodes || []).map(n => ({
+      rating: n.rating,
+      ...n.mediaRecommendation,
+    }));
   }
 
   async batchGetDetails(ids) {

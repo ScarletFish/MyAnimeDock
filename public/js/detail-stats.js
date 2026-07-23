@@ -45,106 +45,15 @@ function renderEpisodeHeatmap(anime, animate) {
   // Reset scroll immediately (prevents inheriting previous anime's scroll position)
   grid.scrollLeft = 0;
 
-  // ─── Sliding-window dot navigation ───
+  // ─── Pagination dots (via shared component) ───
+  initScrollDots({
+    scroll: grid,
+    cardSelector: '.episode-card',
+    total: anime.episodes.length,
+    dotsParent: document.querySelector('.episode-list-header'),
+  });
 
-  // Detect visible card count from actual rendered layout (CSS media query driven)
-  function getVisibleCount() {
-    const card = grid.querySelector('.episode-card');
-    if (!card) return 4;
-    const gap = parseFloat(getComputedStyle(grid).gap) || 14;
-    return Math.round(grid.clientWidth / (card.offsetWidth + gap)) || 4;
-  }
-  let VISIBLE_COUNT = getVisibleCount();
-
-  // Create dots container if not exists
-  if (!dotsContainer) {
-    const headerEl = document.querySelector('.episode-list-header');
-    const dotsEl = document.createElement('div');
-    dotsEl.className = 'episode-pagination-dots';
-    dotsEl.id = 'episodeDots';
-    headerEl.appendChild(dotsEl);
-  }
-
-  const dotsEl = document.getElementById('episodeDots');
-  const totalEps = anime.episodes.length;
-
-  let dotCount = 0;
-  function rebuildDots() {
-    // Each dot represents a window start position: [0..VISIBLE_COUNT-1], [1..VISIBLE_COUNT], ...
-    // Total dots = totalEps - VISIBLE_COUNT + 1 (minimum 1)
-    const newCount = Math.max(1, totalEps - VISIBLE_COUNT + 1);
-    if (newCount === dotCount) return;
-    dotCount = newCount;
-
-    if (dotCount <= 1) {
-      dotsEl.innerHTML = '';
-    } else {
-      dotsEl.innerHTML = Array.from({ length: dotCount }, (_, i) => {
-        const label = `${i + 1}-${Math.min(i + VISIBLE_COUNT, totalEps)}`;
-        return `<button class="episode-dot${i === 0 ? ' active' : ''}" data-index="${i}" aria-label="第${label}集"></button>`;
-      }).join('');
-    }
-  }
-  rebuildDots();
-
-  // Compute the pixel step between window positions (card width + gap)
-  function getCardStep() {
-    const card = grid.querySelector('.episode-card');
-    if (!card) return 300;
-    const cs = getComputedStyle(grid);
-    const gap = parseFloat(cs.gap) || parseFloat(cs.columnGap) || 14;
-    return card.offsetWidth + gap;
-  }
-
-  // Scroll tracking: map scroll position → nearest window index
-  let scrollTicking = false;
-  function updateActiveDot() {
-    // Check if card count changed (responsive layout switch via CSS media query)
-    const newCount = getVisibleCount();
-    if (newCount !== VISIBLE_COUNT) {
-      VISIBLE_COUNT = newCount;
-      rebuildDots();
-    }
-    if (dotCount <= 1) return;
-    const step = getCardStep();
-    if (!step) return;
-    const scrollLeft = grid.scrollLeft;
-    const nearestIdx = Math.round(scrollLeft / step);
-    const clampedIdx = Math.max(0, Math.min(dotCount - 1, nearestIdx));
-
-    dotsEl.querySelectorAll('.episode-dot').forEach(d => {
-      d.classList.toggle('active', parseInt(d.dataset.index) === clampedIdx);
-    });
-  }
-
-  // Throttled scroll handler
-  grid.addEventListener('scroll', () => {
-    if (!scrollTicking) {
-      requestAnimationFrame(() => { updateActiveDot(); scrollTicking = false; });
-      scrollTicking = true;
-    }
-  }, { passive: true });
-
-  // Dot click → scroll to window start + highlight target card
-  dotsEl.onclick = (e) => {
-    const dot = e.target.closest('.episode-dot');
-    if (!dot) return;
-    const idx = parseInt(dot.dataset.index);
-    const step = getCardStep();
-    const scrollTarget = idx * step;
-
-    grid.scrollTo({ left: scrollTarget, behavior: 'smooth' });
-
-    // Force dot active immediately (before scroll event fires)
-    dotsEl.querySelectorAll('.episode-dot').forEach(d => {
-      d.classList.toggle('active', parseInt(d.dataset.index) === idx);
-    });
-  };
-
-  // Initialize active dot
-  requestAnimationFrame(updateActiveDot);
-
-  // Restore scroll to last-viewed episode (align to left edge)
+  // Restore scroll to last-viewed episode
   const lastEp = anime.lastPlayedEp
     ? anime.episodes.find(e => e.number === anime.lastPlayedEp)
     : null;
@@ -153,16 +62,10 @@ function renderEpisodeHeatmap(anime, animate) {
     const card = grid.querySelector(`.episode-card[data-index="${lastIdx}"]`);
     if (card) {
       requestAnimationFrame(() => {
-        const step = getCardStep();
-        const targetScroll = Math.max(0, lastIdx * step);
-        grid.scrollLeft = targetScroll;
-        if (dotCount > 1) {
-          const nearestIdx = Math.round(grid.scrollLeft / step);
-          const clampedIdx = Math.max(0, Math.min(dotCount - 1, nearestIdx));
-          dotsEl.querySelectorAll('.episode-dot').forEach(d => {
-            d.classList.toggle('active', parseInt(d.dataset.index) === clampedIdx);
-          });
-        }
+        const cs = getComputedStyle(grid);
+        const gap = parseFloat(cs.gap) || parseFloat(cs.columnGap) || 14;
+        const step = grid.querySelector('.episode-card').offsetWidth + gap;
+        grid.scrollLeft = Math.max(0, lastIdx * step);
       });
     }
   }

@@ -7,6 +7,11 @@ let wasMpvActive = false;
 // Wishlist mode (set when viewing mylist wishlist items)
 let isWishlistMode = false;
 
+// Relations/Recommendations cache (5min TTL)
+const _relationCache = new Map();
+const _recCache = new Map();
+const _CACHE_TTL = 5 * 60 * 1000;
+
 // Character grid: large max-height for smooth CSS transition (replaces 'none')
 const MAX_GRID_HEIGHT = 10000;
 
@@ -393,6 +398,8 @@ function renderDetail() {
     document.getElementById('watchStats').style.display = '';
     renderEpisodeHeatmap(anime);
     renderCharacters(anime);
+    fetchAndRenderRelations(anime.id);
+    fetchAndRenderRecommendations(anime.id);
   }
   renderWatchStats(anime);
 
@@ -831,6 +838,119 @@ async function deleteAnime() {
     if (typeof loadMyList === 'function') loadMyList();
   } catch (e) {
     showToast('删除失败: ' + e.message, 'error');
+  }
+}
+
+
+// ─── Relations + Recommendations (on-demand) ───
+
+async function fetchAndRenderRelations(animeId) {
+  const container = document.getElementById('detailRelations');
+  const scrollEl = document.getElementById('relationScroll');
+  if (!container || !scrollEl) return;
+
+  const cached = _relationCache.get(animeId);
+  if (cached && Date.now() - cached.ts < _CACHE_TTL) {
+    if (cached.data.length === 0) { container.style.display = 'none'; return; }
+    container.style.display = '';
+    scrollEl.innerHTML = cached.html;
+
+    initScrollDots({
+      scroll: scrollEl,
+      cardSelector: '.relation-card',
+      total: cached.data.length,
+      dotsParent: container.querySelector('.detail-section-header'),
+    });
+    return;
+  }
+
+  try {
+    const res = await API.get('/api/anime/' + encodeURIComponent(animeId) + '/relations');
+    const relations = res.relations || [];
+    if (relations.length === 0) { container.style.display = 'none'; return; }
+    container.style.display = '';
+    const badgeColors = { SEQUEL: '#22c55e', PREQUEL: '#f59e0b', SIDE_STORY: '#6366f1', SPIN_OFF: '#ec4899' };
+    scrollEl.innerHTML = relations.map(r => {
+      const cover = r.coverImage?.large || '';
+      const label = r.relationType || '';
+      const title = r.title?.native || r.title?.romaji || r.title?.english || 'Unknown';
+      const color = badgeColors[label] || '#6b7280';
+      const click = r.inLibrary && r.localId
+        ? `onclick="showDetail('${r.localId.replace(/'/g, "\\'")}',null,null,'library')"`
+        : `onclick="window.open('https://anilist.co/anime/${r.id}','_blank')"`;
+      return `<div class="relation-card" ${click}>
+        <div class="relation-card-cover">
+          <div class="relation-card-img"${cover ? ' style="background-image:url(' + cover.replace(/\)/g,'%29') + ')"' : ''}></div>
+          <span class="relation-badge" style="background:${color}">${escHtml(label)}</span>
+        </div>
+        <div class="relation-card-title">${escHtml(title)}</div>
+      </div>`;
+    }).join('');
+
+    initScrollDots({
+      scroll: scrollEl,
+      cardSelector: '.relation-card',
+      total: relations.length,
+      dotsParent: container.querySelector('.detail-section-header'),
+    });
+
+    _relationCache.set(animeId, { ts: Date.now(), data: relations, html: scrollEl.innerHTML });
+  } catch (e) {
+    container.style.display = 'none';
+  }
+}
+
+async function fetchAndRenderRecommendations(animeId) {
+  const container = document.getElementById('detailRecommendations');
+  const scrollEl = document.getElementById('recommendationScroll');
+  if (!container || !scrollEl) return;
+
+  const cached = _recCache.get(animeId);
+  if (cached && Date.now() - cached.ts < _CACHE_TTL) {
+    if (cached.data.length === 0) { container.style.display = 'none'; return; }
+    container.style.display = '';
+    scrollEl.innerHTML = cached.html;
+
+    initScrollDots({
+      scroll: scrollEl,
+      cardSelector: '.relation-card',
+      total: cached.data.length,
+      dotsParent: container.querySelector('.detail-section-header'),
+    });
+    return;
+  }
+
+  try {
+    const res = await API.get('/api/anime/' + encodeURIComponent(animeId) + '/recommendations');
+    const recs = res.recommendations || [];
+    if (recs.length === 0) { container.style.display = 'none'; return; }
+    container.style.display = '';
+scrollEl.innerHTML = recs.map(r => {
+      const cover = r.coverImage?.large || '';
+      const title = r.title?.native || r.title?.romaji || r.title?.english || 'Unknown';
+      const rating = r.averageScore ? `★ ${r.averageScore}` : '';
+      const click = r.inLibrary && r.localId
+        ? `onclick="showDetail('${r.localId.replace(/'/g, "\\'")}',null,null,'library')"`
+        : `onclick="window.open('https://anilist.co/anime/${r.id}','_blank')"`;
+      return `<div class="relation-card" ${click}>
+        <div class="relation-card-cover">
+          <div class="relation-card-img"${cover ? ' style="background-image:url(' + cover.replace(/\)/g,'%29') + ')"' : ''}></div>
+          ${rating ? `<span class="relation-badge relation-badge--rating">${escHtml(rating)}</span>` : ''}
+        </div>
+        <div class="relation-card-title">${escHtml(title)}</div>
+      </div>`;
+    }).join('');
+
+    initScrollDots({
+      scroll: scrollEl,
+      cardSelector: '.relation-card',
+      total: recs.length,
+      dotsParent: container.querySelector('.detail-section-header'),
+    });
+
+    _recCache.set(animeId, { ts: Date.now(), data: recs, html: scrollEl.innerHTML });
+  } catch (e) {
+    container.style.display = 'none';
   }
 }
 

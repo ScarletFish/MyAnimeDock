@@ -20,6 +20,7 @@ function applyGridZoom() {
   document.querySelectorAll('#libraryDashboard .grid-container, #mylistView .grid-container').forEach(g => {
     g.style.gridTemplateColumns = `repeat(auto-fill, minmax(${size}px, 1fr))`;
   });
+  document.documentElement.style.setProperty('--relation-card-w', size + 'px');
 }
 
 function showZoomLevel() {

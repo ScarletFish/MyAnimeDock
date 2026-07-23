@@ -130,7 +130,8 @@ const H = Object.assign(
   require('./routes/mylist'),
   require('./routes/stats'),
   require('./routes/bangumi'),
-  require('./routes/db-manager')
+  require('./routes/db-manager'),
+  require('./routes/relations')
 );
 
 // ── 内联 handler（关闭、封面、静态文件、CORS）──
@@ -201,6 +202,8 @@ const routeTable = [
   { method: 'OPTIONS', path: '/api/library/sync/stream', handler: handleCorsPreflight },
   // Anime detail (order matters: /sessions before /:id)
   { method: 'GET', pattern: /^\/api\/anime\/(.+?)\/sessions$/, handler: H.handleAnimeSessions },
+  { method: 'GET', pattern: /^\/api\/anime\/(.+?)\/relations$/, handler: H.handleAnimeRelations },
+  { method: 'GET', pattern: /^\/api\/anime\/(.+?)\/recommendations$/, handler: H.handleAnimeRecommendations },
   { method: 'GET', pattern: /^\/api\/anime\/(.+)$/, handler: H.handleGetAnimeDetail },
   { method: 'DELETE', pattern: /^\/api\/anime\/(.+)$/, handler: H.handleDeleteAnime },
   // Playback

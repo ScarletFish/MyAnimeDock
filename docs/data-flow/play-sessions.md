@@ -119,13 +119,35 @@ GET /api/stats/watch-activity
 ```
 GET /api/anime/:id/sessions
   → routes/stats.js:handleAnimeSessions()
-  → Filter playSessions by animeId + endTime truthy
-  → Aggregate duration by LOCAL date
-    (avoid toISOString() — UTC conversion shifts date in UTC+8 timezone)
-  → Fill last 90 days using LOCAL dates
+  → Filter: playSessions where animeId matches && endTime truthy
+    (只统计已完成的 session，正在播放的不计入)
+  → Aggregate by LOCAL date key (YYYY-MM-DD):
+      for (const s of sessions) {
+        const sd = new Date(s.startTime);
+        const dateKey = LOCAL date string;  // 避免 toISOString() UTC 偏移
+        byDate[dateKey] += Math.max(0, s.duration || 0);  // 只用 duration，不用 clockTime
+      }
+  → Fill last 90 days (i = 89 → 0) with LOCAL dates:
+      result[key] = Math.round((byDate[key] || 0) / 60);  // 秒 → 分钟
   → Return { "YYYY-MM-DD": minutes }
-  → Frontend: Canvas bar chart in detail.js renderWatchStats()
+  → Frontend: renderWatchStats() in detail-stats.js:
+      ├─ totalMinutes === 0 → 隐藏整个模块（#watchStats display:none）
+      ├─ 按 Mon-Sun 周聚合（new Date(dateStr + 'T00:00:00') 解析日期）
+      ├─ Canvas 柱状图，x 轴 = 周，y 轴 = 分钟
+      └─ 入场动画：单数据点无动画，多数据点 cubic-bezier ease-in 300ms
 ```
+
+### 与 Watch Activity（stats 页）的差异
+
+| 维度 | Anime Sessions（详情页） | Watch Activity（统计页） |
+|------|------------------------|------------------------|
+| API | `GET /api/anime/:id/sessions` | `GET /api/stats/watch-activity` |
+| 时间窗口 | 固定 90 天 | 最近 6 个完整月份 |
+| 统计范围 | 单部动画 | 全部动画 |
+| 数据源 | `s.duration` 仅内容时长 | `Math.max(duration, clockTime)` 取较大值 |
+| 输出粒度 | 天 → 前端聚合周 | 月 |
+| 前端渲染 | Canvas 自绘柱状图 | D3 面积图 |
+| 空状态 | 隐藏整个模块 | 显示 暂无播放记录 |
 
 ## Gotchas
 

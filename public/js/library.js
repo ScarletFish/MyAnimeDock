@@ -223,16 +223,16 @@ function renderStatsSection(data, container) {
 
 function findContinueEpisode(anime) {
   if (!anime.episodes || anime.episodes.length === 0) return null;
-  var first = null;
-  for (var i = 0; i < anime.episodes.length; i++) {
-    var ep = anime.episodes[i];
-    if (!first) first = ep;
-    if (!ep.watched && ep.progress > 0) return ep;
+  // Last played episode (recency-based, derived from play sessions)
+  if (anime.lastPlayedEp) {
+    var ep = anime.episodes.find(function(e) { return e.number === anime.lastPlayedEp; });
+    if (ep && (!ep.watched || ep.progress > 0)) return ep;
   }
+  // No play record: pick first unwatched
   for (var i = 0; i < anime.episodes.length; i++) {
     if (!anime.episodes[i].watched) return anime.episodes[i];
   }
-  return first;
+  return null;
 }
 
 function navigateToDetailWithPlay(id, rect) {
@@ -249,9 +249,9 @@ function renderContinueSection(data, container) {
     var inProgress = a.episodes.some(function(e) { return e.progress > 0 && !e.watched; });
     return inProgress || (watchedCount > 0 && watchedCount < a.episodes.length);
   }).sort(function(a, b) {
-    var aLast = Math.max.apply(null, (a.episodes || []).map(function(e) { return e.updatedAt ? new Date(e.updatedAt).getTime() : 0; }));
-    var bLast = Math.max.apply(null, (b.episodes || []).map(function(e) { return e.updatedAt ? new Date(e.updatedAt).getTime() : 0; }));
-    return bLast - aLast;
+    var aTime = a.lastPlayedAt ? new Date(a.lastPlayedAt).getTime() : 0;
+    var bTime = b.lastPlayedAt ? new Date(b.lastPlayedAt).getTime() : 0;
+    return bTime - aTime;
   }).slice(0, 10);
 
   container.parentElement.style.display = watching.length === 0 ? 'none' : '';
@@ -260,8 +260,6 @@ function renderContinueSection(data, container) {
   container.innerHTML = '<div class="dashboard-continue-scroll">' +
     watching.map(function(a) {
       var total = a.episodes ? a.episodes.length : 0;
-      var watchedCount = a.episodes ? a.episodes.filter(function(e) { return e.watched; }).length : 0;
-      var nextEp = Math.min(watchedCount + 1, total);
       var title = escHtml(a.bangumiTitle || a.title);
 
       var ep = findContinueEpisode(a);
@@ -297,7 +295,7 @@ function renderContinueSection(data, container) {
             '<div class="dashboard-continue-label">继续播放</div>' +
             '<div class="dashboard-continue-title">' + title + '</div>' +
             '<div class="dashboard-continue-progress-wrap">' +
-              '<span class="dashboard-continue-progress-label">第 ' + nextEp + ' / ' + total + ' 集</span>' +
+              '<span class="dashboard-continue-progress-label">第 ' + (ep ? ep.number : '?') + ' / ' + total + ' 集</span>' +
             '</div>' +
           '</div>' +
           '<button class="dashboard-continue-btn" onclick="event.stopPropagation();navigateToDetailWithPlay(\'' + escAttr(a.id) + '\', this)">' +

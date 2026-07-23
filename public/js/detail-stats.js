@@ -145,7 +145,9 @@ function renderEpisodeHeatmap(anime, animate) {
   requestAnimationFrame(updateActiveDot);
 
   // Restore scroll to last-viewed episode (align to left edge)
-  const lastEp = [...anime.episodes].reverse().find(ep => ep.progress > 0);
+  const lastEp = anime.lastPlayedEp
+    ? anime.episodes.find(e => e.number === anime.lastPlayedEp)
+    : null;
   if (lastEp) {
     const lastIdx = anime.episodes.indexOf(lastEp);
     const card = grid.querySelector(`.episode-card[data-index="${lastIdx}"]`);

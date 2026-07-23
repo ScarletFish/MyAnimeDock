@@ -1249,9 +1249,6 @@ html.theme-transitioning .theme-dock {
   .detail-left { position: static; }
   .detail-cover-wrap { max-width: 240px; }
   .detail-episodes-header h3 { font-size: calc(1.1rem * var(--scale)); }
-  .watch-card-content { flex-wrap: wrap; }
-  .watch-card-btn { width: 100%; justify-content: center; }
-  .watch-card-progress { max-width: 100%; }
   /* discovery hero replaced by view-header — responsive handled by .view-header rule above */
   .discovery-stats { flex-wrap: wrap; gap: var(--space-2); }
   .discovery-actions { flex-wrap: wrap; }

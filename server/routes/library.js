@@ -91,6 +91,14 @@ module.exports = {
       }
       const myItem = (data.myList || []).find(m => m.animeId === a.id);
       a.myListStatus = myItem ? myItem.status : null;
+      // Derive last played episode from play sessions (no DB field needed)
+      const animeSessions = (data.playSessions || [])
+        .filter(s => s.animeId === a.id)
+        .sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
+      if (animeSessions.length > 0) {
+        a.lastPlayedEp = animeSessions[0].episodeNumber;
+        a.lastPlayedAt = animeSessions[0].startTime;
+      }
     });
     jsonResp(res, 200, data.library.filter(a => a.downloaded !== false));
   },
@@ -104,6 +112,14 @@ module.exports = {
     if (anime.summary) {
       const { truncateSummary } = require('../scrapers/bangumi');
       anime.summary = truncateSummary(anime.summary);
+    }
+    // Derive last played episode from play sessions
+    const animeSessions = (data.playSessions || [])
+      .filter(s => s.animeId === id)
+      .sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
+    if (animeSessions.length > 0) {
+      anime.lastPlayedEp = animeSessions[0].episodeNumber;
+      anime.lastPlayedAt = animeSessions[0].startTime;
     }
     jsonResp(res, 200, anime);
 

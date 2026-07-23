@@ -1,7 +1,6 @@
 gsap.registerPlugin(Flip);
 
 let currentAnime = null;
-let watchCardVersion = 0;
 let detailRefreshTimer = null;
 let wasMpvActive = false;
 
@@ -502,14 +501,16 @@ function renderWishlistDetail(anime) {
 
 function findWatchEpisode(anime) {
   if (!anime.episodes || anime.episodes.length === 0) return null;
-  let first = null;
-  for (const ep of anime.episodes) {
-    if (!first) first = ep;
-    if (!ep.watched && ep.progress > 0) return ep;
+  // Last played episode (recency-based, derived from play sessions)
+  if (anime.lastPlayedEp) {
+    const ep = anime.episodes.find(e => e.number === anime.lastPlayedEp);
+    if (ep && (!ep.watched || ep.progress > 0)) return ep;
   }
+  // No play record: pick first unwatched
   for (const ep of anime.episodes) {
     if (!ep.watched) return ep;
   }
+  // All watched — nothing to continue
   return null;
 }
 
@@ -555,65 +556,6 @@ function renderSummary(anime) {
     }
   }
   el.textContent = text || '暂无简介';
-}
-
-function renderWatchCard(anime) {
-  const version = ++watchCardVersion;
-  const ep = findWatchEpisode(anime);
-  const bgEl = document.getElementById('watchCardBg');
-  const labelEl = document.getElementById('watchCardLabel');
-  const titleEl = document.getElementById('watchCardTitle');
-  const progressWrap = document.getElementById('watchCardProgressWrap');
-  const progressBar = document.getElementById('watchCardProgressBar');
-  const btn = document.getElementById('watchCardBtn');
-  const btnText = document.getElementById('watchCardBtnText');
-
-  if (!ep) {
-    labelEl.textContent = '已全部观看完毕';
-    titleEl.textContent = '';
-    progressWrap.style.display = 'none';
-    btn.style.display = 'none';
-    bgEl.style.backgroundImage = '';
-    return;
-  }
-
-  const pct = ep.duration > 0 ? Math.min(100, Math.round(ep.progress / ep.duration * 100)) : 0;
-  const thumbTime = ep.progress > 0 ? ep.progress : 60;
-  const thumbUrl = `/api/thumbnail?path=${encodeURIComponent(ep.filePath)}&time=${thumbTime}`;
-
-  // Show a neutral background first (reset)
-  bgEl.style.backgroundImage = '';
-
-  // Set video thumbnail as full card background with version guard
-  // ★ 注意: 使用引号包裹 url() 防止路径中的 ) 破坏 CSS 解析
-  const img = new Image();
-  img.onload = () => {
-    if (version === watchCardVersion) {
-      bgEl.style.backgroundImage = `url("${thumbUrl}")`;
-    }
-  };
-  img.onerror = () => {
-    if (version === watchCardVersion && anime.localCover) {
-      bgEl.style.backgroundImage = `url(/covers/${path.basename(anime.localCover)}?w=540&q=80)`;
-    }
-  };
-  img.src = thumbUrl;
-
-  if (ep.watched) {
-    labelEl.textContent = '重温';
-    btnText.textContent = '重新播放';
-  } else if (ep.progress > 0) {
-    labelEl.textContent = `继续播放 第 ${ep.number} 集`;
-    btnText.textContent = '继续播放';
-  } else {
-    labelEl.textContent = `开始播放 第 ${ep.number} 集`;
-    btnText.textContent = '开始播放';
-  }
-  titleEl.textContent = ep.fileName;
-  progressWrap.style.display = 'block';
-  progressBar.style.width = pct + '%';
-  btn.style.display = 'inline-flex';
-  btn.onclick = () => playEpisode(ep.filePath, ep.progress);
 }
 
 // ─── Key staff roles to display (filtered) ───
@@ -715,12 +657,14 @@ function renderPlayButton(anime) {
 
   btn.style.display = 'inline-flex';
 
-  // Find target episode: in-progress → first unwatched → first episode (replay)
+  // Find target episode: last played → first unwatched → first episode (rewatch)
   let targetEp = null;
   let allWatched = false;
 
-  for (const ep of anime.episodes) {
-    if (!ep.watched && ep.progress > 0) { targetEp = ep; break; }
+  // Last played episode (recency-based)
+  if (anime.lastPlayedEp) {
+    targetEp = anime.episodes.find(e => e.number === anime.lastPlayedEp);
+    if (targetEp && (targetEp.watched && targetEp.progress === 0)) targetEp = null;
   }
   if (!targetEp) {
     for (const ep of anime.episodes) {

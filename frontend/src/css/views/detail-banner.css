@@ -127,12 +127,19 @@
 .relation-scroll::-webkit-scrollbar { display: none; }
 
 .relation-card {
-  flex: 0 0 var(--relation-card-w, calc(175px * var(--scale)));
+  flex-shrink: 0;
+  width: calc((100% - 0.75rem * 6 * var(--scale)) / 7);
   scroll-snap-align: start;
   cursor: pointer;
   transition: transform 0.15s var(--ease-out);
   border-radius: calc(10px * var(--scale));
   overflow: hidden;
+}
+@media (max-width: 1439px) {
+  .relation-card { width: calc((100% - 0.75rem * 4 * var(--scale)) / 5); }
+}
+@media (max-width: 799px) {
+  .relation-card { width: calc((100% - 0.75rem * 3 * var(--scale)) / 4); }
 }
 .relation-card:hover { transform: translateY(-3px); }
 .relation-card:active { transform: translateY(-1px); }

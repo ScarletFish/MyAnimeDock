@@ -5,8 +5,7 @@
 }
 
 .detail-section-header {
-  display: flex;
-  align-items: center;
+  @apply section-header-plain;
   gap: 0.5rem;
 }
 .detail-section-header h3 {

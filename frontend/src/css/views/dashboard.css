@@ -6,29 +6,11 @@
 }
 
 .dashboard-section-header {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
+  @apply section-header;
   margin-bottom: 1rem;
-  padding-left: 0.75rem;
-  position: relative;
-}
-.dashboard-section-header::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 3px;
-  bottom: 3px;
-  width: 3px;
-  border-radius: 2px;
-  background: var(--accent);
 }
 .dashboard-section-title {
-  font-family: var(--font-display);
-  font-size: var(--text-lg);
-  font-weight: var(--fw-bold);
-  color: var(--fg-primary);
-  letter-spacing: -0.01em;
+  @apply section-title;
 }
 
 /* ─── Stats ─── */

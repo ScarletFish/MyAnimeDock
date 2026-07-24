@@ -96,9 +96,7 @@ html {
 }
 
 .dashboard-section-header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
+  @apply section-header-plain;
   margin-bottom: var(--space-3);
 }
 .dashboard-section-title {
@@ -180,9 +178,7 @@ html {
   margin-bottom: 0;
 }
 .status-section-header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
+  @apply section-header-plain;
   margin-bottom: var(--space-2);
   margin-top: var(--space-4);
 }

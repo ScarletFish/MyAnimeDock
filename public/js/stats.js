@@ -80,7 +80,7 @@ function loadStats() {
     const range = Math.max(maxCount - minCount, 1);
 
     const list = entries.map(([word, count]) => {
-      const weight = 8 + ((count - minCount) / range) * 47;
+      const weight = 18 + ((count - minCount) / range) * 25;
       return [word, Math.round(weight)];
     });
 
@@ -125,7 +125,7 @@ function renderWordCloud(canvas, list) {
     backgroundColor: bgColor,
     weightFactor: function (w) { return w * 1.2; },
     rotateRatio: 0.4,
-    minSize: 10,
+    minSize: 6,
     shape: 'circle',
     ellipticity: 1,
     shrinkToFit: true,
@@ -548,6 +548,12 @@ function renderSeasonBars(container, items, unknownCount) {
       .text(`另有 ${unknownCount} 部未知季度`);
   }
 }
+
+// ─── ESM exports for onclick handlers ───
+window.loadStats = loadStats;
+window.loadActivityChart = loadActivityChart;
+window.loadRatingChart = loadRatingChart;
+window.loadSeasonChart = loadSeasonChart;
 
 // ─── Theme change ───
 

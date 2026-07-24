@@ -114,9 +114,9 @@ function openModal(el, { onClose } = {}) {
   document.body.style.overflow = 'hidden';
 }
 
-function closeModal(el) {
+window.closeModal = function closeModal(el) {
   if (typeof el === 'string') el = document.getElementById(el);
-  if (!el) return;
+  if (!el || typeof el.classList !== 'object') return;
   el.classList.remove('show');
   document.body.style.overflow = '';
   if (el._onClose) {
@@ -124,7 +124,7 @@ function closeModal(el) {
     el._onClose = null;
     cb();
   }
-}
+};
 
 // Auto-init: overlay click + Escape key delegation
 (function() {
@@ -228,3 +228,10 @@ function closeModal(el) {
     el.style.top = top + 'px';
   }
 })();
+
+// ─── ESM exports for cross-module utilities ───
+window.escHtml = escHtml;
+window.escAttr = escAttr;
+window.renderGrayCover = renderGrayCover;
+window.renderAnimeCard = renderAnimeCard;
+window.openModal = openModal;

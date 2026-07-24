@@ -37,23 +37,23 @@ function showView(view) {
 
   if (view !== 'detail') {
     resetDetailEnter();
-    if (typeof stopDetailRefresh === 'function') stopDetailRefresh();
+    if (typeof window.stopDetailRefresh === 'function') window.stopDetailRefresh();
     // Reset title bar to brand text
-    if (typeof setTitlebarContext === 'function') setTitlebarContext('default');
+    if (typeof window.setTitlebarContext === 'function') window.setTitlebarContext('default');
   }
 
   // Load data for view
-  if (view === 'discovery') loadDiscovery();
+  if (view === 'discovery') window.loadDiscovery();
   if (view === 'library') {
     _libraryChangingView = true;
-    loadLibrary(true);
+    window.loadLibrary(true);
   }
-  if (view === 'mylist') loadMyList();
+  if (view === 'mylist') window.loadMyList();
   if (view === 'stats') {
-    loadStats();
-    loadActivityChart();
-    loadRatingChart();
-    loadSeasonChart();
+    window.loadStats();
+    window.loadActivityChart();
+    window.loadRatingChart();
+    window.loadSeasonChart();
   }
 }
 
@@ -146,7 +146,7 @@ function openThemeDock() {
   }
   const zoomEl = document.getElementById('dockZoom');
   if (zoomEl) {
-    const currentZoom = Math.round(((parseFloat(document.documentElement.style.getPropertyValue('--scale')) || 1.25) / 1.25) * 100);
+    const currentZoom = Math.round((parseFloat(document.documentElement.style.getPropertyValue('--scale')) || 1) * 100);
     zoomEl.value = currentZoom;
     document.getElementById('dockZoomLabel').textContent = currentZoom + '%';
   }
@@ -197,8 +197,8 @@ function toggleThemeDock() {
 }
 
 // Zoom via CSS --scale variable (GSAP-safe, fixed-position-friendly)
-function applyZoom(scale) {
-  const s = (parseFloat(scale) || 1) * 1.25;
+function applyZoom(factor) {
+  const s = parseFloat(factor) || 1;
   document.documentElement.style.setProperty('--scale', s);
   if (typeof applyGridColumns === 'function') applyGridColumns();
 }
@@ -404,7 +404,7 @@ async function saveSettings() {
   const rawTheme = document.documentElement.getAttribute('data-theme') || 'dark';
   const newTheme = (rawTheme === 'dark' || rawTheme === 'light') ? 'default' : rawTheme;
   const newThemeMode = document.documentElement.getAttribute('data-theme-mode') || 'dark';
-  const currentZoom = (parseFloat(document.documentElement.style.getPropertyValue('--scale')) || 1.25) / 1.25;
+  const currentZoom = parseFloat(document.documentElement.style.getPropertyValue('--scale')) || 1;
 
   // Build apiSources from simple toggles
   const bangumiUrl = document.getElementById('bangumiUrl').value.trim() || 'https://api.bangumi.lol';
@@ -485,7 +485,7 @@ async function refreshDbInfo() {
           '</div>';
         }
         cacheHtml += '</div>' +
-          '<div class="db-action-row" style="margin-top:8px">' +
+          '<div class="db-action-row mt-2">' +
             '<button class="btn btn-sm" onclick="dbClearCache(\'thumbs\')" data-tooltip="超过14天的缩略图系统会自动清理，一般无需手动操作">清除缩略图</button>' +
             '<button class="btn btn-sm" onclick="dbClearCache(\'covers\')" data-tooltip="超过14天的缩放缓存系统会自动清理，原图保留">清除封面缓存</button>' +
             '<button class="btn btn-sm" onclick="dbClearCache(\'banners\')" data-tooltip="横幅图片缓存，需要时自动重新下载">清除横幅缓存</button>' +
@@ -497,7 +497,7 @@ async function refreshDbInfo() {
       }
     }
   } catch (e) {
-    container.innerHTML = '<p class="form-hint" style="color:var(--error)">加载失败: ' + escHtml(e.message) + '</p>';
+    container.innerHTML = '<p class="form-hint text-error">加载失败: ' + escHtml(e.message) + '</p>';
   }
 }
 
@@ -703,10 +703,10 @@ function showConfirm(message) {
     overlay.style.zIndex = '9999';
     overlay.innerHTML = `
       <div class="modal" style="max-width:380px;padding:var(--space-6) var(--space-8) var(--space-5)">
-        <p style="margin:0 0 18px;line-height:1.7;color:var(--text1);font-size:15px;text-align:left">${message}</p>
-        <div class="modal-actions" style="display:flex;align-items:center;justify-content:space-between">
-          <button class="btn btn-ghost confirm-cancel" style="min-width:80px">取消</button>
-          <button class="btn btn-danger confirm-ok" style="min-width:80px">确认</button>
+        <p style="margin:0 0 18px;line-height:1.7;font-size:15px;text-align:left" class="text-content">${message}</p>
+        <div class="modal-actions flex items-center justify-between">
+          <button class="btn btn-ghost confirm-cancel min-w-[80px]">取消</button>
+          <button class="btn btn-danger confirm-ok min-w-[80px]">确认</button>
         </div>
       </div>
     `;
@@ -1134,3 +1134,38 @@ function moveDashboardSection(id, dir) {
   });
   tip.addEventListener('mouseleave', hideTip);
 })();
+
+// ─── ESM exports for onclick handlers ───
+window.showView = showView;
+window.selectTheme = selectTheme;
+window.handleDockThemeModeToggle = handleDockThemeModeToggle;
+window.handleDockZoom = handleDockZoom;
+window.handleReduceMotionToggle = handleReduceMotionToggle;
+window.toggleThemeDock = toggleThemeDock;
+window.closeThemeDock = closeThemeDock;
+window.openVisualDock = openVisualDock;
+window.openSettings = openSettings;
+window.saveSettings = saveSettings;
+window.browseFolder = browseFolder;
+window.browseFile = browseFile;
+window.switchSettingsTab = switchSettingsTab;
+
+// ─── Settings tab switching (defined in old public/index.html inline script) ───
+function switchSettingsTab(btn, tab) {
+  document.querySelectorAll('.settings-tab').forEach(t => {
+    t.classList.remove('active');
+    t.setAttribute('aria-selected', 'false');
+  });
+  btn.classList.add('active');
+  btn.setAttribute('aria-selected', 'true');
+  document.querySelectorAll('.settings-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  if (tab === 'database' && typeof refreshDbInfo === 'function') {
+    refreshDbInfo();
+  }
+}
+
+// ─── ESM exports for cross-module utilities ───
+window.showToast = showToast;
+window.showConfirm = showConfirm;
+window.dismissToast = dismissToast;

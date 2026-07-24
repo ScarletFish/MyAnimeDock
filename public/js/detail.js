@@ -110,6 +110,7 @@ function startDetailRefresh() {
   function onMpvStatus(active) {
     if (!currentAnime) { stopDetailRefresh(); return; }
     if (wasMpvActive && !active) {
+      // mpv 刚结束 → 刷新数据
       API.get(`/api/anime/${encodeURIComponent(currentAnime.id)}`).then(updated => {
         currentAnime = updated;
         AppState.set('currentAnime', currentAnime);
@@ -126,13 +127,17 @@ function startDetailRefresh() {
     wasMpvActive = active;
   }
 
+  // SSE 事件流（被动接收，无需轮询）
   var es = new EventSource('/api/events/mpv-status');
   es.onmessage = function(e) {
     try { onMpvStatus(JSON.parse(e.data).active); } catch (_) {}
   };
-  es.onerror = function() {};
+  es.onerror = function() {
+    // EventSource 会自动重连，无需处理
+  };
   detailRefreshES = es;
 
+  // 先用一次 HTTP 查询兜底（页面刚加载时 SSE 可能有延迟，以及 SSE 不支持时的降级）
   API.get('/api/mpv-status').then(function(st) { onMpvStatus(st.active); }).catch(function() {});
 }
 

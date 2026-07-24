@@ -714,16 +714,16 @@ async function mmSearchForFix(animeId) {
     return;
   }
 
-  resultsDiv.innerHTML = `<div style="padding:var(--space-3);text-align:center;color:var(--fg-muted);font-size:0.8125rem">
+  resultsDiv.innerHTML = `<div class="p-3 text-center text-content-muted text-[0.8125rem]">
     <svg class="spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-    <span style="margin-left:6px">搜索中...</span></div>`;
+    <span class="ml-1.5">搜索中...</span></div>`;
 
   try {
     const result = await API.post('/api/bangumi/search', { keyword, sources: undefined });
     const results = result?.results || [];
 
     if (results.length === 0) {
-      resultsDiv.innerHTML = `<div style="padding:var(--space-3);text-align:center;color:var(--fg-muted);font-size:0.8125rem">未找到结果</div>`;
+      resultsDiv.innerHTML = `<div class="p-3 text-center text-content-muted text-[0.8125rem]">未找到结果</div>`;
       return;
     }
 
@@ -750,7 +750,7 @@ async function mmSearchForFix(animeId) {
         </div>`;
     }).join('');
   } catch (e) {
-    resultsDiv.innerHTML = `<div style="padding:var(--space-3);text-align:center;color:var(--error);font-size:0.8125rem">搜索失败: ${escHtml(e.message)}</div>`;
+    resultsDiv.innerHTML = `<div class="p-3 text-center text-error text-[0.8125rem]">搜索失败: ${escHtml(e.message)}</div>`;
   }
 }
 

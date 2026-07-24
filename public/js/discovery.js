@@ -418,4 +418,11 @@ async function includeSingle(path) {
   }
 }
 
+// ─── ESM exports for onclick handlers ───
+window.startScan = startScan;
+window.expandAll = expandAll;
+window.collapseAll = collapseAll;
+window.selectAllCandidates = selectAllCandidates;
+window.importSelected = importSelected;
+
 // ─── Background notification polling ───

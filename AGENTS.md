@@ -21,14 +21,16 @@ Vanilla JS SPA + Node.js HTTP server + Tauri v2 desktop shell. 自托管动漫�
 ## Commands
 
 ```bash
-npm run dev:server:watch   # 开发 (nodemon)
-npm run dev:tauri          # Tauri 窗口 (先跑 server)
-npm run dev                # 全开
+npm run dev:server:watch   # 开发后端 (nodemon)
+npm run dev:frontend       # 开发前端 (Vite HMR)
+npm run dev:tauri          # 全开 (server + Vite + Tauri 窗口)
+npm run dev                # server + Vite (无 Tauri)
+npm run sync:js            # 同步 frontend/src/js/ → public/js/
 npm run build              # MSI/NSIS 安装包
 npm run check:rust         # Rust 类型检查 (~20s)
 npm run prisma:migrate     # DB 迁移
 npm run prisma:generate    # 重生成 Prisma
-cd server && npm test      # 222 tests
+cd server && npm test      # 测试
 ```
 
 ## Gotchas
@@ -38,11 +40,15 @@ cd server && npm test      # 222 tests
 - **播放器**: 仅 mpv（`--input-ipc-server` IPC）
 - **自动标记前集**必须 `db.updateEpisodesWatched()` 落盘
 - **window.close() 无效**: 需 Rust `window.close()` 或 `__TAURI__` IPC
-- **Tauri 开发**: sidecar 不自动启动，手动先跑 server
 - **缩略图**: 依赖 ffmpeg PATH，首次延迟
 - **封面路径**: `localCover` 绝对路径，迁移 DATA_DIR 后可能不存在
 - **无认证**: `/api/quit` 局域网可关服
 - **CSS *禁止* `zoom`**: 用 `--scale` calc（详见 `docs/dev/frontend.md`）
+- **`node --check` 必须**: Vite `concatJsPlugin` 跳过语法校验，改任意 `.js` 后必须 `node --check frontend/src/js/xxx.js`
+- **`public/js/` 同步**: 改 `frontend/src/js/` 后必须 `npm run sync:js` 复制到 `public/js/`
+- **CSS 子文件结构**: 勿改 `styles.css`（仅入口）；视图样式放 `views/*.css`，小组件用 `@utility` 放 `patterns.css`，主题特有放 `layouts/` 和 `components/`
+- **Grid 列公式**: 在 `library.js` 的 `GRID_CARD_MIN`/`GRID_CARD_MAX`，不通过 CSS utility 控制
+- **mpv-status**: 不轮询 — `EventSource` 监听 `/api/events/mpv-status`，DB 落盘仅 `final` 事件
 
 ## 验证层级
 

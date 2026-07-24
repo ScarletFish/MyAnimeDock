@@ -1,0 +1,145 @@
+/* ─── Stats View ─── */
+
+.stats-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.stats-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+
+.stats-card:hover {
+  border-color: rgba(var(--accent-rgb), 0.15);
+}
+
+.stats-card-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: var(--space-5) var(--space-6) 0;
+}
+
+.stats-card-header h2 {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: var(--fw-bold);
+  color: var(--fg-primary);
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.stats-card-subtitle {
+  font-size: var(--text-base);
+  color: var(--fg-muted);
+}
+
+.stats-card-header {
+  position: relative;
+}
+.stats-refresh-btn {
+  position: absolute;
+  right: var(--space-6);
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--fg-muted);
+  cursor: pointer;
+  padding: 0.35rem;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s, background 0.2s;
+}
+.stats-refresh-btn:hover {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.stats-refresh-btn:active svg {
+  transform: rotate(180deg);
+}
+.stats-refresh-btn svg {
+  transition: transform 0.4s ease;
+}
+
+.stats-card-body {
+  padding: var(--space-4) var(--space-6) var(--space-6);
+  position: relative;
+  min-height: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stats-card-body--loaded {
+  min-height: auto;
+}
+
+.stats-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--fg-muted);
+  font-size: var(--text-md);
+}
+
+.stats-loading svg {
+  flex-shrink: 0;
+}
+
+.stats-empty {
+  text-align: center;
+  color: var(--fg-muted);
+  padding: 3rem 1rem;
+  width: 100%;
+  margin: auto;
+}
+
+.stats-empty svg {
+  opacity: 0.4;
+  margin-bottom: 0.75rem;
+}
+
+.stats-empty p {
+  margin: 0 0 0.25rem;
+  font-size: var(--text-body);
+}
+
+#wordCloudCanvas {
+  display: block;
+  margin: 0 auto;
+  background: var(--bg-surface);
+}
+
+/* Stats tooltip */
+.stats-tooltip {
+  display: none;
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  background: var(--bg-elevated, #2a2a3e);
+  color: var(--fg-primary, #ede8e2);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-base);
+  line-height: 1.5;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  white-space: nowrap;
+}
+
+/* D3 chart containers */
+#activityChartContainer,
+#ratingChartContainer,
+#seasonChartContainer {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+

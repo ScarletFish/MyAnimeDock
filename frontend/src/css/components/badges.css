@@ -1,0 +1,72 @@
+/* ─── Badges ─── */
+
+@utility rating-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: 100px;
+  font-size: var(--text-xs);
+  font-weight: var(--fw-semibold);
+  background: var(--accent);
+  color: white;
+  box-shadow: 0 0 12px rgba(var(--accent-rgb), 0.2);
+}
+
+@utility season-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: 100px;
+  font-size: var(--text-xs);
+  font-weight: var(--fw-semibold);
+  background: rgba(var(--accent-rgb), 0.15);
+  color: var(--accent);
+}
+
+/* ─── User rating badge (card overlay, anime-card hover interaction) ─── */
+.user-rating {
+  position: absolute;
+  bottom: 0.5rem;
+  right: 0.5rem;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: 100px;
+  font-size: var(--text-xs);
+  font-weight: var(--fw-semibold);
+  background: var(--accent);
+  color: white;
+  box-shadow: 0 0 12px rgba(var(--accent-rgb), 0.2);
+  pointer-events: none;
+  transition: opacity 0.15s var(--ease-out);
+}
+.anime-card:hover .user-rating { opacity: 0; }
+
+/* ─── "..." more button in card overlay ─── */
+.card-more-btn {
+  position: absolute;
+  bottom: 0.5rem;
+  right: 0.5rem;
+  z-index: 2;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.55);
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  padding: 0;
+  line-height: 0;
+  opacity: 0;
+  transition: opacity 0.2s var(--ease-out), background 0.2s var(--ease-out);
+}
+.anime-card:hover .card-more-btn { opacity: 1; }
+.card-more-btn:hover { background: rgba(0, 0, 0, 0.8); color: white; }

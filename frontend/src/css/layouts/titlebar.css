@@ -1,0 +1,288 @@
+/* ─── Title Bar ─── */
+#titlebar {
+  position: relative;
+  z-index: 200;
+  width: 100%;
+  height: 34px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0 0 14px;
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border-bottom: 1px solid var(--border);
+  user-select: none;
+  --scale: 1; /* fixed, not affected by zoom */
+}
+
+/* Subtle top-edge highlight */
+#titlebar::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(255,255,255,0.04) 20%,
+    rgba(255,255,255,0.06) 50%,
+    rgba(255,255,255,0.04) 80%,
+    transparent 100%
+  );
+}
+
+/* Accent glow line below title bar */
+#titlebar::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(var(--accent-rgb), 0.12) 30%,
+    rgba(var(--accent-rgb), 0.2) 50%,
+    rgba(var(--accent-rgb), 0.12) 70%,
+    transparent 100%
+  );
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.titlebar__left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  min-width: 0;
+}
+
+.titlebar__brand {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.03em;
+  color: var(--fg-muted);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.titlebar__detail-context {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 100%;
+  min-width: 0;
+}
+
+.titlebar__detail-context.hidden {
+  display: none !important;
+}
+
+.titlebar__back {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  background: transparent;
+  border: none;
+  color: var(--fg-primary);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  padding: 0 8px 0 2px;
+  flex-shrink: 0;
+  border-radius: 4px;
+  margin: 4px 2px;
+  font-family: var(--font-body);
+  font-size: 12px;
+}
+.titlebar__back:hover {
+  color: var(--accent);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.titlebar__back svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.titlebar__back span {
+  line-height: 1;
+}
+
+/* ─── Titlebar Global Search ─── */
+.titlebar__search {
+  position: relative;
+  flex: 1 1 280px;
+  max-width: 320px;
+  margin: 0 12px;
+}
+
+.titlebar__search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 8px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 6px;
+  transition: border-color 0.2s ease;
+}
+.titlebar__search-wrap:hover {
+  background: rgba(255,255,255,0.07);
+}
+.titlebar__search-wrap:focus-within {
+  border-color: rgba(var(--accent-rgb), 0.4);
+}
+
+.titlebar__search-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--fg-muted);
+  flex-shrink: 0;
+}
+
+.titlebar__search-wrap input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--fg-primary);
+  font-size: 12px;
+  font-family: var(--font-body);
+  padding: 0;
+  line-height: 1;
+}
+.titlebar__search-wrap input::placeholder { color: var(--fg-muted); }
+
+/* ─── Search Results Dropdown ─── */
+.titlebar__search-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  max-height: 360px;
+  overflow-y: auto;
+  z-index: 999;
+}
+.titlebar__search-results.hidden { display: none !important; }
+
+.titlebar__search-group {
+  padding: 6px 10px 2px;
+  font-size: 10px;
+  font-weight: var(--fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-muted);
+}
+
+.titlebar__search-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  cursor: pointer;
+  transition: background 0.12s ease;
+  border-left: 2px solid transparent;
+}
+.titlebar__search-item:hover,
+.titlebar__search-item.highlighted {
+  background: rgba(var(--accent-rgb), 0.07);
+  border-left-color: var(--accent);
+}
+
+.titlebar__search-item-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: var(--fg-muted);
+}
+
+.titlebar__search-item-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.2;
+}
+.titlebar__search-item-label {
+  font-size: 13px;
+  color: var(--fg-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.titlebar__search-item-sublabel {
+  font-size: 11px;
+  color: var(--fg-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Empty / no-results */
+.titlebar__search-empty {
+  padding: 16px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--fg-muted);
+}
+
+/* Light mode overrides */
+:is([data-theme="light"], [data-theme-mode="light"]) .titlebar__search-wrap {
+  background: rgba(0,0,0,0.04);
+  border-color: rgba(0,0,0,0.08);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .titlebar__search-wrap:hover {
+  background: rgba(0,0,0,0.07);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .titlebar__search-wrap:focus-within {
+  border-color: rgba(var(--accent-rgb), 0.4);
+}
+
+.titlebar__controls {
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+.titlebar__btn {
+  width: 46px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--fg-muted);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.titlebar__btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--fg-secondary);
+}
+
+.titlebar__btn--close:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+.titlebar__btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--bg-surface); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--fg-muted); }
+

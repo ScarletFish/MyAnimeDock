@@ -1,0 +1,218 @@
+/* ─── Cross-view reusable patterns ─── */
+
+/* ─── Horizontal Scroll Container ─── *
+ * Usage: <div class="hscroll" style="gap: 1rem; padding: ...">
+ * Each instance sets its own gap/padding as inline or local CSS.
+ */
+@utility hscroll {
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.hscroll::-webkit-scrollbar { display: none; }
+
+/* ─── Search Result Item ─── *
+ * Standard card for search results (detail, metamatch, etc.)
+ */
+@utility search-result-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+.search-result-item:hover {
+  background: var(--bg-surface);
+  border-color: var(--accent);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+@utility search-result-cover {
+  width: 40px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
+  background: var(--bg-surface);
+}
+
+@utility search-result-info {
+  flex: 1;
+  min-width: 0;
+}
+
+@utility search-result-title {
+  font-weight: var(--fw-semibold);
+  font-size: calc(0.9rem * var(--scale));
+  color: var(--fg-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@utility search-result-subtitle {
+  font-size: calc(0.8rem * var(--scale));
+  color: var(--fg-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@utility search-result-meta {
+  font-size: calc(0.75rem * var(--scale));
+  color: var(--fg-muted);
+  margin-top: 2px;
+}
+
+@utility search-result-btn {
+  flex-shrink: 0;
+  font-size: calc(0.85rem * var(--scale));
+  padding: 6px 14px;
+}
+
+@utility search-result-empty {
+  text-align: center;
+  color: var(--fg-secondary);
+  padding: 24px;
+}
+
+/* ─── Status Dot (6px filled circle) ─── */
+@utility status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* ─── Tag Pill ─── *
+ * Small pill badge for info tags, genre tags, detail tags.
+ * Color variants: .tag-pill--warn, .tag-pill--more, .tag-pill--accent (default)
+ */
+@utility tag-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 100px;
+  font-size: calc(0.688rem * var(--scale));
+  font-weight: var(--fw-medium);
+  background: rgba(var(--accent-rgb), 0.1);
+  color: var(--accent-soft);
+  white-space: nowrap;
+}
+.tag-pill--warn {
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--warning);
+}
+.tag-pill--more {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--fg-muted);
+  cursor: pointer;
+}
+.tag-pill--more:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--fg-secondary);
+}
+
+/* ─── Section Header (with left accent bar) ─── *
+ * Used for mylist, dashboard sections, and modal headers.
+ * The accent bar is drawn via ::before pseudo-element.
+ * Apply to the parent container of the section title.
+ */
+@utility section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-left: 0.75rem;
+  position: relative;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 3px;
+    bottom: 3px;
+    width: 3px;
+    border-radius: 2px;
+    background: var(--accent);
+  }
+}
+
+@utility section-title {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: var(--fw-bold);
+  color: var(--fg-primary);
+  letter-spacing: -0.01em;
+}
+
+/* ─── Segment Control (pill-style toggle group) ─── */
+@utility seg-control {
+  display: flex;
+  gap: 2px;
+  background: var(--bg-surface);
+  padding: 2px;
+  border-radius: var(--radius-sm);
+}
+
+@utility seg-item {
+  background: none;
+  border: none;
+  color: var(--fg-muted);
+  padding: 4px 12px;
+  font-size: var(--text-sm);
+  font-family: var(--font-body);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+
+  &:hover {
+    color: var(--fg-primary);
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  &.active {
+    color: var(--fg-primary);
+    background: var(--bg-elevated);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  }
+}
+
+/* ─── Stat Tile ─── *
+ * Small stat card showing number + label, used in dashboard and bento.
+ */
+@utility stat-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.125rem;
+  padding: 0.5rem 0.75rem;
+  font-size: var(--text-base);
+  color: var(--fg-muted);
+  white-space: nowrap;
+}
+@utility stat-tile-value {
+  display: block;
+  color: var(--fg-primary);
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-2xl);
+  line-height: 1.2;
+}
+@utility stat-tile-label {
+  font-size: var(--text-xs);
+  color: var(--fg-muted);
+  font-weight: var(--fw-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}

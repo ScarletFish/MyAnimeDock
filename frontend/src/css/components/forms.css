@@ -1,0 +1,187 @@
+/* ─── Toggle Switch ─── */
+@utility toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 24px;
+  flex-shrink: 0;
+
+  input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  transition: all var(--duration-fast) var(--ease-out);
+
+  &::before {
+    content: '';
+    position: absolute;
+    height: 16px;
+    width: 16px;
+    left: 3px;
+    bottom: 3px;
+    background: var(--fg-muted);
+    border-radius: 50%;
+    transition: all var(--duration-fast) var(--ease-out);
+  }
+
+  .toggle-switch input:checked + & {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .toggle-switch input:checked + &::before {
+    transform: translateX(16px);
+    background: #fff;
+  }
+}
+
+/* ─── Search ─── */
+.search-input {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--fg-primary);
+  padding: 9px 16px; border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  width: 220px;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+.search-input:focus {
+  outline: none;
+  border-color: rgba(var(--accent-rgb), 0.4);
+  box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.08);
+}
+.search-input::placeholder { color: var(--fg-muted); }
+
+/* ─── Settings Form Elements ─── */
+.form-group { margin-bottom: 1.25rem; position: relative; }
+.settings-panel .form-group:focus-within::before {
+  content: ''; position: absolute; left: -16px; top: 4px; bottom: 4px;
+  width: 2px; border-radius: 1px; background: var(--accent); opacity: 0.35;
+}
+.form-group label {
+  display: block;
+  font-size: var(--text-sm); font-weight: var(--fw-semibold);
+  color: var(--fg-secondary); margin-bottom: 6px; letter-spacing: 0.02em;
+}
+.form-group input[type="text"],
+.form-group input[type="password"],
+.form-group select,
+.form-group textarea {
+  width: 100%; background: var(--bg-deep); border: 1px solid var(--border);
+  color: var(--fg-primary); padding: 10px 14px; border-radius: var(--radius-sm);
+  font-family: var(--font-body); font-size: var(--text-md);
+  transition: all var(--duration-fast) var(--ease-out);
+}
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: rgba(var(--accent-rgb), 0.4);
+  box-shadow: inset 0 1px 0 rgba(var(--accent-rgb), 0.03), 0 0 0 3px rgba(var(--accent-rgb), 0.07);
+  background: var(--bg-elevated);
+}
+.form-group input:hover,
+.form-group select:hover,
+.form-group textarea:hover {
+  border-color: rgba(var(--accent-rgb), 0.2);
+  background: var(--bg-elevated);
+}
+.form-group textarea { resize: vertical; min-height: 90px; }
+.form-hint {
+  font-size: var(--text-xs); color: var(--fg-muted); margin-top: 4px;
+}
+
+/* ─── Number Stepper ─── */
+@utility num-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  height: 40px;
+  width: 100%;
+}
+
+.num-stepper-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 34px; height: 100%; border: none; background: none;
+  color: var(--fg-muted);
+  font-size: var(--text-lg); font-weight: var(--fw-bold);
+  cursor: pointer; transition: all 0.15s var(--ease-out);
+  padding: 0; line-height: 1;
+}
+.num-stepper-btn:hover { background: rgba(255, 255, 255, 0.1); color: var(--fg-primary); }
+.num-stepper-btn:active { background: rgba(255, 255, 255, 0.06); }
+.num-stepper-val {
+  flex: 1; text-align: center;
+  font-size: var(--text-base);
+  color: var(--fg-primary); font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+  padding: 0 2px; user-select: none;
+}
+
+/* ─── Date Segments ─── */
+@utility date-segments {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  height: 40px;
+}
+
+.date-seg {
+  background: none; border: none; outline: none;
+  color: var(--fg-primary);
+  font-size: var(--text-base); font-family: var(--font-body);
+  text-align: center; padding: 0 2px; height: 100%; min-width: 0;
+  font-variant-numeric: tabular-nums;
+}
+.date-seg--y { width: 3.2rem; }
+.date-seg--m { width: 2rem; }
+.date-seg--d { width: 2rem; }
+.date-seg::placeholder { color: var(--fg-muted); opacity: 0.5; }
+.date-seg:focus { background: rgba(255, 255, 255, 0.1); }
+.date-sep { color: var(--fg-muted); font-size: var(--text-base); font-weight: var(--fw-semibold); user-select: none; padding: 0 2px; }
+
+/* ─── DB Management ─── */
+.db-info-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: var(--space-2); margin-top: 2px;
+}
+.db-info-item {
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: calc(0.625rem * var(--scale)) var(--space-3);
+  display: flex; flex-direction: column; gap: 2px;
+}
+.db-info-label {
+  font-size: var(--text-xs); color: var(--fg-muted);
+  font-weight: var(--fw-medium); letter-spacing: 0.02em;
+}
+.db-info-value {
+  font-size: var(--text-md); color: var(--fg-primary);
+  font-weight: var(--fw-semibold); font-variant-numeric: tabular-nums;
+}
+.db-action-row {
+  display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: 2px;
+}
+.db-action-row .btn {
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+}
+.db-action-row .btn svg { flex-shrink: 0; }

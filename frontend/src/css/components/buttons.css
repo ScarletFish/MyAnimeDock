@@ -1,0 +1,102 @@
+/* ── Step 1: Component Utilities ── */
+
+/* ─── Button System ─── */
+@utility btn {
+  @apply inline-flex items-center gap-2 whitespace-nowrap cursor-pointer
+         border border-border bg-transparent text-content-secondary
+         rounded-sm font-body font-medium;
+  padding: 8px 18px;
+  font-size: var(--text-base);
+  transition: all var(--duration-fast) var(--ease-out);
+  letter-spacing: 0.01em;
+
+  & svg {
+    width: 15px; height: 15px;
+    stroke: currentColor; fill: none;
+    stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+  }
+
+  &:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+    color: var(--fg-primary);
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  &:active {
+    transform: scale(0.97);
+  }
+
+  &:disabled,
+  &.disabled {
+    opacity: 0.4;
+    cursor: default;
+    pointer-events: none;
+  }
+}
+
+@utility btn-primary {
+  background: var(--accent-gradient);
+  border: none;
+  color: white;
+  font-weight: var(--fw-semibold);
+
+  &:hover {
+    color: white;
+    background: var(--accent-gradient);
+  }
+}
+
+@utility btn-outline {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: transparent;
+  font-weight: var(--fw-semibold);
+
+  &:hover {
+    border-color: var(--accent);
+    background: rgba(var(--accent-rgb), 0.10);
+    color: var(--accent);
+  }
+}
+
+@utility btn-danger {
+  border-color: rgba(239, 68, 68, 0.3);
+  color: var(--error);
+
+  &:hover {
+    background: rgba(239, 68, 68, 0.10);
+    border-color: var(--error);
+    color: var(--error);
+  }
+}
+
+@utility btn-ghost {
+  border: 1px solid var(--border);
+  &:hover {
+    background: var(--bg-surface);
+    border-color: var(--border-hover);
+    color: var(--fg-primary);
+  }
+}
+
+@utility btn-accent {
+  background: var(--accent-gradient);
+  color: #fff;
+  font-weight: var(--fw-semibold);
+  &:hover {
+    background: var(--accent-soft);
+    box-shadow: 0 0 16px var(--accent-glow);
+  }
+}
+
+@utility btn-sm {
+  padding: 5px 12px;
+  font-size: var(--text-sm);
+}
+
+@utility btn-xs {
+  padding: 4px 10px;
+  font-size: var(--text-xs);
+  line-height: 1.4;
+}
+

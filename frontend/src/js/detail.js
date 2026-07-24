@@ -71,7 +71,7 @@ function expandTags() {
   const tagsEl = document.getElementById('detailTags');
   const allTags = tagsEl._allTags;
   if (!allTags) return;
-  tagsEl.innerHTML = `<div class="detail-tags-list">${allTags.map(t => `<span class="detail-tag">${escHtml(t)}</span>`).join('')}</div>`;
+    tagsEl.innerHTML = `<div class="detail-tags-list">${allTags.map(t => `<span class="tag-pill">${escHtml(t)}</span>`).join('')}</div>`;
 }
 let detailSourceView = 'library';
 
@@ -332,10 +332,10 @@ function renderDetail() {
   const s = anime.matchedSeason || anime.season;
   if (s && s > 1) {
     const mismatch = anime.season && anime.matchedSeason && anime.season !== anime.matchedSeason;
-    rightParts.push(`<span class="info-tag${mismatch ? ' info-tag--warn' : ''}">S${s}${mismatch ? ' ⚠' : ''}</span>`);
+    rightParts.push(`<span class="tag-pill tag-pill--secondary${mismatch ? ' tag-pill--warn' : ''}">S${s}${mismatch ? ' ⚠' : ''}</span>`);
   }
-  if (anime.date) rightParts.push(`<span class="info-tag">${anime.date}</span>`);
-  if (anime.platform) rightParts.push(`<span class="info-tag">${escHtml(anime.platform)}</span>`);
+  if (anime.date) rightParts.push(`<span class="tag-pill tag-pill--secondary">${anime.date}</span>`);
+  if (anime.platform) rightParts.push(`<span class="tag-pill tag-pill--secondary">${escHtml(anime.platform)}</span>`);
   infoLine.innerHTML =
     (leftParts.length ? `<span class="info-left">${leftParts.join('')}</span>` : '') +
     (rightParts.length ? `<span class="info-tags">${rightParts.join('')}</span>` : '');
@@ -362,9 +362,9 @@ function renderDetail() {
     const MAX_TAGS = 4;
     const shown = tags.slice(0, MAX_TAGS);
     const remaining = tags.length - MAX_TAGS;
-    let html = shown.map(t => `<span class="detail-tag">${escHtml(t)}</span>`).join('');
-    if (remaining > 0) {
-      html += `<span class="detail-tag detail-tag--more" onclick="expandTags()">+${remaining}</span>`;
+    let html = shown.map(t => `<span class="tag-pill">${escHtml(t)}</span>`).join('');
+    if (remaining > 0)
+      html += `<span class="tag-pill tag-pill--more" onclick="expandTags()">+${remaining}</span>`;
     }
     tagsEl.innerHTML = `<div class="detail-tags-list">${html}</div>`;
     tagsEl.style.display = '';

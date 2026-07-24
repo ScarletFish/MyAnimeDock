@@ -216,3 +216,51 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
+
+/* ─── Section Card ─── *
+ * Elevated bordered card container. Each instance sets its own padding/margin.
+ * Used for episode-list-section, detail-characters, relations, watch-stats, etc.
+ */
+@utility section-card {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+}
+
+/* ─── Scroll Pagination Dots ─── *
+ * Dots indicator for any horizontal scroll section (episode list, etc.)
+ */
+@utility scroll-dots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+@utility scroll-dot {
+  width: 15px;
+  height: 10px;
+  border-radius: 5px;
+  border: none;
+  padding: 0;
+  background: var(--fg-muted);
+  opacity: 0.2;
+  cursor: pointer;
+  transition: all 0.25s var(--ease-out);
+  flex-shrink: 0;
+
+  &.active {
+    opacity: 1;
+    background: var(--accent);
+    width: 18px;
+  }
+
+  &:hover { opacity: 0.5; }
+  &.active:hover { opacity: 1; }
+}
+
+/* ─── Tag Pill — secondary accent ─── */
+.tag-pill--secondary {
+  background: rgba(var(--accent-secondary-rgb), 0.1);
+  color: var(--accent-secondary);
+}

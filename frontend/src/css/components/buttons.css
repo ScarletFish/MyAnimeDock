@@ -100,3 +100,31 @@
   line-height: 1.4;
 }
 
+/* ─── Back Button ─── */
+@utility btn-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--fg-secondary);
+  font-size: calc(0.781rem * var(--scale));
+  font-weight: var(--fw-medium);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  align-self: flex-start;
+
+  &:hover {
+    background: var(--bg-surface);
+    border-color: var(--border-hover);
+    color: var(--fg-primary);
+  }
+
+  & svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+

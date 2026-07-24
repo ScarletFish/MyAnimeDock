@@ -1,8 +1,6 @@
 /* ─── Characters & Staff ─── */
 .detail-characters {
-  background: var(--bg-elevated);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border);
+  @apply section-card;
   padding: 1.25rem 1.5rem;
 }
 

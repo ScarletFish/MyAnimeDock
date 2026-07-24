@@ -1,8 +1,6 @@
 /* ─── Episode List (cinematic horizontal scroll) ─── */
 .episode-list-section {
-  background: var(--bg-elevated);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border);
+  @apply section-card;
   padding: calc(0.75rem * var(--scale)) calc(1.25rem * var(--scale));
   margin-bottom: calc(1rem * var(--scale));
 }
@@ -34,35 +32,8 @@
   font-weight: var(--fw-medium);
 }
 
-/* ─── Pagination Dots ─── */
-.scroll-dots {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: auto;
-}
-
-.scroll-dot {
-  width: 15px;
-  height: 10px;
-  border-radius: 5px;
-  border: none;
-  padding: 0;
-  background: var(--fg-muted);
-  opacity: 0.2;
-  cursor: pointer;
-  transition: all 0.25s var(--ease-out);
-  flex-shrink: 0;
-}
-.scroll-dot.active {
-  opacity: 1;
-  background: var(--accent);
-  width: 18px;
-}
-.scroll-dot:hover { opacity: 0.5; }
-.scroll-dot.active:hover { opacity: 1; }
-
-/* ─── Episode Scroll ─── */
+/* ─── Episode Scroll ───
+ * scroll-dots / scroll-dot utilities in patterns.css */
 .episode-list-scroll {
   display: flex;
   gap: calc(0.875rem * var(--scale));

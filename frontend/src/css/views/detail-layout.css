@@ -90,28 +90,7 @@
   100% { opacity: 0;    transform: scale(1); }
 }
 
-/* ─── Back Button ─── */
-.btn-back {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  color: var(--fg-secondary);
-  font-size: calc(0.781rem * var(--scale));
-  font-weight: var(--fw-medium);
-  cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-out);
-  align-self: flex-start;
-}
-.btn-back:hover {
-  background: var(--bg-surface);
-  border-color: var(--border-hover);
-  color: var(--fg-primary);
-}
-.btn-back svg { width: 16px; height: 16px; }
+/* ─── Back Button ─── (utility in buttons.css) */
 
 /* ─── Cover Wrap ─── */
 .detail-cover-wrap {
@@ -203,21 +182,7 @@
   flex-wrap: wrap;
   justify-content: flex-end;
 }
-.detail-info-line .info-tag {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 8px;
-  border-radius: 100px;
-  font-size: calc(0.688rem * var(--scale));
-  font-weight: var(--fw-medium);
-  background: rgba(var(--accent-secondary-rgb), 0.1);
-  color: var(--accent-secondary);
-  white-space: nowrap;
-}
-.detail-info-line .info-tag--warn {
-  background: rgba(245, 158, 11, 0.12);
-  color: var(--warning);
-}
+/* .info-tag / .info-tag--warn → tag-pill tag-pill--secondary / tag-pill--warn (patterns.css) */
 
 .detail-tags { margin-bottom: calc(0.5rem * var(--scale)); }
 .detail-tags-list {
@@ -225,30 +190,7 @@
   flex-wrap: wrap;
   gap: calc(0.25rem * var(--scale));
 }
-.detail-tags .detail-tag {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 8px;
-  border-radius: 100px;
-  font-size: calc(0.688rem * var(--scale));
-  font-weight: var(--fw-medium);
-  background: rgba(var(--accent-rgb), 0.1);
-  color: var(--accent-soft);
-  white-space: nowrap;
-}
-.detail-tags .detail-tag:nth-child(even) {
-  background: rgba(var(--accent-rgb), 0.1);
-  color: var(--accent-soft);
-}
-.detail-tags .detail-tag--more {
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--fg-muted);
-  cursor: pointer;
-}
-.detail-tags .detail-tag--more:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--fg-secondary);
-}
+/* .detail-tag → tag-pill (utility in patterns.css) */
 
 .detail-summary {
   color: var(--fg-secondary);

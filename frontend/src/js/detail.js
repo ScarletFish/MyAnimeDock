@@ -363,7 +363,7 @@ function renderDetail() {
     const shown = tags.slice(0, MAX_TAGS);
     const remaining = tags.length - MAX_TAGS;
     let html = shown.map(t => `<span class="tag-pill">${escHtml(t)}</span>`).join('');
-    if (remaining > 0)
+    if (remaining > 0) {
       html += `<span class="tag-pill tag-pill--more" onclick="expandTags()">+${remaining}</span>`;
     }
     tagsEl.innerHTML = `<div class="detail-tags-list">${html}</div>`;

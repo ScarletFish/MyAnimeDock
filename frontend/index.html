@@ -403,7 +403,16 @@
       <div class="watch-stats" id="watchStats">
         <div class="watch-stats-header"><h3>观看统计</h3></div>
         <div class="watch-stats-chart-wrap">
-          <canvas class="watch-stats-chart" id="watchStatsChart" width="1200" height="320"></canvas>
+          <div class="heatmap" id="watchHeatmap">
+            <div class="heatmap-months" id="heatmapMonths"></div>
+            <div class="heatmap-body">
+              <div class="heatmap-dows">
+                <span>一</span><span>三</span><span>五</span>
+              </div>
+              <div class="heatmap-grid" id="heatmapGrid"></div>
+            </div>
+            <div class="heatmap-legend" id="heatmapLegend"></div>
+          </div>
           <div class="watch-stats-empty" id="watchStatsEmpty"></div>
         </div>
       </div>

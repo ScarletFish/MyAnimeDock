@@ -146,7 +146,7 @@ function openThemeDock() {
   }
   const zoomEl = document.getElementById('dockZoom');
   if (zoomEl) {
-    const currentZoom = Math.round(((parseFloat(document.documentElement.style.getPropertyValue('--scale')) || 1.25) / 1.25) * 100);
+    const currentZoom = Math.round((parseFloat(document.documentElement.style.getPropertyValue('--scale')) || 1) * 100);
     zoomEl.value = currentZoom;
     document.getElementById('dockZoomLabel').textContent = currentZoom + '%';
   }
@@ -197,8 +197,8 @@ function toggleThemeDock() {
 }
 
 // Zoom via CSS --scale variable (GSAP-safe, fixed-position-friendly)
-function applyZoom(scale) {
-  const s = (parseFloat(scale) || 1) * 1.25;
+function applyZoom(factor) {
+  const s = parseFloat(factor) || 1;
   document.documentElement.style.setProperty('--scale', s);
   if (typeof applyGridZoom === 'function') applyGridZoom();
 }
@@ -404,7 +404,7 @@ async function saveSettings() {
   const rawTheme = document.documentElement.getAttribute('data-theme') || 'dark';
   const newTheme = (rawTheme === 'dark' || rawTheme === 'light') ? 'default' : rawTheme;
   const newThemeMode = document.documentElement.getAttribute('data-theme-mode') || 'dark';
-  const currentZoom = (parseFloat(document.documentElement.style.getPropertyValue('--scale')) || 1.25) / 1.25;
+  const currentZoom = parseFloat(document.documentElement.style.getPropertyValue('--scale')) || 1;
 
   // Build apiSources from simple toggles
   const bangumiUrl = document.getElementById('bangumiUrl').value.trim() || 'https://api.bangumi.lol';

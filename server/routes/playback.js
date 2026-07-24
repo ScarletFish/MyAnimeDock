@@ -140,7 +140,6 @@ module.exports = {
               ep.progress = progress;
               if (duration > 0) ep.duration = duration;
               if (watched) ep.watched = true;
-              db.updateEpisodeProgress(active.anime.id, ep.number, { progress, duration: duration > 0 ? duration : undefined, watched });
               if (active.sessionId) {
                 const session = data.playSessions.find(s => s.sessionId === active.sessionId);
                 if (session) {
@@ -149,29 +148,36 @@ module.exports = {
                   const startMs = new Date(session.startTime).getTime();
                   const endMs = new Date(session.endTime).getTime();
                   session.clockTime = Math.round((endMs - startMs) / 1000);
+                }
+              }
+              if (!final) return; // ← 中间进度仅更新内存，不写 DB
+
+              // ── final: 一次性落盘 ──
+              db.updateEpisodeProgress(active.anime.id, ep.number, { progress, duration: duration > 0 ? duration : undefined, watched });
+              if (active.sessionId) {
+                const session = data.playSessions.find(s => s.sessionId === active.sessionId);
+                if (session) {
                   db.updatePlaySession(active.sessionId, { endTime: session.endTime, duration: session.duration, clockTime: session.clockTime });
                 }
               }
-              if (final) {
-                if (active.anime) {
-                  const myEntry = (data.myList || []).find(m => m.animeId === active.anime.id);
-                  const allWatched = active.anime.episodes && active.anime.episodes.length > 0
-                    && active.anime.episodes.every(e => e.watched);
-                  if (allWatched && myEntry) {
-                    myEntry.status = 'completed';
-                    myEntry.completedAt = new Date().toISOString();
-                    db.saveMyList(data);
-                  } else if (myEntry && myEntry.status !== 'watching') {
-                    myEntry.status = 'watching';
-                    db.saveMyList(data);
-                  }
+              if (active.anime) {
+                const myEntry = (data.myList || []).find(m => m.animeId === active.anime.id);
+                const allWatched = active.anime.episodes && active.anime.episodes.length > 0
+                  && active.anime.episodes.every(e => e.watched);
+                if (allWatched && myEntry) {
+                  myEntry.status = 'completed';
+                  myEntry.completedAt = new Date().toISOString();
+                  db.saveMyList(data);
+                } else if (myEntry && myEntry.status !== 'watching') {
+                  myEntry.status = 'watching';
+                  db.saveMyList(data);
                 }
-                if (active.anime?.bangumiId) {
-                  bangumiSync.pushStatusChange(active.anime.id, data);
-                }
-                activePlays.delete(fp);
-                broadcastMpvStatus?.();
               }
+              if (active.anime?.bangumiId) {
+                bangumiSync.pushStatusChange(active.anime.id, data);
+              }
+              activePlays.delete(fp);
+              broadcastMpvStatus?.();
             },
             onError: (msg) => {
               const active = activePlays.get(filePath);

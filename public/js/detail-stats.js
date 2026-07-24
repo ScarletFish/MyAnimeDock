@@ -115,21 +115,23 @@ function renderEpisodeHeatmap(anime, animate) {
   });
 }
 
-// ─── Watch Stats (GitHub-style Heatmap) ───
+// ─── Watch Stats (Canvas Bar Chart) ───
 
 function renderWatchStats(anime) {
   const version = ++watchStatsVersion;
   const module = document.getElementById('watchStats');
-  const grid = document.getElementById('heatmapGrid');
-  const monthsEl = document.getElementById('heatmapMonths');
-  const legendEl = document.getElementById('heatmapLegend');
-  const emptyEl = document.getElementById('watchStatsEmpty');
-  const heatmapEl = document.getElementById('watchHeatmap');
+  const canvas = document.getElementById('watchStatsChart');
+  const ctx = canvas.getContext('2d');
+  const isLight = document.documentElement.getAttribute('data-theme-mode') === 'light';
+  const rootStyle = getComputedStyle(document.documentElement);
+  const accentRgb = rootStyle.getPropertyValue('--accent-rgb').trim() || '225,58,90';
+  const secondaryRgb = rootStyle.getPropertyValue('--accent-secondary-rgb').trim() || '74,108,247';
 
   API.get(`/api/anime/${encodeURIComponent(anime.id)}/sessions`).then(data => {
     if (version !== watchStatsVersion) return;
 
-    const totalMinutes = Object.values(data).reduce((s, v) => s + v, 0);
+    const dailyEntries = Object.entries(data);
+    const totalMinutes = dailyEntries.reduce((s, [, v]) => s + v, 0);
 
     if (totalMinutes === 0) {
       module.style.display = 'none';
@@ -137,77 +139,175 @@ function renderWatchStats(anime) {
     }
 
     module.style.display = '';
-    heatmapEl.style.display = '';
-    if (emptyEl) emptyEl.style.display = 'none';
+    canvas.style.display = 'block';
 
-    // Build 90-day date array (today → 89 days ago)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const days = [];
-    for (let i = 89; i >= 0; i--) {
-      const d = new Date(today);
-      d.setDate(d.getDate() - i);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      days.push({ date: d, key, minutes: data[key] || 0 });
+    // Aggregate into weeks (Mon-Sun)
+    const weeks = [];
+    const weekMap = new Map();
+    for (const [dateStr, mins] of dailyEntries) {
+      const d = new Date(dateStr + 'T00:00:00');
+      const day = d.getDay();
+      const mon = new Date(d);
+      mon.setDate(d.getDate() - ((day + 6) % 7));
+      const key = mon.toISOString().slice(0, 10);
+      if (!weekMap.has(key)) {
+        weekMap.set(key, { start: mon, minutes: 0 });
+      }
+      weekMap.get(key).minutes += mins;
+    }
+    const sortedWeeks = [...weekMap.values()].sort((a, b) => a.start - b.start);
+
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.parentElement.getBoundingClientRect();
+    const W = rect.width - 2;
+    const H = 300;
+    canvas.width = W * dpr;
+    canvas.height = H * dpr;
+    canvas.style.width = '';
+    canvas.style.height = H + 'px';
+    ctx.scale(dpr, dpr);
+
+    const PAD = { top: 24, right: 24, bottom: 44, left: 56 };
+    const cw = W - PAD.left - PAD.right;
+    const ch = H - PAD.top - PAD.bottom;
+
+    const maxVal = Math.max(1, ...sortedWeeks.map(w => w.minutes));
+    const n = sortedWeeks.length;
+    const stepX = n > 1 ? cw / (n - 1) : cw;
+
+    ctx.clearRect(0, 0, W, H);
+
+    // Grid lines
+    const gridLines = 4;
+    ctx.strokeStyle = isLight ? 'rgba(44,36,24,0.08)' : 'rgba(237,232,226,0.06)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= gridLines; i++) {
+      const y = PAD.top + (ch / gridLines) * i;
+      ctx.beginPath();
+      ctx.moveTo(PAD.left, y);
+      ctx.lineTo(W - PAD.right, y);
+      ctx.stroke();
     }
 
-    // Color level: 0=empty, 1-15=l1, 16-30=l2, 31-60=l3, 60+=l4
-    function getLevel(m) {
-      if (m <= 0) return '';
-      if (m <= 15) return 'l1';
-      if (m <= 30) return 'l2';
-      if (m <= 60) return 'l3';
-      return 'l4';
+    // Y-axis labels
+    ctx.fillStyle = isLight ? 'rgba(44,36,24,0.4)' : 'rgba(237,232,226,0.4)';
+    ctx.font = '11px DM Sans, Noto Sans SC, Noto Sans JP, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    for (let i = 0; i <= gridLines; i++) {
+      const y = PAD.top + (ch / gridLines) * i;
+      const val = Math.round(maxVal - (maxVal / gridLines) * i);
+      ctx.fillText(val + '分钟', PAD.left - 8, y);
     }
 
-    // Month labels: find where each month starts in the grid
-    const monthLabels = [];
-    let lastMonth = -1;
-    days.forEach((d, i) => {
-      const m = d.date.getMonth();
-      if (m !== lastMonth) {
-        lastMonth = m;
-        monthLabels.push({ index: i, label: (m + 1) + '月' });
-      }
-    });
+    // Compute points
+    function getXY(w, i) {
+      const x = n > 1 ? PAD.left + i * stepX : PAD.left + cw / 2;
+      const y = PAD.top + ch - (w.minutes / maxVal) * ch;
+      return [x, y];
+    }
 
-    // Render month labels
-    // Each column = 7 cells, total columns = ceil(90/7) = 13
-    const totalCols = Math.ceil(days.length / 7);
-    monthsEl.innerHTML = monthLabels.map(ml => {
-      const col = Math.floor(ml.index / 7);
-      const pct = (col / totalCols * 100).toFixed(1);
-      return `<span style="margin-left:${col === 0 ? 0 : '0'};flex:0 0 calc(${100 / totalCols}%)">${ml.label}</span>`;
-    }).join('');
+    // Animate
+    const animDuration = 600;
+    const startTime = performance.now();
 
-    // Render grid cells (7 rows × 13 columns, column-major)
-    grid.innerHTML = '';
-    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    days.forEach((d, i) => {
-      const cell = document.createElement('div');
-      cell.className = 'heatmap-cell' + (getLevel(d.minutes) ? ' ' + getLevel(d.minutes) : '');
-      if (!prefersReduced) {
-        cell.style.animationDelay = (i * 12) + 'ms';
+    function drawChart(progress) {
+      ctx.clearRect(0, 0, W, H);
+
+      // Grid
+      ctx.strokeStyle = isLight ? 'rgba(44,36,24,0.08)' : 'rgba(237,232,226,0.06)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= gridLines; i++) {
+        const y = PAD.top + (ch / gridLines) * i;
+        ctx.beginPath();
+        ctx.moveTo(PAD.left, y);
+        ctx.lineTo(W - PAD.right, y);
+        ctx.stroke();
       }
-      cell.addEventListener('mouseenter', (evt) => {
-        const dateStr = `${d.date.getMonth() + 1}月${d.date.getDate()}日`;
-        const timeStr = d.minutes > 0 ? `${d.minutes} 分钟` : '未观看';
-        const weekDay = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][d.date.getDay()];
-        showTooltip(evt, `<b>${dateStr} ${weekDay}</b><br>${timeStr}`);
+
+      // Y labels
+      ctx.fillStyle = isLight ? 'rgba(44,36,24,0.4)' : 'rgba(237,232,226,0.4)';
+      ctx.font = '11px DM Sans, Noto Sans SC, Noto Sans JP, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      for (let i = 0; i <= gridLines; i++) {
+        const y = PAD.top + (ch / gridLines) * i;
+        const val = Math.round(maxVal - (maxVal / gridLines) * i);
+        ctx.fillText(val + '分钟', PAD.left - 8, y);
+      }
+
+      const pts = sortedWeeks.map((w, i) => getXY(w, i));
+      const visibleCount = Math.max(1, Math.ceil(pts.length * progress));
+      const visPts = pts.slice(0, visibleCount);
+
+      // Area fill
+      if (visPts.length > 1) {
+        ctx.beginPath();
+        ctx.moveTo(visPts[0][0], PAD.top + ch);
+        ctx.lineTo(visPts[0][0], visPts[0][1]);
+        for (let i = 1; i < visPts.length; i++) {
+          const [px, py] = visPts[i - 1];
+          const [cx, cy] = visPts[i];
+          const mx = (px + cx) / 2;
+          ctx.bezierCurveTo(mx, py, mx, cy, cx, cy);
+        }
+        ctx.lineTo(visPts[visPts.length - 1][0], PAD.top + ch);
+        ctx.closePath();
+        const grad = ctx.createLinearGradient(0, PAD.top, 0, PAD.top + ch);
+        grad.addColorStop(0, `rgba(${accentRgb},0.30)`);
+        grad.addColorStop(1, `rgba(${secondaryRgb},0.02)`);
+        ctx.fillStyle = grad;
+        ctx.fill();
+      }
+
+      // Line
+      if (visPts.length > 1) {
+        ctx.beginPath();
+        ctx.moveTo(visPts[0][0], visPts[0][1]);
+        for (let i = 1; i < visPts.length; i++) {
+          const [px, py] = visPts[i - 1];
+          const [cx, cy] = visPts[i];
+          const mx = (px + cx) / 2;
+          ctx.bezierCurveTo(mx, py, mx, cy, cx, cy);
+        }
+        ctx.strokeStyle = `rgba(${accentRgb},0.9)`;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+
+      // Dots + x-axis labels
+      const labelInterval = n > 8 ? Math.ceil(n / 6) : 1;
+      visPts.forEach(([x, y], i) => {
+        ctx.beginPath();
+        ctx.arc(x, y, 3, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${accentRgb},0.9)`;
+        ctx.fill();
+
+        if (i % labelInterval === 0 || i === visPts.length - 1) {
+          const d = sortedWeeks[i].start;
+          const label = (d.getMonth() + 1) + '/' + d.getDate();
+          ctx.fillStyle = isLight ? 'rgba(44,36,24,0.35)' : 'rgba(237,232,226,0.35)';
+          ctx.font = '10px DM Sans, Noto Sans SC, Noto Sans JP, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'top';
+          ctx.fillText(label, x, H - PAD.bottom + 8);
+        }
       });
-      cell.addEventListener('mouseleave', hideTooltip);
-      grid.appendChild(cell);
-    });
+    }
 
-    // Legend
-    legendEl.innerHTML =
-      '<span>少</span>' +
-      '<div class="heatmap-cell" style="width:12px;height:12px;cursor:default;animation:none"></div>' +
-      '<div class="heatmap-cell l1" style="width:12px;height:12px;cursor:default;animation:none"></div>' +
-      '<div class="heatmap-cell l2" style="width:12px;height:12px;cursor:default;animation:none"></div>' +
-      '<div class="heatmap-cell l3" style="width:12px;height:12px;cursor:default;animation:none"></div>' +
-      '<div class="heatmap-cell l4" style="width:12px;height:12px;cursor:default;animation:none"></div>' +
-      '<span>多</span>';
+    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReduced) {
+      drawChart(1);
+    } else {
+      function animate(now) {
+        if (version !== watchStatsVersion) return;
+        const t = Math.min(1, (now - startTime) / animDuration);
+        const ease = 1 - Math.pow(1 - t, 3);
+        drawChart(ease);
+        if (t < 1) requestAnimationFrame(animate);
+      }
+      requestAnimationFrame(animate);
+    }
 
   }).catch(() => {
     if (version !== watchStatsVersion) return;
@@ -215,7 +315,7 @@ function renderWatchStats(anime) {
   });
 }
 
-// Re-render heatmap on theme change
+// Re-render canvas-based charts on theme change
 document.addEventListener('themechanged', () => {
   const detailView = document.getElementById('detailView');
   if (detailView && !detailView.classList.contains('hidden') && currentAnime) {

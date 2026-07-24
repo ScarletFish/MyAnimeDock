@@ -202,11 +202,11 @@ function renderWatchStats(anime) {
     // Legend
     legendEl.innerHTML =
       '<span>少</span>' +
-      '<div class="heatmap-cell" style="width:12px;height:12px;cursor:default;animation:none"></div>' +
-      '<div class="heatmap-cell l1" style="width:12px;height:12px;cursor:default;animation:none"></div>' +
-      '<div class="heatmap-cell l2" style="width:12px;height:12px;cursor:default;animation:none"></div>' +
-      '<div class="heatmap-cell l3" style="width:12px;height:12px;cursor:default;animation:none"></div>' +
-      '<div class="heatmap-cell l4" style="width:12px;height:12px;cursor:default;animation:none"></div>' +
+      '<div class="heatmap-cell" style="cursor:default;animation:none"></div>' +
+      '<div class="heatmap-cell l1" style="cursor:default;animation:none"></div>' +
+      '<div class="heatmap-cell l2" style="cursor:default;animation:none"></div>' +
+      '<div class="heatmap-cell l3" style="cursor:default;animation:none"></div>' +
+      '<div class="heatmap-cell l4" style="cursor:default;animation:none"></div>' +
       '<span>多</span>';
 
   }).catch(() => {

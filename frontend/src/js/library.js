@@ -9,7 +9,7 @@ let cardTween = null;
 let librarySortDropdown = null;
 
 // Grid card sizing
-const GRID_CARD_BASE = 190;
+const GRID_CARD_BASE = 278;
 const GRID_ZOOM_MIN = 0.5;
 const GRID_ZOOM_MAX = 2.0;
 let gridZoom = parseFloat(localStorage.getItem('gridZoom') || '1');
@@ -515,6 +515,9 @@ function navigateToDetail(id, cardEl) {
     rect = img.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) rect = null;
     else imgSrc = img.currentSrc || img.src;
+  }
+  if (!rect) {
+    rect = cardEl.getBoundingClientRect();
   }
   showDetail(id, rect, imgSrc, 'library');
 }

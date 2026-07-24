@@ -5,18 +5,18 @@
 }
 
 .detail-content {
-  padding: calc(10rem * var(--scale)) calc(3rem * var(--scale)) 0;
+  padding: calc(12.5rem * var(--scale)) var(--space-12) 0;
 }
 .detail-no-banner .detail-content {
-  padding-top: calc(1.5rem * var(--scale));
+  padding-top: calc(1.875rem * var(--scale));
 }
 
 .detail-layout {
   display: grid;
-  grid-template-columns: clamp(calc(14rem * var(--scale)), 22vw, calc(24rem * var(--scale))) 1fr;
-  gap: calc(clamp(1.5rem, 3vw, 3rem) * var(--scale));
+  grid-template-columns: clamp(calc(17.5rem * var(--scale)), 22vw, calc(30rem * var(--scale))) 1fr;
+  gap: calc(clamp(1.875rem, 3vw, 3.75rem) * var(--scale));
   align-items: start;
-  max-width: calc(min(1400px, 85vw) * var(--scale));
+  max-width: calc(min(1750px, 85vw) * var(--scale));
   margin: 0 auto;
 }
 
@@ -167,12 +167,12 @@
   flex-shrink: 0;
 }
 .detail-info-line .info-rating-num {
-  font-size: calc(1rem * var(--scale));
+  font-size: var(--text-lg);
   font-weight: var(--fw-semibold);
   color: var(--accent-secondary);
 }
 .detail-info-line .info-rating-sub {
-  font-size: calc(0.719rem * var(--scale));
+  font-size: var(--text-xs);
   font-weight: var(--fw-medium);
   color: var(--fg-secondary);
 }
@@ -184,11 +184,11 @@
 }
 /* .info-tag / .info-tag--warn → tag-pill tag-pill--secondary / tag-pill--warn (patterns.css) */
 
-.detail-tags { margin-bottom: calc(0.5rem * var(--scale)); }
+.detail-tags { margin-bottom: var(--space-2); }
 .detail-tags-list {
   display: flex;
   flex-wrap: wrap;
-  gap: calc(0.25rem * var(--scale));
+  gap: var(--space-1);
 }
 /* .detail-tag → tag-pill (utility in patterns.css) */
 
@@ -196,7 +196,7 @@
   color: var(--fg-secondary);
   line-height: 1.7;
   white-space: pre-wrap;
-  font-size: calc(0.844rem * var(--scale));
+  font-size: calc(1.055rem * var(--scale));
 }
 
 .detail-actions {
@@ -205,7 +205,7 @@
   flex-wrap: wrap;
 }
 .detail-actions .btn {
-  font-size: calc(0.75rem * var(--scale));
+  font-size: var(--text-sm);
   padding: 6px 14px;
 }
 
@@ -222,12 +222,12 @@
 }
 .detail-episodes-header h3 {
   font-family: var(--font-display);
-  font-size: calc(1.25rem * var(--scale));
+  font-size: calc(1.563rem * var(--scale));
   font-weight: var(--fw-semibold);
   letter-spacing: -0.01em;
 }
 .episode-count {
-  font-size: calc(0.75rem * var(--scale));
+  font-size: var(--text-sm);
   color: var(--fg-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -248,7 +248,7 @@
 }
 #detailCover .gray-cover-text {
   font-family: var(--font-display);
-  font-size: calc(2.5rem * var(--scale));
+  font-size: calc(3.125rem * var(--scale));
   font-weight: var(--fw-bold);
   color: var(--fg-muted);
   opacity: 0.5;

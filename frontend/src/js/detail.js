@@ -1,7 +1,7 @@
 gsap.registerPlugin(Flip);
 
 let currentAnime = null;
-let detailRefreshTimer = null;
+let detailRefreshTimer = null, detailRefreshES = null;
 let wasMpvActive = false;
 
 // Wishlist mode (set when viewing mylist wishlist items)
@@ -106,12 +106,13 @@ function resetDetailEnter() {
 function startDetailRefresh() {
   stopDetailRefresh();
   wasMpvActive = false;
-  detailRefreshTimer = setInterval(async () => {
+
+  function onMpvStatus(active) {
     if (!currentAnime) { stopDetailRefresh(); return; }
-    try {
-      const st = await API.get('/api/mpv-status');
-      if (wasMpvActive && !st.active) {
-        currentAnime = await API.get(`/api/anime/${encodeURIComponent(currentAnime.id)}`);
+    if (wasMpvActive && !active) {
+      // mpv 刚结束 → 刷新数据
+      API.get(`/api/anime/${encodeURIComponent(currentAnime.id)}`).then(updated => {
+        currentAnime = updated;
         AppState.set('currentAnime', currentAnime);
         renderDetail();
         var _allDone = currentAnime.episodes && currentAnime.episodes.length > 0
@@ -121,14 +122,27 @@ function startDetailRefresh() {
           return;
         }
         showToast('播放已结束，进度已更新', 'success');
-      }
-      wasMpvActive = st.active;
-    } catch (e) {}
-  }, 2000);
+      });
+    }
+    wasMpvActive = active;
+  }
+
+  // SSE 事件流（被动接收，无需轮询）
+  var es = new EventSource('/api/events/mpv-status');
+  es.onmessage = function(e) {
+    try { onMpvStatus(JSON.parse(e.data).active); } catch (_) {}
+  };
+  es.onerror = function() {
+    // EventSource 会自动重连，无需处理
+  };
+  detailRefreshES = es;
+
+  // 先用一次 HTTP 查询兜底（页面刚加载时 SSE 可能有延迟，以及 SSE 不支持时的降级）
+  API.get('/api/mpv-status').then(function(st) { onMpvStatus(st.active); }).catch(function() {});
 }
 
 function stopDetailRefresh() {
-  if (detailRefreshTimer) { clearInterval(detailRefreshTimer); detailRefreshTimer = null; }
+  if (detailRefreshES) { detailRefreshES.close(); detailRefreshES = null; }
 }
 
 async function showDetail(id, fromRect, fromSrc, sourceView = 'library') {
@@ -213,10 +227,6 @@ function animateHeroCoverFlip(fromRect, fromSrc) {
   const viewEl = document.getElementById('detailView');
   const wrap = document.getElementById('detailCover');
   const img = wrap.querySelector('img');
-  if (!img) {
-    wrap.style.opacity = '1';
-    return;
-  }
 
   const toRect = wrap.getBoundingClientRect();
 
@@ -234,11 +244,22 @@ function animateHeroCoverFlip(fromRect, fromSrc) {
       border-radius:16px;background:var(--bg-card);
     `;
 
-  const clone = document.createElement('img');
-  clone.src = fromSrc || img.src;
-  clone.alt = img.alt || '';
-  clone.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
-  hero.appendChild(clone);
+  if (fromSrc) {
+    const clone = document.createElement('img');
+    clone.src = fromSrc;
+    clone.alt = '';
+    clone.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+    hero.appendChild(clone);
+  } else if (img) {
+    const clone = document.createElement('img');
+    clone.src = img.src;
+    clone.alt = img.alt || '';
+    clone.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+    hero.appendChild(clone);
+  } else {
+    // Gray cover fallback: show placeholder
+    hero.innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--bg-card);font-size:2rem;font-weight:700;color:var(--fg-muted)">' + (wrap.textContent?.trim()?.[0] || '?') + '</div>';
+  }
   document.body.appendChild(hero);
 
   const state = Flip.getState(hero);

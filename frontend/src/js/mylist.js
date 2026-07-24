@@ -244,6 +244,9 @@ function navigateToMyListDetail(id, cardEl) {
     rect = img.getBoundingClientRect();
     if (rect.width && rect.height) imgSrc = img.currentSrc || img.src;
   }
+  if (!rect) {
+    rect = cardEl.getBoundingClientRect();
+  }
   showDetail(id, rect, imgSrc, 'mylist');
 }
 

@@ -75,6 +75,10 @@ export default defineConfig({
         target: 'http://localhost:3457',
         changeOrigin: true,
       },
+      '/banners': {
+        target: 'http://localhost:3457',
+        changeOrigin: true,
+      },
     },
   },
   build: {

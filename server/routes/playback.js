@@ -76,7 +76,7 @@ function _generateThumb(videoPath, time, cacheKey, req, res) {
 
 module.exports = {
   async handlePlay(req, res, state) {
-    const { data, config, db, activePlays, bangumiSync, logger } = state;
+    const { data, config, db, activePlays, bangumiSync, logger, broadcastMpvStatus } = state;
     try {
       const body = await readBody(req);
       const { filePath, position } = JSON.parse(body);
@@ -123,6 +123,7 @@ module.exports = {
         }
         activePlays.set(filePath, { sessionId, episode: targetEp, anime: targetAnime });
         db.savePlaySessions(data);
+        broadcastMpvStatus?.();
       }
       const { startMpv } = require('../mpv-controller');
       try {
@@ -169,6 +170,7 @@ module.exports = {
                   bangumiSync.pushStatusChange(active.anime.id, data);
                 }
                 activePlays.delete(fp);
+                broadcastMpvStatus?.();
               }
             },
             onError: (msg) => {
@@ -177,6 +179,7 @@ module.exports = {
                 const idx = data.playSessions.findIndex(s => s.sessionId === active.sessionId);
                 if (idx !== -1) data.playSessions.splice(idx, 1);
                 activePlays.delete(filePath);
+                broadcastMpvStatus?.();
                 db.deletePlaySession(active.sessionId);
               }
               spawnError = msg;

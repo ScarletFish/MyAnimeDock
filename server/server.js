@@ -93,6 +93,7 @@ let pendingNotifications = [];
 const activePlays = new Map();
 const cancelledSyncSessions = new Map();
 const thumbnailQueue = new ThumbnailQueue(activePlays);
+const sseClients = new Set(); // SSE 连接池，用于推送 mpv-status 等事件
 let config = loadConfig();
 let data;
 let startupTime;
@@ -153,6 +154,27 @@ function handleBannerImage(req, res, _state) {
   const urlPath = new URL(req.url, 'http://localhost').pathname;
   const bannerPath = path.join(DATA_DIR, decodeURIComponent(urlPath));
   serveImage(bannerPath, req.url, res);
+}
+
+// ── SSE: mpv-status 事件推送 ──
+function handleMpvStatusSSE(req, res, _state) {
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'Access-Control-Allow-Origin': '*',
+  });
+  // 立即发送当前状态
+  res.write(`data: ${JSON.stringify({ active: activePlays.size > 0 })}\n\n`);
+  sseClients.add(res);
+  req.on('close', () => sseClients.delete(res));
+}
+
+function broadcastMpvStatus() {
+  const data = JSON.stringify({ active: activePlays.size > 0 });
+  for (const client of sseClients) {
+    client.write(`data: ${data}\n\n`);
+  }
 }
 
 function handleCorsPreflight(req, res) {
@@ -251,6 +273,8 @@ const routeTable = [
   { method: 'GET', prefix: '/covers/', handler: handleCoverImage },
   // Banners
   { method: 'GET', prefix: '/banners/', handler: handleBannerImage },
+  // SSE: mpv-status 事件流
+  { method: 'GET', path: '/api/events/mpv-status', handler: handleMpvStatusSSE },
 ];
 
 // ── HTTP 服务器 ──
@@ -261,6 +285,7 @@ function makeState() {
     data, config, db, logger, activePlays, cancelledSyncSessions, thumbnailQueue,
     bangumiPersonal, bangumiSync, pendingNotifications,
     server, startupTime, saveData, loadScannedTree,
+    broadcastMpvStatus,
   };
 }
 

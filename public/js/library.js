@@ -9,7 +9,7 @@ let cardTween = null;
 let librarySortDropdown = null;
 
 // Grid card sizing
-const GRID_CARD_BASE = 190;
+const GRID_CARD_BASE = 278;
 const GRID_ZOOM_MIN = 0.5;
 const GRID_ZOOM_MAX = 2.0;
 let gridZoom = parseFloat(localStorage.getItem('gridZoom') || '1');
@@ -20,7 +20,6 @@ function applyGridZoom() {
   document.querySelectorAll('#libraryDashboard .grid-container, #mylistView .grid-container').forEach(g => {
     g.style.gridTemplateColumns = `repeat(auto-fill, minmax(${size}px, 1fr))`;
   });
-  document.documentElement.style.setProperty('--relation-card-w', size + 'px');
 }
 
 function showZoomLevel() {
@@ -277,7 +276,8 @@ function renderContinueSection(data, container) {
           } else {
             // Suspicious (< 1s or less than half of duration for >2s content) → 25% in
             thumbTime = Math.round(durationSafe * 0.25);
-          }
+  document.documentElement.style.setProperty('--relation-card-w', size + 'px');
+}
         }
         if (thumbTime <= 0) thumbTime = 60;
         thumbUrl = '/api/thumbnail?path=' + encodeURIComponent(ep.filePath) + '&time=' + thumbTime;
@@ -515,6 +515,9 @@ function navigateToDetail(id, cardEl) {
     rect = img.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) rect = null;
     else imgSrc = img.currentSrc || img.src;
+  }
+  if (!rect) {
+    rect = cardEl.getBoundingClientRect();
   }
   showDetail(id, rect, imgSrc, 'library');
 }

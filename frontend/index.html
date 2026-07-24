@@ -242,7 +242,11 @@
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
             加载中…
           </div>
-          <div class="stats-empty" id="statsEmpty" style="display:none">...</div>
+          <div class="stats-empty" id="statsEmpty" style="display:none">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+            <p>暂无标签数据</p>
+            <p class="empty-hint">导入动漫并获取元数据后，标签词云将在此展示</p>
+          </div>
         </div>
       </div>
 
@@ -257,8 +261,15 @@
         </div>
         <div class="stats-card-body">
           <div id="activityChartContainer"></div>
-          <div class="stats-loading" id="activityLoading">...</div>
-          <div class="stats-empty" id="activityEmpty" style="display:none">...</div>
+          <div class="stats-loading" id="activityLoading">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+            加载中…
+          </div>
+          <div class="stats-empty" id="activityEmpty" style="display:none">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+            <p>暂无播放记录</p>
+            <p class="empty-hint">使用 mpv 播放视频后，活跃度趋势将在此展示</p>
+          </div>
         </div>
       </div>
 
@@ -267,12 +278,21 @@
         <div class="stats-card-header">
           <h2>评分分布</h2>
           <span class="stats-card-subtitle">Bangumi 评分偏好一览</span>
-          <button class="stats-refresh-btn" onclick="loadRatingChart()" data-tooltip="刷新图表">...</button>
+          <button class="stats-refresh-btn" onclick="loadRatingChart()" data-tooltip="刷新图表">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+          </button>
         </div>
         <div class="stats-card-body">
           <div id="ratingChartContainer"></div>
-          <div class="stats-loading" id="ratingLoading">...</div>
-          <div class="stats-empty" id="ratingEmpty" style="display:none">...</div>
+          <div class="stats-loading" id="ratingLoading">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+            加载中…
+          </div>
+          <div class="stats-empty" id="ratingEmpty" style="display:none">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+            <p>暂无评分数据</p>
+            <p class="empty-hint">导入动漫并获取元数据后，评分分布将在此展示</p>
+          </div>
         </div>
       </div>
 
@@ -281,12 +301,21 @@
         <div class="stats-card-header">
           <h2>季度分布</h2>
           <span class="stats-card-subtitle">所看番剧在哪个季度最突出</span>
-          <button class="stats-refresh-btn" onclick="loadSeasonChart()" data-tooltip="刷新图表">...</button>
+          <button class="stats-refresh-btn" onclick="loadSeasonChart()" data-tooltip="刷新图表">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+          </button>
         </div>
         <div class="stats-card-body">
           <div id="seasonChartContainer"></div>
-          <div class="stats-loading" id="seasonChartLoading">...</div>
-          <div class="stats-empty" id="seasonChartEmpty" style="display:none">...</div>
+          <div class="stats-loading" id="seasonChartLoading">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+            加载中…
+          </div>
+          <div class="stats-empty" id="seasonChartEmpty" style="display:none">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+            <p>暂无季度数据</p>
+            <p class="empty-hint">导入动漫并获取元数据后，季度分布将在此展示</p>
+          </div>
         </div>
       </div>
     </div>
@@ -300,14 +329,26 @@
       <div class="mylist-sort-bar" id="mylistSortDropdown"></div>
     </div>
     <div id="mylistGrid" class="mylist-grid"></div>
-    <div class="empty-state" id="mylistEmpty" style="display:none">...</div>
+    <div class="empty-state" id="mylistEmpty" style="display:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+        <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+        <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+        <rect x="14" y="14" width="7" height="7" rx="1"></rect>
+      </svg>
+      <p>暂无内容</p>
+    </div>
   </section>
 
   <!-- Anime Detail View -->
   <section class="view hidden" id="detailView">
     <div class="detail-nav-overlay" id="detailNavOverlay">
-      <div class="detail-nav-zone detail-nav-left" id="navLeft">...</div>
-      <div class="detail-nav-zone detail-nav-right" id="navRight">...</div>
+      <div class="detail-nav-zone detail-nav-left" id="navLeft">
+        <svg class="detail-nav-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </div>
+      <div class="detail-nav-zone detail-nav-right" id="navRight">
+        <svg class="detail-nav-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
     </div>
     <div class="detail-content">
       <div id="headerTitle" style="display:none"></div>
@@ -402,11 +443,21 @@
     <div class="modal-m-body">
       <div class="mm-left">
         <div class="mm-list" id="mmGrid"></div>
-        <div class="mm-list-empty" id="mmEmpty" style="display:none">...</div>
+        <div class="mm-list-empty" id="mmEmpty" style="display:none">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <p>没有需要匹配的条目</p>
+          <p class="empty-hint">所有条目已有元数据，或动漫库为空</p>
+        </div>
       </div>
       <div class="mm-panel" id="mmPanel">
         <div class="mm-panel-content" id="mmPanelContent" style="display:none"></div>
-        <div class="mm-panel-synclog" id="mmPanelSyncLog" style="display:none">...</div>
+        <div class="mm-panel-synclog" id="mmPanelSyncLog" style="display:none">
+          <div class="mm-panel-synclog-header">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            同步日志
+          </div>
+          <div class="mm-panel-synclog-body" id="mmSyncLogBody"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -698,10 +749,62 @@
 <div class="toast-container" id="toastContainer" role="alert" aria-live="polite"></div>
 
 <!-- Onboarding overlay -->
-<div id="onboardingOverlay" class="onboarding-overlay hidden">...</div>
+<div id="onboardingOverlay" class="onboarding-overlay hidden">
+  <div class="onboarding__card">
+    <div class="onboarding__header">
+      <svg class="onboarding__icon" viewBox="0 0 48 48" fill="none">
+        <rect x="8" y="12" width="32" height="28" rx="4" stroke="currentColor" stroke-width="2"/>
+        <circle cx="24" cy="28" r="6" stroke="currentColor" stroke-width="2"/>
+        <path d="M24 16V22M24 34V40" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <path d="M16 30L20 28M28 28L32 30" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M14 12V8H34V12" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+      </svg>
+      <h1 class="onboarding__title">欢迎使用 MyAnimeDock</h1>
+      <p class="onboarding__desc">自托管动漫媒体库管理器。智能扫描文件夹、自动匹配 Bangumi 元数据、mpv 直接播放并追踪进度。</p>
+    </div>
+    <div class="onboarding__body">
+      <div class="onb-field" id="onbDirGroup">
+        <label class="onb-field__label">媒体目录</label>
+        <div class="onb-field__row">
+          <input type="text" class="onb-field__input" id="onbMediaDir" placeholder="选择动漫文件夹..." autocomplete="off" spellcheck="false">
+          <button class="onb-field__browse" id="onbBrowseDir">浏览</button>
+        </div>
+        <div class="onb-field__foot">
+          <a href="#" class="onb-field__skip" id="onbSkipDir">暂时跳过</a>
+        </div>
+      </div>
+      <div class="onb-field" id="onbMpvGroup">
+        <label class="onb-field__label">mpv 播放器<span class="onb-field__optional">（可选）</span></label>
+        <div class="onb-field__row">
+          <input type="text" class="onb-field__input" id="onbMpvPath" placeholder="留空使用系统 PATH 中的 mpv" autocomplete="off" spellcheck="false">
+          <button class="onb-field__browse" id="onbBrowseMpv">浏览</button>
+        </div>
+        <div class="onb-field__foot">
+          <a href="#" class="onb-field__skip" id="onbSkipMpv">暂时跳过</a>
+        </div>
+      </div>
+      <div class="onb-error hidden" id="onbError"></div>
+      <button class="onb-submit" id="onbStart">开始使用</button>
+    </div>
+  </div>
+</div>
 
 <!-- Keyboard shortcuts help -->
-<div id="kbdHelpOverlay" class="kbd-help-overlay hidden">...</div>
+<div id="kbdHelpOverlay" class="kbd-help-overlay hidden">
+  <div class="kbd-help__card">
+    <h2 class="kbd-help__title">键盘快捷键</h2>
+    <div class="kbd-help__grid">
+      <div class="kbd-help__row"><kbd>1</kbd><span>发现</span></div>
+      <div class="kbd-help__row"><kbd>2</kbd><span>动漫库</span></div>
+      <div class="kbd-help__row"><kbd>3</kbd><span>我的列表</span></div>
+      <div class="kbd-help__row"><kbd>4</kbd><span>统计</span></div>
+      <div class="kbd-help__row"><kbd>/</kbd><span>搜索</span></div>
+      <div class="kbd-help__row"><kbd>?</kbd><span>快捷键帮助</span></div>
+      <div class="kbd-help__row"><kbd>Esc</kbd><span>关闭弹窗 / 返回</span></div>
+    </div>
+    <p class="kbd-help__hint">点击任意位置关闭</p>
+  </div>
+</div>
 
 <!-- Vendor scripts (loaded before ESM entry) -->
 <script src="/vendor/d3/d3.min.js"></script>

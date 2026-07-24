@@ -9,7 +9,7 @@
 
 .watch-stats-header h3 {
   font-family: var(--font-display);
-  font-size: calc(1.1rem * var(--scale));
+  font-size: calc(1.375rem * var(--scale));
   font-weight: var(--fw-semibold);
   letter-spacing: -0.01em;
 }
@@ -28,19 +28,19 @@
 /* ─── Banner Layout ─── */
 .detail-banner {
   display: grid;
-  grid-template-columns: calc(240px * var(--scale)) 1fr;
-  gap: calc(clamp(1.5rem, 3vw, 3rem) * var(--scale));
+  grid-template-columns: calc(300px * var(--scale)) 1fr;
+  gap: calc(clamp(1.875rem, 3vw, 3.75rem) * var(--scale));
   align-items: start;
-  max-width: calc(90rem * var(--scale));
+  max-width: calc(112.5rem * var(--scale));
   margin-bottom: 0;
-  padding-bottom: calc(1rem * var(--scale));
+  padding-bottom: var(--space-4);
   position: relative;
 }
 
 .detail-banner-bg {
   position: absolute;
   top: 0; left: 0; right: 0;
-  height: calc(300px * var(--scale));
+  height: calc(375px * var(--scale));
   z-index: 0;
   pointer-events: none;
   overflow: hidden;
@@ -85,10 +85,10 @@
 }
 
 .detail-alias {
-  font-size: calc(0.875rem * var(--scale));
+  font-size: var(--text-md);
   color: var(--fg-secondary);
   font-style: italic;
-  margin-top: calc(-0.5rem * var(--scale));
+  margin-top: calc(-0.625rem * var(--scale));
 }
 
 .detail-banner-right .detail-info-line { max-width: 400px; }
@@ -115,23 +115,23 @@
 
 .relation-scroll {
   display: flex;
-  gap: calc(0.75rem * var(--scale));
+  gap: var(--space-3);
   overflow-x: auto;
   overflow-y: hidden;
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   -ms-overflow-style: none;
-  padding: calc(0.25rem * var(--scale)) 0 calc(0.5rem * var(--scale)) 0;
+  padding: var(--space-1) 0 var(--space-2) 0;
 }
 .relation-scroll::-webkit-scrollbar { display: none; }
 
 .relation-card {
-  flex: 0 0 var(--relation-card-w, calc(140px * var(--scale)));
+  flex: 0 0 var(--relation-card-w, calc(175px * var(--scale)));
   scroll-snap-align: start;
   cursor: pointer;
   transition: transform 0.15s var(--ease-out);
-  border-radius: calc(8px * var(--scale));
+  border-radius: calc(10px * var(--scale));
   overflow: hidden;
 }
 .relation-card:hover { transform: translateY(-3px); }
@@ -140,7 +140,7 @@
 .relation-card-cover {
   position: relative;
   aspect-ratio: 3 / 4;
-  border-radius: calc(6px * var(--scale));
+  border-radius: calc(7.5px * var(--scale));
   overflow: hidden;
   background: var(--bg-surface);
 }
@@ -155,15 +155,15 @@
 
 .relation-badge {
   position: absolute;
-  top: calc(5px * var(--scale));
-  left: calc(5px * var(--scale));
-  padding: calc(2px * var(--scale)) calc(7px * var(--scale));
-  font-size: calc(0.625rem * var(--scale));
+  top: calc(6px * var(--scale));
+  left: calc(6px * var(--scale));
+  padding: calc(3px * var(--scale)) calc(9px * var(--scale));
+  font-size: var(--text-2xs);
   font-weight: 600;
-  border-radius: calc(4px * var(--scale));
+  border-radius: calc(5px * var(--scale));
   color: #fff;
   line-height: 1.3;
-  max-width: calc(100% - 10px * var(--scale));
+  max-width: calc(100% - 12.5px * var(--scale));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -174,13 +174,13 @@
   font-weight: 700;
 }
 .relation-card-title {
-  font-size: calc(0.688rem * var(--scale));
-  margin-top: calc(5px * var(--scale));
+  font-size: calc(0.86rem * var(--scale));
+  margin-top: calc(6px * var(--scale));
   line-height: 1.3;
   color: var(--text-secondary);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  padding: 0 calc(2px * var(--scale));
+  padding: 0 calc(3px * var(--scale));
 }

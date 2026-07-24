@@ -1,7 +1,7 @@
 gsap.registerPlugin(Flip);
 
 let currentAnime = null;
-let detailRefreshTimer = null;
+let detailRefreshTimer = null, detailRefreshES = null;
 let wasMpvActive = false;
 
 // Wishlist mode (set when viewing mylist wishlist items)
@@ -106,12 +106,12 @@ function resetDetailEnter() {
 function startDetailRefresh() {
   stopDetailRefresh();
   wasMpvActive = false;
-  detailRefreshTimer = setInterval(async () => {
+
+  function onMpvStatus(active) {
     if (!currentAnime) { stopDetailRefresh(); return; }
-    try {
-      const st = await API.get('/api/mpv-status');
-      if (wasMpvActive && !st.active) {
-        currentAnime = await API.get(`/api/anime/${encodeURIComponent(currentAnime.id)}`);
+    if (wasMpvActive && !active) {
+      API.get(`/api/anime/${encodeURIComponent(currentAnime.id)}`).then(updated => {
+        currentAnime = updated;
         AppState.set('currentAnime', currentAnime);
         renderDetail();
         var _allDone = currentAnime.episodes && currentAnime.episodes.length > 0
@@ -121,14 +121,23 @@ function startDetailRefresh() {
           return;
         }
         showToast('播放已结束，进度已更新', 'success');
-      }
-      wasMpvActive = st.active;
-    } catch (e) {}
-  }, 2000);
+      });
+    }
+    wasMpvActive = active;
+  }
+
+  var es = new EventSource('/api/events/mpv-status');
+  es.onmessage = function(e) {
+    try { onMpvStatus(JSON.parse(e.data).active); } catch (_) {}
+  };
+  es.onerror = function() {};
+  detailRefreshES = es;
+
+  API.get('/api/mpv-status').then(function(st) { onMpvStatus(st.active); }).catch(function() {});
 }
 
 function stopDetailRefresh() {
-  if (detailRefreshTimer) { clearInterval(detailRefreshTimer); detailRefreshTimer = null; }
+  if (detailRefreshES) { detailRefreshES.close(); detailRefreshES = null; }
 }
 
 async function showDetail(id, fromRect, fromSrc, sourceView = 'library') {
@@ -213,10 +222,6 @@ function animateHeroCoverFlip(fromRect, fromSrc) {
   const viewEl = document.getElementById('detailView');
   const wrap = document.getElementById('detailCover');
   const img = wrap.querySelector('img');
-  if (!img) {
-    wrap.style.opacity = '1';
-    return;
-  }
 
   const toRect = wrap.getBoundingClientRect();
 
@@ -234,11 +239,22 @@ function animateHeroCoverFlip(fromRect, fromSrc) {
       border-radius:16px;background:var(--bg-card);
     `;
 
-  const clone = document.createElement('img');
-  clone.src = fromSrc || img.src;
-  clone.alt = img.alt || '';
-  clone.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
-  hero.appendChild(clone);
+  if (fromSrc) {
+    const clone = document.createElement('img');
+    clone.src = fromSrc;
+    clone.alt = '';
+    clone.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+    hero.appendChild(clone);
+  } else if (img) {
+    const clone = document.createElement('img');
+    clone.src = img.src;
+    clone.alt = img.alt || '';
+    clone.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+    hero.appendChild(clone);
+  } else {
+    // Gray cover fallback: show placeholder
+    hero.innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--bg-card);font-size:2rem;font-weight:700;color:var(--fg-muted)">' + (wrap.textContent?.trim()?.[0] || '?') + '</div>';
+  }
   document.body.appendChild(hero);
 
   const state = Flip.getState(hero);
@@ -490,7 +506,7 @@ function renderWishlistDetail(anime) {
   const archiveEl = document.getElementById('archiveDetail');
   archiveEl.innerHTML = `
     <div class="archive-magazine-essay">
-      <div class="archive-magazine-thoughts" style="font-size:0.875rem;color:var(--text2);line-height:1.7">此条目来自愿望单，目前没有本地文件。</div>
+      <div class="archive-magazine-thoughts text-sm text-content leading-[1.7]">此条目来自愿望单，目前没有本地文件。</div>
     </div>
     <div class="archive-magazine-meta">
       ${anime.rating ? `
@@ -503,7 +519,7 @@ function renderWishlistDetail(anime) {
         <span class="archive-magazine-stat-label">来源</span>
       </div>
     </div>
-    <div class="wishlist-detail-actions" style="margin-top:1rem">
+    <div class="wishlist-detail-actions mt-4">
       <a class="btn btn-primary" href="https://bgm.tv/subject/${anime.bangumiId}" target="_blank" rel="noopener">
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
         在 Bangumi 中打开
@@ -772,7 +788,7 @@ async function searchBangumiWithKeyword() {
     return;
   }
   
-  resultsEl.innerHTML = '<p style="text-align:center;color:var(--text2);padding:16px">搜索中...</p>';
+  resultsEl.innerHTML = '<p class="text-center p-4 text-content">搜索中...</p>';
   
   try {
     const result = await API.post('/api/bangumi/search', { keyword });
@@ -793,7 +809,7 @@ function showSearchResults(results, animeId) {
     el.innerHTML = '<p class="search-result-empty">未找到匹配结果</p>';
     return;
   }
-  el.innerHTML = '<h4 style="margin:0 0 12px 0;color:var(--text1)">请选择匹配的条目：</h4>' +
+  el.innerHTML = '<h4 class="m-0 mb-3 text-content">请选择匹配的条目：</h4>' +
     results.map(r => `
       <div class="search-result-item" onclick="attachBangumiSubject('${animeId}', ${r.id})">
         <img class="search-result-cover" src="${r.images?.small || r.images?.grid || ''}" alt=""
@@ -810,7 +826,7 @@ function showSearchResults(results, animeId) {
 
 async function attachBangumiSubject(animeId, subjectId) {
   const resultsEl = document.getElementById('syncSearchResults');
-  resultsEl.innerHTML = '<p style="text-align:center;color:var(--text2);padding:16px">正在获取元数据...</p>';
+  resultsEl.innerHTML = '<p class="text-center p-4 text-content">正在获取元数据...</p>';
   try {
     const result = await API.post('/api/bangumi/fetch', { animeId, subjectId });
     currentAnime = result.anime;
@@ -953,6 +969,14 @@ scrollEl.innerHTML = recs.map(r => {
     container.style.display = 'none';
   }
 }
+
+// ─── ESM exports for onclick handlers ───
+window.playEpisodeFromCover = playEpisodeFromCover;
+window.syncBangumiMetadata = syncBangumiMetadata;
+window.deleteAnime = deleteAnime;
+window.searchBangumiWithKeyword = searchBangumiWithKeyword;
+window.toggleExpand = toggleExpand;
+window.animateHeroCoverFlip = animateHeroCoverFlip;
 
 
 

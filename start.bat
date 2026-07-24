@@ -1,24 +1,23 @@
-﻿@echo off
-chcp 65001 >nul
+@echo off
 title MyAnimeDock
 cd /d "%~dp0"
 
 :MENU
 cls
 echo ========================================
-echo   MyAnimeDock - 启动选单
+echo   MyAnimeDock - Launcher
 echo ========================================
 echo.
-echo  1.  开发模式            (后端 + Vite HMR)
-echo  2.  构建 NSIS 安装包
-echo  3.  构建 MSI 安装包
-echo  4.  构建 MSI + NSIS
+echo  1.  Dev Mode           (server + Vite HMR)
+echo  2.  Build NSIS Installer
+echo  3.  Build MSI Installer
+echo  4.  Build MSI + NSIS
 echo.
-echo  Q.  退出
+echo  Q.  Quit
 echo ========================================
 echo.
 
-set /p choice="选择 (1-4, Q): "
+set /p choice="Choice (1-4, Q): "
 
 if "%choice%"=="1" goto DEV
 if "%choice%"=="2" goto BUILD_NSIS
@@ -27,41 +26,41 @@ if "%choice%"=="4" goto BUILD_BOTH
 if /i "%choice%"=="Q" goto EOF
 
 echo.
-echo 无效输入，请重新选择
+echo Invalid choice
 timeout /t 2 /nobreak >nul
 goto MENU
 
 :DEV
 cls
 echo ========================================
-echo  开发模式
+echo   Dev Mode
 echo ========================================
 echo.
-echo  后端: http://localhost:3457
-echo  前端: http://localhost:3456
+echo  Backend:  http://localhost:3457
+echo  Frontend: http://localhost:3456
 echo.
-echo  Ctrl+C 停止所有服务
+echo  Press Ctrl+C to stop all services
 echo ========================================
 echo.
 npm run dev
 echo.
-echo 开发服务器已停止。
+echo Dev server stopped.
 pause
 goto MENU
 
 :BUILD_NSIS
 cls
 echo ========================================
-echo  构建 NSIS 安装包
+echo   Build NSIS Installer
 echo ========================================
 echo.
-echo  顺序: build:frontend ^> build:server ^> tauri build --bundles nsis
-echo  输出: src-tauri/target/release/bundle/nsis/
+echo  Order: build:frontend ^> build:server ^> tauri build --bundles nsis
+echo  Output: src-tauri/target/release/bundle/nsis/
 echo.
-echo  注意: 需要 Rust 工具链，耗时约 5-10 分钟
+echo  Requires Rust toolchain, ~5-10 min
 echo ========================================
 echo.
-echo 按任意键开始构建，或关闭窗口取消...
+echo Press any key to start build, or close window to cancel...
 pause >nul
 
 call npm run build:nsis
@@ -69,14 +68,14 @@ call npm run build:nsis
 if %errorlevel% equ 0 (
     echo.
     echo ========================================
-    echo  构建成功！
+    echo  Build successful!
     echo ========================================
     if exist "src-tauri\target\release\bundle\nsis\" (
         start "" "src-tauri\target\release\bundle\nsis\"
     )
 ) else (
     echo.
-    echo 构建失败 (错误码: %errorlevel%)
+    echo Build failed (error code: %errorlevel%)
 )
 echo.
 pause
@@ -85,16 +84,16 @@ goto MENU
 :BUILD_MSI
 cls
 echo ========================================
-echo  构建 MSI 安装包
+echo   Build MSI Installer
 echo ========================================
 echo.
-echo  顺序: build:frontend ^> build:server ^> tauri build --bundles msi
-echo  输出: src-tauri/target/release/bundle/msi/
+echo  Order: build:frontend ^> build:server ^> tauri build --bundles msi
+echo  Output: src-tauri/target/release/bundle/msi/
 echo.
-echo  注意: 需要 Rust 工具链，耗时约 5-10 分钟
+echo  Requires Rust toolchain, ~5-10 min
 echo ========================================
 echo.
-echo 按任意键开始构建，或关闭窗口取消...
+echo Press any key to start build, or close window to cancel...
 pause >nul
 
 call npm run build:msi
@@ -102,14 +101,14 @@ call npm run build:msi
 if %errorlevel% equ 0 (
     echo.
     echo ========================================
-    echo  构建成功！
+    echo  Build successful!
     echo ========================================
     if exist "src-tauri\target\release\bundle\msi\" (
         start "" "src-tauri\target\release\bundle\msi\"
     )
 ) else (
     echo.
-    echo 构建失败 (错误码: %errorlevel%)
+    echo Build failed (error code: %errorlevel%)
 )
 echo.
 pause
@@ -118,16 +117,16 @@ goto MENU
 :BUILD_BOTH
 cls
 echo ========================================
-echo  构建 MSI + NSIS 安装包
+echo   Build MSI + NSIS
 echo ========================================
 echo.
-echo  顺序: build:frontend ^> build:server ^> tauri build --bundles msi nsis
-echo  输出: src-tauri/target/release/bundle/{msi,nsis}/
+echo  Order: build:frontend ^> build:server ^> tauri build --bundles msi nsis
+echo  Output: src-tauri/target/release/bundle/{msi,nsis}/
 echo.
-echo  注意: 需要 Rust 工具链，耗时约 10-15 分钟
+echo  Requires Rust toolchain, ~10-15 min
 echo ========================================
 echo.
-echo 按任意键开始构建，或关闭窗口取消...
+echo Press any key to start build, or close window to cancel...
 pause >nul
 
 call npm run build
@@ -135,7 +134,7 @@ call npm run build
 if %errorlevel% equ 0 (
     echo.
     echo ========================================
-    echo  构建成功！
+    echo  Build successful!
     echo ========================================
     if exist "src-tauri\target\release\bundle\nsis\" (
         start "" "src-tauri\target\release\bundle\nsis\"
@@ -145,7 +144,7 @@ if %errorlevel% equ 0 (
     )
 ) else (
     echo.
-    echo 构建失败 (错误码: %errorlevel%)
+    echo Build failed (error code: %errorlevel%)
 )
 echo.
 pause

@@ -244,6 +244,9 @@ function navigateToMyListDetail(id, cardEl) {
     rect = img.getBoundingClientRect();
     if (rect.width && rect.height) imgSrc = img.currentSrc || img.src;
   }
+  if (!rect) {
+    rect = cardEl.getBoundingClientRect();
+  }
   showDetail(id, rect, imgSrc, 'mylist');
 }
 
@@ -583,7 +586,7 @@ async function removeMyListItem(id) {
   hideContextMenu();
   const item = mylistData.find(i => i.id === id);
   const name = item ? (item.bangumiTitle || item.title || id) : id;
-  if (!(await showConfirm(`将「${name}」从列表中移除？<br><small style="color:var(--text2)">动漫库中的条目不受影响</small>`))) return;
+  if (!(await showConfirm(`将「${name}」从列表中移除？<br><small class="text-content">动漫库中的条目不受影响</small>`))) return;
   try {
     await API.del(`/api/mylist/${encodeURIComponent(id)}`);
     showToast('已移除', 'info');
@@ -592,3 +595,10 @@ async function removeMyListItem(id) {
     showToast('移除失败: ' + e.message, 'error');
   }
 }
+
+// ─── ESM exports for onclick handlers ───
+window.toggleStatusDropdown = toggleStatusDropdown;
+window.selectStatusOption = selectStatusOption;
+window.stepperChange = stepperChange;
+window.segAutoTab = segAutoTab;
+window.saveStatusModal = saveStatusModal;

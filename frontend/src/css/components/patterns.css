@@ -102,7 +102,7 @@
   align-items: center;
   padding: 2px 8px;
   border-radius: 100px;
-  font-size: calc(0.688rem * var(--scale));
+  font-size: calc(0.86rem * var(--scale));
   font-weight: var(--fw-medium);
   background: rgba(var(--accent-rgb), 0.1);
   color: var(--accent-soft);

@@ -2,7 +2,7 @@
 
 @utility grid-container {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(9.375rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(11.75rem, 1fr));
   gap: clamp(0.85rem, 1.2vw, 1.25rem);
 }
 

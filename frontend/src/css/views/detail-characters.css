@@ -10,7 +10,7 @@
 }
 .detail-section-header h3 {
   font-family: var(--font-display);
-  font-size: calc(1.05rem * var(--scale));
+  font-size: calc(1.313rem * var(--scale));
   font-weight: var(--fw-semibold);
   letter-spacing: -0.01em;
   color: var(--fg-primary);
@@ -18,7 +18,7 @@
 }
 .detail-section-title {
   font-family: var(--font-display);
-  font-size: calc(1.05rem * var(--scale));
+  font-size: calc(1.313rem * var(--scale));
   font-weight: var(--fw-semibold);
   letter-spacing: -0.01em;
   color: var(--fg-primary);
@@ -90,7 +90,7 @@
   align-items: center;
   justify-content: center;
   color: var(--fg-muted);
-  font-size: calc(1rem * var(--scale));
+  font-size: var(--text-lg);
 }
 
 .detail-char-info {
@@ -99,7 +99,7 @@
 }
 
 .detail-char-name {
-  font-size: calc(0.813rem * var(--scale));
+  font-size: var(--text-base);
   font-weight: var(--fw-semibold);
   color: var(--fg-primary);
   white-space: nowrap;
@@ -108,7 +108,7 @@
 }
 
 .detail-char-cv {
-  font-size: calc(0.688rem * var(--scale));
+  font-size: calc(0.86rem * var(--scale));
   color: var(--fg-secondary);
   white-space: nowrap;
   overflow: hidden;
@@ -121,7 +121,7 @@
   grid-template-columns: auto 1fr;
   gap: 4px 12px;
   margin-top: 0.75rem;
-  font-size: calc(0.813rem * var(--scale));
+  font-size: var(--text-base);
 }
 
 .detail-staff-role {

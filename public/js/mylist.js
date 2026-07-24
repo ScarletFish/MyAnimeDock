@@ -165,7 +165,7 @@ function renderMyList() {
     renderFilteredTab(filtered);
   }
 
-  applyGridZoom();
+  applyGridColumns();
 
   document.querySelectorAll('#mylistView .anime-card').forEach(card => {
     card.style.animation = 'cardReveal 300ms var(--ease-out) forwards';

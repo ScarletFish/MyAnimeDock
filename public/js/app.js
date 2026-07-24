@@ -200,7 +200,7 @@ function toggleThemeDock() {
 function applyZoom(scale) {
   const s = (parseFloat(scale) || 1) * 1.25;
   document.documentElement.style.setProperty('--scale', s);
-  if (typeof applyGridZoom === 'function') applyGridZoom();
+  if (typeof applyGridColumns === 'function') applyGridColumns();
 }
 
 // ─── Reduce Motion ───

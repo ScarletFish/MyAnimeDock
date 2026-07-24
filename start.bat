@@ -12,17 +12,19 @@ echo  1.  Dev Mode           (server + Vite HMR)
 echo  2.  Build NSIS Installer
 echo  3.  Build MSI Installer
 echo  4.  Build MSI + NSIS
+echo  5.  Tauri Dev Window   (server + Vite + Tauri)
 echo.
 echo  Q.  Quit
 echo ========================================
 echo.
 
-set /p choice="Choice (1-4, Q): "
+set /p choice="Choice (1-5, Q): "
 
 if "%choice%"=="1" goto DEV
 if "%choice%"=="2" goto BUILD_NSIS
 if "%choice%"=="3" goto BUILD_MSI
 if "%choice%"=="4" goto BUILD_BOTH
+if "%choice%"=="5" goto TAURI_DEV
 if /i "%choice%"=="Q" goto EOF
 
 echo.
@@ -45,6 +47,25 @@ echo.
 npm run dev
 echo.
 echo Dev server stopped.
+pause
+goto MENU
+
+:TAURI_DEV
+cls
+echo ========================================
+echo   Tauri Dev Window
+echo ========================================
+echo.
+echo  Backend:  http://localhost:3457
+echo  Frontend: http://localhost:3456
+echo  Tauri:    Native window (auto-launched)
+echo.
+echo  Press Ctrl+C to stop all services
+echo ========================================
+echo.
+npm run dev:tauri
+echo.
+echo Tauri dev stopped.
 pause
 goto MENU
 

@@ -9,31 +9,16 @@ let cardTween = null;
 let librarySortDropdown = null;
 
 // Grid card sizing
-const GRID_CARD_BASE = 278;
-const GRID_ZOOM_MIN = 0.5;
-const GRID_ZOOM_MAX = 2.0;
-let gridZoom = parseFloat(localStorage.getItem('gridZoom') || '1');
+const GRID_CARD_MIN = 200;
+const GRID_CARD_MAX = 273;
 
-function applyGridZoom() {
+function applyGridColumns() {
   const scale = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--scale')) || 1;
-  const size = Math.round(GRID_CARD_BASE * gridZoom * scale);
+  const min = Math.round(GRID_CARD_MIN * scale);
+  const max = Math.round(GRID_CARD_MAX * scale);
   document.querySelectorAll('#libraryDashboard .grid-container, #mylistView .grid-container').forEach(g => {
-    g.style.gridTemplateColumns = `repeat(auto-fill, minmax(${size}px, 1fr))`;
+    g.style.gridTemplateColumns = `repeat(auto-fit, minmax(${min}px, ${max}px))`;
   });
-}
-
-function showZoomLevel() {
-  let el = document.getElementById('zoomLevel');
-  if (!el) {
-    el = document.createElement('div');
-    el.id = 'zoomLevel';
-    el.className = 'zoom-level';
-    document.querySelector('.main-content').appendChild(el);
-  }
-  el.textContent = Math.round(gridZoom * 100) + '%';
-  el.classList.add('show');
-  clearTimeout(el._hideTimer);
-  el._hideTimer = setTimeout(() => el.classList.remove('show'), 1000);
 }
 
 gsap.registerPlugin(ScrollTrigger);
@@ -345,7 +330,7 @@ function renderStatusGrids(data) {
   }).join('');
 
   // Apply grid columns
-  applyGridZoom();
+  applyGridColumns();
 
   // Card reveal: only below-fold cards get fade-in animation
   // (visible cards already display naturally — no flash)
@@ -525,23 +510,5 @@ function navigateToDetail(id, cardEl) {
 // --- Library Sync ---
 let syncInProgress = false;
 
-// --- Grid Zoom: wheel listener ---
-document.querySelector('.main-content').addEventListener('wheel', function(e) {
-  if (!e.ctrlKey && !e.metaKey) return;
-  var inLibraryGrid = e.target.closest('#libraryDashboard .grid-container');
-  var inMyListGrid = e.target.closest('#mylistView .grid-container');
-  if (!inLibraryGrid && !inMyListGrid) return;
-  e.preventDefault();
-  const absDelta = Math.min(Math.abs(e.deltaY), 300);
-  const zoomDelta = absDelta * 0.0008 * (e.deltaY > 0 ? -1 : 1);
-  const newZoom = Math.max(GRID_ZOOM_MIN, Math.min(GRID_ZOOM_MAX, gridZoom + zoomDelta));
-  if (newZoom !== gridZoom) {
-    gridZoom = newZoom;
-    localStorage.setItem('gridZoom', gridZoom);
-    applyGridZoom();
-    showZoomLevel();
-  }
-}, { passive: false });
-
-// Apply grid sizing on load
-applyGridZoom();
+// Apply grid columns on load
+applyGridColumns();

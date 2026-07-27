@@ -195,18 +195,97 @@ async search(keyword, source) {
 
   /**
    * Get Bangumi calendar (airing schedule)
-   * Returns array of days with items: [{ weekday, items: [{ id, name, name_cn, air_date, air_weekday, images, rating, summary, type }, ...] }]
-   * 内存缓存 1 小时，日历数据周更频率无需频繁请求
+   * Returns array of days with items: [{ weekday, items: [{ id, name, name_cn, air_date, ... }, ...] }]
    */
   async getCalendar() {
-    if (!this._calendarCache) this._calendarCache = createTimedCache(3600000);
-    const cached = this._calendarCache.get();
-    if (cached) return cached;
     const url = `${this.apiBase}/calendar`;
     const res = await this.tryFetch(url, { headers: { 'User-Agent': USER_AGENT } });
-    const data = await res.json();
-    this._calendarCache.set(data);
-    return data;
+    return res.json();
+  }
+
+  /**
+   * Detect if an anime is Japanese based on title containing kana characters.
+   * Hiragana (U+3040-U+309F) and Katakana (U+30A0-U+30FF) are unique to Japanese.
+   * Chinese anime titles in Bangumi use only CJK characters without kana.
+   */
+  static detectCountry(item) {
+    const name = item.name || '';
+    const hasKana = /[\u3040-\u309F\u30A0-\u30FF]/.test(name);
+    if (hasKana) return 'jp';
+    // No kana → likely Chinese anime or non-Japanese
+    return 'cn';
+  }
+
+  /**
+   * Fetch enriched calendar data with subject details.
+   * Returns calendar items with additional fields: totalEpisodes, eps, platform, tags, infobox, summary, country
+   * 24h cache — calendar data is weekly, subject details are permanent.
+   */
+  async getEnrichedCalendar() {
+    if (!this._enrichedCalendarCache) this._enrichedCalendarCache = createTimedCache(86400000);
+    const cached = this._enrichedCalendarCache.get();
+    if (cached) return cached;
+
+    const calendarData = await this.getCalendar();
+
+    // Collect all anime IDs for enrichment
+    const allItems = [];
+    for (const day of calendarData) {
+      for (const item of (day.items || [])) {
+        if (item.type === 2) allItems.push(item);
+      }
+    }
+
+    // Fetch subject details with concurrency limit (5 at a time)
+    const detailMap = new Map();
+    const CONCURRENCY = 5;
+    for (let i = 0; i < allItems.length; i += CONCURRENCY) {
+      const batch = allItems.slice(i, i + CONCURRENCY);
+      const results = await Promise.allSettled(
+        batch.map(item => this.getSubjectDetail(item.id).catch(e => {
+          logger.warn(`getEnrichedCalendar: subject ${item.id} detail failed: ${e.message}`);
+          return null;
+        }))
+      );
+      for (let j = 0; j < batch.length; j++) {
+        const detail = results[j].status === 'fulfilled' ? results[j].value : null;
+        if (detail) detailMap.set(String(batch[j].id), detail);
+      }
+    }
+
+    logger.info(`getEnrichedCalendar: enriched ${detailMap.size}/${allItems.length} subjects`);
+
+    const enriched = calendarData.map(day => ({
+      weekday: day.weekday,
+      items: (day.items || [])
+        .filter(item => item.type === 2)
+        .map(item => {
+          const detail = detailMap.get(String(item.id));
+          return {
+            id: item.id,
+            name: item.name || '',
+            name_cn: item.name_cn || '',
+            air_date: item.air_date || null,
+            air_weekday: item.air_weekday ?? null,
+            coverUrl: item.images?.large || item.images?.common || item.images?.medium || null,
+            rating: item.rating?.score ?? null,
+            rank: item.rating?.rank ?? null,
+            summary: detail ? BangumiScraper.truncateSummary(detail.summary) : (item.summary || null),
+            // Subject detail enrichment:
+            totalEpisodes: detail?.total_episodes || null,
+            eps: detail?.eps || null,
+            platform: detail?.platform || null,
+            tags: (detail?.tags || []).map(t => typeof t === 'string' ? t : (t.name || '')),
+            infobox: detail?.infobox || [],
+            collection: detail?.collection || null,
+            // Country detection (no extra API needed):
+            country: BangumiScraper.detectCountry(item),
+          };
+        }),
+    }));
+
+    this._enrichedCalendarCache.set(enriched);
+    return enriched;
   }
 
   /**

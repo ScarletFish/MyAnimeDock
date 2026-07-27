@@ -34,18 +34,6 @@ function extname(p) {
   return dotIndex <= 0 ? '' : base.slice(dotIndex);
 }
 
-// ─── 共享常量 ───
-
-const STATUS_LABELS = {
-  watching: '进行中',
-  wish: '计划中',
-  completed: '已完成',
-  on_hold: '搁置',
-  dropped: '抛弃'
-};
-
-const STATUS_VALUES = Object.keys(STATUS_LABELS);
-
 // ─── 字符串工具 ───
 
 function normalizeSearchText(text) {
@@ -165,8 +153,6 @@ if (typeof module !== 'undefined' && module.exports) {
     basename,
     dirname,
     extname,
-    STATUS_LABELS,
-    STATUS_VALUES,
     normalizeSearchText,
     truncate,
     clamp,

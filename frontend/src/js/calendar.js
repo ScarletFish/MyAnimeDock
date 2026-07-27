@@ -152,7 +152,7 @@ function renderCalendar(data, container, seasonEl) {
       html += '<div class="cal-overlay">';
       html += '<div class="cal-card-title">' + escHtml(title) + '</div>';
       html += '<div class="cal-card-meta">';
-      html += '<span class="cal-card-rating">' + rating + '</span>';
+      html += '<span class="cal-card-rating">★ ' + rating + '</span>';
 
       if (hasStatus) {
         html += '<span class="cal-status-label">' + CALENDAR_STATUS_LABELS[item.mylistStatus] + '</span>';

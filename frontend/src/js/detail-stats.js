@@ -2,6 +2,31 @@
 
 let watchStatsVersion = 0;
 let _episodeThumbObserver = null;
+let _wsTooltip = null;
+
+function wsTooltip() {
+  if (!_wsTooltip) {
+    _wsTooltip = document.createElement('div');
+    _wsTooltip.className = 'stats-tooltip';
+    document.body.appendChild(_wsTooltip);
+  }
+  return _wsTooltip;
+}
+
+function getThemeColors() {
+  const style = getComputedStyle(document.documentElement);
+  const isDark = document.documentElement.getAttribute('data-theme-mode') !== 'light';
+  return {
+    isDark,
+    bg: style.getPropertyValue('--bg-surface').trim() || '#1a1a2e',
+    text: isDark ? '#ede8e2' : '#2c2418',
+    muted: isDark ? 'rgba(237,232,226,0.5)' : 'rgba(44,36,24,0.5)',
+    accent: style.getPropertyValue('--accent').trim() || '#e9407a',
+    accentRgb: style.getPropertyValue('--accent-rgb').trim() || '233,64,122',
+    border: isDark ? 'rgba(237,232,226,0.1)' : 'rgba(44,36,24,0.1)',
+    gridLine: isDark ? 'rgba(237,232,226,0.08)' : 'rgba(44,36,24,0.08)'
+  };
+}
 
 function renderEpisodeHeatmap(anime, animate) {
   const grid = document.getElementById('episodeHeatmapGrid');
@@ -22,7 +47,6 @@ function renderEpisodeHeatmap(anime, animate) {
   header.textContent = '剧集列表';
   if (countEl) countEl.textContent = totalCount ? `${localCount} / ${totalCount}集` : `${localCount} 集`;
 
-  // Build all episode cards in horizontal scroll (clean, no watched/status indicators)
   grid.innerHTML = anime.episodes.map((ep, idx) => {
     const title = ep.fileName || `第${ep.number}集`;
     const thumbUrl = `/api/thumbnail?path=${encodeURIComponent(ep.filePath)}&time=mid`;
@@ -42,10 +66,8 @@ function renderEpisodeHeatmap(anime, animate) {
       </div>
     </div>`;
   }).join('');
-  // Reset scroll immediately (prevents inheriting previous anime's scroll position)
   grid.scrollLeft = 0;
 
-  // ─── Pagination dots (via shared component) ───
   initScrollDots({
     scroll: grid,
     cardSelector: '.episode-card',
@@ -53,7 +75,6 @@ function renderEpisodeHeatmap(anime, animate) {
     dotsParent: document.querySelector('.episode-list-header'),
   });
 
-  // Restore scroll to last-viewed episode
   const lastEp = anime.lastPlayedEp
     ? anime.episodes.find(e => e.number === anime.lastPlayedEp)
     : null;
@@ -70,7 +91,6 @@ function renderEpisodeHeatmap(anime, animate) {
     }
   }
 
-  // ─── Lazy-load thumbnails via IntersectionObserver ───
   if (_episodeThumbObserver) _episodeThumbObserver.disconnect();
   const thumbEls = grid.querySelectorAll('.episode-card-bg[data-src]');
   if ('IntersectionObserver' in window && thumbEls.length > 0) {
@@ -89,14 +109,12 @@ function renderEpisodeHeatmap(anime, animate) {
     }, { root: grid, rootMargin: '100px' });
     thumbEls.forEach(el => _episodeThumbObserver.observe(el));
   } else {
-    // Fallback: load all at once
     thumbEls.forEach(el => {
       const src = el.getAttribute('data-src');
       if (src) { el.style.backgroundImage = `url("${src}")`; el.removeAttribute('data-src'); }
     });
   }
 
-  // Bind card events
   grid.querySelectorAll('.episode-card').forEach(el => {
     el.addEventListener('click', () => {
       const path = el.dataset.path;
@@ -115,17 +133,44 @@ function renderEpisodeHeatmap(anime, animate) {
   });
 }
 
-// ─── Watch Stats (Canvas Bar Chart) ───
+// ─── Watch Stats (Modern: donut + D3 area chart, side by side) ───
 
 function renderWatchStats(anime) {
   const version = ++watchStatsVersion;
   const module = document.getElementById('watchStats');
-  const canvas = document.getElementById('watchStatsChart');
-  const ctx = canvas.getContext('2d');
-  const isLight = document.documentElement.getAttribute('data-theme-mode') === 'light';
-  const rootStyle = getComputedStyle(document.documentElement);
-  const accentRgb = rootStyle.getPropertyValue('--accent-rgb').trim() || '225,58,90';
-  const secondaryRgb = rootStyle.getPropertyValue('--accent-secondary-rgb').trim() || '74,108,247';
+  const container = document.getElementById('watchStatsContent');
+  if (!module || !container) return;
+
+  container.innerHTML = '<div class="stats-loading">加载中...</div>';
+  module.style.display = '';
+
+  const watchedEp = (anime.episodes || []).filter(e => e.watched).length;
+  const totalEp = anime.totalEpisodes || anime.eps || (anime.episodes ? anime.episodes.length : 0);
+  const hasWatched = watchedEp > 0;
+
+  if (!hasWatched) {
+    module.style.display = 'none';
+    return;
+  }
+
+  // Build grid layout: donut left + chart right
+  container.innerHTML = `
+    <div class="ws-grid">
+      <div class="ws-donut-wrap" id="wsDonut_${version}"></div>
+      <div class="ws-right" id="wsRight_${version}">
+        <div class="ws-chart" id="wsChartInner_${version}"></div>
+      </div>
+    </div>
+  `;
+
+  // Always render donut (has data)
+  renderWsDonut(document.getElementById('wsDonut_' + version), {
+    totalEp, watchedEp
+  }, version);
+
+  // Fetch sessions for area chart
+  const chartInner = document.getElementById('wsChartInner_' + version);
+  const rightCol = document.getElementById('wsRight_' + version);
 
   API.get(`/api/anime/${encodeURIComponent(anime.id)}/sessions`).then(data => {
     if (version !== watchStatsVersion) return;
@@ -134,191 +179,255 @@ function renderWatchStats(anime) {
     const totalMinutes = dailyEntries.reduce((s, [, v]) => s + v, 0);
 
     if (totalMinutes === 0) {
-      module.style.display = 'none';
+      // No duration data — donut stays with episodes only
+      rightCol.style.display = 'none';
       return;
     }
 
-    module.style.display = '';
-    canvas.style.display = 'block';
-
-    // Aggregate into weeks (Mon-Sun)
-    const weeks = [];
+    // Aggregate into weeks
     const weekMap = new Map();
     for (const [dateStr, mins] of dailyEntries) {
+      if (mins === 0) continue;
       const d = new Date(dateStr + 'T00:00:00');
       const day = d.getDay();
       const mon = new Date(d);
       mon.setDate(d.getDate() - ((day + 6) % 7));
       const key = mon.toISOString().slice(0, 10);
-      if (!weekMap.has(key)) {
-        weekMap.set(key, { start: mon, minutes: 0 });
-      }
+      if (!weekMap.has(key)) weekMap.set(key, { start: mon, minutes: 0 });
       weekMap.get(key).minutes += mins;
     }
     const sortedWeeks = [...weekMap.values()].sort((a, b) => a.start - b.start);
 
-    const dpr = window.devicePixelRatio || 1;
-    const rect = canvas.parentElement.getBoundingClientRect();
-    const W = rect.width - 2;
-    const H = 300;
-    canvas.width = W * dpr;
-    canvas.height = H * dpr;
-    canvas.style.width = '';
-    canvas.style.height = H + 'px';
-    ctx.scale(dpr, dpr);
-
-    const PAD = { top: 24, right: 24, bottom: 44, left: 56 };
-    const cw = W - PAD.left - PAD.right;
-    const ch = H - PAD.top - PAD.bottom;
-
-    const maxVal = Math.max(1, ...sortedWeeks.map(w => w.minutes));
-    const n = sortedWeeks.length;
-    const stepX = n > 1 ? cw / (n - 1) : cw;
-
-    ctx.clearRect(0, 0, W, H);
-
-    // Grid lines
-    const gridLines = 4;
-    ctx.strokeStyle = isLight ? 'rgba(44,36,24,0.08)' : 'rgba(237,232,226,0.06)';
-    ctx.lineWidth = 1;
-    for (let i = 0; i <= gridLines; i++) {
-      const y = PAD.top + (ch / gridLines) * i;
-      ctx.beginPath();
-      ctx.moveTo(PAD.left, y);
-      ctx.lineTo(W - PAD.right, y);
-      ctx.stroke();
+    if (sortedWeeks.length === 0) {
+      updateDonutDuration(version, totalMinutes);
+      rightCol.style.display = 'none';
+      return;
     }
 
-    // Y-axis labels
-    ctx.fillStyle = isLight ? 'rgba(44,36,24,0.4)' : 'rgba(237,232,226,0.4)';
-    ctx.font = '11px DM Sans, Noto Sans SC, Noto Sans JP, sans-serif';
-    ctx.textAlign = 'right';
-    ctx.textBaseline = 'middle';
-    for (let i = 0; i <= gridLines; i++) {
-      const y = PAD.top + (ch / gridLines) * i;
-      const val = Math.round(maxVal - (maxVal / gridLines) * i);
-      ctx.fillText(val + '分钟', PAD.left - 8, y);
-    }
-
-    // Compute points
-    function getXY(w, i) {
-      const x = n > 1 ? PAD.left + i * stepX : PAD.left + cw / 2;
-      const y = PAD.top + ch - (w.minutes / maxVal) * ch;
-      return [x, y];
-    }
-
-    // Animate
-    const animDuration = 600;
-    const startTime = performance.now();
-
-    function drawChart(progress) {
-      ctx.clearRect(0, 0, W, H);
-
-      // Grid
-      ctx.strokeStyle = isLight ? 'rgba(44,36,24,0.08)' : 'rgba(237,232,226,0.06)';
-      ctx.lineWidth = 1;
-      for (let i = 0; i <= gridLines; i++) {
-        const y = PAD.top + (ch / gridLines) * i;
-        ctx.beginPath();
-        ctx.moveTo(PAD.left, y);
-        ctx.lineTo(W - PAD.right, y);
-        ctx.stroke();
-      }
-
-      // Y labels
-      ctx.fillStyle = isLight ? 'rgba(44,36,24,0.4)' : 'rgba(237,232,226,0.4)';
-      ctx.font = '11px DM Sans, Noto Sans SC, Noto Sans JP, sans-serif';
-      ctx.textAlign = 'right';
-      ctx.textBaseline = 'middle';
-      for (let i = 0; i <= gridLines; i++) {
-        const y = PAD.top + (ch / gridLines) * i;
-        const val = Math.round(maxVal - (maxVal / gridLines) * i);
-        ctx.fillText(val + '分钟', PAD.left - 8, y);
-      }
-
-      const pts = sortedWeeks.map((w, i) => getXY(w, i));
-      const visibleCount = Math.max(1, Math.ceil(pts.length * progress));
-      const visPts = pts.slice(0, visibleCount);
-
-      // Area fill
-      if (visPts.length > 1) {
-        ctx.beginPath();
-        ctx.moveTo(visPts[0][0], PAD.top + ch);
-        ctx.lineTo(visPts[0][0], visPts[0][1]);
-        for (let i = 1; i < visPts.length; i++) {
-          const [px, py] = visPts[i - 1];
-          const [cx, cy] = visPts[i];
-          const mx = (px + cx) / 2;
-          ctx.bezierCurveTo(mx, py, mx, cy, cx, cy);
-        }
-        ctx.lineTo(visPts[visPts.length - 1][0], PAD.top + ch);
-        ctx.closePath();
-        const grad = ctx.createLinearGradient(0, PAD.top, 0, PAD.top + ch);
-        grad.addColorStop(0, `rgba(${accentRgb},0.30)`);
-        grad.addColorStop(1, `rgba(${secondaryRgb},0.02)`);
-        ctx.fillStyle = grad;
-        ctx.fill();
-      }
-
-      // Line
-      if (visPts.length > 1) {
-        ctx.beginPath();
-        ctx.moveTo(visPts[0][0], visPts[0][1]);
-        for (let i = 1; i < visPts.length; i++) {
-          const [px, py] = visPts[i - 1];
-          const [cx, cy] = visPts[i];
-          const mx = (px + cx) / 2;
-          ctx.bezierCurveTo(mx, py, mx, cy, cx, cy);
-        }
-        ctx.strokeStyle = `rgba(${accentRgb},0.9)`;
-        ctx.lineWidth = 2;
-        ctx.stroke();
-      }
-
-      // Dots + x-axis labels
-      const labelInterval = n > 8 ? Math.ceil(n / 6) : 1;
-      visPts.forEach(([x, y], i) => {
-        ctx.beginPath();
-        ctx.arc(x, y, 3, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(${accentRgb},0.9)`;
-        ctx.fill();
-
-        if (i % labelInterval === 0 || i === visPts.length - 1) {
-          const d = sortedWeeks[i].start;
-          const label = (d.getMonth() + 1) + '/' + d.getDate();
-          ctx.fillStyle = isLight ? 'rgba(44,36,24,0.35)' : 'rgba(237,232,226,0.35)';
-          ctx.font = '10px DM Sans, Noto Sans SC, Noto Sans JP, sans-serif';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'top';
-          ctx.fillText(label, x, H - PAD.bottom + 8);
-        }
-      });
-    }
-
-    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (prefersReduced) {
-      drawChart(1);
-    } else {
-      function animate(now) {
-        if (version !== watchStatsVersion) return;
-        const t = Math.min(1, (now - startTime) / animDuration);
-        const ease = 1 - Math.pow(1 - t, 3);
-        drawChart(ease);
-        if (t < 1) requestAnimationFrame(animate);
-      }
-      requestAnimationFrame(animate);
-    }
-
+    updateDonutDuration(version, totalMinutes);
+    rightCol.style.display = '';
+    renderWsChart(chartInner, sortedWeeks, version);
   }).catch(() => {
     if (version !== watchStatsVersion) return;
-    module.style.display = 'none';
+    rightCol.style.display = 'none';
   });
 }
 
-// Re-render canvas-based charts on theme change
+function updateDonutDuration(version, totalMinutes) {
+  const el = document.getElementById('wsDur_' + version);
+  if (!el) return;
+  el.textContent = fmtPlain(totalMinutes);
+}
+
+function fmtPlain(mins) {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h === 0) return m + 'm';
+  if (m === 0) return h + 'h';
+  return h + 'h ' + Math.round(m / 6) + 'm';
+}
+
+// ─── Donut Chart ───
+
+function renderWsDonut(container, data, version) {
+  const tc = getThemeColors();
+  const { totalEp, watchedEp } = data;
+  const pct = totalEp > 0 ? watchedEp / totalEp : 0;
+
+  const rect = container.getBoundingClientRect();
+  const size = Math.max(Math.min(rect.width || 200, 220), 140);
+  const outerR = size * 0.38;
+  const innerR = outerR * 0.62;
+
+  const svg = d3.select(container).append('svg')
+    .attr('width', size)
+    .attr('height', size)
+    .attr('viewBox', '0 0 ' + size + ' ' + size)
+    .append('g')
+    .attr('transform', 'translate(' + (size / 2) + ',' + (size / 2) + ')');
+
+  const tau = 2 * Math.PI;
+  const arc = d3.arc().innerRadius(innerR).outerRadius(outerR).cornerRadius(3);
+
+  // Background ring
+  svg.append('path')
+    .attr('d', arc({ startAngle: 0, endAngle: tau }))
+    .attr('fill', tc.gridLine);
+
+  // Progress ring (from top, clockwise)
+  const progressAngle = Math.min(pct * tau, tau);
+  svg.append('path')
+    .attr('d', arc({ startAngle: -tau / 4, endAngle: -tau / 4 + progressAngle }))
+    .attr('fill', tc.accent);
+
+  // Drop shadow filter on progress ring
+  svg.append('filter')
+    .attr('id', 'wsGlow_' + version)
+    .append('feDropShadow')
+    .attr('dx', '0').attr('dy', '1').attr('stdDeviation', '3')
+    .attr('flood-color', tc.accent).attr('flood-opacity', '0.25');
+
+  // Center: episode progress (large)
+  svg.append('text')
+    .attr('text-anchor', 'middle')
+    .attr('dy', '-0.15em')
+    .attr('fill', tc.text)
+    .attr('font-size', '1.15rem')
+    .attr('font-weight', '700')
+    .text(watchedEp + '/' + totalEp);
+
+  // Center: duration (small)
+  svg.append('text')
+    .attr('text-anchor', 'middle')
+    .attr('dy', '1.1em')
+    .attr('fill', tc.muted)
+    .attr('font-size', '0.7rem')
+    .attr('id', 'wsDur_' + version)
+    .text('');
+}
+
+// ─── Area Chart ───
+
+function renderWsChart(container, weeks, version) {
+  const tc = getThemeColors();
+
+  // Measure container after layout settled
+  const rect = container.getBoundingClientRect();
+  const margin = { top: 10, right: 10, bottom: 26, left: 34 };
+  const width = Math.max(rect.width - margin.left - margin.right, 120);
+  const height = Math.max(rect.height - margin.top - margin.bottom, 80);
+
+  const svg = d3.select(container).append('svg')
+    .attr('width', width + margin.left + margin.right)
+    .attr('height', height + margin.top + margin.bottom)
+    .append('g')
+    .attr('transform', `translate(${margin.left},${margin.top})`);
+
+  const x = d3.scaleBand()
+    .domain(weeks.map((_, i) => i))
+    .range([0, width])
+    .padding(0.25);
+
+  const y = d3.scaleLinear()
+    .domain([0, d3.max(weeks, d => d.minutes) || 1])
+    .nice()
+    .range([height, 0]);
+
+  // Grid lines
+  svg.append('g')
+    .attr('class', 'grid')
+    .call(d3.axisLeft(y).ticks(2).tickSize(-width).tickFormat(''))
+    .selectAll('line')
+    .attr('stroke', tc.gridLine);
+  svg.selectAll('.grid .domain').remove();
+
+  // Gradient
+  const gradId = 'wsGrad_' + version;
+  const defs = svg.append('defs');
+  const grad = defs.append('linearGradient').attr('id', gradId).attr('x1', '0').attr('y1', '0').attr('x2', '0').attr('y2', '1');
+  grad.append('stop').attr('offset', '0%').attr('stop-color', tc.accent).attr('stop-opacity', 0.35);
+  grad.append('stop').attr('offset', '100%').attr('stop-color', tc.accent).attr('stop-opacity', 0.04);
+
+  // Semi-transparent bars
+  svg.selectAll('.bar')
+    .data(weeks)
+    .join('rect')
+    .attr('x', (_, i) => x(i))
+    .attr('y', d => y(d.minutes))
+    .attr('width', x.bandwidth())
+    .attr('height', d => height - y(d.minutes))
+    .attr('fill', tc.accent)
+    .attr('opacity', 0.12)
+    .attr('rx', 2);
+
+  // Area
+  const area = d3.area()
+    .x((_, i) => x(i) + x.bandwidth() / 2)
+    .y0(height)
+    .y1(d => y(d.minutes))
+    .curve(d3.curveMonotoneX);
+
+  svg.append('path')
+    .datum(weeks)
+    .attr('fill', `url(#${gradId})`)
+    .attr('d', area);
+
+  // Line
+  const line = d3.line()
+    .x((_, i) => x(i) + x.bandwidth() / 2)
+    .y(d => y(d.minutes))
+    .curve(d3.curveMonotoneX);
+
+  svg.append('path')
+    .datum(weeks)
+    .attr('fill', 'none')
+    .attr('stroke', tc.accent)
+    .attr('stroke-width', 2)
+    .attr('d', line);
+
+  // Dots
+  svg.selectAll('.dot')
+    .data(weeks)
+    .join('circle')
+    .attr('cx', (_, i) => x(i) + x.bandwidth() / 2)
+    .attr('cy', d => y(d.minutes))
+    .attr('r', 3)
+    .attr('fill', tc.accent)
+    .attr('stroke', tc.bg)
+    .attr('stroke-width', 2);
+
+  // Hover zones
+  svg.selectAll('.hz')
+    .data(weeks)
+    .join('rect')
+    .attr('x', (_, i) => x(i))
+    .attr('y', 0)
+    .attr('width', x.bandwidth())
+    .attr('height', height)
+    .attr('fill', 'transparent')
+    .on('mousemove', (evt, d) => {
+      const tip = wsTooltip();
+      tip.innerHTML = `<b>${(d.start.getMonth() + 1)}/${d.start.getDate()}</b><br>${d.minutes} 分钟`;
+      tip.style.display = 'block';
+      const pad = 12;
+      let l = evt.clientX + pad;
+      let t = evt.clientY - tip.offsetHeight - pad;
+      if (l + tip.offsetWidth > window.innerWidth - pad) l = evt.clientX - tip.offsetWidth - pad;
+      if (t < pad) t = evt.clientY + pad;
+      tip.style.left = l + 'px';
+      tip.style.top = t + 'px';
+    })
+    .on('mouseleave', () => { if (_wsTooltip) _wsTooltip.style.display = 'none'; });
+
+  // X axis
+  const labelInt = weeks.length > 8 ? Math.ceil(weeks.length / 5) : 1;
+  svg.append('g')
+    .attr('transform', `translate(0,${height})`)
+    .call(d3.axisBottom(x).tickSize(0).tickFormat((_, i) => {
+      if (i % labelInt === 0 || i === weeks.length - 1) {
+        return (weeks[i].start.getMonth() + 1) + '/' + weeks[i].start.getDate();
+      }
+      return '';
+    }))
+    .selectAll('text')
+    .attr('fill', tc.muted)
+    .attr('font-size', '0.7rem')
+    .attr('dy', '1em');
+  svg.selectAll('.domain').attr('stroke', tc.border);
+
+  // Y axis
+  svg.append('g')
+    .call(d3.axisLeft(y).ticks(3).tickFormat(d => d >= 60 ? (d / 60).toFixed(0) + 'h' : d + 'm'))
+    .selectAll('text')
+    .attr('fill', tc.muted)
+    .attr('font-size', '0.7rem');
+  svg.selectAll('.domain').attr('stroke', tc.border);
+}
+
+// Re-render on theme change
 document.addEventListener('themechanged', () => {
   const detailView = document.getElementById('detailView');
-  if (detailView && !detailView.classList.contains('hidden') && currentAnime) {
+  if (detailView && !detailView.classList.contains('hidden') && typeof currentAnime !== 'undefined' && currentAnime) {
     renderWatchStats(currentAnime);
   }
 });

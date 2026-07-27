@@ -1,28 +1,56 @@
-/* ─── Watch Stats ─── */
+/* ─── Watch Stats (Donut + D3 area chart) ─── */
 .watch-stats {
   @apply section-card;
-  padding: 1.5rem 2rem;
+  padding: 1.25rem 1.5rem;
   margin-top: 1.5rem;
 }
 
-.watch-stats-header { margin-bottom: 1rem; }
+.ws-header { margin-bottom: 0.75rem; }
 
-.watch-stats-header h3 {
+.ws-header h3 {
   font-family: var(--font-display);
-  font-size: calc(1.375rem * var(--scale));
+  font-size: calc(1.25rem * var(--scale));
   font-weight: var(--fw-semibold);
   letter-spacing: -0.01em;
+  margin: 0;
 }
 
-.watch-stats-chart-wrap {
-  position: relative;
-  width: 100%;
+/* ─── Donut + Area grid (left narrow, right wide, equal height) ─── */
+.ws-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1.25rem;
+  align-items: stretch;
 }
 
-.watch-stats-chart {
-  width: 100%;
-  height: auto;
+.ws-donut-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 120px;
+}
+
+.ws-donut-wrap svg {
   display: block;
+}
+
+.ws-right {
+  display: flex;
+  align-items: stretch;
+  min-height: 160px;
+}
+
+/* ─── Area chart ─── */
+.ws-chart {
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.ws-chart svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 /* ─── Banner Layout ─── */

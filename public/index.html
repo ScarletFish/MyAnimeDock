@@ -437,6 +437,14 @@
             </div>
           </div>
 
+          <!-- Watch Stats -->
+          <div class="watch-stats" id="watchStats" style="display:none">
+            <div class="ws-header">
+              <h3>观看统计</h3>
+            </div>
+            <div class="ws-body" id="watchStatsContent"></div>
+          </div>
+
           <!-- Relations -->
           <div id="detailRelations" class="detail-section" style="display:none">
             <div class="detail-section-header">
@@ -451,17 +459,6 @@
               <span class="detail-section-title">推荐</span>
             </div>
             <div class="hscroll" id="recommendationScroll" style="gap: calc(0.75rem * var(--scale)); padding: calc(0.25rem * var(--scale)) 0 calc(0.5rem * var(--scale)) 0"></div>
-          </div>
-
-          <!-- Module 4: Watch Stats (full-width within column) -->
-          <div class="watch-stats" id="watchStats">
-            <div class="watch-stats-header">
-              <h3>观看统计</h3>
-            </div>
-            <div class="watch-stats-chart-wrap">
-              <canvas class="watch-stats-chart" id="watchStatsChart" width="1200" height="320"></canvas>
-              <div class="watch-stats-empty" id="watchStatsEmpty"></div>
-            </div>
           </div>
         </div>
       </div>

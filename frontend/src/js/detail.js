@@ -416,13 +416,13 @@ function renderDetail() {
     document.getElementById('archiveDetail').style.display = 'none';
     document.getElementById('episodeHeatmap').style.display = '';
     document.getElementById('detailCharacters').style.display = '';
-    document.getElementById('watchStats').style.display = '';
     renderEpisodeHeatmap(anime);
     renderCharacters(anime);
+    // Watch stats loads fast (in-memory API), render early to fill space
+    renderWatchStats(anime);
     fetchAndRenderRelations(anime.id);
     fetchAndRenderRecommendations(anime.id);
   }
-  renderWatchStats(anime);
 
   // Reset character grid manual-toggle state for new anime
   const charWrapForReset = document.getElementById('detailCharWrap');

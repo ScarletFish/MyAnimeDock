@@ -10,7 +10,7 @@ let isWishlistMode = false;
 // Relations/Recommendations cache (5min TTL)
 const _relationCache = new Map();
 const _recCache = new Map();
-const _CACHE_TTL = 5 * 60 * 1000;
+const _CACHE_TTL = 30 * 60 * 1000;
 
 // Character grid: large max-height for smooth CSS transition (replaces 'none')
 const MAX_GRID_HEIGHT = 10000;
@@ -416,13 +416,13 @@ function renderDetail() {
     document.getElementById('archiveDetail').style.display = 'none';
     document.getElementById('episodeHeatmap').style.display = '';
     document.getElementById('detailCharacters').style.display = '';
-    document.getElementById('watchStats').style.display = '';
     renderEpisodeHeatmap(anime);
     renderCharacters(anime);
+    // Watch stats loads fast (in-memory API), render early to fill space
+    renderWatchStats(anime);
     fetchAndRenderRelations(anime.id);
     fetchAndRenderRecommendations(anime.id);
   }
-  renderWatchStats(anime);
 
   // Reset character grid manual-toggle state for new anime
   const charWrapForReset = document.getElementById('detailCharWrap');
@@ -886,6 +886,8 @@ async function fetchAndRenderRelations(animeId) {
   }
 
   try {
+    container.style.display = 'none';
+    scrollEl.innerHTML = '';
     const res = await API.get('/api/anime/' + encodeURIComponent(animeId) + '/relations');
     const relations = res.relations || [];
     if (relations.length === 0) { container.style.display = 'none'; return; }
@@ -942,6 +944,8 @@ async function fetchAndRenderRecommendations(animeId) {
   }
 
   try {
+    container.style.display = 'none';
+    scrollEl.innerHTML = '';
     const res = await API.get('/api/anime/' + encodeURIComponent(animeId) + '/recommendations');
     const recs = res.recommendations || [];
     if (recs.length === 0) { container.style.display = 'none'; return; }

@@ -5,36 +5,72 @@ const CALENDAR_STATUS_LABELS = { watching: '在看', wish: '想看', on_hold: '�
 const CALENDAR_CACHE_TTL = 30 * 60 * 1000; // 30 分钟缓存
 
 let _openCalendarMenu = null;
+let _calendarAllData = null; // raw unfiltered data
+let _calendarFilter = { hideLongRunning: true, country: 'jp' }; // 'all' | 'jp' | 'cn'
 const _calendarCache = createTimedCache(CALENDAR_CACHE_TTL);
 
+// ─── Filter helpers ───
+
+const CALENDAR_LONG_RUNNING_THRESHOLD = 100;
+
+function getCalendarFilters() {
+  // Always return hardcoded defaults — JP only + hide long-running
+  return { hideLongRunning: true, country: 'jp' };
+}
+
+function saveCalendarFilters() {
+  // no-op: filters are fixed defaults
+}
+
+function applyCalFilters(data) {
+  return data.map(function(day) {
+    var filteredItems = (day.items || []).filter(function(item) {
+      // Country filter
+      if (_calendarFilter.country !== 'all' && item.country !== _calendarFilter.country) return false;
+      // Long-running filter
+      if (_calendarFilter.hideLongRunning && item.totalEpisodes != null && item.totalEpisodes >= CALENDAR_LONG_RUNNING_THRESHOLD) return false;
+      return true;
+    });
+    return { weekday: day.weekday, items: filteredItems };
+  }).filter(function(day) { return day.items.length > 0; });
+}
+
+// ─── Load & render ───
+
 async function loadCalendar() {
-  const container = document.getElementById('calendarGrid');
-  const seasonEl = document.getElementById('calendarSeason');
+  var container = document.getElementById('calendarGrid');
+  var seasonEl = document.getElementById('calendarSeason');
   if (!container) return;
 
-  // 检查缓存
-  const cached = _calendarCache.get();
+  // Restore filter state (hardcoded defaults)
+  _calendarFilter = getCalendarFilters();
+
+  // Check cache
+  var cached = _calendarCache.get();
   if (cached) {
-    renderCalendar(cached, container, seasonEl);
+    _calendarAllData = cached;
+    renderCalendar(applyCalFilters(cached), container, seasonEl);
     return;
   }
 
   container.innerHTML = '<div class="calendar-loading">加载中…</div>';
 
   try {
-    const data = await API.get('/api/calendar');
+    var data = await API.get('/api/calendar');
     if (!data || data.length === 0) {
       container.innerHTML = '<div class="calendar-loading">暂无本季放送数据</div>';
       return;
     }
-    // 写入缓存
     _calendarCache.set(data);
-    renderCalendar(data, container, seasonEl);
+    _calendarAllData = data;
+    renderCalendar(applyCalFilters(data), container, seasonEl);
   } catch (e) {
     if (window.location.origin !== 'http://localhost:3456') return;
     container.innerHTML = '<div class="calendar-error">加载失败: ' + escHtml(e.message) + '</div>';
   }
 }
+
+// ─── Render ───
 
 function renderCalendar(data, container, seasonEl) {
   // 从第一条数据推断季度
@@ -55,6 +91,11 @@ function renderCalendar(data, container, seasonEl) {
   var todayDow = today.getDay(); // 0=Sun
   var dayNames = ['日', '一', '二', '三', '四', '五', '六'];
 
+  if (data.length === 0 || data.every(function(d) { return d.items.length === 0; })) {
+    container.innerHTML = '<div class="calendar-loading">当前筛选条件下没有内容</div>';
+    return;
+  }
+
   var html = '';
   for (var di = 0; di < data.length; di++) {
     var day = data[di];
@@ -68,8 +109,15 @@ function renderCalendar(data, container, seasonEl) {
     html += '<span class="cal-day-num">' + (isToday ? today.getDate() : '') + '</span>';
     html += '</div>';
 
-    for (var ii = 0; ii < day.items.length; ii++) {
-      var item = day.items[ii];
+    // Sort items by rating descending (null ratings at bottom)
+    var sortedItems = (day.items || []).slice().sort(function(a, b) {
+      var ra = a.rating || 0;
+      var rb = b.rating || 0;
+      return rb - ra;
+    });
+
+    for (var ii = 0; ii < sortedItems.length; ii++) {
+      var item = sortedItems[ii];
       var title = item.name_cn || item.name || '';
       var rating = item.rating != null ? item.rating.toFixed(1) : '';
       var coverSrc = item.coverUrl || '';

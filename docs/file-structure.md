@@ -289,7 +289,7 @@ docs/
     ├── frontend.md            #   前端规范
     ├── testing.md             #   测试规范
     ├── report.md              #   变更报告模板
-    └── migration-vite-tailwind.md  # 迁移记录
+    <!-- migration-vite-tailwind.md 已删除（过期迁移计划） -->
 ```
 
 ---

@@ -6,7 +6,7 @@
   "scripts": {
     "sync:js": "copy /y \"frontend\\src\\js\\*.js\" \"public\\js\\\" >nul && echo Synced src/js/ to public/js/",
     "dev": "concurrently -n server,frontend -c cyan,magenta \"set BASE_PORT=3457 && npm run dev:server:watch\" \"npm run dev:frontend\"",
-    "dev:tauri": "concurrently -n frontend,server,tauri -c cyan,magenta,green \"npm run dev:frontend\" \"npm run dev:server:watch\" \"tauri dev\"",
+    "dev:tauri": "concurrently -n frontend,server,tauri -c cyan,magenta,green \"npm run dev:frontend\" \"set BASE_PORT=3457 && npm run dev:server:watch\" \"tauri dev\"",
     "dev:server": "set NODE_OPTIONS=--no-deprecation && node server/server.js",
     "dev:server:watch": "set NODE_OPTIONS=--no-deprecation && nodemon -w server --ignore server/anime-data.json --ignore server/config.json --ignore server/scanned-tree.json --ignore server/prisma/ --ignore server/covers/ --ignore server/thumbs/ server/server.js",
     "dev:frontend": "cd frontend && npx vite",

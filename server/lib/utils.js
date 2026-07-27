@@ -192,6 +192,16 @@ async function cleanupOldCache(dataDir) {
   return total;
 }
 
+// --- TTL Cache ---
+function createTimedCache(ttlMs) {
+  let data = null, ts = 0;
+  return {
+    get() { return (Date.now() - ts < ttlMs) ? data : null; },
+    set(v) { data = v; ts = Date.now(); },
+    clear() { data = null; ts = 0; },
+  };
+}
+
 module.exports = {
   mime,
   COVER_PRE_SIZES,
@@ -200,4 +210,5 @@ module.exports = {
   serveImage, serveRaw,
   readBody, jsonResp,
   cleanupOldCache,
+  createTimedCache,
 };

@@ -7,10 +7,10 @@ let wasMpvActive = false;
 // Wishlist mode (set when viewing mylist wishlist items)
 let isWishlistMode = false;
 
-// Relations/Recommendations cache (5min TTL)
-const _relationCache = new Map();
-const _recCache = new Map();
+// Relations/Recommendations cache (30min TTL)
 const _CACHE_TTL = 30 * 60 * 1000;
+const _relationCache = createTimedCacheMap(_CACHE_TTL);
+const _recCache = createTimedCacheMap(_CACHE_TTL);
 
 // Character grid: large max-height for smooth CSS transition (replaces 'none')
 const MAX_GRID_HEIGHT = 10000;
@@ -871,7 +871,7 @@ async function fetchAndRenderRelations(animeId) {
   if (!container || !scrollEl) return;
 
   const cached = _relationCache.get(animeId);
-  if (cached && Date.now() - cached.ts < _CACHE_TTL) {
+  if (cached) {
     if (cached.data.length === 0) { container.style.display = 'none'; return; }
     container.style.display = '';
     scrollEl.innerHTML = cached.html;
@@ -917,7 +917,7 @@ async function fetchAndRenderRelations(animeId) {
       dotsParent: container.querySelector('.detail-section-header'),
     });
 
-    _relationCache.set(animeId, { ts: Date.now(), data: relations, html: scrollEl.innerHTML });
+    _relationCache.set(animeId, { data: relations, html: scrollEl.innerHTML });
   } catch (e) {
     container.style.display = 'none';
   }
@@ -929,7 +929,7 @@ async function fetchAndRenderRecommendations(animeId) {
   if (!container || !scrollEl) return;
 
   const cached = _recCache.get(animeId);
-  if (cached && Date.now() - cached.ts < _CACHE_TTL) {
+  if (cached) {
     if (cached.data.length === 0) { container.style.display = 'none'; return; }
     container.style.display = '';
     scrollEl.innerHTML = cached.html;
@@ -973,7 +973,7 @@ scrollEl.innerHTML = recs.map(r => {
       dotsParent: container.querySelector('.detail-section-header'),
     });
 
-    _recCache.set(animeId, { ts: Date.now(), data: recs, html: scrollEl.innerHTML });
+    _recCache.set(animeId, { data: recs, html: scrollEl.innerHTML });
   } catch (e) {
     container.style.display = 'none';
   }

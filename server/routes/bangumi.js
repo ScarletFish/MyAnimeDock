@@ -181,4 +181,64 @@ module.exports = {
     }
     bangumiPersonal.getMe().then(me => jsonResp(res, 200, me)).catch(e => jsonResp(res, 500, { error: e.message }));
   },
+
+  async handleGetCalendar(req, res, state) {
+    const { data, config, logger } = state;
+    try {
+      const { registry } = require('../scrapers');
+      const bangumi = registry.get('bangumi');
+      if (!bangumi) { jsonResp(res, 503, { error: 'Bangumi scraper not available' }); return; }
+
+      const calendarData = await bangumi.getCalendar();
+
+      // Build index of user's library by bangumiId
+      const libraryByBgmId = new Map();
+      for (const anime of (data.library || [])) {
+        if (anime.bangumiId) libraryByBgmId.set(String(anime.bangumiId), anime);
+      }
+
+      // Build index of MyList entries by bangumiId
+      const mylistByBgmId = new Map();
+      for (const item of (data.myList || [])) {
+        if (item.bangumiId) {
+          mylistByBgmId.set(String(item.bangumiId), item);
+        } else if (item.animeId) {
+          // Look up via anime → bangumiId
+          const anime = data.library.find(a => a.id === item.animeId);
+          if (anime?.bangumiId) mylistByBgmId.set(String(anime.bangumiId), item);
+        }
+      }
+
+      // Enrich each calendar item
+      const enriched = calendarData.map(day => ({
+        weekday: day.weekday,
+        items: (day.items || [])
+          .filter(item => item.type === 2) // Only anime (type=2)
+          .map(item => {
+            const bgmId = String(item.id);
+            const localAnime = libraryByBgmId.get(bgmId);
+            const mylistItem = mylistByBgmId.get(bgmId);
+            return {
+              id: item.id,
+              name: item.name || '',
+              name_cn: item.name_cn || '',
+              air_date: item.air_date || null,
+              air_weekday: item.air_weekday ?? null,
+              coverUrl: item.images?.common || item.images?.large || item.images?.medium || null,
+              rating: item.rating?.score ?? null,
+              rank: item.rating?.rank ?? null,
+              summary: item.summary || null,
+              inLibrary: !!localAnime,
+              libraryAnimeId: localAnime?.id || null,
+              mylistStatus: mylistItem?.status || null, // 'watching' | 'wish' | etc or null
+            };
+          }),
+      }));
+
+      jsonResp(res, 200, enriched);
+    } catch (e) {
+      logger.error('Calendar error:', e.message);
+      jsonResp(res, 500, { error: e.message });
+    }
+  },
 };

@@ -258,6 +258,7 @@ const routeTable = [
   { method: 'POST', path: '/api/bangumi/auth/logout', handler: H.handleBangumiAuthLogout },
   { method: 'POST', path: '/api/bangumi/auth/creds', handler: H.handleBangumiAuthCreds },
   { method: 'GET', path: '/api/bangumi/me', handler: H.handleBangumiMe },
+  { method: 'GET', path: '/api/calendar', handler: H.handleGetCalendar },
   // DB Management
   { method: 'GET', path: '/api/db/info', handler: H.handleDbInfo },
   { method: 'GET', path: '/api/db/backup', handler: H.handleDbBackup },

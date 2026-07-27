@@ -15,7 +15,7 @@ function showView(view) {
   }
   __debug.snapshot(currentView + ' → ' + view + ' (after save, before toggle)');
 
-  const views = ['discovery', 'library', 'stats', 'mylist', 'detail'];
+  const views = ['discovery', 'library', 'stats', 'mylist', 'detail', 'calendar'];
   for (const v of views) {
     const el = document.getElementById(v + 'View');
     if (el) el.classList.toggle('hidden', v !== view);
@@ -26,6 +26,7 @@ function showView(view) {
   document.getElementById('btnLibrary').classList.toggle('active', view === 'library');
   document.getElementById('btnStats').classList.toggle('active', view === 'stats');
   document.getElementById('btnMyList').classList.toggle('active', view === 'mylist');
+  document.getElementById('btnCalendar').classList.toggle('active', view === 'calendar');
 
   currentView = view;
   __debug.snapshot(currentView + ' (after toggle)');
@@ -49,6 +50,7 @@ function showView(view) {
     window.loadLibrary(true);
   }
   if (view === 'mylist') window.loadMyList();
+  if (view === 'calendar') window.loadCalendar();
   if (view === 'stats') {
     window.loadStats();
     window.loadActivityChart();

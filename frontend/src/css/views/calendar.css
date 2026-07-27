@@ -1,0 +1,326 @@
+/* ─── Calendar Page ─── */
+.calendar-page {
+  padding: 20px 24px 32px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.calendar-header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding-bottom: 16px;
+  flex-shrink: 0;
+}
+
+.calendar-header h2 {
+  font-size: calc(1.15rem * var(--scale));
+  font-weight: var(--fw-semibold);
+  color: var(--fg-primary);
+  margin: 0;
+}
+
+.calendar-season {
+  font-size: calc(0.8rem * var(--scale));
+  font-weight: var(--fw-normal);
+  color: var(--fg-muted);
+  background: var(--bg-surface);
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border);
+}
+
+.calendar-source {
+  font-size: calc(0.75rem * var(--scale));
+  color: var(--fg-muted);
+  margin-left: auto;
+}
+
+/* ─── Loading / Error ─── */
+.calendar-loading,
+.calendar-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: var(--fg-muted);
+  font-size: calc(0.9rem * var(--scale));
+}
+
+.calendar-error {
+  color: var(--error);
+}
+
+/* ─── Grid ─── */
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 10px;
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* ─── Day Column ─── */
+.calendar-day-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.calendar-day-header {
+  text-align: center;
+  padding: 8px 0 6px;
+  font-size: calc(0.75rem * var(--scale));
+  font-weight: var(--fw-semibold);
+  color: var(--fg-muted);
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 4px;
+  position: sticky;
+  top: 0;
+  background: var(--bg-primary);
+  z-index: 2;
+}
+
+.calendar-day-header .cal-day-num {
+  display: block;
+  font-size: calc(1.1rem * var(--scale));
+  font-weight: var(--fw-bold);
+  color: var(--fg-primary);
+  margin-top: 1px;
+}
+
+.calendar-day-header.is-today {
+  border-bottom-color: var(--accent);
+}
+
+.calendar-day-header.is-today .cal-day-num {
+  background: var(--accent);
+  color: #fff;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+/* ════════════════════════════════════════
+   Card — 与库内卡片样式统一
+   参考: card-grid.css anime-card
+   ════════════════════════════════════════ */
+.calendar-card {
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--bg-card);
+  aspect-ratio: 3/4;
+  width: 100%;
+  border: 1px solid var(--border);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: box-shadow 0.25s var(--ease-out), border-color 0.25s var(--ease-out);
+}
+
+.calendar-card:hover {
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 0 60px rgba(var(--accent-rgb), 0.08);
+  border-color: rgba(var(--accent-rgb), 0.2);
+}
+
+.calendar-card .cal-cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  image-rendering: -webkit-optimize-contrast;
+  transition: transform 0.5s var(--ease-out);
+}
+
+.calendar-card:hover .cal-cover {
+  transform: scale(1.07);
+}
+
+/* ─── 底部信息叠加层（hover 时展开全部） ─── */
+.cal-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 1rem 0.75rem 0.65rem;
+  background: linear-gradient(transparent 20%, rgba(0, 0, 0, 0.88) 80%);
+  transform: translateY(6px);
+  opacity: 0;
+  transition: all 0.3s var(--ease-out);
+  pointer-events: none;
+}
+
+.calendar-card:hover .cal-overlay {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* 始终显示标题（hover 后完整展开） */
+.cal-title-strip {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 0.6rem 0.65rem 0.5rem;
+  background: linear-gradient(transparent 10%, rgba(0, 0, 0, 0.85) 70%);
+  transition: opacity 0.25s var(--ease-out);
+}
+
+.calendar-card:hover .cal-title-strip {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.cal-title-strip .cal-card-title {
+  font-size: calc(clamp(0.6rem, 0.9vw, 0.75rem) * var(--scale));
+  font-weight: var(--fw-semibold);
+  line-height: 1.3;
+  color: #fff;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ─── 叠加层内部 ─── */
+.cal-overlay .cal-card-title {
+  font-family: var(--font-body);
+  font-size: calc(clamp(0.6rem, 0.9vw, 0.75rem) * var(--scale));
+  font-weight: var(--fw-semibold);
+  line-height: 1.3;
+  margin-bottom: 3px;
+  color: #fff;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.cal-overlay .cal-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.cal-overlay .cal-card-rating {
+  font-size: calc(0.6rem * var(--scale));
+  color: #f0b34b;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.cal-overlay .cal-card-rating::before {
+  content: '★';
+  font-size: calc(0.55rem * var(--scale));
+}
+
+/* ─── 禁止 hover 状态下顶层元素干涉覆盖层 pointer-events ─── */
+.cal-overlay .cal-follow-wrap {
+  pointer-events: auto;
+}
+
+/* ─── Follow button ─── */
+.cal-follow-btn {
+  width: 22px;
+  height: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.35);
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  flex-shrink: 0;
+  padding: 0;
+  line-height: 1;
+}
+
+.cal-follow-btn:hover {
+  background: rgba(var(--accent-rgb), 0.5);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.cal-follow-btn svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* ─── Follow dropdown ─── */
+.cal-follow-wrap {
+  position: relative;
+  pointer-events: auto;
+}
+
+.cal-follow-menu {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  margin-bottom: 4px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-hover);
+  border-radius: var(--radius-md);
+  padding: 4px;
+  min-width: 80px;
+  box-shadow: var(--shadow-lg);
+  z-index: 100;
+  display: none;
+}
+
+.cal-follow-menu.is-open {
+  display: block;
+}
+
+.cal-follow-item {
+  padding: 5px 8px;
+  font-size: calc(0.65rem * var(--scale));
+  border-radius: calc(var(--radius-md) - 2px);
+  cursor: pointer;
+  color: var(--fg-secondary);
+  transition: background 0.1s;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.cal-follow-item:hover {
+  background: rgba(var(--accent-rgb), 0.1);
+  color: var(--fg-primary);
+}
+
+/* ─── Library badge ─── */
+.cal-lib-badge {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  background: rgba(var(--accent-rgb), 0.85);
+  color: #fff;
+  font-size: calc(0.5rem * var(--scale));
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-weight: var(--fw-semibold);
+  pointer-events: none;
+  line-height: 1.5;
+  z-index: 1;
+}
+
+/* ─── Status label on overlay ─── */
+.cal-status-label {
+  font-size: calc(0.55rem * var(--scale));
+  color: var(--accent);
+  font-weight: var(--fw-semibold);
+  background: rgba(0, 0, 0, 0.3);
+  padding: 1px 6px;
+  border-radius: 3px;
+}

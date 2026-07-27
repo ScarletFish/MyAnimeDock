@@ -237,7 +237,7 @@ function renderWsDonut(container, data, version) {
   const rect = container.getBoundingClientRect();
   const size = Math.max(Math.min(rect.width || 200, 220), 140);
   const outerR = size * 0.38;
-  const innerR = outerR * 0.62;
+  const innerR = outerR * 0.72;
 
   const svg = d3.select(container).append('svg')
     .attr('width', size)
@@ -272,7 +272,7 @@ function renderWsDonut(container, data, version) {
     .attr('text-anchor', 'middle')
     .attr('dy', '-0.15em')
     .attr('fill', tc.text)
-    .attr('font-size', '1.15rem')
+    .attr('font-size', '1.4rem')
     .attr('font-weight', '700')
     .text(watchedEp + '/' + totalEp);
 
@@ -281,7 +281,7 @@ function renderWsDonut(container, data, version) {
     .attr('text-anchor', 'middle')
     .attr('dy', '1.1em')
     .attr('fill', tc.muted)
-    .attr('font-size', '0.7rem')
+    .attr('font-size', '0.95rem')
     .attr('id', 'wsDur_' + version)
     .text('');
 }

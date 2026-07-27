@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const logger = require('../logger').child('[BANGUMI]');
 const { curlFetch, fetchWithTimeout, downloadImage, isNetworkError, isCloudflareInterference, isCurlFallbackActive, activateCurlFallback, USER_AGENT } = require('../lib/http-fetch');
+const { createTimedCache } = require('../lib/utils');
 
 class BangumiScraper {
   constructor() {
@@ -190,6 +191,22 @@ async search(keyword, source) {
     const url = `${this.apiBase}/v0/subjects/${subjectId}/persons`;
     const res = await this.tryFetch(url, { headers: { 'User-Agent': USER_AGENT } });
     return res.json();
+  }
+
+  /**
+   * Get Bangumi calendar (airing schedule)
+   * Returns array of days with items: [{ weekday, items: [{ id, name, name_cn, air_date, air_weekday, images, rating, summary, type }, ...] }]
+   * 内存缓存 1 小时，日历数据周更频率无需频繁请求
+   */
+  async getCalendar() {
+    if (!this._calendarCache) this._calendarCache = createTimedCache(3600000);
+    const cached = this._calendarCache.get();
+    if (cached) return cached;
+    const url = `${this.apiBase}/calendar`;
+    const res = await this.tryFetch(url, { headers: { 'User-Agent': USER_AGENT } });
+    const data = await res.json();
+    this._calendarCache.set(data);
+    return data;
   }
 
   /**

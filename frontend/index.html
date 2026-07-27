@@ -539,7 +539,13 @@
           </div>
           <div class="field-cell">
             <label class="field-label">结束日期</label>
-            <div class="date-segments" data-date="completedAt">...</div>
+            <div class="date-segments" data-date="completedAt">
+              <input type="text" class="date-seg date-seg--y" maxlength="4" placeholder="YYYY" inputmode="numeric" oninput="segAutoTab(this)">
+              <span class="date-sep">/</span>
+              <input type="text" class="date-seg date-seg--m" maxlength="2" placeholder="MM" inputmode="numeric" oninput="segAutoTab(this)">
+              <span class="date-sep">/</span>
+              <input type="text" class="date-seg date-seg--d" maxlength="2" placeholder="DD" inputmode="numeric">
+            </div>
           </div>
           <div class="field-cell">
             <label class="field-label">笔记</label>

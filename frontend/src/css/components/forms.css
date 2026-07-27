@@ -159,6 +159,21 @@
 .date-seg:focus { background: rgba(255, 255, 255, 0.1); }
 .date-sep { color: var(--fg-muted); font-size: var(--text-base); font-weight: var(--fw-semibold); user-select: none; padding: 0 2px; }
 
+/* ─── Notes Input ─── */
+.notes-input {
+  width: 100%; height: 40px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  color: var(--fg-primary);
+  font-size: var(--text-base); font-family: var(--font-body);
+  padding: 0 12px; outline: none;
+  transition: border-color 0.2s ease, background 0.2s ease;
+  box-sizing: border-box;
+}
+.notes-input::placeholder { color: var(--fg-muted); opacity: 0.5; }
+.notes-input:focus { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.2); }
+
 /* ─── DB Management ─── */
 .db-info-grid {
   display: grid; grid-template-columns: 1fr 1fr;

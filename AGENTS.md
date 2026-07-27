@@ -11,6 +11,7 @@ Vanilla JS SPA + Node.js HTTP server + Tauri v2 desktop shell. 自托管动漫�
 | 场景 | 行为 |
 |------|------|
 | 需求不明确 | `skill("req-implement-test")` |
+| **定位文件/文件结构** | **读 `docs/file-structure.md`** |
 | 数据流/API/模型 | 读 `docs/data-flow.md` 选子文件 |
 | 探索代码路径 | 读 `docs/code-explorer.md` |
 | 新功能设计 | `skill("code-architect")` |

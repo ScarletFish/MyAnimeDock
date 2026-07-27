@@ -11,8 +11,10 @@ function cachedFetch(key, fetcher) {
 
   // 缓存穿透 → 并发去重（同 key 同时涌入只调一次）
   if (_cache.has(key)) {
-    // 第二个并发等第一个完成
-    return _cache.get(key).pending;
+    const entry = _cache.get(key);
+    if (entry.pending) return entry.pending;
+    // 过期条目无 pending 请求 → 删除，走下方重新请求
+    _cache.delete(key);
   }
 
   const p = fetcher().then(data => {

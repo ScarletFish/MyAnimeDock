@@ -42,10 +42,10 @@
     font-family: var(--font-display);
     font-size: var(--text-2xl);
     font-weight: var(--fw-bold);
-    margin-bottom: 1.5rem;
+    margin-bottom: var(--space-6);
     letter-spacing: -0.02em;
     position: relative;
-    padding-left: 14px;
+    padding-left: var(--space-3);
 
     &::before {
       content: '';
@@ -54,7 +54,7 @@
       top: 2px;
       bottom: 2px;
       width: 3px;
-      border-radius: 2px;
+      border-radius: var(--radius-sm);
       background: var(--accent);
     }
   }
@@ -66,8 +66,8 @@
 
 @utility modal-close-btn {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  top: var(--space-3);
+  right: var(--space-3);
   width: 32px;
   height: 32px;
   display: flex;
@@ -166,7 +166,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  padding: 9px 22px;
+  padding: var(--space-2) var(--space-6);
   font-size: var(--text-base);
 }
 @media (max-width: 480px) {
@@ -183,8 +183,8 @@
 /* ─── Status Modal Field Rows (2x3 grid layout) ─── */
 .field-row {
   display: flex;
-  gap: 1rem;
-  margin-bottom: 1rem;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
 }
 .field-cell {
   flex: 1;
@@ -197,15 +197,15 @@
   color: var(--fg-muted);
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
 }
 
 /* ─── Footer (status-modal) ─── */
 .status-modal-footer {
   display: flex; justify-content: flex-end;
-  padding: 1rem 0 0; border-top: 1px solid var(--border); margin-top: 0.5rem;
+  padding: var(--space-4) 0 0; border-top: 1px solid var(--border); margin-top: var(--space-2);
 }
-.status-modal-footer .btn { padding: 10px 36px; font-size: var(--text-base); }
+.status-modal-footer .btn { padding: var(--space-2) var(--space-8); font-size: var(--text-base); }
 
 /* ─── Settings Modal — Tabbed Layout ─── */
 .modal.modal--settings { padding: 0; max-width: 640px; }
@@ -216,7 +216,7 @@
   margin-bottom: var(--space-4);
 }
 .settings-header-top h2 {
-  margin: 0; padding-left: 12px;
+  margin: 0; padding-left: var(--space-3);
   font-family: var(--font-display);
   font-size: var(--text-xl); font-weight: var(--fw-bold);
   letter-spacing: -0.01em; color: var(--fg-primary); position: relative;
@@ -235,7 +235,7 @@
   outline: 2px solid var(--accent); outline-offset: 2px;
 }
 .settings-header-top .visual-settings-btn {
-  gap: 6px; padding: 0 10px; width: auto;
+  gap: var(--space-2); padding: 0 var(--space-2); width: auto;
   font-size: var(--text-sm);
   font-weight: var(--fw-medium); font-family: var(--font-body);
   color: var(--fg-secondary);
@@ -253,14 +253,14 @@
   color: var(--fg-muted);
   font-family: var(--font-body);
   font-size: var(--text-base); font-weight: var(--fw-medium);
-  padding: 10px 20px; cursor: pointer;
+  padding: var(--space-2) var(--space-4); cursor: pointer;
   transition: color var(--duration-fast) var(--ease-out);
   letter-spacing: 0.02em;
 }
 .settings-tab::after {
   content: ''; position: absolute; bottom: -1px; left: 50%;
   width: 0; height: 2px; background: var(--accent);
-  border-radius: 2px 2px 0 0;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
   transition: all var(--duration-normal) var(--ease-out);
   transform: translateX(-50%);
 }
@@ -279,7 +279,7 @@
 .settings-panel { display: none; animation: settings-fade-in 250ms var(--ease-out) both; }
 .settings-panel.active { display: block; }
 .settings-panel .form-group + .form-group {
-  padding-top: 0.25rem; border-top: 1px solid var(--border);
+  padding-top: var(--space-1); border-top: 1px solid var(--border);
 }
 
 @keyframes settings-fade-in {
@@ -293,8 +293,8 @@
   background: rgba(0, 0, 0, 0.12);
   backdrop-filter: blur(40px) saturate(1.4);
   -webkit-backdrop-filter: blur(40px) saturate(1.4);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(var(--accent-rgb), 0.12);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(var(--accent-rgb), 0.06);
 }
 .status-modal-bg-wrap {
   position: absolute; inset: 0; overflow: hidden;
@@ -319,24 +319,24 @@
   width: 28px; height: 28px;
   display: flex; align-items: center; justify-content: center;
   background: none; border: none; border-radius: var(--radius-sm);
-  color: rgba(255,255,255,0.4); cursor: pointer;
+  color: var(--fg-muted); cursor: pointer;
   transition: all 0.2s var(--ease-out);
 }
-.status-modal-close:hover { color: #fff; background: rgba(255,255,255,0.08); }
+.status-modal-close:hover { color: var(--fg-primary); background: rgba(var(--accent-rgb), 0.08); }
 .status-modal-close svg { width: 16px; height: 16px; }
 
 .status-modal-inner {
   position: relative; z-index: 1;
   background: rgba(15, 12, 9, 0.45);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  padding: 1.5rem 1.75rem 1.25rem;
+  border: 1px solid rgba(var(--accent-rgb), 0.06);
+  padding: var(--space-6) var(--space-6) var(--space-5);
   border-radius: var(--radius-lg);
 }
 .status-modal-heading {
   font-family: var(--font-display);
   font-size: var(--text-xl); font-weight: var(--fw-bold);
   color: var(--accent-soft);
-  margin: 0 0 1.25rem; padding: 0;
+  margin: 0 0 var(--space-5); padding: 0;
   letter-spacing: -0.02em;
 }
 .status-modal-heading::before { display: none; }

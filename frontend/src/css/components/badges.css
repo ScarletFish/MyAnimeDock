@@ -3,21 +3,21 @@
 @utility rating-badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px 10px;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
   border-radius: 100px;
   font-size: var(--text-xs);
   font-weight: var(--fw-semibold);
   background: var(--accent);
   color: white;
-  box-shadow: 0 0 12px rgba(var(--accent-rgb), 0.2);
+  box-shadow: var(--shadow-sm);
 }
 
 @utility season-badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px 10px;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
   border-radius: 100px;
   font-size: var(--text-xs);
   font-weight: var(--fw-semibold);
@@ -33,14 +33,14 @@
   z-index: 3;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px 10px;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
   border-radius: 100px;
   font-size: var(--text-xs);
   font-weight: var(--fw-semibold);
   background: var(--accent);
   color: white;
-  box-shadow: 0 0 12px rgba(var(--accent-rgb), 0.2);
+  box-shadow: var(--shadow-sm);
   pointer-events: none;
   transition: opacity 0.15s var(--ease-out);
 }
@@ -59,7 +59,7 @@
   justify-content: center;
   border-radius: var(--radius-sm);
   background: rgba(0, 0, 0, 0.55);
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--fg-muted);
   cursor: pointer;
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);

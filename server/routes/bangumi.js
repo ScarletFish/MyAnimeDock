@@ -189,8 +189,16 @@ module.exports = {
       const bangumi = registry.get('bangumi');
       if (!bangumi) { jsonResp(res, 503, { error: 'Bangumi scraper not available' }); return; }
 
-      // Get enriched calendar (with subject detail + country detection, 24h cache)
-      const calendarData = await bangumi.getEnrichedCalendar();
+      // Support ?basic=true for two-phase loading:
+      // Phase 1 (basic): fast, no per-subject enrichment → frontend renders immediately
+      // Phase 2 (full): enriched with subject details → frontend updates cards
+      const url = new URL(req.url, 'http://localhost');
+      const isBasic = url.searchParams.get('basic') === 'true';
+
+      // Get calendar data
+      const calendarData = isBasic
+        ? await bangumi.getBasicCalendar()
+        : await bangumi.getEnrichedCalendar();
 
       // Build index of user's library by bangumiId
       const libraryByBgmId = new Map();

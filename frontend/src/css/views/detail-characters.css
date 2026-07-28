@@ -1,12 +1,12 @@
 /* ─── Characters & Staff ─── */
 .detail-characters {
   @apply section-card;
-  padding: 1.25rem 1.5rem;
+  padding: var(--space-5) var(--space-6);
 }
 
 .detail-section-header {
   @apply section-header-plain;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 .detail-section-header h3 {
   font-family: var(--font-display);
@@ -26,14 +26,14 @@
 
 .detail-char-wrap {
   position: relative;
-  margin-top: 0.75rem;
-  padding-bottom: 0.75rem;
+  margin-top: var(--space-3);
+  padding-bottom: var(--space-3);
 }
 
 .detail-char-grid {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .detail-char-wrap .detail-char-toggle {
@@ -45,7 +45,7 @@
   justify-content: center;
   width: 24px;
   height: 20px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--fg-secondary);
   border: none;
@@ -63,8 +63,8 @@
 .detail-char-card {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px;
+  gap: var(--space-2);
+  padding: var(--space-2);
   border-radius: var(--radius-md);
   background: var(--bg-canvas);
   min-width: 0;
@@ -119,8 +119,8 @@
 .detail-staff-list {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 4px 12px;
-  margin-top: 0.75rem;
+  gap: 4px var(--space-3);
+  margin-top: var(--space-3);
   font-size: var(--text-base);
 }
 

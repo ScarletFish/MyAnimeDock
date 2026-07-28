@@ -19,7 +19,7 @@
   inset: 0;
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   transition: all var(--duration-fast) var(--ease-out);
 
   &::before {
@@ -50,7 +50,8 @@
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   color: var(--fg-primary);
-  padding: 9px 16px; border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
   font-family: var(--font-body);
   font-size: var(--text-base);
   width: 220px;
@@ -64,7 +65,7 @@
 .search-input::placeholder { color: var(--fg-muted); }
 
 /* ─── Settings Form Elements ─── */
-.form-group { margin-bottom: 1.25rem; position: relative; }
+.form-group { margin-bottom: var(--space-5); position: relative; }
 .settings-panel .form-group:focus-within::before {
   content: ''; position: absolute; left: -16px; top: 4px; bottom: 4px;
   width: 2px; border-radius: 1px; background: var(--accent); opacity: 0.35;
@@ -72,14 +73,14 @@
 .form-group label {
   display: block;
   font-size: var(--text-sm); font-weight: var(--fw-semibold);
-  color: var(--fg-secondary); margin-bottom: 6px; letter-spacing: 0.02em;
+  color: var(--fg-secondary); margin-bottom: var(--space-2); letter-spacing: 0.02em;
 }
 .form-group input[type="text"],
 .form-group input[type="password"],
 .form-group select,
 .form-group textarea {
   width: 100%; background: var(--bg-deep); border: 1px solid var(--border);
-  color: var(--fg-primary); padding: 10px 14px; border-radius: var(--radius-sm);
+  color: var(--fg-primary); padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm);
   font-family: var(--font-body); font-size: var(--text-md);
   transition: all var(--duration-fast) var(--ease-out);
 }
@@ -107,8 +108,8 @@
   display: inline-flex;
   align-items: center;
   gap: 0;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(var(--accent-rgb), 0.06);
+  border: 1px solid rgba(var(--accent-rgb), 0.1);
   border-radius: var(--radius-sm);
   overflow: hidden;
   height: 40px;
@@ -123,8 +124,8 @@
   cursor: pointer; transition: all 0.15s var(--ease-out);
   padding: 0; line-height: 1;
 }
-.num-stepper-btn:hover { background: rgba(255, 255, 255, 0.1); color: var(--fg-primary); }
-.num-stepper-btn:active { background: rgba(255, 255, 255, 0.06); }
+.num-stepper-btn:hover { background: rgba(var(--accent-rgb), 0.1); color: var(--fg-primary); }
+.num-stepper-btn:active { background: rgba(var(--accent-rgb), 0.06); }
 .num-stepper-val {
   flex: 1; text-align: center;
   font-size: var(--text-base);
@@ -138,8 +139,8 @@
   display: flex;
   align-items: center;
   gap: 0;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(var(--accent-rgb), 0.06);
+  border: 1px solid rgba(var(--accent-rgb), 0.1);
   border-radius: var(--radius-sm);
   overflow: hidden;
   height: 40px;
@@ -156,34 +157,34 @@
 .date-seg--m { width: 2rem; }
 .date-seg--d { width: 2rem; }
 .date-seg::placeholder { color: var(--fg-muted); opacity: 0.5; }
-.date-seg:focus { background: rgba(255, 255, 255, 0.1); }
+.date-seg:focus { background: rgba(var(--accent-rgb), 0.1); }
 .date-sep { color: var(--fg-muted); font-size: var(--text-base); font-weight: var(--fw-semibold); user-select: none; padding: 0 2px; }
 
 /* ─── Notes Input ─── */
 .notes-input {
   width: 100%; height: 40px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(var(--accent-rgb), 0.06);
+  border: 1px solid rgba(var(--accent-rgb), 0.1);
   border-radius: var(--radius-sm);
   color: var(--fg-primary);
   font-size: var(--text-base); font-family: var(--font-body);
-  padding: 0 12px; outline: none;
+  padding: 0 var(--space-3); outline: none;
   transition: border-color 0.2s ease, background 0.2s ease;
   box-sizing: border-box;
 }
 .notes-input::placeholder { color: var(--fg-muted); opacity: 0.5; }
-.notes-input:focus { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.2); }
+.notes-input:focus { background: rgba(var(--accent-rgb), 0.1); border-color: rgba(var(--accent-rgb), 0.2); }
 
 /* ─── DB Management ─── */
 .db-info-grid {
   display: grid; grid-template-columns: 1fr 1fr;
-  gap: var(--space-2); margin-top: 2px;
+  gap: var(--space-2); margin-top: var(--space-1);
 }
 .db-info-item {
   background: var(--bg-surface); border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: calc(0.625rem * var(--scale)) var(--space-3);
-  display: flex; flex-direction: column; gap: 2px;
+  display: flex; flex-direction: column; gap: var(--space-1);
 }
 .db-info-label {
   font-size: var(--text-xs); color: var(--fg-muted);
@@ -194,9 +195,9 @@
   font-weight: var(--fw-semibold); font-variant-numeric: tabular-nums;
 }
 .db-action-row {
-  display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: 2px;
+  display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-1);
 }
 .db-action-row .btn {
-  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: var(--space-2); white-space: nowrap;
 }
 .db-action-row .btn svg { flex-shrink: 0; }

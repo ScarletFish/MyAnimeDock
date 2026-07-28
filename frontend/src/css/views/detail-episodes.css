@@ -59,7 +59,7 @@
   cursor: pointer;
   background: var(--bg-card);
   border: 1px solid var(--border);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-sm);
   transition:
     box-shadow 0.25s var(--ease-out),
     border-color 0.25s var(--ease-out);
@@ -67,11 +67,11 @@
 .episode-card:hover {
   border-color: rgba(var(--accent-rgb), 0.25);
   box-shadow:
-    0 12px 40px rgba(0, 0, 0, 0.5),
+    var(--shadow-xl, 0 12px 40px rgba(0, 0, 0, 0.5)),
     0 0 60px rgba(var(--accent-rgb), 0.06);
 }
 .episode-card:active {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-sm);
   transition-duration: 0.1s;
 }
 
@@ -122,8 +122,8 @@
   font-size: var(--text-sm);
   font-weight: var(--fw-bold);
   color: #fff;
-  background: rgba(0, 0, 0, 0.65);
-  border-radius: calc(5px * var(--scale));
+  background: var(--bg-overlay, rgba(0, 0, 0, 0.65));
+  border-radius: var(--radius-sm);
   z-index: 2;
   line-height: 1.4;
   pointer-events: none;
@@ -140,10 +140,10 @@
   width: calc(65px * var(--scale));
   height: calc(65px * var(--scale));
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.55);
+  background: var(--bg-overlay, rgba(0, 0, 0, 0.55));
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  border: 2px solid rgba(255, 255, 255, 0.25);
+  border: 2px solid rgba(var(--accent-rgb), 0.25);
   color: #fff;
   display: flex;
   align-items: center;
@@ -174,7 +174,7 @@
 .episode-card-play svg {
   width: calc(25px * var(--scale));
   height: calc(25px * var(--scale));
-  margin-left: 2px;
+  margin-left: var(--space-1);
 }
 
 /* ─── Info Strip ─── */

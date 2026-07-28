@@ -5,7 +5,7 @@
   @apply inline-flex items-center gap-2 whitespace-nowrap cursor-pointer
          border border-border bg-transparent text-content-secondary
          rounded-sm font-body font-medium;
-  padding: 8px 18px;
+  padding: var(--space-2) var(--space-4);
   font-size: var(--text-base);
   transition: all var(--duration-fast) var(--ease-out);
   letter-spacing: 0.01em;
@@ -17,9 +17,9 @@
   }
 
   &:hover {
-    border-color: rgba(255, 255, 255, 0.15);
+    border-color: rgba(var(--accent-rgb), 0.15);
     color: var(--fg-primary);
-    background: rgba(255, 255, 255, 0.03);
+    background: rgba(var(--accent-rgb), 0.03);
   }
 
   &:active {
@@ -60,11 +60,11 @@
 }
 
 @utility btn-danger {
-  border-color: rgba(239, 68, 68, 0.3);
+  border-color: rgba(var(--accent-rgb), 0.3);
   color: var(--error);
 
   &:hover {
-    background: rgba(239, 68, 68, 0.10);
+    background: rgba(var(--accent-rgb), 0.10);
     border-color: var(--error);
     color: var(--error);
   }
@@ -90,12 +90,12 @@
 }
 
 @utility btn-sm {
-  padding: 5px 12px;
+  padding: var(--space-1) var(--space-3);
   font-size: var(--text-sm);
 }
 
 @utility btn-xs {
-  padding: 4px 10px;
+  padding: var(--space-1) var(--space-2);
   font-size: var(--text-xs);
   line-height: 1.4;
 }
@@ -104,8 +104,8 @@
 @utility btn-back {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);

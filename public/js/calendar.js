@@ -35,7 +35,7 @@ function applyCalFilters(data) {
   }).filter(function(day) { return day.items.length > 0; });
 }
 
-// ─── Load & render ───
+// ─── Load & render (two-phase progressive) ───
 
 async function loadCalendar() {
   var container = document.getElementById('calendarGrid');
@@ -45,7 +45,7 @@ async function loadCalendar() {
   // Restore filter state (hardcoded defaults)
   _calendarFilter = getCalendarFilters();
 
-  // Check cache
+  // Check full cache first
   var cached = _calendarCache.get();
   if (cached) {
     _calendarAllData = cached;
@@ -56,17 +56,49 @@ async function loadCalendar() {
   container.innerHTML = '<div class="calendar-loading">加载中…</div>';
 
   try {
-    var data = await API.get('/api/calendar');
-    if (!data || data.length === 0) {
+    // Phase 1: load basic calendar (fast, 1 API call, no per-subject enrichment)
+    var basicData = await API.get('/api/calendar?basic=true');
+    if (!basicData || basicData.length === 0) {
       container.innerHTML = '<div class="calendar-loading">暂无本季放送数据</div>';
       return;
     }
-    _calendarCache.set(data);
-    _calendarAllData = data;
-    renderCalendar(applyCalFilters(data), container, seasonEl);
+
+    _calendarAllData = basicData;
+    renderCalendar(applyCalFilters(basicData), container, seasonEl);
+    container.querySelectorAll('img').forEach(function(img) { img.loading = 'lazy'; });
+
+    // Phase 2: load enriched calendar with subject details
+    // Only if the server cache is cold; once cached, subsequent loads skip phase 1.
+    try {
+      var fullData = await API.get('/api/calendar');
+      if (fullData && fullData.length > 0) {
+        _calendarCache.set(fullData);
+        _calendarAllData = fullData;
+        renderCalendar(applyCalFilters(fullData), container, seasonEl);
+        container.querySelectorAll('img').forEach(function(img) { img.loading = 'lazy'; });
+      }
+    } catch (e2) {
+      // Phase 2 failed — keep phase 1 result (good enough)
+      if (window.location.origin === 'http://localhost:3456') {
+        console.warn('Calendar enrich failed, keeping basic view:', e2.message);
+      }
+    }
   } catch (e) {
-    if (window.location.origin !== 'http://localhost:3456') return;
-    container.innerHTML = '<div class="calendar-error">加载失败: ' + escHtml(e.message) + '</div>';
+    // Phase 1 failed — fallback to full endpoint (may be slow but works)
+    try {
+      var data = await API.get('/api/calendar');
+      if (!data || data.length === 0) {
+        container.innerHTML = '<div class="calendar-loading">暂无本季放送数据</div>';
+        return;
+      }
+      _calendarCache.set(data);
+      _calendarAllData = data;
+      renderCalendar(applyCalFilters(data), container, seasonEl);
+      container.querySelectorAll('img').forEach(function(img) { img.loading = 'lazy'; });
+    } catch (e2) {
+      if (window.location.origin !== 'http://localhost:3456') return;
+      container.innerHTML = '<div class="calendar-error">加载失败: ' + escHtml(e2.message) + '</div>';
+    }
   }
 }
 
@@ -155,16 +187,22 @@ function renderCalendar(data, container, seasonEl) {
       html += '<span class="cal-card-rating">★ ' + rating + '</span>';
 
       if (hasStatus) {
-        html += '<span class="cal-status-label">' + CALENDAR_STATUS_LABELS[item.mylistStatus] + '</span>';
+        html += '<span class="cal-status-badge">' + CALENDAR_STATUS_LABELS[item.mylistStatus] + '</span>';
       } else {
         html += '<div class="cal-follow-wrap">';
-        html += '<button class="cal-follow-btn" onclick="event.stopPropagation(); toggleCalendarMenu(event, this)">';
-        html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14"/><path d="M5 12h14"/></svg>';
+        html += '<button class="cal-follow-btn" onclick="event.stopPropagation(); toggleCalendarMenu(event, this)" aria-label="添加标记">';
+        html += '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>';
         html += '</button>';
         html += '<div class="cal-follow-menu">';
-        html += '<div class="cal-follow-item" data-status="wish">想看</div>';
-        html += '<div class="cal-follow-item" data-status="watching">在看</div>';
-        html += '<div class="cal-follow-item" data-status="on_hold">搁置</div>';
+        html += '<button class="cal-follow-item" data-status="wish">' +
+          '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>' +
+          '<span>想看</span></button>';
+        html += '<button class="cal-follow-item" data-status="watching">' +
+          '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' +
+          '<span>在看</span></button>';
+        html += '<button class="cal-follow-item" data-status="on_hold">' +
+          '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>' +
+          '<span>搁置</span></button>';
         html += '</div>';
         html += '</div>';
       }

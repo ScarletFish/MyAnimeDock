@@ -124,7 +124,7 @@ html {
   justify-content: center;
   width: 28px;
   height: 28px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border);
   background: transparent;
   color: var(--fg-muted);
@@ -143,9 +143,9 @@ html {
   min-width: 100px;
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: 4px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  box-shadow: var(--shadow-md);
   z-index: 10;
   display: none;
 }
@@ -156,7 +156,7 @@ html {
   padding: 6px 12px;
   font-size: var(--text-base);
   color: var(--fg-secondary);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background 0.1s;
   white-space: nowrap;

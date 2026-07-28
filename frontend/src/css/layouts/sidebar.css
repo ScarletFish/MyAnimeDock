@@ -37,7 +37,7 @@
   transition: background var(--duration-fast) var(--ease-out);
 }
 .sidebar-brand-icon:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(var(--accent-rgb), 0.04);
 }
 
 .sidebar-brand-icon svg {
@@ -90,7 +90,7 @@
 }
 
 .nav-btn:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(var(--accent-rgb), 0.04);
   color: var(--accent);
 }
 
@@ -113,7 +113,7 @@
 
 .nav-btn-danger:hover {
   color: var(--error) !important;
-  background: rgba(239, 68, 68, 0.06) !important;
+  background: rgba(var(--error-rgb), 0.06) !important;
 }
 
 /* Tooltip on hover */
@@ -125,7 +125,7 @@
   transform: translateY(-50%);
   background: var(--bg-surface);
   color: var(--fg-primary);
-  padding: 4px 10px;
+  padding: var(--space-1) var(--space-3);
   border-radius: var(--radius-sm);
   font-size: var(--text-sm);
   font-weight: var(--fw-medium);
@@ -158,12 +158,12 @@
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  padding: 5px 12px;
+  padding: var(--space-1) var(--space-3);
   font-size: var(--text-base);
   font-weight: var(--fw-medium);
   color: var(--fg-primary);
   white-space: nowrap;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+  box-shadow: var(--shadow-md);
 }
 .sidebar-tooltip-arrow {
   position: absolute;
@@ -185,7 +185,7 @@
   z-index: 999;
   background: var(--bg-surface);
   color: var(--fg-primary);
-  padding: calc(4px * var(--scale)) calc(10px * var(--scale));
+  padding: calc(var(--space-1) * var(--scale)) calc(var(--space-3) * var(--scale));
   border-radius: var(--radius-sm);
   font-size: var(--text-sm);
   font-weight: var(--fw-medium);

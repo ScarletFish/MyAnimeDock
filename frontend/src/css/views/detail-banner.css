@@ -1,11 +1,11 @@
 /* ─── Watch Stats (Donut + D3 area chart) ─── */
 .watch-stats {
   @apply section-card;
-  padding: 1.25rem 1.5rem;
-  margin-top: 1.5rem;
+  padding: var(--space-5) var(--space-6);
+  margin-top: var(--space-6);
 }
 
-.ws-header { margin-bottom: 0.75rem; }
+.ws-header { margin-bottom: var(--space-3); }
 
 .ws-header h3 {
   font-family: var(--font-display);
@@ -19,7 +19,7 @@
 .ws-grid {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 1.25rem;
+  gap: var(--space-5);
   align-items: stretch;
 }
 
@@ -103,13 +103,13 @@
 .detail-banner-left {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--space-4);
 }
 
 .detail-banner-right {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--space-4);
 }
 
 .detail-alias {
@@ -133,12 +133,12 @@
 #detailRelations,
 #detailRecommendations {
   @apply section-card;
-  padding: 1.25rem 1.5rem;
-  margin-top: 1.5rem;
+  padding: var(--space-5) var(--space-6);
+  margin-top: var(--space-6);
 }
 #detailRelations .detail-section-header,
 #detailRecommendations .detail-section-header {
-  margin-bottom: 0.5rem;
+  margin-bottom: var(--space-2);
 }
 
 .relation-scroll {
@@ -160,7 +160,7 @@
   scroll-snap-align: start;
   cursor: pointer;
   transition: transform 0.15s var(--ease-out);
-  border-radius: calc(10px * var(--scale));
+  border-radius: var(--radius-md);
   overflow: hidden;
 }
 @media (max-width: 1439px) {
@@ -195,7 +195,7 @@
   padding: calc(3px * var(--scale)) calc(9px * var(--scale));
   font-size: var(--text-2xs);
   font-weight: 600;
-  border-radius: calc(5px * var(--scale));
+  border-radius: var(--radius-sm);
   color: #fff;
   line-height: 1.3;
   max-width: calc(100% - 12.5px * var(--scale));

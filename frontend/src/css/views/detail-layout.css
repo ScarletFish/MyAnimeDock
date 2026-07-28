@@ -25,7 +25,7 @@
 .detail-sidebar {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: var(--space-6);
 }
 
 /* ─── Detail Nav Zones (invisible edge hot areas) ─── */
@@ -140,7 +140,7 @@
 .detail-info-panel {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--space-4);
 }
 .detail-info-panel h2 {
   font-family: var(--font-display);
@@ -154,8 +154,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin: 0.5rem 0 0.75rem;
-  padding: 6px 10px;
+  margin: var(--space-2) 0 var(--space-3);
+  padding: 6px var(--space-2);
   border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--border);
@@ -163,7 +163,7 @@
 .detail-info-line .info-left {
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: var(--space-2);
   flex-shrink: 0;
 }
 .detail-info-line .info-rating-num {
@@ -215,9 +215,9 @@
 .detail-episodes-header {
   display: flex;
   align-items: baseline;
-  gap: 0.75rem;
-  margin-bottom: 1.25rem;
-  padding-bottom: 0.75rem;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-3);
   border-bottom: 1px solid rgba(var(--accent-secondary-rgb), 0.15);
 }
 .detail-episodes-header h3 {
@@ -235,7 +235,7 @@
 .detail-episodes-body {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 /* ─── Gray cover placeholder ─── */
@@ -296,8 +296,8 @@ html[data-reduce-motion="true"] .detail-enter-active #watchStats {
 }
 
 .bangumi-search-results {
-  margin-top: 1rem;
+  margin-top: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }

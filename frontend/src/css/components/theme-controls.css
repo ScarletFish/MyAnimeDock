@@ -1,5 +1,5 @@
 /* ─── Theme Picker ─── */
-.theme-picker { display: flex; gap: 8px; flex-wrap: wrap; }
+.theme-picker { display: flex; gap: var(--space-2); flex-wrap: wrap; }
 .theme-option {
   width: 36px; height: 36px; border-radius: 50%;
   border: 2px solid var(--border); cursor: pointer; position: relative;
@@ -19,7 +19,7 @@
 .theme-option--violet { background: linear-gradient(135deg, #7c3aed, #a78bfa); }
 
 /* ─── Theme Mode Toggle ─── */
-.theme-mode-toggle { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+.theme-mode-toggle { display: flex; align-items: center; gap: var(--space-2); margin-top: var(--space-3); }
 .theme-toggle-label {
   font-size: var(--text-base); font-family: var(--font-body);
   transition: color var(--duration-fast) var(--ease-out); user-select: none;
@@ -69,10 +69,10 @@
   color: var(--fg-secondary); min-width: 36px; text-align: right;
 }
 .theme-dock-close {
-  position: absolute; top: 8px; right: 10px;
+  position: absolute; top: var(--space-2); right: var(--space-2);
   background: none; border: none;
   color: var(--fg-muted); cursor: pointer;
-  padding: 4px 8px; font-size: var(--text-base);
+  padding: var(--space-1) var(--space-2); font-size: var(--text-base);
   line-height: 1; border-radius: var(--radius-sm);
   transition: color var(--duration-fast) var(--ease-out), background var(--duration-fast) var(--ease-out);
 }
@@ -81,7 +81,7 @@
 /* ─── Range Slider ─── */
 input[type="range"] {
   -webkit-appearance: none; appearance: none;
-  height: 4px; background: var(--bg-deep); border-radius: 2px;
+  height: 4px; background: var(--bg-deep); border-radius: var(--radius-sm);
   outline: none; border: none !important; box-shadow: none !important;
 }
 input[type="range"]::-webkit-slider-thumb {

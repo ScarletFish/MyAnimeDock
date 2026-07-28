@@ -1,38 +1,23 @@
 /* ─── Calendar Page ─── */
 .calendar-page {
-  padding: var(--space-5) var(--space-6) var(--space-8);
   height: 100%;
   display: flex;
   flex-direction: column;
 }
 
-.calendar-header {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-3);
-  padding-bottom: var(--space-4);
-  flex-shrink: 0;
-}
-
-.calendar-header h2 {
-  font-size: calc(1.15rem * var(--scale));
-  font-weight: var(--fw-semibold);
-  color: var(--fg-primary);
-  margin: 0;
-}
-
 .calendar-season {
-  font-size: calc(0.8rem * var(--scale));
-  font-weight: var(--fw-normal);
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-medium);
   color: var(--fg-muted);
-  background: var(--bg-surface);
-  padding: 2px 10px;
-  border-radius: 100px;
+  background: var(--bg-elevated);
+  padding: 1px 8px;
+  border-radius: 4px;
   border: 1px solid var(--border);
 }
 
 .calendar-source {
-  font-size: calc(0.75rem * var(--scale));
+  font-size: var(--text-2xs);
   color: var(--fg-muted);
   margin-left: auto;
 }
@@ -45,7 +30,7 @@
   justify-content: center;
   padding: 60px 20px;
   color: var(--fg-muted);
-  font-size: calc(0.9rem * var(--scale));
+  font-size: var(--text-xs);
 }
 
 .calendar-error {
@@ -72,12 +57,12 @@
 
 .calendar-day-header {
   text-align: center;
-  padding: 8px 0 6px;
-  font-size: calc(0.75rem * var(--scale));
+  padding: var(--space-2) 0 var(--space-1);
+  font-size: var(--text-2xs);
   font-weight: var(--fw-semibold);
   color: var(--fg-muted);
   border-bottom: 2px solid var(--border);
-  margin-bottom: 4px;
+  margin-bottom: var(--space-1);
   position: sticky;
   top: 0;
   background: var(--bg-base);
@@ -86,7 +71,7 @@
 
 .calendar-day-header .cal-day-num {
   display: block;
-  font-size: calc(1.1rem * var(--scale));
+  font-size: var(--text-md);
   font-weight: var(--fw-bold);
   color: var(--fg-primary);
   margin-top: 1px;
@@ -290,13 +275,13 @@
 .cal-follow-item {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
   width: 100%;
-  padding: 7px 10px;
+  padding: var(--space-1) var(--space-2);
   background: none;
   border: none;
   border-radius: calc(var(--radius-md) - 2px);
-  font-size: calc(0.7rem * var(--scale));
+  font-size: var(--text-2xs);
   font-family: var(--font-body);
   font-weight: var(--fw-medium);
   color: var(--fg-secondary);

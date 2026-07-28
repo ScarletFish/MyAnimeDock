@@ -192,11 +192,11 @@ html {
 }
 .status-section-count {
   font-size: var(--text-sm);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
   color: var(--fg-muted);
-  background: var(--bg-surface);
-  padding: 2px 10px;
-  border-radius: 999px;
+  background: var(--bg-elevated);
+  padding: 1px 8px;
+  border-radius: 4px;
   border: 1px solid var(--border);
 }
 

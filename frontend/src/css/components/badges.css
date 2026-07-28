@@ -4,9 +4,9 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  padding: var(--space-1) var(--space-2);
+  padding: 1px 6px;
   border-radius: 100px;
-  font-size: var(--text-xs);
+  font-size: var(--text-2xs);
   font-weight: var(--fw-semibold);
   background: var(--accent);
   color: white;
@@ -17,9 +17,9 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  padding: var(--space-1) var(--space-2);
+  padding: 1px 6px;
   border-radius: 100px;
-  font-size: var(--text-xs);
+  font-size: var(--text-2xs);
   font-weight: var(--fw-semibold);
   background: rgba(var(--accent-rgb), 0.15);
   color: var(--accent);

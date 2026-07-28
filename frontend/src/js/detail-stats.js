@@ -20,7 +20,7 @@ function getThemeColors() {
     isDark,
     bg: style.getPropertyValue('--bg-surface').trim() || '#1a1a2e',
     text: isDark ? '#ede8e2' : '#2c2418',
-    muted: isDark ? 'rgba(237,232,226,0.5)' : 'rgba(44,36,24,0.5)',
+    muted: style.getPropertyValue('--fg-muted').trim() || (isDark ? '#8a7a70' : '#6b6763'),
     accent: style.getPropertyValue('--accent').trim() || '#e9407a',
     accentRgb: style.getPropertyValue('--accent-rgb').trim() || '233,64,122',
     border: isDark ? 'rgba(237,232,226,0.1)' : 'rgba(44,36,24,0.1)',

@@ -4,7 +4,6 @@ const CALENDAR_STATUS_OPTIONS = ['watching', 'wish', 'on_hold'];
 const CALENDAR_STATUS_LABELS = { watching: '在看', wish: '想看', on_hold: '搁置' };
 const CALENDAR_CACHE_TTL = 30 * 60 * 1000; // 30 分钟缓存
 
-let _openCalendarMenu = null;
 let _calendarAllData = null; // raw unfiltered data
 let _calendarFilter = { hideLongRunning: true, country: 'jp' }; // 'all' | 'jp' | 'cn'
 const _calendarCache = createTimedCache(CALENDAR_CACHE_TTL);
@@ -189,22 +188,9 @@ function renderCalendar(data, container, seasonEl) {
       if (hasStatus) {
         html += '<span class="cal-status-badge">' + CALENDAR_STATUS_LABELS[item.mylistStatus] + '</span>';
       } else {
-        html += '<div class="cal-follow-wrap">';
-        html += '<button class="cal-follow-btn" onclick="event.stopPropagation(); toggleCalendarMenu(event, this)" aria-label="添加标记">';
+        html += '<button class="cal-follow-btn" onclick="event.stopPropagation(); setCalendarStatus(\'' + bgmId + '\', \'wish\')" aria-label="想看">';
         html += '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>';
         html += '</button>';
-        html += '<div class="cal-follow-menu">';
-        html += '<button class="cal-follow-item" data-status="wish">' +
-          '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>' +
-          '<span>想看</span></button>';
-        html += '<button class="cal-follow-item" data-status="watching">' +
-          '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' +
-          '<span>在看</span></button>';
-        html += '<button class="cal-follow-item" data-status="on_hold">' +
-          '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>' +
-          '<span>搁置</span></button>';
-        html += '</div>';
-        html += '</div>';
       }
 
       html += '</div>'; // cal-card-meta
@@ -216,22 +202,6 @@ function renderCalendar(data, container, seasonEl) {
   }
 
   container.innerHTML = html;
-}
-
-// ─── Follow menu toggle ───
-function toggleCalendarMenu(ev, btn) {
-  ev.stopPropagation();
-  var wrap = btn.closest('.cal-follow-wrap');
-  if (!wrap) return;
-  var menu = wrap.querySelector('.cal-follow-menu');
-  if (!menu) return;
-
-  if (_openCalendarMenu && _openCalendarMenu !== menu) {
-    _openCalendarMenu.classList.remove('is-open');
-  }
-
-  menu.classList.toggle('is-open');
-  _openCalendarMenu = menu.classList.contains('is-open') ? menu : null;
 }
 
 // ─── Set follow status via MyList API ───
@@ -260,35 +230,10 @@ async function setCalendarStatus(bgmId, status) {
 
 // ─── Global click handler ───
 document.addEventListener('click', function(e) {
-  // 关闭打开的菜单
-  if (_openCalendarMenu && !e.target.closest('.cal-follow-wrap')) {
-    _openCalendarMenu.classList.remove('is-open');
-    _openCalendarMenu = null;
-  }
-
-  // 菜单项点击
-  var menuItem = e.target.closest('.cal-follow-item');
-  if (menuItem) {
-    e.stopPropagation();
-    var menu = menuItem.closest('.cal-follow-menu');
-    if (!menu) return;
-    // 获取 bangumiId: 从最近的 calendar-card 上读
-    var card = menuItem.closest('.calendar-card');
-    if (!card) return;
-    var bgmId = card.getAttribute('data-bangumi-id');
-    var status = menuItem.getAttribute('data-status');
-    if (bgmId && status) {
-      menu.classList.remove('is-open');
-      _openCalendarMenu = null;
-      setCalendarStatus(bgmId, status);
-    }
-    return;
-  }
-
   // 卡片点击
   var card = e.target.closest('.calendar-card');
   if (!card) return;
-  if (e.target.closest('.cal-follow-btn') || e.target.closest('.cal-follow-menu')) return;
+  if (e.target.closest('.cal-follow-btn')) return;
 
   var inLibrary = card.getAttribute('data-in-library') === '1';
   var libAnimeId = card.getAttribute('data-lib-anime-id');

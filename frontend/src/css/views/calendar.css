@@ -208,103 +208,34 @@
   box-shadow: 0 0 12px rgba(var(--accent-rgb), 0.2);
 }
 
-/* ─── Follow button ─── */
-.cal-follow-wrap {
-  position: relative;
-  pointer-events: auto;
-}
-
+/* ─── Follow button (mylist-status-item style) ─── */
 .cal-follow-btn {
-  width: 26px;
-  height: 26px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 6px;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(4px);
-  color: rgba(255, 255, 255, 0.8);
-  cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s var(--ease-out);
-  flex-shrink: 0;
+  gap: 4px;
+  width: 28px;
+  height: 28px;
   padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fg-muted);
+  cursor: pointer;
+  flex-shrink: 0;
   line-height: 1;
+  transition: all var(--duration-fast) var(--ease-out);
 }
 
 .cal-follow-btn:hover {
-  background: rgba(var(--accent-rgb), 0.4);
   border-color: var(--accent);
-  color: #fff;
-  box-shadow: 0 0 12px rgba(var(--accent-rgb), 0.15);
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.1);
 }
 
 .cal-follow-btn svg {
   width: 14px;
   height: 14px;
-}
-
-/* ─── Follow dropdown ─── */
-.cal-follow-menu {
-  position: absolute;
-  bottom: calc(100% + 6px);
-  right: 0;
-  background: rgba(20, 18, 16, 0.92);
-  backdrop-filter: blur(20px) saturate(1.3);
-  -webkit-backdrop-filter: blur(20px) saturate(1.3);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius-md);
-  padding: 4px;
-  min-width: 100px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
-  z-index: 100;
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(4px) scale(0.96);
-  pointer-events: none;
-  transition: opacity 0.18s var(--ease-out), transform 0.18s var(--ease-out), visibility 0.18s;
-}
-
-.cal-follow-menu.is-open {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0) scale(1);
-  pointer-events: auto;
-}
-
-.cal-follow-item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  width: 100%;
-  padding: var(--space-1) var(--space-2);
-  background: none;
-  border: none;
-  border-radius: calc(var(--radius-md) - 2px);
-  font-size: var(--text-2xs);
-  font-family: var(--font-body);
-  font-weight: var(--fw-medium);
-  color: var(--fg-secondary);
-  cursor: pointer;
-  transition: all 0.12s var(--ease-out);
-  white-space: nowrap;
-  text-align: left;
-}
-
-.cal-follow-item svg {
-  flex-shrink: 0;
-  opacity: 0.6;
-  color: currentColor;
-}
-
-.cal-follow-item:hover {
-  background: rgba(var(--accent-rgb), 0.12);
-  color: var(--fg-primary);
-}
-
-.cal-follow-item:hover svg {
-  opacity: 1;
-  color: var(--accent);
 }
 
 /* ─── Library badge ─── */

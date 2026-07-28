@@ -235,12 +235,12 @@
   outline: 2px solid var(--accent); outline-offset: 2px;
 }
 .settings-header-top .visual-settings-btn {
-  gap: var(--space-2); padding: 0 var(--space-2); width: auto;
-  font-size: var(--text-sm);
-  font-weight: var(--fw-medium); font-family: var(--font-body);
+  gap: var(--space-2); padding: var(--space-1) var(--space-3); width: auto;
+  font-size: var(--text-base);
+  font-weight: var(--fw-semibold); font-family: var(--font-body);
   color: var(--fg-secondary);
 }
-.settings-header-top .visual-settings-btn svg { width: 14px; height: 14px; flex-shrink: 0; }
+.settings-header-top .visual-settings-btn svg { width: 18px; height: 18px; flex-shrink: 0; }
 .settings-header-top .visual-settings-btn span { line-height: 1; }
 
 .settings-tabs {

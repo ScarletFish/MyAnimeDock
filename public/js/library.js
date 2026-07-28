@@ -319,7 +319,8 @@ function renderStatusGrids(data) {
       return (a.myListStatus || 'wish') === cfg.status;
     }), librarySortDropdown.current);
     if (items.length === 0) return '';
-    var cardsHtml = items.map(function(a) { return renderAnimeCard(a); }).join('');
+    var cardShowTitle = typeof getCardTitleVisible === 'function' ? getCardTitleVisible('library') : false;
+    var cardsHtml = items.map(function(a) { return renderAnimeCard(a, { alwaysShowTitle: cardShowTitle }); }).join('');
     return '<div class="status-section" id="statusSection-' + cfg.status + '">' +
       '<div class="status-section-header">' +
         '<span class="status-section-title">' + cfg.label + '</span>' +

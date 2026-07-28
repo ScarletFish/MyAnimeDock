@@ -50,6 +50,7 @@ function renderGrayCover(anime) {
  * @param {boolean} [options.showMoreBtn=true] — 是否显示更多按钮
  * @param {string} [options.coverSize='400'] — 封面缩放宽度 px
  * @param {boolean} [options.isWish=false] — 愿望单模式（半透明封面）
+ * @param {boolean} [options.alwaysShowTitle=false] — 常显标题条
  * @param {string} [options.extraAttrs=''] — 卡片额外 HTML 属性
  */
 function renderAnimeCard(anime, options = {}) {
@@ -60,7 +61,8 @@ function renderAnimeCard(anime, options = {}) {
     coverSize = '400',
     isWish = false,
     userRating = null,
-    extraAttrs = ''
+    extraAttrs = '',
+    alwaysShowTitle = false
   } = options;
 
   const id = escAttr(anime.id);
@@ -93,6 +95,7 @@ function renderAnimeCard(anime, options = {}) {
     ) +
     moreBtnHtml +
     (userRating ? '<span class="user-rating">☆ ' + userRating + '</span>' : '') +
+    (alwaysShowTitle ? '<div class="title-strip"><div class="card-title">' + title + '</div></div>' : '') +
     '<div class="overlay">' +
       '<h3>' + title + '</h3>' +
       '<div class="meta">' +

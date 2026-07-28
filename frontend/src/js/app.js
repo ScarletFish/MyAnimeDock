@@ -245,6 +245,12 @@ async function openSettings() {
     refreshBangumiAuthStatus();
 
     // Dashboard layout
+    var cardTitleLib = document.getElementById('settingsCardTitleLibrary');
+    if (cardTitleLib) cardTitleLib.checked = getCardTitleVisible('library');
+    var cardTitleMylist = document.getElementById('settingsCardTitleMylist');
+    if (cardTitleMylist) cardTitleMylist.checked = getCardTitleVisible('mylist');
+    var cardTitleCal = document.getElementById('settingsCardTitleCalendar');
+    if (cardTitleCal) cardTitleCal.checked = getCardTitleVisible('calendar', true);
     if (typeof renderDashboardLayoutSettings === 'function') renderDashboardLayoutSettings();
 
     // Preload DB info
@@ -438,6 +444,14 @@ async function saveSettings() {
       ...(bangumiClientId ? { bangumiClientId } : {}),
       ...(secretToSend ? { bangumiClientSecret: secretToSend } : {}),
     });
+
+    // Save card-title toggles
+    var ctLib = document.getElementById('settingsCardTitleLibrary');
+    if (ctLib) localStorage.setItem('myAnimDock_cardTitle_library', ctLib.checked);
+    var ctMylist = document.getElementById('settingsCardTitleMylist');
+    if (ctMylist) localStorage.setItem('myAnimDock_cardTitle_mylist', ctMylist.checked);
+    var ctCal = document.getElementById('settingsCardTitleCalendar');
+    if (ctCal) localStorage.setItem('myAnimDock_cardTitle_calendar', ctCal.checked);
 
     closeModal('settingsModal');
 
@@ -960,6 +974,14 @@ function getDashboardLayout() {
 /** 保存布局配置到 localStorage */
 function saveDashboardLayout(layout) {
   localStorage.setItem('myAnimDock_layout', JSON.stringify(layout));
+}
+
+// ─── Card Title Always Visible（三处独立开关） ───
+
+function getCardTitleVisible(view, defaultVal) {
+  var val = localStorage.getItem('myAnimDock_cardTitle_' + view);
+  if (val === null) return defaultVal === true;
+  return val === 'true';
 }
 
 function renderDashboardLayoutSettings() {

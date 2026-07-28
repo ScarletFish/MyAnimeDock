@@ -94,65 +94,11 @@
 }
 
 /* ════════════════════════════════════════
-   Card — 与库内卡片样式统一
-   参考: card-grid.css anime-card
+   Card — 与库内卡片共用样式
+   基础样式来自 card-grid.css: @apply anime-card
    ════════════════════════════════════════ */
 .calendar-card {
-  position: relative;
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  cursor: pointer;
-  background: var(--bg-card);
-  aspect-ratio: 3/4;
-  width: 100%;
-  border: 1px solid var(--border);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  transition: box-shadow 0.25s var(--ease-out), border-color 0.25s var(--ease-out);
-}
-
-.calendar-card:hover {
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 0 60px rgba(var(--accent-rgb), 0.08);
-  border-color: rgba(var(--accent-rgb), 0.2);
-}
-
-.calendar-card .cal-cover {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-  image-rendering: -webkit-optimize-contrast;
-  transition: transform 0.5s var(--ease-out);
-}
-
-.calendar-card:hover .cal-cover {
-  transform: scale(1.07);
-}
-
-/* ─── 标题条：始终可见 ─── */
-.cal-title-strip {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 0.6rem 0.65rem 0.5rem;
-  background: linear-gradient(transparent 10%, rgba(0, 0, 0, 0.85) 70%);
-  transition: opacity 0.25s var(--ease-out);
-}
-
-.calendar-card:hover .cal-title-strip {
-  opacity: 0;
-  pointer-events: none;
-}
-
-.cal-title-strip .cal-card-title {
-  font-size: calc(clamp(0.75rem, 1.2vw, 0.875rem) * var(--scale));
-  font-weight: var(--fw-semibold);
-  line-height: 1.3;
-  color: #fff;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  @apply anime-card;
 }
 
 /* ─── Hover 叠加层：评分+操作 ─── */
@@ -195,47 +141,23 @@
   gap: 6px;
 }
 
-.cal-overlay .cal-card-rating {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 10px;
-  border-radius: 100px;
-  font-size: var(--text-xs);
-  font-weight: var(--fw-semibold);
-  background: var(--accent);
-  color: #fff;
-  box-shadow: 0 0 12px rgba(var(--accent-rgb), 0.2);
-}
-
-/* ─── Follow button (mylist-status-item style) ─── */
+/* ─── Follow + button (ghost icon) ─── */
 .cal-follow-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  width: 28px;
-  height: 28px;
   padding: 0;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: transparent;
-  color: var(--fg-muted);
+  border: none;
+  background: none;
+  color: #fff;
   cursor: pointer;
   flex-shrink: 0;
-  line-height: 1;
-  transition: all var(--duration-fast) var(--ease-out);
+  opacity: 0.5;
+  transition: opacity 0.2s var(--ease-out);
 }
 
 .cal-follow-btn:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: rgba(var(--accent-rgb), 0.1);
-}
-
-.cal-follow-btn svg {
-  width: 14px;
-  height: 14px;
+  opacity: 1;
 }
 
 /* ─── Library badge ─── */

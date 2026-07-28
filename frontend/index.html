@@ -592,6 +592,7 @@
         <button class="settings-tab" data-tab="playback" role="tab" aria-selected="false" onclick="switchSettingsTab(this, 'playback')">播放</button>
         <button class="settings-tab" data-tab="scraper" role="tab" aria-selected="false" onclick="switchSettingsTab(this, 'scraper')">刮削</button>
         <button class="settings-tab" data-tab="dashboard" role="tab" aria-selected="false" onclick="switchSettingsTab(this, 'dashboard')">动漫库</button>
+        <button class="settings-tab" data-tab="personalize" role="tab" aria-selected="false" onclick="switchSettingsTab(this, 'personalize')">个性化</button>
         <button class="settings-tab" data-tab="database" role="tab" aria-selected="false" onclick="switchSettingsTab(this, 'database')">数据库</button>
       </nav>
     </div>
@@ -687,6 +688,37 @@
           <label>动漫库模块</label>
           <p class="form-hint mt-0">勾选要在首页显示的模块，拖拽或点击箭头调整顺序</p>
           <div class="dashboard-layout-list" id="dashboardLayoutList"></div>
+        </div>
+      </div>
+
+      <!-- Tab: 个性化 -->
+      <div class="settings-panel" id="tab-personalize">
+        <div class="form-group">
+          <label>卡片常显标题</label>
+          <p class="form-hint mt-0">是否在卡片底部始终显示标题文字</p>
+          <div class="dashboard-layout-list" style="margin-top:0.75rem">
+            <div class="dashboard-layout-item" style="cursor:default">
+              <label class="toggle-switch" style="margin:0">
+                <input type="checkbox" id="settingsCardTitleLibrary">
+                <span class="toggle-slider"></span>
+              </label>
+              <span class="dashboard-layout-label">动漫库</span>
+            </div>
+            <div class="dashboard-layout-item" style="cursor:default">
+              <label class="toggle-switch" style="margin:0">
+                <input type="checkbox" id="settingsCardTitleMylist">
+                <span class="toggle-slider"></span>
+              </label>
+              <span class="dashboard-layout-label">我的列表</span>
+            </div>
+            <div class="dashboard-layout-item" style="cursor:default">
+              <label class="toggle-switch" style="margin:0">
+                <input type="checkbox" id="settingsCardTitleCalendar">
+                <span class="toggle-slider"></span>
+              </label>
+              <span class="dashboard-layout-label">周历</span>
+            </div>
+          </div>
         </div>
       </div>
 

@@ -214,6 +214,7 @@ function renderFilteredTab(items) {
 function renderMyListCard(item) {
   const isWish = item.source === 'wishlist';
   const extraAttrs = 'data-source="' + escAttr(item.source) + '" data-anime-id="' + escAttr(item.id) + '"';
+  const alwaysShowTitle = typeof getCardTitleVisible === 'function' ? getCardTitleVisible('mylist') : false;
 
   if (isWish) {
     return renderAnimeCard(item, {
@@ -222,7 +223,8 @@ function renderMyListCard(item) {
       showMoreBtn: false,
       isWish: true,
       userRating: item.userRating,
-      extraAttrs: extraAttrs
+      extraAttrs: extraAttrs,
+      alwaysShowTitle: alwaysShowTitle
     });
   }
 
@@ -230,7 +232,8 @@ function renderMyListCard(item) {
     onClick: 'navigateToMyListDetail',
     onContextMenu: 'showMyListContextMenu',
     userRating: item.userRating,
-    extraAttrs: extraAttrs
+    extraAttrs: extraAttrs,
+    alwaysShowTitle: alwaysShowTitle
   });
 }
 

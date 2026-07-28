@@ -174,22 +174,24 @@ function renderCalendar(data, container, seasonEl) {
         html += '<div class="cal-lib-badge">库内</div>';
       }
 
-      // 始终可见的标题条
-      html += '<div class="cal-title-strip">';
-      html += '<div class="cal-card-title">' + escHtml(title) + '</div>';
-      html += '</div>';
+      // 常显标题条（可通过设置关闭）
+      if (getCardTitleVisible('calendar')) {
+        html += '<div class="cal-title-strip">';
+        html += '<div class="cal-card-title">' + escHtml(title) + '</div>';
+        html += '</div>';
+      }
 
       // Hover 时出现的完整叠加层
       html += '<div class="cal-overlay">';
       html += '<div class="cal-card-title">' + escHtml(title) + '</div>';
       html += '<div class="cal-card-meta">';
-      html += '<span class="cal-card-rating">★ ' + rating + '</span>';
+      html += '<span class="rating-badge">★ ' + rating + '</span>';
 
       if (hasStatus) {
         html += '<span class="cal-status-badge">' + CALENDAR_STATUS_LABELS[item.mylistStatus] + '</span>';
       } else {
-        html += '<button class="cal-follow-btn" onclick="event.stopPropagation(); setCalendarStatus(\'' + bgmId + '\', \'wish\')" aria-label="想看">';
-        html += '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>';
+        html += '<button class="cal-follow-btn" onclick="event.stopPropagation(); setCalendarStatus(\'' + bgmId + '\', \'wish\')" aria-label="想看" data-tooltip="加入到计划中">';
+        html += '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>';
         html += '</button>';
       }
 

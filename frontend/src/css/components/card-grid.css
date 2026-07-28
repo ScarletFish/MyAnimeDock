@@ -23,9 +23,11 @@
     border-color: rgba(var(--accent-rgb), 0.2);
 
     img { transform: scale(1.07); }
+    .cal-cover { transform: scale(1.07); }
   }
 
-  img {
+  img,
+  .cal-cover {
     width: 100%;
     height: 100%;
     object-fit: cover;
@@ -82,6 +84,36 @@
     opacity: 0.4;
     line-height: 1;
   }
+}
+
+/* ─── Title Strip (always-visible card title bar) ─── */
+.title-strip,
+.cal-title-strip {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 0.6rem 0.65rem 0.5rem;
+  background: linear-gradient(transparent 10%, rgba(0, 0, 0, 0.85) 70%);
+  transition: opacity 0.25s var(--ease-out);
+}
+
+.anime-card:hover .title-strip,
+.calendar-card:hover .cal-title-strip {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.title-strip .card-title,
+.cal-title-strip .cal-card-title {
+  font-size: calc(clamp(0.75rem, 1.2vw, 0.875rem) * var(--scale));
+  font-weight: var(--fw-semibold);
+  line-height: 1.3;
+  color: #fff;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 /* ─── Status popover (card quick-status) ─── */

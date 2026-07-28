@@ -695,59 +695,20 @@
       <!-- Tab: 刮削 -->
       <div class="settings-panel" id="tab-scraper">
         <div class="form-group">
-          <label>Bangumi</label>
-          <div class="api-source-card api-source-card--fixed">
-            <div class="api-source-body">
-              <div class="api-source-type">
-                <span class="api-source-badge api-source-badge--bangumi">Bangumi</span>
-              </div>
-              <div class="api-source-fields">
-                <input type="text" class="api-source-url" id="bangumiUrl" placeholder="API 地址" value="https://api.bangumi.lol">
-                <p class="form-hint">默认使用镜像站 api.bangumi.lol，官方源为 api.bgm.tv</p>
-              </div>
-            </div>
-          </div>
-        </div>
-        <!-- Bangumi 个人绑定已隐藏（bgm.tv 国内不可达，OAuth 无法完成）
-             后端代码完整保留，未来网络环境改善后取消 display:none 即可恢复 -->
-        <div class="form-group" style="display:none">
-          <label>Bangumi 个人绑定</label>
-          <div class="api-source-card api-source-card--fixed">
-            <div class="api-source-body">
-              <div class="api-source-type">
-                <span class="api-source-badge api-source-badge--bangumi">OAuth</span>
-              </div>
-              <div class="api-source-fields" style="gap:8px">
-                <input type="text" id="bangumiClientId" placeholder="Client ID" class="api-source-url">
-                <input type="password" id="bangumiClientSecret" placeholder="Client Secret" class="api-source-url">
-                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                  <button class="btn btn-sm" onclick="bangumiBind()" id="bangumiBindBtn">绑定 Bangumi</button>
-                  <button class="btn btn-sm btn-danger" onclick="bangumiUnbind()" id="bangumiUnbindBtn" style="display:none">解除绑定</button>
-                  <button class="btn btn-sm" onclick="bangumiSync()" id="bangumiSyncBtn" style="display:none">同步 MyList</button>
-                  <span id="bangumiAuthStatus" class="form-hint" style="margin:0;font-size:12px"></span>
-                  <span id="bangumiSyncStatus" class="form-hint" style="margin:0;font-size:12px;display:none"></span>
-                </div>
-                <p class="form-hint">需要先在 <a href="https://bgm.tv/dev" target="_blank" rel="noopener">bgm.tv/dev</a> 创建应用，填入 Client ID/Secret，点击绑定后浏览器会跳转到 Bangumi 授权页面</p>
-              </div>
-            </div>
-          </div>
+          <label for="bangumiUrl">Bangumi API 地址</label>
+          <input type="text" id="bangumiUrl" placeholder="https://api.bangumi.lol" value="https://api.bangumi.lol">
+          <p class="form-hint">默认使用镜像站 api.bangumi.lol，官方源为 api.bgm.tv</p>
         </div>
         <div class="form-group">
-          <label>AniList</label>
-          <div class="api-source-card api-source-card--fixed">
-            <div class="api-source-body">
-              <div class="api-source-type">
-                <span class="api-source-badge api-source-badge--anilist">AniList</span>
-                <label class="toggle-switch" style="margin-left:8px">
-                  <input type="checkbox" id="anilistEnabled">
-                  <span class="toggle-slider"></span>
-                </label>
-              </div>
-              <div class="api-source-fields">
-                <p class="form-hint">双源匹配：AniList 提供罗马音 + banner 图，Bangumi 提供元数据。无需 API Key。</p>
-              </div>
-            </div>
+          <label>AniList 双源匹配</label>
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:var(--space-2,8px)">
+            <label class="toggle-switch" style="margin:0">
+              <input type="checkbox" id="anilistEnabled">
+              <span class="toggle-slider"></span>
+            </label>
+            <span style="font-size:var(--text-md,15px);color:var(--fg-secondary);line-height:24px">启用 AniList</span>
           </div>
+          <p class="form-hint">AniList 提供罗马音 + banner 图，Bangumi 提供元数据。无需 API Key。</p>
         </div>
       </div>
 

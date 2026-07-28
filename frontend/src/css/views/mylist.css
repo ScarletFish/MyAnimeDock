@@ -32,9 +32,9 @@
 }
 
 .mylist-section-count {
-  font-family: var(--font-mono);
   font-size: var(--text-sm);
-  font-weight: var(--fw-medium);
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
   color: var(--fg-muted);
   background: var(--bg-elevated);
   padding: 1px 8px;

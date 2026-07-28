@@ -5,6 +5,7 @@
   width: 40px;
   height: 24px;
   flex-shrink: 0;
+  vertical-align: middle;
 
   input {
     opacity: 0;
@@ -17,9 +18,10 @@
   position: absolute;
   cursor: pointer;
   inset: 0;
+  box-sizing: border-box;
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: 999px;
   transition: all var(--duration-fast) var(--ease-out);
 
   &::before {
@@ -103,6 +105,10 @@
   font-size: var(--text-xs); color: var(--fg-muted); margin-top: 4px;
 }
 
+#tab-database .form-hint {
+  font-size: var(--text-sm);
+}
+
 /* ─── Number Stepper ─── */
 @utility num-stepper {
   display: inline-flex;
@@ -183,16 +189,22 @@
 .db-info-item {
   background: var(--bg-surface); border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  padding: calc(0.625rem * var(--scale)) var(--space-3);
-  display: flex; flex-direction: column; gap: var(--space-1);
+  padding: calc(0.5rem * var(--scale)) var(--space-3);
+  display: flex; align-items: center; gap: var(--space-2);
+  min-width: 0;
+}
+.db-info-item--full {
+  grid-column: 1 / -1;
 }
 .db-info-label {
-  font-size: var(--text-xs); color: var(--fg-muted);
+  font-size: var(--text-sm); color: var(--fg-muted);
   font-weight: var(--fw-medium); letter-spacing: 0.02em;
+  white-space: nowrap; flex-shrink: 0;
 }
 .db-info-value {
   font-size: var(--text-md); color: var(--fg-primary);
   font-weight: var(--fw-semibold); font-variant-numeric: tabular-nums;
+  min-width: 0;
 }
 .db-action-row {
   display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-1);

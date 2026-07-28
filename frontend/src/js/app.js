@@ -245,9 +245,11 @@ async function openSettings() {
     document.getElementById('bangumiUrl').value = bangumiSrc?.url || 'https://api.bangumi.lol';
     document.getElementById('anilistEnabled').checked = !!anilistSrc;
 
-    // Bangumi OAuth 凭据
-    if (config.bangumiClientId) document.getElementById('bangumiClientId').value = config.bangumiClientId;
-    if (config.bangumiClientSecret) document.getElementById('bangumiClientSecret').value = '••••••••';
+    // Bangumi OAuth 凭据（UI 元素可能已移除）
+    const bangumiClientIdEl = document.getElementById('bangumiClientId');
+    const bangumiClientSecretEl = document.getElementById('bangumiClientSecret');
+    if (bangumiClientIdEl && config.bangumiClientId) bangumiClientIdEl.value = config.bangumiClientId;
+    if (bangumiClientSecretEl && config.bangumiClientSecret) bangumiClientSecretEl.value = '••••••••';
     refreshBangumiAuthStatus();
 
     // Dashboard layout
@@ -268,39 +270,40 @@ async function openSettings() {
 }
 
 async function refreshBangumiAuthStatus() {
+  const statusEl = document.getElementById('bangumiAuthStatus');
+  const bindBtn = document.getElementById('bangumiBindBtn');
+  const unbindBtn = document.getElementById('bangumiUnbindBtn');
+  const syncBtn = document.getElementById('bangumiSyncBtn');
+  const syncStatus = document.getElementById('bangumiSyncStatus');
+  // If OAuth UI elements are not in the DOM, skip
+  if (!statusEl && !bindBtn) return;
   try {
     const state = await API.get('/api/bangumi/auth/status');
-    const statusEl = document.getElementById('bangumiAuthStatus');
-    const bindBtn = document.getElementById('bangumiBindBtn');
-    const unbindBtn = document.getElementById('bangumiUnbindBtn');
-    const syncBtn = document.getElementById('bangumiSyncBtn');
-    const syncStatus = document.getElementById('bangumiSyncStatus');
     if (state.authed) {
-      statusEl.textContent = '✓ 已绑定 ' + (state.username || '');
-      statusEl.style.color = '#22c55e';
-      bindBtn.style.display = 'none';
-      unbindBtn.style.display = '';
-      syncBtn.style.display = '';
-      if (state.lastSyncTime) {
-        const t = new Date(state.lastSyncTime);
-        syncStatus.textContent = '上次同步: ' + t.toLocaleString('zh-CN');
-        syncStatus.style.display = '';
-      } else {
-        syncStatus.textContent = '';
-        syncStatus.style.display = 'none';
+      if (statusEl) { statusEl.textContent = '✓ 已绑定 ' + (state.username || ''); statusEl.style.color = '#22c55e'; }
+      if (bindBtn) bindBtn.style.display = 'none';
+      if (unbindBtn) unbindBtn.style.display = '';
+      if (syncBtn) syncBtn.style.display = '';
+      if (syncStatus) {
+        if (state.lastSyncTime) {
+          const t = new Date(state.lastSyncTime);
+          syncStatus.textContent = '上次同步: ' + t.toLocaleString('zh-CN');
+          syncStatus.style.display = '';
+        } else {
+          syncStatus.textContent = '';
+          syncStatus.style.display = 'none';
+        }
       }
     } else if (state.hasCredentials) {
-      statusEl.textContent = 'Client ID 已填入，可点击绑定';
-      statusEl.style.color = 'var(--text3)';
-      bindBtn.style.display = '';
-      unbindBtn.style.display = 'none';
-      syncBtn.style.display = 'none';
+      if (statusEl) { statusEl.textContent = 'Client ID 已填入，可点击绑定'; statusEl.style.color = 'var(--text3)'; }
+      if (bindBtn) bindBtn.style.display = '';
+      if (unbindBtn) unbindBtn.style.display = 'none';
+      if (syncBtn) syncBtn.style.display = 'none';
     } else {
-      statusEl.textContent = '填入 Client ID / Secret 后可绑定';
-      statusEl.style.color = 'var(--text3)';
-      bindBtn.style.display = '';
-      unbindBtn.style.display = 'none';
-      syncBtn.style.display = 'none';
+      if (statusEl) { statusEl.textContent = '填入 Client ID / Secret 后可绑定'; statusEl.style.color = 'var(--text3)'; }
+      if (bindBtn) bindBtn.style.display = '';
+      if (unbindBtn) unbindBtn.style.display = 'none';
+      if (syncBtn) syncBtn.style.display = 'none';
     }
   } catch {}
 }
@@ -308,6 +311,7 @@ async function refreshBangumiAuthStatus() {
 async function bangumiSync() {
   const syncBtn = document.getElementById('bangumiSyncBtn');
   const syncStatus = document.getElementById('bangumiSyncStatus');
+  if (!syncBtn || !syncStatus) return;
   syncBtn.disabled = true;
   syncBtn.textContent = '同步中…';
   syncStatus.textContent = '正在同步 MyList…';
@@ -430,8 +434,10 @@ async function saveSettings() {
   }
 
   try {
-    const bangumiClientId = document.getElementById('bangumiClientId').value.trim();
-    const bangumiClientSecret = document.getElementById('bangumiClientSecret').value.trim();
+    const bangumiClientIdEl = document.getElementById('bangumiClientId');
+    const bangumiClientSecretEl = document.getElementById('bangumiClientSecret');
+    const bangumiClientId = bangumiClientIdEl?.value.trim() || '';
+    const bangumiClientSecret = bangumiClientSecretEl?.value.trim() || '';
     // Only send secret if it's not the masked placeholder
     const secretToSend = bangumiClientSecret === '••••••••' ? undefined : bangumiClientSecret;
 
@@ -481,7 +487,7 @@ async function refreshDbInfo() {
       ? (info.configSize / 1024).toFixed(1) + ' KB'
       : info.configSize + ' B';
     container.innerHTML = '<div class="db-info-grid">' +
-      '<div class="db-info-item"><span class="db-info-label">数据库位置</span><span class="db-info-value db-info-path">' + escHtml(info.dbPath) + '</span></div>' +
+      '<div class="db-info-item db-info-item--full"><span class="db-info-label">数据库位置</span><span class="db-info-value db-info-path" data-tooltip="' + escAttr(info.dbPath) + '">' + escHtml(info.dbPath) + '</span></div>' +
       '<div class="db-info-item"><span class="db-info-label">数据库大小</span><span class="db-info-value">' + dbSizeStr + '</span></div>' +
       '<div class="db-info-item"><span class="db-info-label">动漫数量</span><span class="db-info-value">' + info.counts.anime + '</span></div>' +
       '<div class="db-info-item"><span class="db-info-label">剧集数量</span><span class="db-info-value">' + info.counts.episodes + '</span></div>' +
@@ -499,7 +505,7 @@ async function refreshDbInfo() {
           cacheHtml += '<div class="db-info-item">' +
             '<span class="db-info-label">' + label + '</span>' +
             '<span class="db-info-value">' + formatSize(c.size) + '</span>' +
-            '<span class="db-info-label" style="font-size:calc(0.625rem * var(--scale));margin-top:1px">' + c.files + ' 个文件</span>' +
+            '<span class="db-info-label" style="margin-top:1px">' + c.files + ' 个文件</span>' +
           '</div>';
         }
         cacheHtml += '</div>' +
@@ -998,7 +1004,7 @@ function renderDashboardLayoutSettings() {
       '<span class="dashboard-layout-drag-handle" data-drag-handle="' + s.id + '">' +
         '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="1.5"/><circle cx="15" cy="5" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="19" r="1.5"/><circle cx="15" cy="19" r="1.5"/></svg>' +
       '</span>' +
-      '<label class="toggle-switch">' +
+      '<label class="toggle-switch" style="margin:0">' +
         '<input type="checkbox" ' + (s.enabled ? 'checked' : '') + ' onchange="toggleDashboardSection(\'' + s.id + '\', this.checked)">' +
         '<span class="toggle-slider"></span>' +
       '</label>' +

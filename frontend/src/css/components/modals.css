@@ -278,6 +278,10 @@
 }
 .settings-panel { display: none; animation: settings-fade-in 250ms var(--ease-out) both; }
 .settings-panel.active { display: block; }
+#tab-database.active {
+  max-height: 400px;
+  overflow-y: auto;
+}
 .settings-panel .form-group + .form-group {
   padding-top: var(--space-1); border-top: 1px solid var(--border);
 }

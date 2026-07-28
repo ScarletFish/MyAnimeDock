@@ -79,14 +79,6 @@
         <line x1="3" y1="18" x2="3.01" y2="18"></line>
       </svg>
     </button>
-    <button class="nav-btn" id="btnCalendar" data-tip="新番周历" onclick="showView('calendar')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="3" y="4" width="18" height="18" rx="2"/>
-        <line x1="16" y1="2" x2="16" y2="6"/>
-        <line x1="8" y1="2" x2="8" y2="6"/>
-        <line x1="3" y1="10" x2="21" y2="10"/>
-      </svg>
-    </button>
     <button class="nav-btn" id="btnStats" data-tip="统计" onclick="showView('stats')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
@@ -345,19 +337,6 @@
         <rect x="14" y="14" width="7" height="7" rx="1"></rect>
       </svg>
       <p>暂无内容</p>
-    </div>
-  </section>
-
-  <!-- Calendar View -->
-  <section class="view hidden" id="calendarView">
-    <div class="calendar-page">
-      <div class="view-header">
-        <h1>新番周历 <span class="calendar-season" id="calendarSeason"></span></h1>
-        <span class="calendar-source">数据来源：Bangumi</span>
-      </div>
-      <div class="calendar-grid" id="calendarGrid">
-        <div class="calendar-loading">加载中…</div>
-      </div>
     </div>
   </section>
 
@@ -711,13 +690,6 @@
               </label>
               <span class="dashboard-layout-label">我的列表</span>
             </div>
-            <div class="dashboard-layout-item" style="cursor:default">
-              <label class="toggle-switch" style="margin:0">
-                <input type="checkbox" id="settingsCardTitleCalendar">
-                <span class="toggle-slider"></span>
-              </label>
-              <span class="dashboard-layout-label">周历</span>
-            </div>
           </div>
         </div>
       </div>
@@ -885,7 +857,6 @@
 <script src="/src/js/mylist.js"></script>
 <script src="/src/js/metamatch.js"></script>
 <script src="/src/js/stats.js"></script>
-<script src="/src/js/calendar.js"></script>
 <script src="/src/js/titlebar.js"></script>
 <script src="/src/js/app.js"></script>
 <script src="/src/js/search.js"></script>

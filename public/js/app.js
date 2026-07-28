@@ -2,7 +2,9 @@
 let currentView = 'library';
 let configCache = null;
 let libraryScrollTop = 0;
+let mylistScrollTop = 0;
 let _libraryChangingView = false; // set by showView to skip scroll-save in loadLibrary
+let _mylistChangingView = false;
 
 function showView(view) {
   const mc = document.querySelector('.main-content');
@@ -13,9 +15,12 @@ function showView(view) {
   if (currentView === 'library' && view !== 'library' && mc) {
     libraryScrollTop = mc.scrollTop;
   }
+  if (currentView === 'mylist' && view !== 'mylist' && mc) {
+    mylistScrollTop = mc.scrollTop;
+  }
   __debug.snapshot(currentView + ' → ' + view + ' (after save, before toggle)');
 
-  const views = ['discovery', 'library', 'stats', 'mylist', 'detail', 'calendar'];
+  const views = ['discovery', 'library', 'stats', 'mylist', 'detail'];
   for (const v of views) {
     const el = document.getElementById(v + 'View');
     if (el) el.classList.toggle('hidden', v !== view);
@@ -26,7 +31,6 @@ function showView(view) {
   document.getElementById('btnLibrary').classList.toggle('active', view === 'library');
   document.getElementById('btnStats').classList.toggle('active', view === 'stats');
   document.getElementById('btnMyList').classList.toggle('active', view === 'mylist');
-  document.getElementById('btnCalendar').classList.toggle('active', view === 'calendar');
 
   currentView = view;
   __debug.snapshot(currentView + ' (after toggle)');
@@ -49,8 +53,10 @@ function showView(view) {
     _libraryChangingView = true;
     window.loadLibrary(true);
   }
-  if (view === 'mylist') window.loadMyList();
-  if (view === 'calendar') window.loadCalendar();
+  if (view === 'mylist') {
+    _mylistChangingView = true;
+    window.loadMyList();
+  }
   if (view === 'stats') {
     window.loadStats();
     window.loadActivityChart();
@@ -249,8 +255,6 @@ async function openSettings() {
     if (cardTitleLib) cardTitleLib.checked = getCardTitleVisible('library');
     var cardTitleMylist = document.getElementById('settingsCardTitleMylist');
     if (cardTitleMylist) cardTitleMylist.checked = getCardTitleVisible('mylist');
-    var cardTitleCal = document.getElementById('settingsCardTitleCalendar');
-    if (cardTitleCal) cardTitleCal.checked = getCardTitleVisible('calendar', true);
     if (typeof renderDashboardLayoutSettings === 'function') renderDashboardLayoutSettings();
 
     // Preload DB info
@@ -450,8 +454,6 @@ async function saveSettings() {
     if (ctLib) localStorage.setItem('myAnimDock_cardTitle_library', ctLib.checked);
     var ctMylist = document.getElementById('settingsCardTitleMylist');
     if (ctMylist) localStorage.setItem('myAnimDock_cardTitle_mylist', ctMylist.checked);
-    var ctCal = document.getElementById('settingsCardTitleCalendar');
-    if (ctCal) localStorage.setItem('myAnimDock_cardTitle_calendar', ctCal.checked);
 
     closeModal('settingsModal');
 

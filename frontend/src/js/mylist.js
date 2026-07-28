@@ -88,6 +88,14 @@ async function loadMyList() {
     renderMyListStatusBar();
     renderMyListSortDropdown();
     renderMyList();
+    // 恢复滚动位置
+    if (_mylistChangingView) {
+      _mylistChangingView = false;
+      var mc = document.querySelector('.main-content');
+      if (mc && mylistScrollTop > 0) {
+        mc.scrollTop = mylistScrollTop;
+      }
+    }
   } catch (e) {
     if (window.location.origin !== 'http://localhost:3456') return;
     showToast('加载我的列表失败: ' + e.message, 'error');

@@ -192,13 +192,60 @@ async function cleanupOldCache(dataDir) {
   return total;
 }
 
-// --- TTL Cache ---
+// --- TTL Cache (in-memory) ---
 function createTimedCache(ttlMs) {
   let data = null, ts = 0;
   return {
     get() { return (Date.now() - ts < ttlMs) ? data : null; },
     set(v) { data = v; ts = Date.now(); },
     clear() { data = null; ts = 0; },
+  };
+}
+
+// --- Persistent TTL Cache (disk-backed, survives restart) ---
+// Saves cache to filePath as JSON. On load, checks mtime against TTL.
+// If file is stale or corrupted, starts fresh.
+function createPersistentCache(ttlMs, filePath) {
+  let data = null;
+
+  // Try loading from disk
+  if (filePath) {
+    try {
+      if (fs.existsSync(filePath)) {
+        const stat = fs.statSync(filePath);
+        const age = Date.now() - stat.mtimeMs;
+        if (age < ttlMs) {
+          const raw = fs.readFileSync(filePath, 'utf-8');
+          const parsed = JSON.parse(raw);
+          data = parsed;
+          logger.info('Cache loaded: ' + path.basename(filePath) + ' (' + Math.round(age / 1000) + 's old)');
+        }
+      }
+    } catch (e) {
+      logger.warn('Cache load failed, starting fresh: ' + path.basename(filePath));
+    }
+  }
+
+  return {
+    get() { return data; },
+    set(v) {
+      data = v;
+      if (filePath) {
+        try {
+          const dir = path.dirname(filePath);
+          if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+          fs.writeFileSync(filePath, JSON.stringify(v), 'utf-8');
+        } catch (e) {
+          logger.warn('Cache write failed: ' + e.message);
+        }
+      }
+    },
+    clear() {
+      data = null;
+      if (filePath) {
+        try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch (e) {}
+      }
+    },
   };
 }
 
@@ -211,4 +258,5 @@ module.exports = {
   readBody, jsonResp,
   cleanupOldCache,
   createTimedCache,
+  createPersistentCache,
 };

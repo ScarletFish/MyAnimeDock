@@ -47,6 +47,9 @@ prisma/server/
 # Generated runtime files
 server/.port
 
+# Generated runtime caches
+server/cache/
+
 # Dev/test files
 toast-preview.html
 

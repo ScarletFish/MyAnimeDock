@@ -2,7 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const logger = require('../logger').child('[BANGUMI]');
 const { curlFetch, fetchWithTimeout, downloadImage, isNetworkError, isCloudflareInterference, isCurlFallbackActive, activateCurlFallback, USER_AGENT } = require('../lib/http-fetch');
-const { createTimedCache } = require('../lib/utils');
+const { createTimedCache, createPersistentCache } = require('../lib/utils');
+const { DATA_DIR } = require('../lib/config');
 
 class BangumiScraper {
   constructor() {
@@ -222,7 +223,8 @@ async search(keyword, source) {
    * 24h cache — calendar data is weekly, subject details are permanent.
    */
   async getEnrichedCalendar() {
-    if (!this._enrichedCalendarCache) this._enrichedCalendarCache = createTimedCache(86400000);
+    const CACHE_FILE = path.join(DATA_DIR, 'cache', 'calendar-enriched.json');
+    if (!this._enrichedCalendarCache) this._enrichedCalendarCache = createPersistentCache(86400000, CACHE_FILE);
     const cached = this._enrichedCalendarCache.get();
     if (cached) return cached;
 
@@ -286,6 +288,49 @@ async search(keyword, source) {
 
     this._enrichedCalendarCache.set(enriched);
     return enriched;
+  }
+
+  /**
+   * Fetch basic calendar data (no per-subject enrichment).
+   * Returns calendar items with base fields + country detection.
+   * 24h cache — calendar data is weekly.
+   * Fast: only 1 API call (Bangumi /calendar), no individual subject fetches.
+   */
+  async getBasicCalendar() {
+    const CACHE_FILE = path.join(DATA_DIR, 'cache', 'calendar-basic.json');
+    if (!this._basicCalendarCache) this._basicCalendarCache = createPersistentCache(86400000, CACHE_FILE);
+    const cached = this._basicCalendarCache.get();
+    if (cached) return cached;
+
+    const calendarData = await this.getCalendar();
+
+    const basic = calendarData.map(day => ({
+      weekday: day.weekday,
+      items: (day.items || [])
+        .filter(item => item.type === 2)
+        .map(item => ({
+          id: item.id,
+          name: item.name || '',
+          name_cn: item.name_cn || '',
+          air_date: item.air_date || null,
+          air_weekday: item.air_weekday ?? null,
+          coverUrl: item.images?.large || item.images?.common || item.images?.medium || null,
+          rating: item.rating?.score ?? null,
+          rank: item.rating?.rank ?? null,
+          country: BangumiScraper.detectCountry(item),
+          // Enrichment fields (null/empty — filled by full calendar)
+          totalEpisodes: null,
+          eps: null,
+          platform: null,
+          tags: [],
+          infobox: [],
+          summary: null,
+          collection: null,
+        })),
+    }));
+
+    this._basicCalendarCache.set(basic);
+    return basic;
   }
 
   /**

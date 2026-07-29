@@ -109,10 +109,6 @@ module.exports = {
     const anime = data.library.find(a => a.id === id);
     if (!anime) { jsonResp(res, 404, { error: 'Anime not found' }); return; }
     anime.downloaded = fs.existsSync(anime.folderPath);
-    if (anime.summary) {
-      const { truncateSummary } = require('../scrapers/bangumi');
-      anime.summary = truncateSummary(anime.summary);
-    }
     // Derive last played episode from play sessions
     const animeSessions = (data.playSessions || [])
       .filter(s => s.animeId === id)

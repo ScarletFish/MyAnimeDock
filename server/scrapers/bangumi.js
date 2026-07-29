@@ -122,7 +122,7 @@ async search(keyword, source) {
       bangumiId: subjectId,
       bangumiTitle: detail.name_cn || detail.name || null,
       bangumiTitleJp: detail.name || null,
-      summary: BangumiScraper.truncateSummary(detail.summary) || null,
+      summary: detail.summary || null,
       coverUrl: detail.images?.large || null,
       localCover,
       rating: detail.rating?.score ? parseFloat(detail.rating.score.toFixed(1)) : null,

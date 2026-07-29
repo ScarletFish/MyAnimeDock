@@ -11,7 +11,9 @@ const bootLog = (msg) => { try { fs.appendFileSync(BOOT_LOG, `[${new Date().toIS
 const DATA_DIR = process.pkg
   ? path.join(process.env.APPDATA || process.env.HOME || '.', 'MyAnimeDock')
   : path.join(__dirname, '..');
-const ASSET_DIR = path.join(__dirname, '..', '..'); // 前端静态资源根
+const ASSET_DIR = process.pkg
+  ? path.join(__dirname, 'resources')  // pkg: resources\frontend\dist\ (map 语法无 _up_)
+  : path.join(__dirname, '..', '..'); // 开发模式：config.js 在 server/lib/
 const CONFIG_PATH = path.join(DATA_DIR, 'config.json');
 const SCANNED_TREE_PATH = path.join(DATA_DIR, 'scanned-tree.json');
 const PORT = 3456;

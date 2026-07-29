@@ -596,7 +596,9 @@ function mmRenderPanel(item) {
       summaryHtml = `
         <div>
           <div class="mm-panel-label">简介</div>
-          <div class="mm-panel-summary">${escHtml(filtered)}</div>
+          <div class="mm-panel-summary">
+            <div class="mm-panel-summary-text">${escHtml(filtered)}</div>
+          </div>
         </div>`;
     }
   }
@@ -1056,15 +1058,21 @@ async function mmSyncViaSSE(animeIds, options = {}) {
       if (mmSyncCancelled) return;
       try {
         const data = JSON.parse(e.data);
+        // matchSource 映射为中文描述（anilist/season 来自服务端新增事件）
+        const sourceLabels = {
+          'anilist': '正在通过 AniList 补充信息…',
+          'season': '正在推算作品季度…',
+        };
+        const detail = sourceLabels[data.matchSource] || `正在获取元数据（${data.matchSource || '?'}）`;
         if (simplified) {
           // 简化模式：直接添加一条 fetching 日志
-          mmAddSyncLogEntry(data.animeId, data.searchTerm || '匹配', 'fetching', `正在获取元数据（${data.matchSource || '?'}）`);
+          mmAddSyncLogEntry(data.animeId, data.searchTerm || '匹配', 'fetching', detail);
         } else {
           // 完整模式：更新已有条目状态
           const existing = mmSyncLog.find(entry => entry.animeId === data.animeId);
           if (existing) {
             existing.status = 'fetching';
-            existing.detail = `正在获取元数据（${data.matchSource || '?'}）`;
+            existing.detail = detail;
           }
           mmRenderSyncLog();
         }

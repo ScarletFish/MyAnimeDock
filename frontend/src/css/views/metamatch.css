@@ -448,12 +448,14 @@
   color: var(--accent); margin-bottom: var(--space-2);
 }
 .mm-panel-summary {
-  font-size: var(--text-base); color: var(--fg-secondary); line-height: 1.65;
   padding: var(--space-3); background: var(--bg-surface);
   border-radius: var(--radius-sm);
   border-left: 2px solid rgba(var(--accent-rgb), 0.3);
-  display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden;
-  max-height: calc((1.5rem + 2.5 * 1.65 * 0.8125rem) * var(--scale));
+}
+.mm-panel-summary-text {
+  font-size: var(--text-base); color: var(--fg-secondary); line-height: 1.65;
+  display: -webkit-box; -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3; overflow: hidden;
 }
 .mm-panel-error {
   padding: var(--space-3); background: var(--bg-surface);

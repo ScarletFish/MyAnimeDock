@@ -255,6 +255,7 @@ module.exports = {
                   const source = config.apiSources?.find(s => s.type === 'anilist');
                   const searchTerm = anime.bangumiTitleJp || anime.folderName || folderParsed.cleanTitle;
                   if (searchTerm) {
+                    send('fetching', { animeId, searchTerm, matchSource: 'anilist', matchTitle: '' });
                     const results = await anilist.search(searchTerm, source);
                     if (results && results.length > 0) {
                       const bestMatch = pickBestBySimilarity(searchTerm, results);
@@ -274,6 +275,7 @@ module.exports = {
             // 匹配后仍无 matchedSeason → 尝试用新解析的 anilistId 推算季度
             if (matchedSeason == null && anime.anilistId && anime.anilistId !== -1) {
               try {
+                send('fetching', { animeId, searchTerm: '', matchSource: 'season', matchTitle: '' });
                 const { findSeasonByAnilistId } = require('../scrapers');
                 const resolved = await findSeasonByAnilistId(registry, folderParsed.cleanTitle || folderParsed.title, anime.anilistId, config);
                 if (resolved) {

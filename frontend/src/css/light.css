@@ -225,8 +225,9 @@
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
 }
 :is([data-theme="light"], [data-theme-mode="light"]) .detail-info-line {
-  background: var(--bg-card);
-  border-color: var(--border);
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(8px);
+  border-color: rgba(0, 0, 0, 0.08);
 }
 :is([data-theme="light"], [data-theme-mode="light"]) .detail-info-line .info-tag {
   background: rgba(var(--accent-secondary-rgb), 0.08);
@@ -236,14 +237,21 @@
 :is([data-theme="light"], [data-theme-mode="light"]) .detail-tags .detail-tag-toggle { background: transparent; }
 :is([data-theme="light"], [data-theme-mode="light"]) .detail-episodes-header { border-color: rgba(var(--accent-secondary-rgb), 0.12); }
 :is([data-theme="light"], [data-theme-mode="light"]) .detail-banner-bg {
-  mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 86%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 86%, transparent 100%);
 }
 :is([data-theme="light"], [data-theme-mode="light"]) .detail-banner-bg-img {
-  opacity: 0.8;
+  opacity: 1;
 }
 :is([data-theme="light"], [data-theme-mode="light"]) .detail-banner-bg::after {
   opacity: 0;
+}
+:is([data-theme="light"], [data-theme-mode="light"])[data-detail-title-bg="on"] .detail-banner-right h1,
+:is([data-theme="light"], [data-theme-mode="light"])[data-detail-title-bg="on"] .detail-alias {
+  width: fit-content;
+  padding: 0 10px;
+  background: rgba(255,255,255,0.35);
+  border-radius: 4px;
 }
 
 /* ─── Discovery ─── */

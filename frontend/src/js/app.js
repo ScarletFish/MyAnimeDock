@@ -259,6 +259,11 @@ async function openSettings() {
     if (cardTitleMylist) cardTitleMylist.checked = getCardTitleVisible('mylist');
     if (typeof renderDashboardLayoutSettings === 'function') renderDashboardLayoutSettings();
 
+    // Detail title bg
+    var detailTitleBg = document.getElementById('settingsDetailTitleBg');
+    if (detailTitleBg) detailTitleBg.checked = localStorage.getItem('myAnimDock_detailTitleBg') === 'on';
+    applyDetailTitleBg();
+
     // Preload DB info
     if (typeof refreshDbInfo === 'function') refreshDbInfo();
 
@@ -460,6 +465,13 @@ async function saveSettings() {
     if (ctLib) localStorage.setItem('myAnimDock_cardTitle_library', ctLib.checked);
     var ctMylist = document.getElementById('settingsCardTitleMylist');
     if (ctMylist) localStorage.setItem('myAnimDock_cardTitle_mylist', ctMylist.checked);
+
+    // Save detail title bg toggle
+    var dtBg = document.getElementById('settingsDetailTitleBg');
+    if (dtBg) {
+      localStorage.setItem('myAnimDock_detailTitleBg', dtBg.checked ? 'on' : '');
+      applyDetailTitleBg();
+    }
 
     closeModal('settingsModal');
 
@@ -962,6 +974,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   loadTheme();
   loadReduceMotion();
   applyZoom(configCache?.uiScale || 1);
+  applyDetailTitleBg();
   showView('library');
 
   // First-run: show onboarding overlay (defined in onboarding.js)
@@ -1017,6 +1030,11 @@ function getCardTitleVisible(view, defaultVal) {
   var val = localStorage.getItem('myAnimDock_cardTitle_' + view);
   if (val === null) return defaultVal === true;
   return val === 'true';
+}
+
+function applyDetailTitleBg() {
+  var on = localStorage.getItem('myAnimDock_detailTitleBg') === 'on';
+  document.documentElement.setAttribute('data-detail-title-bg', on ? 'on' : '');
 }
 
 function renderDashboardLayoutSettings() {

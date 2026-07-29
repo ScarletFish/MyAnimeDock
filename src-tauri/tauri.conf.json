@@ -13,7 +13,7 @@
         "title": "MyAnimeDock",
         "width": 1920,
         "height": 1080,
-        "minWidth": 1000,
+        "minWidth": 800,
         "minHeight": 700,
         "center": true,
         "resizable": true,

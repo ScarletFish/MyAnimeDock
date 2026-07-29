@@ -405,7 +405,7 @@
   background: rgba(0, 0, 0, 0.04);
 }
 :is([data-theme="light"], [data-theme-mode="light"]) .field-label {
-  color: rgba(0,0,0,0.5);
+  color: rgba(0,0,0,0.75);
 }
 :is([data-theme="light"], [data-theme-mode="light"]) .status-dd-trigger,
 :is([data-theme="light"], [data-theme-mode="light"]) .num-stepper,

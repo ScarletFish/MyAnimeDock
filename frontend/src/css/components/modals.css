@@ -192,7 +192,7 @@
 }
 .field-label {
   display: block;
-  font-size: calc(0.6875rem * var(--scale));
+  font-size: var(--text-xs);
   font-weight: var(--fw-semibold);
   color: var(--fg-muted);
   text-transform: uppercase;
@@ -309,14 +309,19 @@
   background: linear-gradient(135deg, #1a1a2e, #16213e);
   background-size: cover; background-position: center 20%;
   opacity: 0; transition: opacity 0.5s ease;
-  -webkit-mask-image: linear-gradient(to bottom, black 0%, black 12%, transparent 22%);
-  mask-image: linear-gradient(to bottom, black 0%, black 12%, transparent 22%);
 }
-.status-modal-bg[style*="background-image"] { opacity: 0.35; }
+.status-modal-bg[style*="background-image"] { opacity: 1; }
 
 .status-modal-overlay {
   position: absolute; inset: 0;
   background: linear-gradient(180deg, rgba(15,12,9,0.40) 0%, transparent 25%);
+}
+.status-modal-glass {
+  position: absolute; inset: 0; z-index: 1;
+  backdrop-filter: blur(40px) saturate(1.2);
+  -webkit-backdrop-filter: blur(40px) saturate(1.2);
+  background: rgba(0, 0, 0, 0.25);
+  transition: background 0.3s ease;
 }
 .status-modal-close {
   position: absolute; top: 0.75rem; right: 0.75rem; z-index: 20;
@@ -330,8 +335,8 @@
 .status-modal-close svg { width: 16px; height: 16px; }
 
 .status-modal-inner {
-  position: relative; z-index: 1;
-  background: rgba(15, 12, 9, 0.45);
+  position: relative; z-index: 2;
+  background: rgba(15, 12, 9, 0.25);
   border: 1px solid rgba(var(--accent-rgb), 0.06);
   padding: var(--space-6) var(--space-6) var(--space-5);
   border-radius: var(--radius-lg);
@@ -344,3 +349,26 @@
   letter-spacing: -0.02em;
 }
 .status-modal-heading::before { display: none; }
+
+/* Neutralize accent-tinted form elements inside status modal */
+.status-modal .num-stepper,
+.status-modal .date-segments,
+.status-modal .notes-input {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+.status-modal .num-stepper-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--fg-primary);
+}
+.status-modal .num-stepper-btn:active {
+  background: rgba(255, 255, 255, 0.08);
+}
+.status-modal-close:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.status-modal .date-seg:focus,
+.status-modal .notes-input:focus {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}

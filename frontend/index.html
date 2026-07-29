@@ -467,8 +467,11 @@
     <div class="status-modal-bg-wrap">
       <div class="status-modal-bg" id="statusModalBg"></div>
       <div class="status-modal-overlay"></div>
+      <div class="status-modal-glass"></div>
     </div>
-    <button class="status-modal-close" onclick="closeModal('statusModal')">✕</button>
+    <button class="status-modal-close" onclick="closeModal('statusModal')" aria-label="关闭">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
     <div class="status-modal-inner">
       <h2 class="status-modal-heading" id="statusModalTitle">标记状态</h2>
       <div class="status-modal-body">
@@ -478,14 +481,14 @@
             <div class="status-dd" id="statusDd">
               <button type="button" class="status-dd-trigger" id="statusDdTrigger" onclick="toggleStatusDropdown(event)">
                 <span class="status-dd-text" id="statusDdText">计划中</span>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="status-dd-chevron"><polyline points="6 9 12 15 18 9"/></svg>
               </button>
               <div class="status-dd-menu" id="statusDdMenu">
-                <button type="button" class="status-dd-opt" data-value="watching" onclick="selectStatusOption(this)">进行中</button>
-                <button type="button" class="status-dd-opt" data-value="wish" onclick="selectStatusOption(this)">计划中</button>
-                <button type="button" class="status-dd-opt" data-value="completed" onclick="selectStatusOption(this)">已完成</button>
-                <button type="button" class="status-dd-opt" data-value="on_hold" onclick="selectStatusOption(this)">搁置</button>
-                <button type="button" class="status-dd-opt" data-value="dropped" onclick="selectStatusOption(this)">抛弃</button>
+                <button type="button" class="status-dd-opt" data-value="watching" onclick="selectStatusOption(this)"><svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="9"/></svg><span>进行中</span><svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></button>
+                <button type="button" class="status-dd-opt" data-value="wish" onclick="selectStatusOption(this)"><svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg><span>计划中</span><svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></button>
+                <button type="button" class="status-dd-opt" data-value="completed" onclick="selectStatusOption(this)"><svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg><span>已完成</span><svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></button>
+                <button type="button" class="status-dd-opt" data-value="on_hold" onclick="selectStatusOption(this)"><svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg><span>搁置</span><svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></button>
+                <button type="button" class="status-dd-opt" data-value="dropped" onclick="selectStatusOption(this)"><svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg><span>抛弃</span><svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></button>
               </div>
             </div>
           </div>

@@ -366,14 +366,17 @@
 
 /* ─── Status Modal Light ─── */
 :is([data-theme="light"], [data-theme-mode="light"]) .status-modal {
-  background: #fff;
+  background: rgba(255, 255, 255, 0.12);
   border-color: rgba(0, 0, 0, 0.08);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(40px) saturate(1.4);
+  -webkit-backdrop-filter: blur(40px) saturate(1.4);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
 }
 :is([data-theme="light"], [data-theme-mode="light"]) .status-modal-bg {
   background: linear-gradient(135deg, #f0ebe5, #e8e0d8);
+}
+:is([data-theme="light"], [data-theme-mode="light"]) .status-modal-glass {
+  background: rgba(255, 255, 255, 0.15);
 }
 :is([data-theme="light"], [data-theme-mode="light"]) .status-modal-overlay {
   background: linear-gradient(
@@ -383,7 +386,7 @@
   );
 }
 :is([data-theme="light"], [data-theme-mode="light"]) .status-modal-inner {
-  background: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.25);
   border-color: rgba(0, 0, 0, 0.08);
 }
 :is([data-theme="light"], [data-theme-mode="light"]) .status-modal-close {
@@ -391,7 +394,7 @@
 }
 :is([data-theme="light"], [data-theme-mode="light"]) .status-modal-close:hover {
   color: var(--fg-primary);
-  background: var(--bg-canvas);
+  background: rgba(0, 0, 0, 0.04);
 }
 :is([data-theme="light"], [data-theme-mode="light"]) .field-label {
   color: rgba(0,0,0,0.5);
@@ -400,15 +403,15 @@
 :is([data-theme="light"], [data-theme-mode="light"]) .num-stepper,
 :is([data-theme="light"], [data-theme-mode="light"]) .date-segments,
 :is([data-theme="light"], [data-theme-mode="light"]) .notes-input {
-  background: #fff;
-  border-color: rgba(0, 0, 0, 0.12);
+  background: rgba(255, 255, 255, 0.6);
+  border-color: rgba(0, 0, 0, 0.1);
 }
 :is([data-theme="light"], [data-theme-mode="light"]) .status-dd-trigger:hover,
 :is([data-theme="light"], [data-theme-mode="light"]) .num-stepper-btn:hover,
 :is([data-theme="light"], [data-theme-mode="light"]) .date-seg:focus,
 :is([data-theme="light"], [data-theme-mode="light"]) .notes-input:focus {
-  background: #fff;
-  border-color: rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.18);
 }
 
 /* ─── Status Dropdown Menu Light ─── */

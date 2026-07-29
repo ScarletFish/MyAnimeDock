@@ -48,7 +48,7 @@ function concatJsPlugin() {
       // Restore script tag in built HTML
       const htmlPath = resolve(distDir, 'index.html');
       const html = readFileSync(htmlPath, 'utf-8');
-      const updated = html.replace('</body>', '  <script src="/assets/app.js"></script>\n</body>');
+      const updated = html.replace('</body>', '  <script src="./assets/app.js"></script>\n</body>');
       if (updated !== html) {
         writeFileSync(htmlPath, updated);
       }
@@ -58,7 +58,7 @@ function concatJsPlugin() {
 
 export default defineConfig({
   root: '.',
-  base: '/',
+  base: './',
   server: {
     port: 3456,
     strictPort: true,

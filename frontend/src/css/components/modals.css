@@ -295,8 +295,8 @@
 .status-modal {
   padding: 0 !important; overflow: visible; max-width: 680px;
   background: rgba(0, 0, 0, 0.12);
-  backdrop-filter: blur(40px) saturate(1.4);
   -webkit-backdrop-filter: blur(40px) saturate(1.4);
+  backdrop-filter: blur(40px) saturate(1.4);
   border: 1px solid rgba(var(--accent-rgb), 0.12);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(var(--accent-rgb), 0.06);
 }
@@ -318,8 +318,8 @@
 }
 .status-modal-glass {
   position: absolute; inset: 0; z-index: 1;
-  backdrop-filter: blur(40px) saturate(1.2);
   -webkit-backdrop-filter: blur(40px) saturate(1.2);
+  backdrop-filter: blur(40px) saturate(1.2);
   background: rgba(0, 0, 0, 0.25);
   transition: background 0.3s ease;
 }
@@ -340,6 +340,7 @@
   border: 1px solid rgba(var(--accent-rgb), 0.06);
   padding: var(--space-6) var(--space-6) var(--space-5);
   border-radius: var(--radius-lg);
+  color: var(--fg-secondary);
 }
 .status-modal-heading {
   font-family: var(--font-display);
@@ -357,6 +358,9 @@
   background: rgba(255, 255, 255, 0.06);
   border-color: rgba(255, 255, 255, 0.1);
 }
+.status-modal .num-stepper-btn { color: inherit; }
+.status-modal .num-stepper-val { color: inherit; }
+.status-modal .notes-input { color: var(--fg-secondary); }
 .status-modal .num-stepper-btn:hover {
   background: rgba(255, 255, 255, 0.12);
   color: var(--fg-primary);

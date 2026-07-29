@@ -1,4 +1,4 @@
-# Save 函数分类（db.js）
+# Save 函数分类
 
 ## 函数总表
 
@@ -12,6 +12,8 @@
 | `db.updatePlaySession(sid, fields)` | single playSession row | mpv progress (every 10s) |
 | `db.saveAll(data)` | all tables in parallel | Composite fallback for multi-table saves |
 | `saveScannedTree(tree)` | `scanned-tree.json` (sync) | Scan, exclude, unlink, metadata |
+
+> `saveScannedTree()` 定义在 `lib/config.js`，不是 `db.js`。其余函数均定义在 `db.js`。
 
 **saveLibrary uniqueness checks**: Before upserting each anime, `saveLibrary` checks:
 - `bangumiId` uniqueness — if another anime already owns the same `bangumiId`, skip the current entry
@@ -53,9 +55,10 @@ SQLite (anime.db): primary store for library, playSessions
   → Fine-grained writes: each function writes only its table
   → Full-state sync: db.saveAll() writes all three tables
 
-scanned-tree.json: independent JSON file for scan tree
+scanned-tree.json: exclusive JSON file for scan tree
   → sync write, separate from SQLite
-  → Also persisted in SQLite ScannedTree table for consistency
+  → `db.loadData()` 也会从 SQLite ScannedTree 表读取，但 `init()` 中用 JSON 版盖写
+    （SQLite 表仅在从旧 `anime-data.json` 迁移时写入一次，之后只读 JSON）
 
 config.json: independent JSON file for settings
   → Managed separately, never in SQLite

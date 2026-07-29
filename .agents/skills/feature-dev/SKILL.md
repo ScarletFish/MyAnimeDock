@@ -55,14 +55,30 @@ Goal: Understand relevant existing code at both high and low levels.
 
 Goal: Fill gaps and resolve ambiguities before designing.
 
-**This is one of the most important phases. Do not skip.**
+**This is one of the most important phases. Do not skip. Do not short-circuit.**
 
 1. Review the codebase findings and the original feature request.
-2. Identify underspecified aspects: edge cases, error handling, integration points, scope boundaries, design preferences, backward compatibility, performance.
-3. Present all questions to the user as a clear, organized list.
+2. Identify underspecified aspects. **必须覆盖以下四类**，缺一不可：
+   - **边界情况**（空状态、极端数据、网络错误、并发/竞态）
+   - **错误处理**（失败时行为、用户可见的反馈）
+   - **设计偏好**（交互方式、视觉方向、技术选型）
+   - **Scope 边界**（做哪些、明确不做哪些）
+3. **一次性提交所有问题**：用 `question` 工具组织为清晰的列表，不可逐个零散提问后自行推进。
 4. **Wait for answers** before moving to architecture.
+5. 用户回复后仍有未覆盖项的，**必须追加提问**，不得"差不多就行了"。
 
-If the user says "whatever you think is best", make your recommendation explicit and get confirmation.
+### 禁默认通过
+
+- ❌ 用户说"whatever you think is best" → **不得视同确认**。必须把你的推荐打包成 proposal，用 `question` 工具提交二选一（推荐方案 A / 可选方案 B），获得用户明确选择后才算确认
+- ❌ 用户说"简单做就行" / "你决定" → 同上处理
+- ❌ 只问了 1-2 个简单问题就继续 → 不满足四类覆盖要求
+- ❌ 用陈述句替代 `question` 工具做确认
+
+### 最少提问数参考
+
+- 小功能（单文件改动）：至少 3-5 个问题，覆盖边界+错误+scope
+- 中等功能（跨 2-3 文件）：至少 5-8 个问题，覆盖全部四类
+- 大功能（新模块/跨系统）：至少 8+ 个问题，全部四类深度覆盖
 
 ## Phase 4: Architecture design
 

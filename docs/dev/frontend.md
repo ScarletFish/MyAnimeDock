@@ -1,5 +1,60 @@
 # 前端开发规范 — Frontend
 
+## ⚠️ 必读（写 CSS/UI 前必须看）
+
+### 现有组件
+
+| 场景 | 使用 | 定义文件 |
+|------|------|----------|
+| 按钮 | `.btn` / `.btn-primary` / `.btn-danger` / `.btn-outline` | `components/buttons.css` |
+| 标签/角标 | `.badge` | `components/badges.css` |
+| 卡片布局 | `.anime-card` | `components/card-grid.css` |
+| 下拉框 | `.sort-dropdown` / `createDropdown()` | `components/dropdowns.css` + `components.js` |
+| 模态框 | `.modal-overlay` + `.modal-panel` | `components/modals.css` |
+| 输入框/搜索 | `.search-input` / `.filter-input` / `.select-native` | `components/forms.css` |
+| Toast 提示 | `.toast` + `.toast-visible` | `components/toast.css` |
+| 加载中 | `.loading-spinner` | `components/patterns.css` |
+| 分页 | `.pagination` | `components/patterns.css` |
+| 标签组 | `.tags-field` | `components/patterns.css` |
+| 发现页 | `.discovery-*` | `components/discovery.css` |
+| 主题选择器 | `.theme-dock` | `components/theme-controls.css` |
+
+> 更多组件见对应 `.css` 文件。**写新 UI 前先查这些有没有现成的。**
+
+### Token 引用规则
+
+所有新增 CSS 必须用 `var(--xxx)` token，**禁止写死值**：
+
+| CSS 属性 | 必须用 | 严禁写死 |
+|----------|--------|----------|
+| `padding` / `gap` / `margin` | `var(--space-*)` | `px` |
+| `color` / `background` / `border-color` | `var(--bg-*)` / `var(--fg-*)` / `var(--accent-*)` | `#xxx` / `rgba()` |
+| `border-radius` | `var(--radius-*)` | `px`（`50%`/`9999px` 除外） |
+| `font-size` | `var(--text-*)` | `px` / `rem` |
+| `font-weight` | `var(--fw-*)` | `400` / `600` / `700` |
+| `box-shadow` | `var(--shadow-*)` | 自定义阴影 |
+
+> 例外：`opacity`、`z-index`、`line-height` 等无法抽象的属性可用原始值。
+
+### "先找后写"三步协议
+
+```
+写一个 CSS class 前先回答：
+① 现有组件库有没有这个样式？→ 有就用，不写新 class
+② 没有组件，有无 token 可用？→ 用 var(--xxx) 组合
+③ 都不够且有必要抽象新组件？→ 放到正确文件，不新建 .css 文件
+```
+
+### 自动检查
+
+```bash
+npm run check:css    # 扫描 views/ + layouts/ 的 token 合规性
+```
+
+> ⚠️ 每次新增/修改 CSS 后必须跑 `npm run check:css`，确认无违规后才算完成。
+
+---
+
 ## 架构概要
 
 Vite 构建 + 全局 `<script>` 标签（非 ESM）的 vanilla HTML/CSS/JS SPA。
@@ -290,25 +345,22 @@ document.getElementById('view-library').innerHTML = renderFullLibrary(items);
 --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);  /* 弹性效果 */
 ```
 
-### 组件类名参考
+## 新增 UI 组件检查清单
 
-这些组件定义在 `public/css/components.css`，写新 UI 时优先使用，不要重写：
+> ⚠️ 写 CSS/UI 前**必须先看**本文档顶部的 [必读章节](#%EF%B8%8F-必读写-cssui-前必须看)。以下清单是补充检查项。
 
-| 场景 | 类名 | 说明 |
-|------|------|------|
-| 按钮 | `.btn` | 默认透明边框按钮 |
-| 按钮—主操作 | `.btn-primary` | accent 渐变填充 |
-| 按钮—危险 | `.btn-danger` | 红色边框 + 红色文字 |
-| 按钮—轮廓 | `.btn-outline` | accent 色边框 + 文字 |
-| 下拉框 | `.sort-dropdown` | 自定义下拉选择器 |
-| 输入框 | `.search-input` / `.filter-input` | 搜索/筛选输入框 |
-| 模态框 | `.modal-overlay` + `.modal-panel` | 全屏半透明遮罩 + 居中面板 |
-| 选择框 | `.select-native` | 原生 `<select>` 样式重置 |
-| 标签 | `.badge` | 角标/状态标签 |
-| 分页 | `.pagination` | 底部页码 |
-| 加载中 | `.loading-spinner` | loading 旋转动画 |
-| toast | `.toast` + `.toast-visible` | 底部提示消息 |
-| 标签组 | `.tags-field` | 标签列表（动画入场） |
+- [ ] 用工厂函数（`createDropdown` / `createFilterBar`）还是自己写？
+  - 有现有工厂 → 用工厂。没有 → 自己写，考虑是否可以抽象成新的工厂
+- [ ] 外部输入是否 escHtml/escAttr？
+- [ ] 缩放是否用 `--scale` calc？
+- [ ] DOM 操作前是否检查元素存在？
+- [ ] 局部刷新还是重建？—— 重建仅当视图结构变化时（新增/删除区块），否则局部刷新
+- [ ] 是否有动画？是否用 GSAP？
+- [ ] 响应式：1000px 以下不崩、1920px 以上不太空？
+  - 确认 `min-width` / `max-width` / `auto-fill` 行为合理
+- [ ] 颜色/间距/圆角/阴影/字号是否完全使用 `var(--xxx)` token？—— 跑 `npm run check:css` 验证
+
+---
 
 ## 视觉一致性 — 详情页模块
 
@@ -328,18 +380,4 @@ document.getElementById('view-library').innerHTML = renderFullLibrary(items);
 标题用 `.detail-section-header` + `<h3>` 体系（flex 行，标题左，操作右）。
 卡片/内容区的 gap、padding、font-size 从已有同类模块取，不猜值。
 
-## 新增 UI 组件检查清单
 
-- [ ] 用工厂函数（`createDropdown` / `createFilterBar`）还是自己写？
-  - 有现有工厂 → 用工厂。没有 → 自己写，考虑是否可以抽象成新的工厂
-- [ ] 外部输入是否 escHtml/escAttr？
-- [ ] 缩放是否用 `--scale` calc？
-- [ ] DOM 操作前是否检查元素存在？
-- [ ] 局部刷新还是重建？—— 重建仅当视图结构变化时（新增/删除区块），否则局部刷新
-- [ ] 是否有动画？是否用 GSAP？
-- [ ] 响应式：1000px 以下不崩、1920px 以上不太空？
-  - 确认 `min-width` / `max-width` / `auto-fill` 行为合理
-- [ ] 颜色/间距/圆角/阴影是否用了 `var(--xxx)` token，没写死值？
-  - 背景 → `var(--bg-*)`，文字 → `var(--fg-*)`，边框 → `var(--border)`
-  - 圆角 → `var(--radius-*)`，间距 → `var(--space-*)`，阴影 → `var(--shadow-*)`
-  - 语义色（成功/错误等）→ `var(--success)` / `var(--error)` / `var(--warning)`

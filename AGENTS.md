@@ -10,7 +10,9 @@ Vanilla JS SPA + Node.js HTTP server + Tauri v2 desktop shell. 自托管动漫�
 
 | 场景 | 行为 |
 |------|------|
-| 需求不明确 | `skill("req-implement-test")` |
+| 功能需求（新增/修改功能） | **必须先出需求确认表** → `skill("req-implement-test")` |
+| 修明确的小 bug（已知位置+已知改法） | 直接修，修完报告 |
+| 设计讨论（"怎么实现"/"哪个方案好"） | 走设计讨论路径（`docs/dev/workflow.md` 路径 B） |
 | **定位文件/文件结构** | **读 `docs/file-structure.md`** |
 | 数据流/API/模型 | 读 `docs/data-flow.md` 选子文件 |
 | 探索代码路径 | 读 `docs/code-explorer.md` |
@@ -18,6 +20,8 @@ Vanilla JS SPA + Node.js HTTP server + Tauri v2 desktop shell. 自托管动漫�
 | 代码审查（仅非平凡） | `skill("code-reviewer")` |
 | 安全审查（外部输入） | `skill("security-review")` |
 | 测试编写 | 读 `docs/dev/testing.md` |
+
+**硬闸门：需求确认表未获用户 `question` 工具明确确认前，禁止进入实现阶段。用户沉默、说"随便"/"你决定"/"按你说的做"均视为未确认。**
 
 ## Commands
 
@@ -27,6 +31,7 @@ npm run dev:frontend       # 开发前端 (Vite HMR)
 npm run dev:tauri          # 全开 (server + Vite + Tauri 窗口)
 npm run dev                # server + Vite (无 Tauri)
 npm run build:frontend     # 构建前端到 dist/（改 CSS/JS 后必须）
+npm run check:css          # 扫描 views/ + layouts/ 的 CSS token 合规（改 CSS 后必须）
 npm run build              # MSI/NSIS 安装包
 npm run check:rust         # Rust 类型检查 (~20s)
 npm run prisma:migrate     # DB 迁移
@@ -45,6 +50,7 @@ cd server && npm test      # 测试
 - **封面路径**: `localCover` 绝对路径，迁移 DATA_DIR 后可能不存在
 - **无认证**: `/api/quit` 局域网可关服
 - **CSS *禁止* `zoom`**: 用 `--scale` calc（详见 `docs/dev/frontend.md`）
+- **"先找后写"三步协议**: 新增 CSS 前先查已有组件和 token，禁止写死值。完成后跑 `npm run check:css` 验证（详见 `docs/dev/frontend.md` 必读章节）
 - **`node --check` 必须**: Vite `concatJsPlugin` 跳过语法校验，改任意 `.js` 后必须 `node --check frontend/src/js/xxx.js`
 - **构建前端**: 改 `frontend/src/` 下 JS/CSS 后需 `npm run build:frontend` 更新 `frontend/dist/`（服务器生产模式从 `dist/` 读）
 - **CSS 子文件结构**: 勿改 `styles.css`（仅入口）；视图样式放 `views/*.css`，小组件用 `@utility` 放 `patterns.css`，主题特有放 `layouts/` 和 `components/`

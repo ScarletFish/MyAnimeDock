@@ -1,6 +1,6 @@
 ---
 name: req-implement-test
-description: Requirements elicitation workflow. Use structured questioning to extract complete requirements before implementation — covering data sources, edge cases, acceptance criteria, and non-goals. Activate when the user gives a vague or partial feature request.
+description: Requirements elicitation workflow. Use structured questioning to extract complete requirements before implementation — covering data sources, edge cases, acceptance criteria, and non-goals. Mandatory for ALL feature requests (not just vague ones).
 ---
 
 # 需求规范化工作流
@@ -11,8 +11,27 @@ description: Requirements elicitation workflow. Use structured questioning to ex
 
 ```
 原始需求 → 方向判断 → 前置研究 → 需求表 → 用户确认 → 按 dev 规范执行
-            ↑ 要不要问？   ↑ 看了再出表                             ↑ 看 docs/dev/
+            ↑ 不要自判   ↑ 看了再出表                             ↑ 看 docs/dev/
 ```
+
+---
+
+## Phase -1: 默认禁止（硬闸门）
+
+**即使你自认为需求很明确，也必须走完整流程——出需求表 → 确认 → 实现。你对"明确"的判断不可信。**
+
+| 触发条件 | 行为 |
+|----------|------|
+| 用户提出功能需求（新增/修改） | **强制走此 skill** |
+| 用户说"随便"/"你决定"/"你觉得行就做" | 视为未确认，agent 必须打包推荐为 proposal 用 `question` 工具提交，获得明确确认 |
+| 用户沉默/不回复 | 不得自行推进 |
+| 只问了 1-2 个问题 | 不满足最低覆盖要求，必须继续追问 |
+
+**禁止的行为：**
+- ❌ 自认为"需求够清楚了"就跳过
+- ❌ 用陈述句确认（"那我们开始吧"）
+- ❌ 用户说"你决定"就直接按自己想的做
+- ❌ 覆盖维度不全就确认通过
 
 ---
 

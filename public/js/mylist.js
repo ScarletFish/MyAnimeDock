@@ -277,7 +277,7 @@ function showWishlistDetail(id) {
       ${item.rating ? `<div class="wishlist-detail-rating">★ ${item.rating}</div>` : ''}
       ${item.summary ? `<p class="wishlist-detail-summary">${escHtml(item.summary)}</p>` : ''}
       <div class="wishlist-detail-actions">
-        <a class="btn btn-primary" href="https://bgm.tv/subject/${item.bangumiId}" target="_blank" rel="noopener">
+        <a class="btn btn-primary" href="${(typeof window.getBangumiFrontendUrl === 'function' ? window.getBangumiFrontendUrl() : 'https://bgm.tv')}/subject/${item.bangumiId}" target="_blank" rel="noopener">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           在 Bangumi 中打开
         </a>
@@ -540,7 +540,7 @@ function showMyListContextMenu(e, id) {
         '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>' +
         '<span>复制标题</span>' +
       '</div>' +
-      '<div class="context-menu-item" onclick="event.stopPropagation();hideContextMenu();(window.__TAURI__?.shell?.open||function(u){window.open(u,\'_blank\')})(\'https://bgm.tv/subject/' + id + '\')">' +
+      '<div class="context-menu-item" onclick="event.stopPropagation();hideContextMenu();var _bgm=(typeof window.getBangumiFrontendUrl === \'function\'?window.getBangumiFrontendUrl():\'https://bgm.tv\');(window.__TAURI__?.shell?.open||function(u){window.open(u,\'_blank\')})(_bgm+\'/subject/\'+id)">' +
         '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>' +
         '<span>在 Bangumi 打开</span>' +
       '</div>' +

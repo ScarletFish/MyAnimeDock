@@ -899,9 +899,36 @@ async function browseFile(inputId) {
       showToast('浏览器模式下请在输入框中手动输入路径', 'info');
     }
   } catch (e) {
-    showToast('选择文件失败: ' + e.message, 'error');
+      showToast('选择文件失败: ' + e.message, 'error');
   }
 }
+
+// ─── Open external URL (Tauri-safe) ───
+function openExternalUrl(url) {
+  if (window.__TAURI__?.shell?.open) {
+    window.__TAURI__.shell.open(url).catch(() => {
+      showToast('打开浏览器失败', 'error');
+    });
+  } else {
+    window.open(url, '_blank');
+  }
+}
+window.openExternalUrl = openExternalUrl;
+
+// ─── Derive Bangumi frontend URL from configured API URL ───
+// e.g. https://api.bangumi.lol → https://bangumi.lol
+function getBangumiFrontendUrl() {
+  const sources = configCache?.apiSources;
+  if (Array.isArray(sources)) {
+    const bgm = sources.find(s => s.type === 'bangumi');
+    if (bgm?.url) {
+      // Strip 'api.' subdomain prefix to get the frontend URL
+      return bgm.url.replace(/^(https?:\/\/)api\./i, '$1');
+    }
+  }
+  return 'https://bgm.tv';
+}
+window.getBangumiFrontendUrl = getBangumiFrontendUrl;
 
 // Init
 document.addEventListener('DOMContentLoaded', async () => {

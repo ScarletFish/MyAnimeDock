@@ -428,7 +428,8 @@ async function contextOpenBgm() {
   if (!id) return;
   const anime = libraryData.find(function(a) { return a.id === id; });
   if (!anime || !anime.bangumiId) return;
-  const url = 'https://bgm.tv/subject/' + anime.bangumiId;
+  const baseUrl = (typeof window.getBangumiFrontendUrl === 'function') ? window.getBangumiFrontendUrl() : 'https://bgm.tv';
+  const url = baseUrl + '/subject/' + anime.bangumiId;
   if (window.__TAURI__?.shell?.open) {
     try {
       await window.__TAURI__.shell.open(url);

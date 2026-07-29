@@ -525,7 +525,7 @@ function renderWishlistDetail(anime) {
       </div>
     </div>
     <div class="wishlist-detail-actions mt-4">
-      <a class="btn btn-primary" href="https://bgm.tv/subject/${anime.bangumiId}" target="_blank" rel="noopener">
+      <a class="btn btn-primary" href="${(typeof window.getBangumiFrontendUrl === 'function' ? window.getBangumiFrontendUrl() : 'https://bgm.tv')}/subject/${anime.bangumiId}" target="_blank" rel="noopener">
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
         在 Bangumi 中打开
       </a>
@@ -900,7 +900,7 @@ async function fetchAndRenderRelations(animeId) {
       const color = badgeColors[label] || '#6b7280';
       const click = r.inLibrary && r.localId
         ? `onclick="showDetail('${r.localId.replace(/'/g, "\\'")}',null,null,'library')"`
-        : `onclick="window.open('https://anilist.co/anime/${r.id}','_blank')"`;
+        : `onclick="openExternalUrl('https://anilist.co/anime/${r.id}')"`;
       return `<div class="relation-card" ${click}>
         <div class="relation-card-cover">
           <div class="relation-card-img"${cover ? ' style="background-image:url(' + cover.replace(/\)/g,'%29') + ')"' : ''}></div>
@@ -956,7 +956,7 @@ scrollEl.innerHTML = recs.map(r => {
       const rating = r.averageScore ? `★ ${r.averageScore}` : '';
       const click = r.inLibrary && r.localId
         ? `onclick="showDetail('${r.localId.replace(/'/g, "\\'")}',null,null,'library')"`
-        : `onclick="window.open('https://anilist.co/anime/${r.id}','_blank')"`;
+        : `onclick="openExternalUrl('https://anilist.co/anime/${r.id}')"`;
       return `<div class="relation-card" ${click}>
         <div class="relation-card-cover">
           <div class="relation-card-img"${cover ? ' style="background-image:url(' + cover.replace(/\)/g,'%29') + ')"' : ''}></div>

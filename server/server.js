@@ -24,6 +24,24 @@ bootLog(`PKG=${!!process.pkg} EXE=${process.execPath} CWD=${process.cwd()}`);
 bootLog(`APPDATA=${process.env.APPDATA} TEMP=${process.env.TEMP}`);
 bootLog(`DATA_DIR=${DATA_DIR}`);
 
+// ── 诊断：ASSET_DIR 实际内容 ──
+bootLog(`ASSET_DIR=${ASSET_DIR}`);
+try {
+  const assetRoot = path.join(ASSET_DIR, 'frontend', 'dist');
+  if (fs.existsSync(assetRoot)) {
+    bootLog(`ASSET_DIR/frontend/dist EXISTS, contents: ${fs.readdirSync(assetRoot).join(', ')}`);
+  } else {
+    bootLog(`ASSET_DIR/frontend/dist MISSING`);
+    // 向上找，看哪一层不存在
+    for (const part of ['frontend', 'frontend/dist']) {
+      const p = path.join(ASSET_DIR, part);
+      bootLog(`  check ${p}: ${fs.existsSync(p)}`);
+    }
+  }
+} catch (e) {
+  bootLog(`ASSET_DIR scan error: ${e.message}`);
+}
+
 // ── pkg 模式：重定向 console.log/error 到日志文件 ──
 if (process.pkg) {
   try {
@@ -192,7 +210,10 @@ function handleStaticFiles(req, res, _state) {
     filePath = path.join(filePath, 'index.html');
   }
   fs.readFile(filePath, (e, d) => {
-    if (e) { res.writeHead(404); res.end('Not found'); return; }
+    if (e) {
+      bootLog(`STATIC 404: ${filePath} (ASSET_DIR=${ASSET_DIR}, url=${req.url})`);
+      res.writeHead(404); res.end('Not found'); return;
+    }
     const ext = path.extname(filePath).toLowerCase();
     const cacheCtrl = ext === '.html' || ext === '.js' || ext === '.css' ? 'no-cache' : 'public, max-age=3600';
     res.writeHead(200, {
@@ -414,6 +435,7 @@ async function init() {
     logger.error(`Failed to write .port file: ${e.message}`);
   }
   console.log(`PORT=${actualPort}`);  // stdout for sidecar stdout capture
+  bootLog(`Server listening on port ${actualPort}`);
 
   const elapsed = Date.now() - startTime;
   logger.info(`Ready in ${elapsed}ms — ${data.library.length} anime, port ${actualPort}`);

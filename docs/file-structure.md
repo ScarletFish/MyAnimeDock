@@ -153,57 +153,23 @@ frontend/
 │           ├── onboarding.css
 │           └── keyboard.css
 │
-└── public/
-    └── vendor/                # vendor 代理到 public/vendor/
-        ├── gsap/              #   实际在 public/vendor/gsap/
-        ├── d3/
-        └── wordcloud/
+└── public/                    # Vite 静态资源目录
+    └── icon.svg
 ```
 
 ---
 
-## public/ — 前端构建产物 + 静态资源（HTTP 服务根目录）
+## public/ — 第三方静态资源（vendor）
 
 ```
 public/
-├── index.html                 # 构建后 HTML（同 frontend/index.html 输出）
-├── styles.css                 # CSS 入口（构建合并）
-│
-├── js/                        # JS 构建产物（与 frontend/src/js/ 1:1）
-│   ├── state.js               #   npm run sync:js 从 src/js 同步
-│   ├── debug.js
-│   ├── ui.js
-│   ├── api.js
-│   ├── components.js
-│   ├── utils.js
-│   ├── discovery.js
-│   ├── library.js
-│   ├── detail.js
-│   ├── detail-nav.js
-│   ├── detail-stats.js
-│   ├── detail-pagination.js
-│   ├── mylist.js
-│   ├── metamatch.js
-│   ├── stats.js
-│   ├── search.js
-│   ├── titlebar.js
-│   ├── onboarding.js
-│   ├── keyboard.js
-│   └── app.js
-│
-├── css/
-│   └── light.css              # 亮色模式 CSS
-│
-├── vendor/                    # 第三方库（非 npm，直接引用）
-│   ├── gsap/
-│   │   ├── gsap.min.js
-│   │   ├── Flip.min.js
-│   │   └── ScrollTrigger.min.js
-│   ├── d3/
-│   └── wordcloud/
-│
-├── icon.svg
-└── favicon.svg
+└── vendor/                    # 第三方库（非 npm，直接引用）
+    ├── gsap/
+    │   ├── gsap.min.js
+    │   ├── Flip.min.js
+    │   └── ScrollTrigger.min.js
+    ├── d3/
+    └── wordcloud/
 ```
 
 ---
@@ -302,7 +268,7 @@ docs/
 | 路由模块 | `server/routes/*.js` (9 个) |
 | DB 操作 | `server/db.js` |
 | 元数据抓取 | `server/scrapers/*.js` (5 个) |
-| 前端 JS | `frontend/src/js/*.js` → sync → `public/js/*.js` |
+| 前端 JS | `frontend/src/js/*.js` → Vite build → `frontend/dist/assets/app.js` |
 | 前端 CSS | `frontend/src/css/` |
 | HTML 入口 | `frontend/index.html` |
 | 页面视图样式 | `frontend/src/css/views/*.css` (11 个) |

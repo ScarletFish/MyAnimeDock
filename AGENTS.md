@@ -26,7 +26,7 @@ npm run dev:server:watch   # 开发后端 (nodemon)
 npm run dev:frontend       # 开发前端 (Vite HMR)
 npm run dev:tauri          # 全开 (server + Vite + Tauri 窗口)
 npm run dev                # server + Vite (无 Tauri)
-npm run sync:js            # 同步 frontend/src/js/ → public/js/
+npm run build:frontend     # 构建前端到 dist/（改 CSS/JS 后必须）
 npm run build              # MSI/NSIS 安装包
 npm run check:rust         # Rust 类型检查 (~20s)
 npm run prisma:migrate     # DB 迁移
@@ -46,7 +46,7 @@ cd server && npm test      # 测试
 - **无认证**: `/api/quit` 局域网可关服
 - **CSS *禁止* `zoom`**: 用 `--scale` calc（详见 `docs/dev/frontend.md`）
 - **`node --check` 必须**: Vite `concatJsPlugin` 跳过语法校验，改任意 `.js` 后必须 `node --check frontend/src/js/xxx.js`
-- **`public/js/` 同步**: 改 `frontend/src/js/` 后必须 `npm run sync:js` 复制到 `public/js/`
+- **构建前端**: 改 `frontend/src/` 下 JS/CSS 后需 `npm run build:frontend` 更新 `frontend/dist/`（服务器生产模式从 `dist/` 读）
 - **CSS 子文件结构**: 勿改 `styles.css`（仅入口）；视图样式放 `views/*.css`，小组件用 `@utility` 放 `patterns.css`，主题特有放 `layouts/` 和 `components/`
 - **Grid 列公式**: 在 `library.js` 的 `GRID_CARD_MIN`/`GRID_CARD_MAX`，不通过 CSS utility 控制
 - **mpv-status**: 不轮询 — `EventSource` 监听 `/api/events/mpv-status`，DB 落盘仅 `final` 事件

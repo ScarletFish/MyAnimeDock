@@ -330,6 +330,7 @@
 }
 
 /* ─── Metamatch (mm-*) ─── */
+:is([data-theme="light"], [data-theme-mode="light"]) .modal-overlay--metamatch .modal--metamatch { background: #e8e8e8; }
 :is([data-theme="light"], [data-theme-mode="light"]) .modal-m-filterbar { background: var(--bg-elevated); }
 :is([data-theme="light"], [data-theme-mode="light"]) .modal-m-topbar { background: var(--bg-card); }
 :is([data-theme="light"], [data-theme-mode="light"]) .modal-m-progress { background: var(--bg-elevated); }
@@ -350,7 +351,7 @@
   box-shadow: inset 3px 0 0 var(--accent);
 }
 
-:is([data-theme="light"], [data-theme-mode="light"]) .mm-panel { box-shadow: -4px 0 20px rgba(0, 0, 0, 0.12); }
+:is([data-theme="light"], [data-theme-mode="light"]) .mm-panel { box-shadow: -2px 0 12px rgba(0, 0, 0, 0.06); }
 :is([data-theme="light"], [data-theme-mode="light"]) .mm-panel-header-area { background: var(--bg-card); }
 :is([data-theme="light"], [data-theme-mode="light"]) .mm-panel-cover-sm { background: var(--bg-card); }
 :is([data-theme="light"], [data-theme-mode="light"]) .mm-panel-cover-status { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }

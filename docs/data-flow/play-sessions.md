@@ -83,13 +83,11 @@ POST /api/play
       ├─ activePlays.set(filePath, { sessionId, episode, anime })
       ├─ db.savePlaySessions(data) — only writes playSession table
       ├─ startMpv(mpvPath, filePath, startSeconds, callbacks):
-      │   ├─ --start receives seconds (not 0-1 percentage)
-      │   ├─ Spawn mpv with IPC pipe (--input-ipc-server)
-      │   ├─ onProgress (every 10s) → db.updateEpisodeProgress() + db.updatePlaySession()
+      │   ├─ Spawn mpv with IPC pipe (--input-ipc-server) — no --start arg
+      │   ├─ IPC seek after connect (if startSeconds > 0)
       │   │   ├─ mpv time-pos is in SECONDS
-      │   │   ├─ ep.progress = currentPos  // 秒数（raw time-pos from mpv）
-      │   │   ├─ session.duration = peakPos - progressStart  // 实际观看内容量（秒）
-      │   │   └─ session.clockTime = wall clock (endTime - startTime)
+      │   │   ├─ final ep.progress = currentPos  // 秒数（raw time-pos from mpv）
+      │   │   └─ session.duration = peakPos - progressStart  // 实际观看内容量（秒）
       │   ├─ onError → clean up session, return error to frontend via Promise
       │   └─ onClose (code≠0 && lived<3s) → report crash to frontend
        ├─ final callback (mpv process close):
@@ -104,7 +102,7 @@ POST /api/play
       └─ Return 200 OK or 500 { error: msg }
 
   NOTE: Frontend sends ep.progress (seconds). Server checks if 0 < position < 1
-  (legacy ratio guard), otherwise assumes seconds. mpv --start receives seconds.
+  (legacy ratio guard), otherwise assumes seconds. IPC seek receives seconds.
   progressStart is also in seconds, so duration = peakPos - progressStart is correct.
 ```
 
@@ -234,7 +232,7 @@ GET /api/anime/:id/sessions
 
 | 来源 | 值 | 说明 |
 |------|----|------|
-| mpv `onProgress` | 秒数 | `currentPos` 来自 mpv `time-pos`，前端用 `ep.progress / ep.duration * 100` 算百分比 |
+| mpv `final` 事件 | 秒数 | `currentPos` 来自 mpv `time-pos`，前端用 `ep.progress / ep.duration * 100` 算百分比 |
 | 主动标记未看完 | `0` | toggle watched OFF 时重置进度 |
 
 注意：
@@ -245,14 +243,14 @@ GET /api/anime/:id/sessions
 ### Session 二次绑定验证
 `server/routes/playback.js:133,137`
 
-`onProgress` 回调中有两层 sessionId 校验避免异步污染：
+`final` 回调（mpv 进程关闭时触发）中有两层 sessionId 校验避免异步污染：
 
 ```
-① cbSid !== sessionId        ← callback 的 session 不属于当前 handlePlay 调用
+① cbSid !== sessionId          ← callback 的 session 不属于当前 handlePlay 调用
 ② active.sessionId !== cbSid  ← activePlays 中的 session 已被新播放替换
 ```
 
-典型场景：用户快速切换播放不同文件，旧 mpv 进程的 `onProgress` 到达时不应修改新 session 的数据。
+典型场景：用户快速切换播放不同文件，旧 mpv 进程的 `final` 回调到达时不应修改新 session 的数据。
 
 ### 单例 mpv 进程
 `server/mpv-controller.js:186-192`
@@ -273,9 +271,9 @@ mpv 异常退出（`code !== 0`）时**两条路径都会执行**：
 | 回调 | 作用 |
 |------|------|
 | `onError` | 清理 session + 通知前端（仅 crash 场景：`lived < 3s`）|
-| `onProgress({final: true})` | 落盘当前进度 + auto-complete 检查 |
+| `final` 回调 | 落盘当前进度 + auto-complete 检查 |
 
-`onError` 的清理和 `onProgress` 的数据落盘不会冲突——`onError` 删 session 记录，`final` 写 episode 进度。
+`onError` 的清理和 `final` 回调的数据落盘不会冲突——`onError` 删 session 记录，`final` 写 episode 进度。
 
 ### Crash 判定门限
 `server/mpv-controller.js:150-153`
@@ -305,10 +303,11 @@ code !== 0 && lived >= 3000ms → 正常退出（用户 kill），不报错
 - 2 秒后通过 IPC 发 `set ontop no` 解除置顶
 - 避免 mpv 永久挡在其他窗口前面
 
-### 进度轮询精度
-`server/mpv-controller.js:132-143`
+### 进度获取机制
+`server/mpv-controller.js:95-104`
 
-`onProgress` 每 10 秒固定间隔发送，非事件驱动。这意味着：
-- 两次轮询间的进度变化丢失（最多丢失 10 秒）
-- 关窗口时的 `final:true` 回调**会补发最后一次的位置**（`currentPos` + `peakPos`）
-- `peakPos` 是 session 期间的最高 `time-pos`，用于计算 `session.duration`（`peakPos - progressStart`）
+进度不是轮询的。`currentPos` 由 mpv IPC 实时推送 `time-pos` property-change 事件更新（事件驱动，非固定间隔）：
+
+- mpv 默认在播放中持续推送 `time-pos` 变化
+- `peakPos` 跟踪 session 期间的最高 `time-pos`
+- 关闭窗口时的 `final:true` 回调读取 `currentPos` + `peakPos` 一次性落盘

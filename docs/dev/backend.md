@@ -92,7 +92,7 @@ db.loadData() → 读 SQLite 初始化
 写入路径 (任一):
   db.saveLibrary(library)          → anime + episodes
   db.saveMemories(memories)        → memories
-  db.savePlaySessions(sessions)    → playSessions（精细化 10s 间隔 + mpv 关闭 final）
+  db.savePlaySessions(sessions)    → playSessions（mpv 启动/关闭/出错）
   db.updateEpisodeProgress(...)    → 单集进度
   db.updateEpisodesWatched(...)    → 批量标记已看
   db.updateMyItemStatus(id, s)    → myList 状态
@@ -123,9 +123,9 @@ db.loadData() → 读 SQLite 初始化
 ## mpv-controller 约定
 
 - `activePlays` Map（内存）追踪当前播放会话
-- 每 10s 精细化更新 SQLite
-- mpv IPC 管道通过 `--input-ipc-server` 通信
-- mpv 关闭时发 `final: true` 标记，触发最终落盘 + Map 清理
+- `--start` 改为 IPC seek（connect 后 seek，不污染队列）
+- 进度由 mpv IPC 实时推送 `time-pos` 更新，不做定时轮询
+- mpv 关闭时发 `final: true` 标记，触发一次性落盘 + Map 清理
 - 播放路径编码：`escAttr` → HTML `dataset` → JSON.parse 全链路
 
 ## Thumbnail 约定

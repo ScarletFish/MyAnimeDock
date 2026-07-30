@@ -7,9 +7,9 @@
 | `db.saveLibrary(data)` | anime + episode tables | Import, delete, metadata fetch, auto-import |
 | `db.saveMyList(data)` | mylist table | Import, auto-import, status change |
 | `db.savePlaySessions(data)` | playSession table | Play start, mpv final/error |
-| `db.updateEpisodeProgress(id, n, fields)` | single episode row | mpv progress (every 10s), manual update |
+| `db.updateEpisodeProgress(id, n, fields)` | single episode row | mpv final (mpv 关闭时一次性落盘), manual update |
 | `db.updateEpisodesWatched(id, numbers[])` | batch episode rows | Auto-mark previous episodes as watched |
-| `db.updatePlaySession(sid, fields)` | single playSession row | mpv progress (every 10s) |
+| `db.updatePlaySession(sid, fields)` | single playSession row | mpv final (mpv 关闭时一次性落盘) |
 | `db.saveAll(data)` | all tables in parallel | Composite fallback for multi-table saves |
 | `saveScannedTree(tree)` | `scanned-tree.json` (sync) | Scan, exclude, unlink, metadata |
 

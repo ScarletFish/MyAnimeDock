@@ -29,7 +29,6 @@ function startMpv(mpvPath, filePath, position, callbacks, sessionId) {
 
     const args = [
         filePath,
-        `--start=${currentPos}`,
         '--keep-open=yes',
         '--ontop',
         `--input-ipc-server=${pipePath}`,
@@ -68,6 +67,10 @@ function startMpv(mpvPath, filePath, position, callbacks, sessionId) {
         ipcClient = net.connect(pipePath, () => {
             logger.info(`IPC connected to ${pipeName}`);
             ipcRetries = 0;
+            if (currentPos > 0) {
+                logger.info(`Seeking to ${currentPos}s via IPC`);
+                ipcWrite({ command: ['seek', currentPos, 'absolute'] });
+            }
             ipcWrite({ command: ['observe_property', 1, 'time-pos'] });
             ipcWrite({ command: ['observe_property', 2, 'duration'] });
             ipcWrite({ command: ['observe_property', 3, 'pause'] });
@@ -128,22 +131,8 @@ function startMpv(mpvPath, filePath, position, callbacks, sessionId) {
 
     setTimeout(connectIPC, 500);
 
-    const progressInterval = setInterval(() => {
-        if (!running) return;
-        callbacks.onProgress({
-            sessionId,
-            filePath,
-            progress: currentPos,
-            peakPos,
-            watched: false, // 不再自动标记 — 由前端弹窗决定
-            duration: currentDuration,
-            final: false,
-        });
-    }, 10000);
-
     mpvProcess.on('close', (code) => {
         if (!running) return;
-        clearInterval(progressInterval);
         const lived = Date.now() - spawnTime;
         logger.info(`mpv closed: code=${code} lived=${lived}ms`);
         if (code !== 0 && lived < 3000) {
@@ -169,7 +158,6 @@ function startMpv(mpvPath, filePath, position, callbacks, sessionId) {
 
     mpvProcess.on('error', (err) => {
         if (!running) return;
-        clearInterval(progressInterval);
         logger.error('mpv error:', err);
         if (callbacks.onError) callbacks.onError(String(err));
         if (ipcClient) { ipcClient.destroy(); ipcClient = null; }

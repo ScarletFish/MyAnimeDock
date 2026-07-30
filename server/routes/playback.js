@@ -149,9 +149,7 @@ module.exports = {
                   session.clockTime = Math.round((endMs - startMs) / 1000);
                 }
               }
-              if (!final) return; // ← 中间进度仅更新内存，不写 DB
-
-              // ── final: 一次性落盘（watched 不由 mpv 自动决定，由前端弹窗确认） ──
+              // ── 一次性落盘（watched 不由 mpv 自动决定，由前端弹窗确认） ──
               db.updateEpisodeProgress(active.anime.id, ep.number, { progress, duration: duration > 0 ? duration : undefined });
               if (active.sessionId) {
                 const session = data.playSessions.find(s => s.sessionId === active.sessionId);

@@ -13,3 +13,6 @@
 | SSE-only MetaMatch（无 batch fallback） | Sync | `docs/data-flow.md` hub |
 | mpv error 传播用 Promise 2s timeout | Playback | `play-sessions.md` |
 | Data/nodemon 忽略路径 | Dev | `docs/dev/backend.md` |
+| 单实例保护必须 Cargo 依赖 + main.rs plugin 注册 | Desktop | `src-tauri/src/main.rs` |
+| 前端 origin 检测必须 `startsWith('http')` 而非硬编码端口 | Frontend | `frontend/src/js/*.js` |
+| `core.json` remote URLs 必须通配端口（`localhost:*`） | Desktop | `src-tauri/capabilities/core.json` |

@@ -8,20 +8,7 @@
   },
   "app": {
     "withGlobalTauri": true,
-    "windows": [
-      {
-        "title": "MyAnimeDock",
-        "width": 1920,
-        "height": 1080,
-        "minWidth": 1280,
-        "minHeight": 720,
-        "center": true,
-        "resizable": true,
-        "decorations": false,
-        "fullscreen": false,
-        "visible": false
-      }
-    ],
+    "windows": [],
     "security": {
       "csp": null
     }

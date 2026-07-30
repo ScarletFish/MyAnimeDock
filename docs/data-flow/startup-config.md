@@ -27,7 +27,35 @@ server.js ⇒ init()
   ├─ 7. Start HTTP server (http.createServer, listen :3456)
   │
         └─ 8. Start HTTP server — 启动完成，无后台自动导入
+
+### 端口回退机制
+
 ```
+server.init()
+  └─ PORT_RANGE = 5（BASE_PORT 3456 → 3460）
+      ├─ 尝试 BASE_PORT（3456）
+      │   ├─ 成功 → actualPort = 3456
+      │   └─ EADDRINUSE → 尝试 +1
+      └─ 写入 .port 文件（供 Tauri 侧读取）
+          └─ 路径：DATA_DIR/.port（dev: server/, pkg: %APPDATA%/MyAnimeDock/）
+```
+
+### Tauri 侧启动（生产/MSI 模式）
+
+```
+main.rs setup()
+  ├─ 1. 单实例保护（tauri-plugin-single-instance）
+  │     └─ 第二次启动 → 把已有窗口唤起到前台
+  ├─ 2. 启动 sidecar（Node.js 后端，仅 release/TAURI_PROD=1 时）
+  ├─ 3. 等待 server 就绪（10s 等 .port，22.5s 等 /api/health）
+  └─ 4. 导航窗口到 http://localhost:{actualPort} 并显示
+```
+
+### Gotchas
+
+- **`.port` 文件无锁保护**：从前两个 sidecar 同时写 `.port` 会相互覆盖，导致 Tauri 读到错误端口。单实例保护通过阻止第二个进程彻底解决此问题。
+- **`core.json` remote URLs 必须通配端口**：`"urls": ["http://localhost:3456"]` 无法匹配 3457+，端口回退后 `__TAURI__` API 全部失效。使用 `"http://localhost:*"`。
+- **前端 origin 检测必须协议级**：`window.location.origin === 'http://localhost:3456'` 在端口回退后条件为 false，视图函数静默跳过。使用 `window.location.origin.startsWith('http')`。
 
 ## Config 流
 

@@ -4,7 +4,7 @@
   "description": "Core window operations for custom title bar",
   "windows": ["main"],
   "remote": {
-    "urls": ["http://localhost:3456"]
+    "urls": ["http://localhost:*"]
   },
   "permissions": [
     "core:default",

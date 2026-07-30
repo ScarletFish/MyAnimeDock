@@ -97,7 +97,7 @@ async function loadMyList() {
       }
     }
   } catch (e) {
-    if (window.location.origin !== 'http://localhost:3456') return;
+    if (!window.location.origin.startsWith('http')) return;
     showToast('加载我的列表失败: ' + e.message, 'error');
   }
 }

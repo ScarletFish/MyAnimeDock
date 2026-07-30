@@ -58,7 +58,7 @@ async function loadDiscovery() {
     renderDiscovery();
   } catch (e) {
     // Tauri 初始加载时静默失败
-    if (window.location.origin !== 'http://localhost:3456') return;
+    if (!window.location.origin.startsWith('http')) return;
     showToast('加载失败: ' + e.message, 'error');
   }
 }

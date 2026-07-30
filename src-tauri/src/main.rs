@@ -1,18 +1,43 @@
 // 在 Windows 上隐藏控制台窗口（仅在 release 模式生效，dev 模式保留控制台输出）
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use tauri::Manager;
+use tauri::{Manager, WebviewWindowBuilder};
 use std::process::Command;
 use std::path::PathBuf;
 use std::sync::Mutex;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 use log::{info, warn};
+use std::io::Write;
+use url::Url;
 
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
 
 #[cfg(target_os = "windows")]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+/// 写入 bootstrap 日志（与 Node 端 server/lib/config.js bootLog 同样的文件）
+fn bootstrap_log(msg: &str) {
+    let ts = {
+        let d = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap_or_default();
+        // 简单但可读的秒+毫秒时间戳（非严格 ISO，但调试足够）
+        format!("{}.{:03}", d.as_secs(), d.subsec_millis())
+    };
+    let temp = match std::env::var("TEMP") {
+        Ok(t) => t,
+        Err(_) => return,
+    };
+    let path = PathBuf::from(temp).join("myanimedock-bootstrap.log");
+    if let Ok(mut f) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+    {
+        let _ = writeln!(f, "[{}] [RUST] {}", ts, msg);
+    }
+}
 
 struct SidecarProcess(Mutex<Option<std::process::Child>>);
 
@@ -45,11 +70,13 @@ fn port_file_path() -> PathBuf {
 /// 如果文件始终不存在（非 sidecar 场景），回退到默认端口 3456。
 fn read_actual_port() -> u16 {
     let port_file = port_file_path();
-    for _ in 0..20 {
+    bootstrap_log(&format!("read_actual_port: looking for {:?}", port_file));
+    for i in 0..20 {
         if port_file.exists() {
             match std::fs::read_to_string(&port_file) {
                 Ok(s) => {
                     if let Ok(port) = s.trim().parse::<u16>() {
+                        bootstrap_log(&format!("read_actual_port: found port {}", port));
                         return port;
                     }
                     warn!("Invalid .port content: '{}', using default 3456", s.trim());
@@ -57,28 +84,52 @@ fn read_actual_port() -> u16 {
                 }
                 Err(e) => warn!("Failed to read .port: {}", e),
             }
+        } else if i % 5 == 0 {
+            bootstrap_log(&format!("read_actual_port: still waiting (attempt {})", i));
         }
         std::thread::sleep(Duration::from_millis(500));
     }
+    bootstrap_log("read_actual_port: TIMEOUT after 10s, falling back to 3456");
     warn!(".port file not found after 10s, falling back to 3456");
     3456
 }
 
 fn main() {
+    bootstrap_log("main() entered");
     env_logger::init();
     tauri::Builder::default()
+        // 单实例插件必须第一个注册，确保在其它插件之前生效
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            bootstrap_log("single-instance callback triggered (2nd instance)");
+            // 第二次启动时把已有窗口唤起到前台
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_notification::init())
+
         .manage(SidecarProcess(Mutex::new(None)))
         .setup(|app| {
+            bootstrap_log("setup() entered");
             let handle = app.handle();
             
             // 生产模式或 TAURI_PROD=1 时自行启动 sidecar；
             // 普通 dev 模式由手动 `npm run dev:server` 提供后端
-            if should_spawn_sidecar() {
-                let sidecar_path = get_sidecar_path(&handle)?;
+            let spawn = should_spawn_sidecar();
+            bootstrap_log(&format!("should_spawn_sidecar() = {}", spawn));
+            if spawn {
+                let sidecar_path = match get_sidecar_path(&handle) {
+                    Ok(p) => {
+                        bootstrap_log(&format!("sidecar path resolved: {:?}", p));
+                        p
+                    }
+                    Err(e) => {
+                        bootstrap_log(&format!("ERROR get_sidecar_path: {}", e));
+                        return Err(e.into());
+                    }
+                };
                 info!("Starting sidecar: {:?}", sidecar_path);
                 
                 let mut cmd = Command::new(&sidecar_path);
@@ -89,8 +140,17 @@ fn main() {
                 #[cfg(target_os = "windows")]
                 cmd.creation_flags(CREATE_NO_WINDOW);
                 
-                let child = cmd.spawn()
-                    .expect("Failed to start Node.js sidecar");
+                bootstrap_log("calling cmd.spawn()...");
+                let child = match cmd.spawn() {
+                    Ok(c) => {
+                        bootstrap_log("sidecar spawned OK");
+                        c
+                    }
+                    Err(e) => {
+                        bootstrap_log(&format!("ERROR cmd.spawn() failed: {}", e));
+                        panic!("Failed to start Node.js sidecar: {}", e);
+                    }
+                };
                 
                 // 存储 child 以便退出时清理
                 if let Ok(mut guard) = handle.state::<SidecarProcess>().0.lock() {
@@ -103,6 +163,7 @@ fn main() {
                 // 此线程检测到 sidecar 退出后，关闭窗口实现完整退出。
                 let monitor_handle = handle.clone();
                 std::thread::spawn(move || {
+                    bootstrap_log("sidecar monitor thread started");
                     loop {
                         std::thread::sleep(Duration::from_millis(500));
                         let state = monitor_handle.state::<SidecarProcess>();
@@ -136,37 +197,44 @@ fn main() {
                 });
             }
             
-            // 等待 server 就绪（先读 .port 文件获取实际端口，再轮询 /api/health）
+            // 等待 server 就绪后创建窗口（URL 直接指向服务器，无需 placeholder 页面）
             let handle_clone = handle.clone();
             std::thread::spawn(move || {
+                bootstrap_log("health check thread started");
                 info!("Waiting for server to be ready...");
                 let port = read_actual_port();
-                wait_for_server_ready(port, &handle_clone);
-                info!("Server is ready on port {}, showing window", port);
+                bootstrap_log(&format!("read_actual_port() = {}", port));
+                wait_for_server_ready(port);
                 
-                // server 就绪后，导航到 sidecar 页面并显示窗口
-                // 窗口初始隐藏（visible: false），等 DB 加载完后再展示
-                let max_nav_attempts = 10;
-                let mut shown = false;
-                for _i in 0..max_nav_attempts {
-                    if let Some(window) = handle_clone.get_webview_window("main") {
-                        let url = format!("http://localhost:{}", port);
-                        let js = format!("window.location.replace('{}')", url);
-                        let _ = window.eval(&js);
-                        let _ = window.show();
-                        shown = true;
-                        break;
+                let url_str = format!("http://localhost:{}", port);
+                let url = match Url::parse(&url_str) {
+                    Ok(u) => u,
+                    Err(e) => {
+                        bootstrap_log(&format!("ERROR Url::parse: {}", e));
+                        return;
                     }
-                    std::thread::sleep(Duration::from_millis(500));
-                }
-                if !shown {
-                    // 导航失败时仍然显示窗口，用户可以看到错误信息
-                    if let Some(window) = handle_clone.get_webview_window("main") {
-                        let _ = window.show();
-                    }
+                };
+                
+                bootstrap_log(&format!("creating window with URL: {}", url_str));
+                match WebviewWindowBuilder::new(
+                    &handle_clone,
+                    "main",
+                    tauri::WebviewUrl::External(url),
+                )
+                .title("MyAnimeDock")
+                .inner_size(1920.0, 1080.0)
+                .min_inner_size(1280.0, 720.0)
+                .center()
+                .resizable(true)
+                .decorations(false)
+                .build()
+                {
+                    Ok(_) => bootstrap_log("window created OK"),
+                    Err(e) => bootstrap_log(&format!("ERROR creating window: {}", e)),
                 }
             });
             
+            bootstrap_log("setup() returning Ok");
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -221,8 +289,9 @@ fn get_sidecar_path(handle: &tauri::AppHandle) -> Result<PathBuf, Box<dyn std::e
     Err("Sidecar executable not found".into())
 }
 
-fn wait_for_server_ready(port: u16, handle: &tauri::AppHandle) {
+fn wait_for_server_ready(port: u16) {
     let url = format!("http://localhost:{}/api/health", port);
+    bootstrap_log(&format!("wait_for_server_ready: polling {}", url));
     for attempt in 1..=45 {
         if let Ok(resp) = ureq::get(&url).call() {
             if resp.status() == 200 {
@@ -230,16 +299,18 @@ fn wait_for_server_ready(port: u16, handle: &tauri::AppHandle) {
                 if let Ok(body) = resp.into_body().read_to_string() {
                     if body.contains("\"ready\":true") {
                         info!("Server ready after {attempt} attempts on port {port}");
+                        bootstrap_log(&format!("server ready after {} attempts", attempt));
                         return;
                     }
                 }
             }
         }
+        if attempt % 10 == 0 {
+            bootstrap_log(&format!("wait_for_server_ready: still waiting (attempt {})", attempt));
+        }
         std::thread::sleep(Duration::from_millis(500));
     }
+    bootstrap_log("wait_for_server_ready: TIMEOUT after 45 attempts (~22.5s)");
     warn!("Server did not become ready within timeout on port {port}");
-    // 即使 server 未就绪，也显示窗口（用户可以看到错误信息）
-    if let Some(window) = handle.get_webview_window("main") {
-        let _ = window.show();
-    }
+    // 窗口将在调用方无条件创建（URL 指向 server），即使未就绪也能让用户看到错误
 }

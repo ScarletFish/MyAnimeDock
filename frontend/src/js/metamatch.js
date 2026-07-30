@@ -120,7 +120,7 @@ async function mmLoadModalData() {
     mmUpdateUI();
     mmUpdateBatchBar();
 } catch (e) {
-      if (window.location.origin !== 'http://localhost:3456') return;
+      if (!window.location.origin.startsWith('http')) return;
       showToast('加载动漫库失败: ' + e.message, 'error');
       mmShowEmpty('加载动漫库失败: ' + e.message + ' · 请检查服务器是否运行');
     }

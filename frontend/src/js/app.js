@@ -269,7 +269,7 @@ async function openSettings() {
 
     openModal('settingsModal');
   } catch (e) {
-    if (window.location.origin !== 'http://localhost:3456') return;
+    if (!window.location.origin.startsWith('http')) return;
     showToast('加载设置失败: ' + e.message, 'error');
   }
 }
@@ -944,7 +944,7 @@ window.getBangumiFrontendUrl = getBangumiFrontendUrl;
 
 // Init
 document.addEventListener('DOMContentLoaded', async () => {
-  const onServerOrigin = window.location.origin === 'http://localhost:3456';
+  const onServerOrigin = window.location.origin.startsWith('http');
   if (onServerOrigin) {
     try {
       configCache = await API.get('/api/config');

@@ -64,7 +64,7 @@ async function loadLibrary(soft = false) {
     restoreLibraryScroll();      // 此时内容高度已稳定
   } catch (e) {
     // Tauri 初始加载时（frontendDist，非 server 源）静默失败
-    if (window.location.origin !== 'http://localhost:3456') return;
+    if (!window.location.origin.startsWith('http')) return;
     showToast('加载动漫库失败: ' + e.message, 'error');
   }
 }

@@ -846,6 +846,8 @@ var _dismissedFinishConfirm = new Set();
  */
 async function checkAndShowFinishConfirm(anime) {
   if (!anime) return;
+  // 设置中关闭了完工弹窗（默认开启）
+  if (localStorage.getItem('myAnimDock_finishConfirm') === 'off') return;
   var ep = findPendingFinishConfirm(anime);
   if (!ep) return;
   var key = anime.id + ':' + ep.number;

@@ -256,6 +256,7 @@
   padding: var(--space-2) var(--space-4); cursor: pointer;
   transition: color var(--duration-fast) var(--ease-out);
   letter-spacing: 0.02em;
+  flex: 1; text-align: center;
 }
 .settings-tab::after {
   content: ''; position: absolute; bottom: -1px; left: 50%;
@@ -274,14 +275,11 @@
 
 .settings-panels {
   position: relative; padding: var(--space-5) var(--space-6) 0;
-  min-height: 320px;
+  height: 320px;
+  overflow-y: auto;
 }
 .settings-panel { display: none; animation: settings-fade-in 250ms var(--ease-out) both; }
 .settings-panel.active { display: block; }
-#tab-database.active {
-  max-height: 400px;
-  overflow-y: auto;
-}
 .settings-panel .form-group + .form-group {
   padding-top: var(--space-1); border-top: 1px solid var(--border);
 }

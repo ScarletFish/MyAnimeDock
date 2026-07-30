@@ -264,6 +264,10 @@ async function openSettings() {
     if (detailTitleBg) detailTitleBg.checked = localStorage.getItem('myAnimDock_detailTitleBg') === 'on';
     applyDetailTitleBg();
 
+    // Finish confirm toggle (default on)
+    var finishConfirm = document.getElementById('settingsFinishConfirm');
+    if (finishConfirm) finishConfirm.checked = localStorage.getItem('myAnimDock_finishConfirm') !== 'off';
+
     // Preload DB info
     if (typeof refreshDbInfo === 'function') refreshDbInfo();
 
@@ -471,6 +475,12 @@ async function saveSettings() {
     if (dtBg) {
       localStorage.setItem('myAnimDock_detailTitleBg', dtBg.checked ? 'on' : '');
       applyDetailTitleBg();
+    }
+
+    // Save finish confirm toggle
+    var finishConfirm = document.getElementById('settingsFinishConfirm');
+    if (finishConfirm) {
+      localStorage.setItem('myAnimDock_finishConfirm', finishConfirm.checked ? 'on' : 'off');
     }
 
     closeModal('settingsModal');

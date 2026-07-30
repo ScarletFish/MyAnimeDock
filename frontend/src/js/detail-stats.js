@@ -75,18 +75,28 @@ function renderEpisodeHeatmap(anime, animate) {
     dotsParent: document.querySelector('.episode-list-header'),
   });
 
-  const lastEp = anime.lastPlayedEp
-    ? anime.episodes.find(e => e.number === anime.lastPlayedEp)
-    : null;
-  if (lastEp) {
-    const lastIdx = anime.episodes.indexOf(lastEp);
-    const card = grid.querySelector(`.episode-card[data-index="${lastIdx}"]`);
-    if (card) {
-      requestAnimationFrame(() => {
-        const cs = getComputedStyle(grid);
-        const gap = parseFloat(cs.gap) || parseFloat(cs.columnGap) || 14;
-        const step = grid.querySelector('.episode-card').offsetWidth + gap;
-        grid.scrollLeft = Math.max(0, lastIdx * step);
+  // 滚动到目标剧集：lastPlayedEp 有进度→滚到它；已看完→滚到下一未观看；没有→不动
+  var scrollEp = null;
+  if (anime.lastPlayedEp) {
+    var lastEp = anime.episodes.find(function(e) { return e.number === anime.lastPlayedEp; });
+    if (lastEp && (!lastEp.watched || lastEp.progress > 0)) {
+      scrollEp = lastEp;
+    } else if (lastEp) {
+      // 已完全看完（finish confirm），跳到下一未观看
+      for (var i = 0; i < anime.episodes.length; i++) {
+        if (!anime.episodes[i].watched) { scrollEp = anime.episodes[i]; break; }
+      }
+    }
+  }
+  if (scrollEp) {
+    var scrollIdx = anime.episodes.indexOf(scrollEp);
+    var scrollCard = grid.querySelector('.episode-card[data-index="' + scrollIdx + '"]');
+    if (scrollCard) {
+      requestAnimationFrame(function() {
+        var cs = getComputedStyle(grid);
+        var gap = parseFloat(cs.gap) || parseFloat(cs.columnGap) || 14;
+        var step = (grid.querySelector('.episode-card') || scrollCard).offsetWidth + gap;
+        grid.scrollLeft = Math.max(0, scrollIdx * step);
       });
     }
   }

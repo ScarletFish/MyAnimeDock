@@ -250,22 +250,17 @@ function renderContinueSection(data, container) {
       var ep = findContinueEpisode(a);
       var thumbUrl = '';
       if (ep) {
-        // Same thumbnail as detail page watch card: use progress position if available
-        // Guard against corrupt 0-1 normalized data: treat <1s as invalid for regular videos
-        var durationSafe = ep.duration > 0 ? ep.duration : 0;
-        var thumbTime = 60; // default fallback: 1min in
-        if (ep.progress > 0 && durationSafe > 0) {
-          if (ep.progress >= 1 || ep.progress > durationSafe * 0.5) {
-            // Sane seconds value, clamp to < duration
-            thumbTime = Math.min(Math.round(ep.progress), durationSafe - 10);
-          } else {
-            // Suspicious (< 1s or less than half of duration for >2s content) → 25% in
-            thumbTime = Math.round(durationSafe * 0.25);
-  document.documentElement.style.setProperty('--relation-card-w', size + 'px');
-}
+        if (ep.progress > 0 && ep.duration > 0) {
+          // 有关键帧进度：用关闭时位置的缩略图
+          var thumbTime = ep.progress > ep.duration * 0.5
+            ? Math.min(Math.round(ep.progress), ep.duration - 10)
+            : Math.round(ep.duration * 0.25);
+          if (thumbTime <= 0) thumbTime = 60;
+          thumbUrl = '/api/thumbnail?path=' + encodeURIComponent(ep.filePath) + '&time=' + thumbTime;
+        } else {
+          // 未播放过的下一集：用中间缩略图
+          thumbUrl = '/api/thumbnail?path=' + encodeURIComponent(ep.filePath) + '&time=mid';
         }
-        if (thumbTime <= 0) thumbTime = 60;
-        thumbUrl = '/api/thumbnail?path=' + encodeURIComponent(ep.filePath) + '&time=' + thumbTime;
       }
       var coverSrc = a.localCover
         ? '/covers/' + path.basename(a.localCover)

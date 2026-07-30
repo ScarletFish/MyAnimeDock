@@ -107,7 +107,7 @@ function startDetailRefresh() {
   stopDetailRefresh();
   wasMpvActive = false;
 
-  function onMpvStatus(active) {
+  function onMpvStatus(active, payload) {
     if (!currentAnime) { stopDetailRefresh(); return; }
     if (wasMpvActive && !active) {
       // mpv 刚结束 → 刷新数据
@@ -115,6 +115,7 @@ function startDetailRefresh() {
         currentAnime = updated;
         AppState.set('currentAnime', currentAnime);
         renderDetail();
+        checkAndShowFinishConfirm(currentAnime);
         var _allDone = currentAnime.episodes && currentAnime.episodes.length > 0
           && currentAnime.episodes.every(function(e) { return e.watched; });
         if (_allDone && currentAnime.myListStatus === 'completed') {
@@ -130,7 +131,7 @@ function startDetailRefresh() {
   // SSE 事件流（被动接收，无需轮询）
   var es = new EventSource('/api/events/mpv-status');
   es.onmessage = function(e) {
-    try { onMpvStatus(JSON.parse(e.data).active); } catch (_) {}
+    try { var p = JSON.parse(e.data); onMpvStatus(p.active, p); } catch (_) {}
   };
   es.onerror = function() {
     // EventSource 会自动重连，无需处理
@@ -138,7 +139,7 @@ function startDetailRefresh() {
   detailRefreshES = es;
 
   // 先用一次 HTTP 查询兜底（页面刚加载时 SSE 可能有延迟，以及 SSE 不支持时的降级）
-  API.get('/api/mpv-status').then(function(st) { onMpvStatus(st.active); }).catch(function() {});
+  API.get('/api/mpv-status').then(function(st) { onMpvStatus(st.active, st); }).catch(function() {});
 }
 
 function stopDetailRefresh() {
@@ -533,19 +534,110 @@ function renderWishlistDetail(anime) {
   `;
 }
 
-function findWatchEpisode(anime) {
+/**
+ * 统一定位目标剧集：lastPlayedEp（未完全看完）→ 第一个未观看 → 第一集（回头看）。
+ * 返回 { episode, allWatched }，供播放按钮和自动播放共用。
+ */
+function findTargetEpisode(anime) {
   if (!anime.episodes || anime.episodes.length === 0) return null;
-  // Last played episode (recency-based, derived from play sessions)
+  // 1. 上次播放的剧集（如果未完全看完：未标记 watched 或还有进度）
   if (anime.lastPlayedEp) {
-    const ep = anime.episodes.find(e => e.number === anime.lastPlayedEp);
-    if (ep && (!ep.watched || ep.progress > 0)) return ep;
+    var ep = anime.episodes.find(function(e) { return e.number === anime.lastPlayedEp; });
+    if (ep && (!ep.watched || ep.progress > 0)) {
+      return { episode: ep, allWatched: false };
+    }
   }
-  // No play record: pick first unwatched
-  for (const ep of anime.episodes) {
-    if (!ep.watched) return ep;
+  // 2. 第一个未观看
+  for (var i = 0; i < anime.episodes.length; i++) {
+    if (!anime.episodes[i].watched) {
+      return { episode: anime.episodes[i], allWatched: false };
+    }
   }
-  // All watched — nothing to continue
+  // 3. 全部看完 → 第一集（重新看）
+  return { episode: anime.episodes[0], allWatched: true };
+}
+
+// @deprecated 使用 findTargetEpisode 替代
+function findWatchEpisode(anime) {
+  var r = findTargetEpisode(anime);
+  return r ? r.episode : null;
+}
+
+/**
+ * 检查当前动漫是否有刚播完的剧集需要弹窗确认标记看完。
+ * 条件：lastPlayedEp 的进度 > 90% 且未标记 watched。
+ */
+function findPendingFinishConfirm(anime) {
+  if (!anime.lastPlayedEp || !anime.episodes) return null;
+  var ep = anime.episodes.find(function(e) { return e.number === anime.lastPlayedEp; });
+  if (!ep || ep.watched) return null;
+  if (ep.progress > 0 && ep.duration > 0 && ep.progress / ep.duration > 0.9) return ep;
   return null;
+}
+
+/**
+ * 滚动剧集列表到指定集之后的第一个未观看剧集。
+ */
+function scrollToNextUnwatched(anime, afterEpNumber) {
+  var grid = document.getElementById('episodeHeatmapGrid');
+  if (!grid || !anime.episodes) return;
+  var nextEp = null;
+  for (var i = 0; i < anime.episodes.length; i++) {
+    var e = anime.episodes[i];
+    if (e.number > afterEpNumber && !e.watched) { nextEp = e; break; }
+  }
+  if (!nextEp) {
+    // 全部看完 → 滚动到最后一集
+    nextEp = anime.episodes[anime.episodes.length - 1];
+  }
+  var idx = anime.episodes.indexOf(nextEp);
+  if (idx === -1) return;
+  var card = grid.querySelector('.episode-card[data-index="' + idx + '"]');
+  if (!card) return;
+  requestAnimationFrame(function() {
+    var cs = getComputedStyle(grid);
+    var gap = parseFloat(cs.gap) || parseFloat(cs.columnGap) || 14;
+    var step = (grid.querySelector('.episode-card') || card).offsetWidth + gap;
+    grid.scrollTo({ left: Math.max(0, idx * step), behavior: 'smooth' });
+  });
+}
+
+/**
+ * 弹窗：是否标记当前集已看完。
+ * 匹配项目现有 modal 样式（同 showConfirm），简洁大气。
+ */
+function showFinishConfirm(anime, ep) {
+  return new Promise(function(resolve) {
+    var overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.style.zIndex = '9999';
+
+    var total = anime.episodes ? anime.episodes.length : '?';
+    overlay.innerHTML =
+      '<div class="modal" style="max-width:340px;padding:var(--space-6) var(--space-8) var(--space-5);text-align:center">' +
+        '<p class="text-content" style="margin:0 0 var(--space-1);font-weight:600;font-size:17px">第 ' + ep.number + ' / ' + total + ' 集</p>' +
+        '<p class="text-content" style="margin:0 0 var(--space-5);font-size:14px;color:var(--fg-muted)">是否标记为已看完？</p>' +
+        '<div class="modal-actions flex items-center justify-center" style="gap:var(--space-3);padding:0">' +
+          '<button class="btn btn-ghost confirm-cancel" style="flex:1;justify-content:center">取消</button>' +
+          '<button class="btn btn-primary confirm-ok" style="flex:1;justify-content:center">标记</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    requestAnimationFrame(function() { overlay.classList.add('show'); });
+
+    function close(result) {
+      overlay.classList.remove('show');
+      setTimeout(function() { overlay.remove(); }, 200);
+      resolve(result);
+    }
+
+    overlay.addEventListener('click', function(e) {
+      if (e.target === overlay) close(false);
+    });
+    overlay.querySelector('.confirm-cancel').addEventListener('click', function() { close(false); });
+    overlay.querySelector('.confirm-ok').addEventListener('click', function() { close(true); });
+    overlay.querySelector('.confirm-ok').focus();
+  });
 }
 
 function renderSummary(anime) {
@@ -679,8 +771,8 @@ function renderCharacters(anime) {
 }
 
 function renderPlayButton(anime) {
-  const btn = document.getElementById('btnPlayAnime');
-  const textEl = document.getElementById('btnPlayText');
+  var btn = document.getElementById('btnPlayAnime');
+  var textEl = document.getElementById('btnPlayText');
   if (!btn || !textEl) return;
 
   // Hide in wishlist mode or no episodes
@@ -691,29 +783,17 @@ function renderPlayButton(anime) {
 
   btn.style.display = 'inline-flex';
 
-  // Find target episode: last played → first unwatched → first episode (rewatch)
-  let targetEp = null;
-  let allWatched = false;
+  // Unified target logic
+  var result = findTargetEpisode(anime);
+  var targetEp = result.episode;
+  var allWatched = result.allWatched;
 
-  // Last played episode (recency-based)
-  if (anime.lastPlayedEp) {
-    targetEp = anime.episodes.find(e => e.number === anime.lastPlayedEp);
-    if (targetEp && (targetEp.watched && targetEp.progress === 0)) targetEp = null;
-  }
-  if (!targetEp) {
-    for (const ep of anime.episodes) {
-      if (!ep.watched) { targetEp = ep; break; }
-    }
-  }
-  if (!targetEp) {
-    targetEp = anime.episodes[0];
-    allWatched = true;
-  }
-
-  // Set button text
+  // 根据有无观看历史推断状态
+  // 全新→开始播放 / 有进度或有历史→继续播放 / 全部看完→重新播放
+  var hasViewHistory = anime.episodes.some(function(e) { return e.watched || e.progress > 0; });
   if (allWatched) {
     textEl.textContent = '重新播放';
-  } else if (targetEp.progress > 0) {
+  } else if (targetEp.progress > 0 || hasViewHistory) {
     textEl.textContent = '继续播放';
   } else {
     textEl.textContent = '开始播放';
@@ -747,12 +827,51 @@ function playEpisodeFromCover() {
   }
 }
 
-async function playEpisode(filePath, position = 0) {
-  try {
-    await API.post('/api/play', { filePath, position });
-    showToast('正在播放...', 'info');
-  } catch (e) {
-    showToast('播放失败: ' + e.message, 'error');
+  async function playEpisode(filePath, position = 0) {
+    try {
+      await API.post('/api/play', { filePath, position });
+      showToast('正在播放...', 'info');
+    } catch (e) {
+      showToast('播放失败: ' + e.message, 'error');
+    }
+  }
+
+// ─── Finish confirmation (track dismissed to avoid repeated popups) ───
+var _dismissedFinishConfirm = new Set();
+
+/**
+ * 检查刚播完的剧集是否需要弹窗确认标记看完。
+ * 条件：lastPlayedEp 的进度 > 90% 且未标记 watched 且未 dismissed。
+ * 仅在 detail 页面调用（需要 currentAnime）。
+ */
+async function checkAndShowFinishConfirm(anime) {
+  if (!anime) return;
+  var ep = findPendingFinishConfirm(anime);
+  if (!ep) return;
+  var key = anime.id + ':' + ep.number;
+  if (_dismissedFinishConfirm.has(key)) return;
+
+  var finished = await showFinishConfirm(anime, ep);
+  if (finished) {
+    try {
+      await API.post('/api/progress', {
+        animeId: anime.id,
+        episodeNumber: ep.number,
+        watched: true,
+        progress: 0
+      });
+      // 重新获取最新数据
+      currentAnime = await API.get('/api/anime/' + encodeURIComponent(anime.id));
+      AppState.set('currentAnime', currentAnime);
+      renderDetail();
+      // 滚动剧集列表到下一集未观看
+      scrollToNextUnwatched(currentAnime, ep.number);
+      showToast('已标记第 ' + ep.number + ' 集为已看完', 'success');
+    } catch (e) {
+      showToast('标记失败: ' + e.message, 'error');
+    }
+  } else {
+    _dismissedFinishConfirm.add(key);
   }
 }
 

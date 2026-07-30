@@ -5,7 +5,6 @@ const path = require('path');
 const fs = require('fs');
 const logger = require('./logger').child('[MPV]');
 
-const WATCHED_RATIO = 0.9;
 const MAX_IPC_RETRIES = 7;
 
 function startMpv(mpvPath, filePath, position, callbacks, sessionId) {
@@ -136,7 +135,7 @@ function startMpv(mpvPath, filePath, position, callbacks, sessionId) {
             filePath,
             progress: currentPos,
             peakPos,
-            watched: currentDuration > 0 && peakPos / currentDuration >= WATCHED_RATIO,
+            watched: false, // 不再自动标记 — 由前端弹窗决定
             duration: currentDuration,
             final: false,
         });
@@ -156,7 +155,7 @@ function startMpv(mpvPath, filePath, position, callbacks, sessionId) {
             filePath,
             progress: currentPos,
             peakPos,
-            watched: currentDuration > 0 && peakPos / currentDuration >= WATCHED_RATIO,
+            watched: false, // 不再自动标记 — 由前端弹窗决定
             duration: currentDuration,
             final: true,
         });

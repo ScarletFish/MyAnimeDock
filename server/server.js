@@ -183,13 +183,27 @@ function handleMpvStatusSSE(req, res, _state) {
     'Access-Control-Allow-Origin': '*',
   });
   // 立即发送当前状态
-  res.write(`data: ${JSON.stringify({ active: activePlays.size > 0 })}\n\n`);
+  res.write(`data: ${JSON.stringify(buildMpvStatusPayload())}\n\n`);
   sseClients.add(res);
   req.on('close', () => sseClients.delete(res));
 }
 
+function buildMpvStatusPayload() {
+  if (activePlays.size > 0) {
+    const first = activePlays.values().next().value;
+    return {
+      active: true,
+      animeId: first.anime.id,
+      episodeNumber: first.episode.number,
+      progress: first.episode.progress,
+      duration: first.episode.duration,
+    };
+  }
+  return { active: false };
+}
+
 function broadcastMpvStatus() {
-  const data = JSON.stringify({ active: activePlays.size > 0 });
+  const data = JSON.stringify(buildMpvStatusPayload());
   for (const client of sseClients) {
     client.write(`data: ${data}\n\n`);
   }

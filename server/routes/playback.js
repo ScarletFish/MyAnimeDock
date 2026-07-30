@@ -139,7 +139,6 @@ module.exports = {
               const ep = active.episode;
               ep.progress = progress;
               if (duration > 0) ep.duration = duration;
-              if (watched) ep.watched = true;
               if (active.sessionId) {
                 const session = data.playSessions.find(s => s.sessionId === active.sessionId);
                 if (session) {
@@ -152,8 +151,8 @@ module.exports = {
               }
               if (!final) return; // ← 中间进度仅更新内存，不写 DB
 
-              // ── final: 一次性落盘 ──
-              db.updateEpisodeProgress(active.anime.id, ep.number, { progress, duration: duration > 0 ? duration : undefined, watched });
+              // ── final: 一次性落盘（watched 不由 mpv 自动决定，由前端弹窗确认） ──
+              db.updateEpisodeProgress(active.anime.id, ep.number, { progress, duration: duration > 0 ? duration : undefined });
               if (active.sessionId) {
                 const session = data.playSessions.find(s => s.sessionId === active.sessionId);
                 if (session) {
@@ -227,7 +226,18 @@ module.exports = {
 
   handleMpvStatus(req, res, state) {
     const { activePlays } = state;
-    jsonResp(res, 200, { active: activePlays.size > 0 });
+    if (activePlays.size > 0) {
+      const first = activePlays.values().next().value;
+      jsonResp(res, 200, {
+        active: true,
+        animeId: first.anime.id,
+        episodeNumber: first.episode.number,
+        progress: first.episode.progress,
+        duration: first.episode.duration,
+      });
+    } else {
+      jsonResp(res, 200, { active: false });
+    }
   },
 
   handleThumbnail(req, res, state) {

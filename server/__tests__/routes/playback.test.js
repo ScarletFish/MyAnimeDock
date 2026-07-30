@@ -23,13 +23,19 @@ describe('playback route handlers', () => {
 
     it('returns active:true when active plays exist', () => {
       const activePlays = new Map();
-      activePlays.set('/media/video.mp4', { sessionId: 's1' });
+      activePlays.set('/media/video.mp4', {
+        sessionId: 's1',
+        anime: { id: 'a1' },
+        episode: { number: 3, progress: 500, duration: 1200 },
+      });
       const state = mockState({ activePlays });
       const req = mockReq({ url: '/api/mpv-status' });
       const res = mockRes();
       playback.handleMpvStatus(req, res, state);
       assert.strictEqual(res._status, 200);
       assert.strictEqual(res._body.active, true);
+      assert.strictEqual(res._body.animeId, 'a1');
+      assert.strictEqual(res._body.episodeNumber, 3);
     });
   });
 

@@ -19,7 +19,7 @@
   top: 4px;
   bottom: 4px;
   width: 3px;
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
   background: var(--accent);
 }
 
@@ -37,8 +37,8 @@
   font-variant-numeric: tabular-nums;
   color: var(--fg-muted);
   background: var(--bg-elevated);
-  padding: 1px 8px;
-  border-radius: 4px;
+  padding: var(--space-025) var(--space-2);
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border);
 }
 
@@ -47,20 +47,20 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: var(--space-150);
   margin-bottom: var(--space-3);
 }
 .mylist-status-item {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 12px;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
   font-size: var(--text-sm);
   font-weight: var(--fw-medium);
   color: var(--fg-muted);
   background: transparent;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all var(--duration-fast) var(--ease-out);
   user-select: none;
@@ -96,7 +96,7 @@
 .wishlist-badge {
   display: inline-flex;
   align-items: center;
-  padding: 2px 8px;
+  padding: var(--space-050) var(--space-2);
   border-radius: 100px;
   font-size: var(--text-xs);
   font-weight: var(--fw-semibold);

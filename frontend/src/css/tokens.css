@@ -42,16 +42,23 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
 
   --scale: 1;
 
-  --space-1: calc(0.313rem * var(--scale));
-  --space-2: calc(0.625rem * var(--scale));
-  --space-3: calc(0.938rem * var(--scale));
-  --space-4: calc(1.25rem  * var(--scale));
-  --space-5: calc(1.563rem * var(--scale));
-  --space-6: calc(1.875rem * var(--scale));
-  --space-8: calc(2.5rem   * var(--scale));
-  --space-10: calc(3.125rem * var(--scale));
-  --space-12: calc(3.75rem  * var(--scale));
+  --space-025: calc(0.0625rem * var(--scale)); /*  1px */
+  --space-050: calc(0.125rem  * var(--scale)); /*  2px */
+  --space-075: calc(0.1875rem * var(--scale)); /*  3px */
+  --space-1:   calc(0.25rem   * var(--scale)); /*  4px */
+  --space-150: calc(0.375rem  * var(--scale)); /*  6px */
+  --space-2:   calc(0.5rem    * var(--scale)); /*  8px */
+  --space-250: calc(0.625rem  * var(--scale)); /* 10px */
+  --space-3:   calc(0.75rem   * var(--scale)); /* 12px */
+  --space-350: calc(0.875rem  * var(--scale)); /* 14px */
+  --space-4:   calc(1rem      * var(--scale)); /* 16px */
+  --space-5:   calc(1.25rem   * var(--scale)); /* 20px */
+  --space-6:   calc(1.5rem    * var(--scale)); /* 24px */
+  --space-8:   calc(2rem      * var(--scale)); /* 32px */
+  --space-10:  calc(2.5rem    * var(--scale)); /* 40px */
+  --space-12:  calc(3rem      * var(--scale)); /* 48px */
 
+  --radius-xs: calc(0.125rem * var(--scale)); /* 2px */
   --radius-sm: calc(0.375rem * var(--scale));
   --radius-md: calc(0.625rem * var(--scale));
   --radius-lg: calc(1rem * var(--scale));

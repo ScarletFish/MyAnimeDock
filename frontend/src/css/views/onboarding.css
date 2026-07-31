@@ -91,7 +91,7 @@
 
 .onb-field__input {
   flex: 1;
-  padding: calc(0.6rem * var(--scale)) var(--space-3);
+  padding: var(--space-250) var(--space-3);
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm, 6px);
@@ -112,7 +112,7 @@
 
 .onb-field__browse {
   flex-shrink: 0;
-  padding: calc(0.6rem * var(--scale)) var(--space-4);
+  padding: var(--space-250) var(--space-4);
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm, 6px);
@@ -130,7 +130,7 @@
 }
 
 .onb-field__foot {
-  margin-top: calc(0.35rem * var(--scale));
+  margin-top: var(--space-150);
   min-height: 1.5em;
 }
 

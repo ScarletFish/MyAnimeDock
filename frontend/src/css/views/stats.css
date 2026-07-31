@@ -126,7 +126,7 @@
   pointer-events: none;
   background: var(--bg-elevated, #2a2a3e);
   color: var(--fg-primary, #ede8e2);
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-sm);
   font-size: var(--text-base);
   line-height: 1.5;

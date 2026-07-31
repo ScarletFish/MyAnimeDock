@@ -10,7 +10,7 @@ let librarySortDropdown = null;
 
 // Grid card sizing
 const GRID_CARD_MIN = 200;
-const GRID_CARD_MAX = 273;
+const GRID_CARD_MAX = 277;
 
 function applyGridColumns() {
   const scale = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--scale')) || 1;

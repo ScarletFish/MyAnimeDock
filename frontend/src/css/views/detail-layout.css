@@ -121,7 +121,7 @@
   position: absolute;
   inset: 0;
   border-radius: var(--radius-lg);
-  padding: 1px;
+  padding: var(--space-025);
   background: linear-gradient(135deg, transparent 30%, rgba(var(--accent-rgb), 0.2) 100%);
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
@@ -178,7 +178,7 @@
 }
 .detail-info-line .info-tags {
   display: flex;
-  gap: 6px;
+  gap: var(--space-150);
   flex-wrap: wrap;
   justify-content: flex-end;
 }
@@ -206,7 +206,7 @@
 }
 .detail-actions .btn {
   font-size: var(--text-sm);
-  padding: 6px 14px;
+  padding: var(--space-150) var(--space-350);
 }
 
 /* Right column */

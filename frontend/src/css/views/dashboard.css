@@ -60,7 +60,7 @@
 }
 .dashboard-hscroll::-webkit-scrollbar { height: 4px; }
 .dashboard-hscroll::-webkit-scrollbar-track { background: transparent; }
-.dashboard-hscroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.dashboard-hscroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: var(--radius-xs); }
 
 .dashboard-card {
   flex-shrink: 0;
@@ -82,7 +82,7 @@
   position: absolute;
   inset: 0;
   border-radius: var(--radius-md);
-  padding: 1px;
+  padding: var(--space-025);
   background: linear-gradient(135deg, transparent 40%, rgba(var(--accent-rgb), 0.3) 100%);
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
@@ -95,7 +95,7 @@
 }
 .dashboard-card:hover::after { opacity: 1; }
 .dashboard-card:hover {
-  transform: translateY(calc(-4px * var(--scale)));
+  transform: translateY(calc(-1 * var(--space-1)));
   box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.4),
     0 0 40px rgba(var(--accent-rgb), 0.06);
@@ -105,7 +105,7 @@
 /* ─── Hero Card ─── */
 .dashboard-card--hero { width: 264px; }
 .dashboard-card--hero:hover {
-  transform: translateY(calc(-6px * var(--scale))) scale(1.02);
+  transform: translateY(calc(-1 * var(--space-150))) scale(1.02);
   box-shadow:
     0 12px 48px rgba(0, 0, 0, 0.5),
     0 0 60px rgba(var(--accent-rgb), 0.1);
@@ -187,12 +187,12 @@
 .dashboard-hero-progress-bar {
   flex: 1; height: 5px;
   background: rgba(255,255,255,0.2);
-  border-radius: 3px; overflow: hidden;
+  border-radius: var(--radius-xs); overflow: hidden;
 }
 .dashboard-hero-progress-bar div {
   height: 100%;
   background: var(--accent-gradient);
-  border-radius: 3px;
+  border-radius: var(--radius-xs);
   box-shadow: 0 0 8px rgba(var(--accent-rgb), 0.4);
   transition: width 0.4s var(--ease-out);
 }
@@ -218,14 +218,14 @@
 .dashboard-progress {
   height: 3px;
   background: var(--bg-surface);
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
   margin-top: 0.5rem;
   overflow: hidden;
 }
 .dashboard-progress-bar {
   height: 100%;
   background: var(--accent-gradient);
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
   transition: width 0.3s var(--ease-out);
 }
 .dashboard-progress-label {
@@ -246,7 +246,7 @@
 }
 .dashboard-continue-scroll::-webkit-scrollbar { height: 4px; }
 .dashboard-continue-scroll::-webkit-scrollbar-track { background: transparent; }
-.dashboard-continue-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.dashboard-continue-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: var(--radius-xs); }
 
 .dashboard-continue-card {
   flex-shrink: 0;
@@ -307,12 +307,12 @@
 .dashboard-continue-progress {
   flex: 1; max-width: 110px; height: 3px;
   background: rgba(255,255,255,0.12);
-  border-radius: 2px; overflow: hidden;
+  border-radius: var(--radius-xs); overflow: hidden;
 }
 .dashboard-continue-progress-bar {
   height: 100%;
   background: var(--accent-gradient);
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
   transition: width 0.3s var(--ease-out);
 }
 .dashboard-continue-progress-label {
@@ -322,7 +322,7 @@
 }
 .dashboard-continue-btn {
   flex-shrink: 0;
-  display: inline-flex; align-items: center; gap: 5px;
+  display: inline-flex; align-items: center; gap: var(--space-1);
   padding: var(--space-2) 18px; border: none; border-radius: 100px;
   background: var(--accent-gradient); color: #fff;
   font-size: var(--text-sm); font-weight: var(--fw-semibold);
@@ -351,15 +351,15 @@
 
 .all-anime-status-tabs {
   display: flex;
-  gap: 2px;
+  gap: var(--space-050);
   background: var(--bg-surface);
-  padding: 2px;
+  padding: var(--space-050);
   border-radius: var(--radius-sm);
 }
 .all-anime-status-tab {
   background: none; border: none;
   color: var(--fg-muted);
-  padding: 4px 12px;
+  padding: var(--space-1) var(--space-3);
   font-size: var(--text-sm);
   font-family: var(--font-body);
   border-radius: var(--radius-sm);

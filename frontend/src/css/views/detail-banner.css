@@ -109,14 +109,14 @@
 .detail-banner-right {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-4);
 }
 
 .detail-alias {
   font-size: var(--text-md);
   color: var(--fg-secondary);
   font-style: italic;
-  margin-top: calc(-0.625rem * var(--scale));
+  margin-top: calc(-1 * var(--space-250));
 }
 
 .detail-banner-right .detail-info-line { max-width: 400px; }
@@ -156,7 +156,7 @@
 
 .relation-card {
   flex-shrink: 0;
-  width: calc((100% - 0.75rem * 6 * var(--scale)) / 7);
+  width: calc((100% - var(--space-3) * 6) / 7);
   scroll-snap-align: start;
   cursor: pointer;
   transition: transform 0.15s var(--ease-out);
@@ -164,10 +164,10 @@
   overflow: hidden;
 }
 @media (max-width: 1439px) {
-  .relation-card { width: calc((100% - 0.75rem * 4 * var(--scale)) / 5); }
+  .relation-card { width: calc((100% - var(--space-3) * 4) / 5); }
 }
 @media (max-width: 799px) {
-  .relation-card { width: calc((100% - 0.75rem * 3 * var(--scale)) / 4); }
+  .relation-card { width: calc((100% - var(--space-3) * 3) / 4); }
 }
 .relation-card:hover { transform: translateY(-3px); }
 .relation-card:active { transform: translateY(-1px); }
@@ -175,7 +175,7 @@
 .relation-card-cover {
   position: relative;
   aspect-ratio: 3 / 4;
-  border-radius: calc(7.5px * var(--scale));
+  border-radius: var(--radius-sm);
   overflow: hidden;
   background: var(--bg-surface);
 }
@@ -190,9 +190,9 @@
 
 .relation-badge {
   position: absolute;
-  top: calc(6px * var(--scale));
-  left: calc(6px * var(--scale));
-  padding: calc(3px * var(--scale)) calc(9px * var(--scale));
+  top: var(--space-150);
+  left: var(--space-150);
+  padding: var(--space-075) var(--space-250);
   font-size: var(--text-2xs);
   font-weight: 600;
   border-radius: var(--radius-sm);
@@ -210,12 +210,12 @@
 }
 .relation-card-title {
   font-size: calc(0.86rem * var(--scale));
-  margin-top: calc(6px * var(--scale));
+  margin-top: var(--space-150);
   line-height: 1.3;
   color: var(--text-secondary);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  padding: 0 calc(3px * var(--scale));
+  padding: 0 var(--space-075);
 }

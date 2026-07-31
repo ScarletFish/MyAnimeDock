@@ -36,7 +36,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  margin-top: calc(0.125rem * var(--scale));
+  margin-top: var(--space-050);
 }
 
 @utility discovery-scan-btn {

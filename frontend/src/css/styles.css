@@ -25,9 +25,15 @@
   --color-border-hover: var(--border-hover);
 
   /* Spacing: bridge --space-* to p-/m-/gap- utilities */
+  --spacing-025: var(--space-025);
+  --spacing-050: var(--space-050);
+  --spacing-075: var(--space-075);
   --spacing-1: var(--space-1);
+  --spacing-150: var(--space-150);
   --spacing-2: var(--space-2);
+  --spacing-250: var(--space-250);
   --spacing-3: var(--space-3);
+  --spacing-350: var(--space-350);
   --spacing-4: var(--space-4);
   --spacing-5: var(--space-5);
   --spacing-6: var(--space-6);
@@ -36,6 +42,7 @@
   --spacing-12: var(--space-12);
 
   /* Border radius */
+  --radius-xs: var(--radius-xs);
   --radius-sm: var(--radius-sm);
   --radius-md: var(--radius-md);
   --radius-lg: var(--radius-lg);

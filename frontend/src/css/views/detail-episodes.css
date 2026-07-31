@@ -9,7 +9,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: calc(1.094rem * var(--scale));
+  margin-bottom: var(--space-4);
 }
 
 .episode-header-left {
@@ -36,7 +36,7 @@
  * scroll-dots / scroll-dot utilities in patterns.css */
 .episode-list-scroll {
   display: flex;
-  gap: calc(1.094rem * var(--scale));
+  gap: var(--space-4);
   overflow-x: auto;
   overflow-y: hidden;
   scroll-snap-type: x mandatory;
@@ -52,7 +52,7 @@
 .episode-card {
   position: relative;
   flex-shrink: 0;
-  width: calc((100% - 1.094rem * 3 * var(--scale)) / 4);
+  width: calc((100% - var(--space-4) * 3) / 4);
   scroll-snap-align: start;
   border-radius: var(--radius-lg);
   overflow: hidden;
@@ -107,18 +107,18 @@
 
 /* Responsive: shrink visible count */
 @media (max-width: 1439px) {
-  .episode-card { width: calc((100% - 1.094rem * 2 * var(--scale)) / 3); }
+  .episode-card { width: calc((100% - var(--space-4) * 2) / 3); }
 }
 @media (max-width: 799px) {
-  .episode-card { width: calc((100% - 1.094rem * 1 * var(--scale)) / 2); }
+  .episode-card { width: calc((100% - var(--space-4) * 1) / 2); }
 }
 
 /* ─── Episode Number badge ─── */
 .episode-card-num {
   position: absolute;
-  top: calc(10px * var(--scale));
-  left: calc(10px * var(--scale));
-  padding: calc(3px * var(--scale)) calc(9px * var(--scale));
+  top: var(--space-250);
+  left: var(--space-250);
+  padding: var(--space-075) var(--space-250);
   font-size: var(--text-sm);
   font-weight: var(--fw-bold);
   color: #fff;
@@ -179,7 +179,7 @@
 
 /* ─── Info Strip ─── */
 .episode-card-info {
-  padding: calc(0.688rem * var(--scale)) var(--space-3);
+  padding: var(--space-3) var(--space-3);
   display: flex;
   flex-direction: column;
 }

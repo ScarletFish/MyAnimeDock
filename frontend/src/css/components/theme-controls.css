@@ -2,7 +2,7 @@
 .theme-picker { display: flex; gap: var(--space-2); flex-wrap: wrap; }
 .theme-option {
   width: 36px; height: 36px; border-radius: 50%;
-  border: var(--space-050) solid var(--border); cursor: pointer; position: relative;
+  border: 2px solid var(--border); cursor: pointer; position: relative;
   transition: border-color var(--duration-fast) var(--ease-out), transform var(--duration-fast) var(--ease-out);
   flex-shrink: 0;
 }
@@ -38,7 +38,7 @@
   width: 1000px;
   background: rgba(var(--bg-rgb), 0.88);
   backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-  border: var(--space-025) solid var(--border); border-bottom: none;
+  border: 1px solid var(--border); border-bottom: none;
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   padding: var(--space-4) var(--space-6);
   transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.4s ease, color 0.4s ease;
@@ -89,6 +89,6 @@ input[type="range"]::-webkit-slider-thumb {
   width: 18px; height: 18px; border-radius: 50%;
   background: var(--accent-gradient); cursor: pointer;
   box-shadow: 0 0 16px rgba(var(--accent-rgb), 0.3);
-  border: var(--space-050) solid var(--bg-elevated);
+  border: 2px solid var(--bg-elevated);
 }
 

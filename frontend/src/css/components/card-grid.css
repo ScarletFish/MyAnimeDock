@@ -3,7 +3,7 @@
 @utility grid-container {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(11.75rem, 1fr));
-  gap: clamp(var(--space-2), 1.2vw, var(--space-3));
+  gap: clamp(var(--space-250), 1.2vw, var(--space-3));
 }
 
 @utility anime-card {
@@ -14,13 +14,13 @@
   background: var(--bg-card);
   aspect-ratio: 3/4;
   width: 100%;
-  border: var(--space-025) solid var(--border);
+  border: 1px solid var(--border);
   box-shadow: var(--shadow-sm);
   transition: box-shadow 0.25s var(--ease-out), border-color 0.25s var(--ease-out);
   contain: layout style paint;
 
   &:hover {
-    box-shadow: 0 var(--space-3) 40px rgba(0, 0, 0, 0.5), 0 0 60px rgba(var(--accent-rgb), 0.08);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 0 60px rgba(var(--accent-rgb), 0.08);
     border-color: rgba(var(--accent-rgb), 0.2);
 
     img { transform: scale(1.07); }
@@ -91,7 +91,7 @@
   bottom: 0;
   left: 0;
   right: 0;
-  padding: var(--space-150) 0.65rem 0.5rem;
+  padding: var(--space-150) var(--space-250) var(--space-2);
   background: linear-gradient(transparent 10%, rgba(0, 0, 0, 0.85) 70%);
   transition: opacity 0.25s var(--ease-out);
 }
@@ -115,7 +115,7 @@
 /* ─── Status popover (card quick-status) ─── */
 .status-popover {
   position: fixed; z-index: 1000;
-  background: var(--bg-elevated); border: var(--space-025) solid var(--border-hover);
+  background: var(--bg-elevated); border: 1px solid var(--border-hover);
   border-radius: var(--radius-md); padding: 4px; min-width: 140px;
   box-shadow: var(--shadow-lg);
   opacity: 0; transform: translateY(4px) scale(0.96);
@@ -141,16 +141,16 @@
 .status-popover-item--danger { color: var(--error); }
 .status-popover-item--danger:hover { background: rgba(var(--accent-rgb), 0.12); color: var(--error); }
 @media (max-width: 768px) {
-  .mylist-status-item { padding: var(--space-075) 8px; font-size: var(--text-xs); }
+  .mylist-status-item { padding: 3px 8px; font-size: var(--text-xs); }
   .mylist-section-title { font-size: var(--text-md); }
 }
 
 /* ─── Dashboard Layout Settings ─── */
 .dashboard-layout-list { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.75rem; }
 .dashboard-layout-item {
-  display: flex; align-items: center; gap: 0.75rem;
-  padding: var(--space-250) var(--space-3) var(--space-250) 0.5rem;
-  background: var(--bg-surface); border: var(--space-025) solid var(--border);
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-250) var(--space-3) var(--space-250) var(--space-2);
+  background: var(--bg-surface); border: 1px solid var(--border);
   border-radius: var(--radius-md); cursor: grab;
   transition: background 0.15s var(--ease-out), border-color 0.15s var(--ease-out), transform 0.15s var(--ease-out);
   position: relative;

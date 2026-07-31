@@ -81,6 +81,7 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
   --radius-sm: calc(0.375rem * var(--scale));
   --radius-md: calc(0.625rem * var(--scale));
   --radius-lg: calc(1rem * var(--scale));
+  --radius-pill: 999px;
 
   --font-display: 'Playfair Display', 'Noto Sans SC', 'Noto Sans JP', serif;
   --font-body: 'DM Sans', 'Noto Sans SC', 'Noto Sans JP', sans-serif;

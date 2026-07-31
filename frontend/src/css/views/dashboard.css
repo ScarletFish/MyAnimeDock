@@ -69,7 +69,7 @@
   border-radius: var(--radius-md);
   overflow: hidden;
   background: var(--bg-card);
-  border: var(--space-025) solid var(--border);
+  border: 1px solid var(--border);
   position: relative;
   transition:
     transform 0.35s var(--ease-spring),
@@ -256,7 +256,7 @@
   overflow: hidden;
   cursor: pointer;
   background: var(--bg-elevated);
-  border: var(--space-025) solid var(--border);
+  border: 1px solid var(--border);
   transition:
     transform 0.35s var(--ease-spring),
     border-color 0.25s var(--ease-out),
@@ -323,7 +323,7 @@
 .dashboard-continue-btn {
   flex-shrink: 0;
   display: inline-flex; align-items: center; gap: var(--space-1);
-  padding: var(--space-2) 18px; border: none; border-radius: 100px;
+  padding: var(--space-2) 18px; border: none;   border-radius: var(--radius-pill);
   background: var(--accent-gradient); color: var(--on-accent);
   font-size: var(--text-sm); font-weight: var(--fw-semibold);
   cursor: pointer;

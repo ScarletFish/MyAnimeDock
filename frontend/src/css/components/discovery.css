@@ -74,7 +74,7 @@
   background: var(--bg-elevated);
   padding: var(--space-1) var(--space-3);
   border-radius: var(--radius-sm);
-  border: var(--space-025) solid var(--border);
+  border: 1px solid var(--border);
   white-space: nowrap;
   line-height: 1.5;
 }
@@ -92,7 +92,7 @@
 /* ─── Discovery Filter ─── */
 @utility filter-group {
   @apply flex overflow-hidden;
-  border: var(--space-025) solid var(--border);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
 }
 
@@ -131,7 +131,7 @@
   margin-bottom: var(--space-2);
   padding: var(--space-1) var(--space-150);
   background: var(--bg-elevated);
-  border: var(--space-025) solid rgba(var(--accent-rgb), 0.15);
+  border: 1px solid rgba(var(--accent-rgb), 0.15);
   border-radius: var(--radius-md);
   position: sticky;
   top: 0;
@@ -157,7 +157,7 @@
 }
 
 .discovery-actions--stuck {
-  box-shadow: var(--shadow-md), 0 var(--space-050) var(--space-3) rgba(var(--accent-rgb), 0.08);
+  box-shadow: var(--shadow-md), 0 2px 12px rgba(var(--accent-rgb), 0.08);
 }
 
 @utility discovery-actions-left {
@@ -181,7 +181,7 @@
   padding: 0;
   margin-bottom: 6px;
   background: var(--bg-elevated);
-  border: var(--space-025) solid var(--border);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
   transition: border-color var(--duration-fast) var(--ease-out);
 }
@@ -214,7 +214,7 @@
   color: var(--fg-muted);
   cursor: pointer;
   transition: color var(--duration-fast), background var(--duration-fast);
-  border-right: var(--space-025) solid transparent;
+  border-right: 1px solid transparent;
 }
 
 .discovery-card-toggle:hover {
@@ -262,7 +262,7 @@
   width: 20px;
   height: 20px;
   border-radius: var(--radius-sm);
-  border: var(--space-050) solid rgba(var(--accent-rgb), 0.55);
+  border: 2px solid rgba(var(--accent-rgb), 0.55);
   flex-shrink: 0;
   transition: all var(--duration-fast) var(--ease-spring);
   background: rgba(var(--accent-rgb), 0.15);
@@ -282,7 +282,7 @@
 .discovery-cb:checked ~ .discovery-cb-visual {
   background: var(--accent-gradient);
   border-color: var(--accent);
-  box-shadow: 0 var(--space-050) var(--space-2) var(--accent-glow);
+  box-shadow: 0 2px 8px var(--accent-glow);
 }
 
 .discovery-cb:checked ~ .discovery-cb-visual svg {
@@ -343,14 +343,14 @@
 @utility discovery-card-action {
   @apply inline-flex items-center;
   gap: var(--space-075);
-  padding: var(--space-050) var(--space-1);
+  padding: var(--space-050) var(--space-2);
   font-size: var(--text-xs);
   font-weight: var(--fw-medium);
   font-family: inherit;
   color: var(--fg-muted);
   background: transparent;
-  border: var(--space-025) solid var(--border);
-  border-radius: 100px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
   cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;
@@ -400,8 +400,8 @@
 @utility discovery-badge {
   font-size: var(--text-2xs);
   font-weight: var(--fw-semibold);
-  padding: var(--space-050) var(--space-1);
-  border-radius: var(--radius-lg);
+  padding: var(--space-050) var(--space-2);
+  border-radius: var(--radius-pill);
   letter-spacing: 0.02em;
   flex-shrink: 0;
   margin-left: auto;
@@ -432,7 +432,7 @@
   position: relative;
   font-size: var(--text-xs);
   color: var(--fg-muted);
-  padding: var(--space-050) var(--space-1) var(--space-050) var(--space-3);
+  padding: var(--space-050) var(--space-250) var(--space-050) calc(var(--space-10) + var(--space-1));
   font-family: var(--font-body);
   opacity: 0.78;
   line-height: 1.6;
@@ -449,14 +449,14 @@
   top: 50%;
   width: 26px;
   height: 0;
-  border-top: var(--space-025) solid var(--border);
+  border-top: 1px solid var(--border);
   opacity: 0.3;
 }
 
 @utility discovery-card-files {
   @apply list-none;
   margin: 0;
-  padding: 0 var(--space-250) var(--space-150) 44px;
+  padding: 0 10px 6px 44px;
 }
 
 .discovery-card-files.collapsed {
@@ -469,7 +469,7 @@
   min-height: 26px;
   font-size: var(--text-sm);
   color: var(--fg-muted);
-  padding: var(--space-025) var(--space-075);
+  padding: var(--space-025) var(--space-150);
   border-radius: var(--radius-sm);
   transition: background var(--duration-fast);
   position: relative;
@@ -538,8 +538,8 @@
   gap: var(--space-1);
   font-size: var(--text-2xs);
   font-weight: var(--fw-semibold);
-  padding: var(--space-050) var(--space-1);
-  border-radius: 100px;
+  padding: var(--space-050) var(--space-2);
+  border-radius: var(--radius-pill);
   white-space: nowrap;
 }
 

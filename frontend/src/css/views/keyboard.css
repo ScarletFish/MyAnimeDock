@@ -22,7 +22,7 @@
 
 .kbd-help__card {
   background: var(--bg-surface, #161616);
-  border: var(--space-025) solid var(--border, rgba(var(--accent-rgb), 0.08));
+  border: 1px solid var(--border, rgba(var(--accent-rgb), 0.08));
   border-radius: var(--radius-md, 10px);
   padding: var(--space-6) var(--space-8);
   min-width: calc(300px * var(--scale));
@@ -58,7 +58,7 @@
   min-width: var(--space-8);
   padding: var(--space-075) var(--space-2);
   background: var(--bg-elevated, #1e1e1e);
-  border: var(--space-025) solid var(--border, rgba(var(--accent-rgb), 0.08));
+  border: 1px solid var(--border, rgba(var(--accent-rgb), 0.08));
   border-radius: var(--radius-sm, 6px);
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
   font-size: var(--text-base);

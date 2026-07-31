@@ -58,7 +58,7 @@
   overflow: hidden;
   cursor: pointer;
   background: var(--bg-card);
-  border: var(--space-025) solid var(--border);
+  border: 1px solid var(--border);
   box-shadow: var(--shadow-sm);
   transition:
     box-shadow 0.25s var(--ease-out),
@@ -143,7 +143,7 @@
   background: var(--overlay-dark-soft);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  border: var(--space-050) solid rgba(var(--accent-rgb), 0.25);
+  border: 2px solid rgba(var(--accent-rgb), 0.25);
   color: var(--on-image);
   display: flex;
   align-items: center;

@@ -71,7 +71,7 @@
 }
 
 @utility btn-ghost {
-  border: var(--space-025) solid var(--border);
+  border: 1px solid var(--border);
   &:hover {
     background: var(--bg-surface);
     border-color: var(--border-hover);
@@ -107,7 +107,7 @@
   gap: var(--space-2);
   padding: var(--space-1) var(--space-3);
   background: var(--bg-elevated);
-  border: var(--space-025) solid var(--border);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
   color: var(--fg-secondary);
   font-size: calc(0.781rem * var(--scale));

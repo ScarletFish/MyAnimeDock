@@ -59,6 +59,8 @@ mpv 关闭 → SSE `mpv-status: {active: false}` → detail.js 收到
 5. 重渲染详情页（播放按钮、剧集列表、进度统计）
 6. 显示 toast：`"播放已结束，进度已更新"`
 
+**SSE 之外还有一层 HTTP 兜底：** 每次调用 `startDetailRefresh()` 时（进入详情页），除 `EventSource` 外还会立即发一次 `GET /api/mpv-status` 查询当前播放状态（`detail.js:142`）。这解决了 SSE 刚建立时的延迟以及不支持的浏览器降级。
+
 ## 开始播放
 
 ```
@@ -87,7 +89,8 @@ POST /api/play
       │   ├─ IPC seek after connect (if startSeconds > 0)
       │   │   ├─ mpv time-pos is in SECONDS
       │   │   ├─ final ep.progress = currentPos  // 秒数（raw time-pos from mpv）
-      │   │   └─ session.duration = peakPos - progressStart  // 实际观看内容量（秒）
+      │   │   ├─ session.duration = peakPos - progressStart  // 实际观看内容量（秒）
+      │   │   └─ session.clockTime = endTime - startTime     // 壁钟耗时（秒）
       │   ├─ onError → clean up session, return error to frontend via Promise
       │   └─ onClose (code≠0 && lived<3s) → report crash to frontend
        ├─ final callback (mpv process close):
@@ -115,6 +118,12 @@ POST /api/play
 | Dashboard「继续观看」卡片 | `findContinueEpisode` | `library.js:209` | 选缩略图 + 点击跳转 |
 | 详情页播放按钮 | `findTargetEpisode` | `detail.js:537` | 选目标集 + 按钮文字 |
 | Dashboard→自动播放 | `findWatchEpisode`（委托 `findTargetEpisode`） | `detail.js:561` | 跳转后立即播放 |
+
+**`pendingAutoPlay` 实现：**
+- Dashboard「继续观看」卡片点击 → `library.js` 设 `window.pendingAutoPlay = animeId`
+- 页面跳转到详情页后（`showDetail`）→ `detail.js:179-183` 检查 `pendingAutoPlay`，匹配则自动调用播放
+- 使用后清空，防止重复触发
+- 只对 Dashboard 点击生效，直接进入详情页不触发
 
 ### 定位优先级
 

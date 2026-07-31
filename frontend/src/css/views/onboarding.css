@@ -150,7 +150,7 @@
 
 .onb-error {
   font-size: var(--text-base);
-  color: var(--danger, #ef4444);
+  color: var(--error);
   padding: var(--space-2) 0;
   margin-bottom: var(--space-2);
   line-height: 1.4;
@@ -165,7 +165,7 @@
   background: var(--accent, #f59e0b);
   border: none;
   border-radius: var(--radius-sm, 6px);
-  color: #1a1a2e;
+  color: var(--on-accent-dark);
   font-size: var(--text-body);
   font-weight: 600;
   font-family: inherit;

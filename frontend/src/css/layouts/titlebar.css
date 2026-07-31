@@ -61,7 +61,7 @@
 
 .titlebar__brand {
   font-family: var(--font-body);
-  font-size: 12px;
+  font-size: var(--text-compact-md);
   font-weight: var(--fw-medium);
   letter-spacing: 0.03em;
   color: var(--fg-muted);
@@ -96,11 +96,11 @@
   border-radius: var(--radius-sm);
   margin: var(--space-1) var(--space-050);
   font-family: var(--font-body);
-  font-size: 12px;
+  font-size: var(--text-compact-md);
 }
 .titlebar__back:hover {
   color: var(--accent);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--overlay-glass);
 }
 
 .titlebar__back svg {
@@ -126,13 +126,13 @@
   gap: var(--space-150);
   height: 26px;
   padding: 0 8px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.06);
+  background: var(--overlay-glass);
+  border: 1px solid var(--overlay-glass-border);
   border-radius: var(--radius-sm);
   transition: border-color 0.2s ease;
 }
 .titlebar__search-wrap:hover {
-  background: rgba(255,255,255,0.07);
+  background: var(--overlay-glass-hover);
 }
 .titlebar__search-wrap:focus-within {
   border-color: rgba(var(--accent-rgb), 0.4);
@@ -151,7 +151,7 @@
   border: none;
   outline: none;
   color: var(--fg-primary);
-  font-size: 12px;
+  font-size: var(--text-compact-md);
   font-family: var(--font-body);
   padding: 0;
   line-height: 1;
@@ -177,7 +177,7 @@
 
 .titlebar__search-group {
   padding: var(--space-150) var(--space-250) var(--space-050);
-  font-size: 10px;
+  font-size: var(--text-compact-xs);
   font-weight: var(--fw-semibold);
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -213,14 +213,14 @@
   line-height: 1.2;
 }
 .titlebar__search-item-label {
-  font-size: 13px;
+  font-size: var(--text-compact-lg);
   color: var(--fg-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .titlebar__search-item-sublabel {
-  font-size: 11px;
+  font-size: var(--text-compact-sm);
   color: var(--fg-muted);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -231,20 +231,8 @@
 .titlebar__search-empty {
   padding: var(--space-4);
   text-align: center;
-  font-size: 12px;
+  font-size: var(--text-compact-md);
   color: var(--fg-muted);
-}
-
-/* Light mode overrides */
-:is([data-theme="light"], [data-theme-mode="light"]) .titlebar__search-wrap {
-  background: rgba(0,0,0,0.04);
-  border-color: rgba(0,0,0,0.08);
-}
-:is([data-theme="light"], [data-theme-mode="light"]) .titlebar__search-wrap:hover {
-  background: rgba(0,0,0,0.07);
-}
-:is([data-theme="light"], [data-theme-mode="light"]) .titlebar__search-wrap:focus-within {
-  border-color: rgba(var(--accent-rgb), 0.4);
 }
 
 .titlebar__controls {
@@ -267,13 +255,13 @@
 }
 
 .titlebar__btn:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--overlay-glass-hover);
   color: var(--fg-secondary);
 }
 
 .titlebar__btn--close:hover {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .titlebar__btn svg {

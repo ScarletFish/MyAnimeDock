@@ -79,7 +79,7 @@
 }
 .mm-bento-tile--pending .mm-bento-num { color: var(--fg-muted); }
 .mm-bento-tile--progress {
-  border-color: rgba(245, 158, 11, 0.2);
+  border-color: rgba(var(--warning-rgb), 0.2);
   position: relative;
 }
 .mm-bento-tile--progress .mm-bento-num { color: var(--warning); }
@@ -587,7 +587,7 @@
   align-items: center;
   justify-content: center;
   backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
-  background: rgba(0, 0, 0, 0.55);
+  background: var(--overlay-dark-soft);
 }
 .modal-overlay--metamatch.show { display: flex; }
 .modal-overlay--metamatch .modal--metamatch {

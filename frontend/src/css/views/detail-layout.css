@@ -157,7 +157,7 @@
   margin: var(--space-2) 0 var(--space-3);
   padding: 6px var(--space-2);
   border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--overlay-glass);
   border: 1px solid var(--border);
 }
 .detail-info-line .info-left {

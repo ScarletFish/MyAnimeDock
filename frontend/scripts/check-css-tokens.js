@@ -146,7 +146,7 @@ for (const dir of SCAN_DIRS) {
 
 const total = totalViolations + totalWarnings;
 if (total === 0) {
-  console.log(`✅ CSS token check passed (${['views', 'layouts'].flatMap(d =>
+  console.log(`✅ CSS token check passed (${['src/css/views', 'src/css/layouts'].flatMap(d =>
     readdirSync(resolve(FRONTEND, d), { withFileTypes: true })
       .filter(f => f.isFile() && f.name.endsWith('.css'))
   ).length} files scanned)`);

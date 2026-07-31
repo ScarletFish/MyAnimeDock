@@ -73,7 +73,7 @@
 .mylist-status-item.active {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 .mylist-status-item b {
   font-variant-numeric: tabular-nums;

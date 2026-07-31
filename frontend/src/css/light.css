@@ -338,11 +338,6 @@
 :is([data-theme="light"], [data-theme-mode="light"]) .context-menu-divider { background: rgba(0, 0, 0, 0.08); }
 :is([data-theme="light"], [data-theme-mode="light"]) .context-menu-danger:hover { background: rgba(239, 68, 68, 0.08); }
 
-/* ─── Heatmap ─── */
-:is([data-theme="light"], [data-theme-mode="light"]) .heatmap-cell { border: 1px solid rgba(0, 0, 0, 0.08); }
-:is([data-theme="light"], [data-theme-mode="light"]) .heatmap-cell.unwatched { background: color-mix(in srgb, var(--heatmap-unwatched) 30%, transparent); }
-:is([data-theme-mode="dark"], [data-theme="dark"]) .heatmap-cell { border: 1px solid rgba(255, 255, 255, 0.12); }
-
 /* ─── Theme Dock ─── */
 :is([data-theme="light"], [data-theme-mode="light"]) .theme-dock {
   background: rgba(var(--bg-rgb), 0.92);

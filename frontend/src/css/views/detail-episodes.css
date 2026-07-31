@@ -121,8 +121,8 @@
   padding: var(--space-075) var(--space-250);
   font-size: var(--text-sm);
   font-weight: var(--fw-bold);
-  color: #fff;
-  background: var(--bg-overlay, rgba(0, 0, 0, 0.65));
+  color: var(--on-image);
+  background: var(--overlay-dark);
   border-radius: var(--radius-sm);
   z-index: 2;
   line-height: 1.4;
@@ -140,11 +140,11 @@
   width: calc(65px * var(--scale));
   height: calc(65px * var(--scale));
   border-radius: 50%;
-  background: var(--bg-overlay, rgba(0, 0, 0, 0.55));
+  background: var(--overlay-dark-soft);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border: 2px solid rgba(var(--accent-rgb), 0.25);
-  color: #fff;
+  color: var(--on-image);
   display: flex;
   align-items: center;
   justify-content: center;

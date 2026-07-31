@@ -243,3 +243,96 @@
   color: var(--fg-muted);
 }
 .status-dd-opt.is-selected .status-dd-opt-check { opacity: 1; }
+
+/* ─── Player Dropdown (settings) ─── */
+.player-dd {
+  position: relative;
+  flex-shrink: 0;
+  min-width: 120px;
+}
+.player-dd-trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--fg-primary);
+  font-family: var(--font-body);
+  font-size: var(--text-md);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--duration-fast) var(--ease-out);
+  outline: none;
+  -webkit-appearance: none;
+}
+.player-dd-trigger:hover {
+  border-color: rgba(var(--accent-rgb), 0.2);
+  background: var(--bg-elevated);
+}
+.player-dd-trigger:focus-visible {
+  border-color: rgba(var(--accent-rgb), 0.4);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.08);
+}
+.player-dd-text {
+  flex: 1;
+  text-align: left;
+  font-weight: var(--fw-medium);
+}
+.player-dd-chevron {
+  flex-shrink: 0;
+  color: var(--fg-muted);
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+.player-dd.is-open .player-dd-chevron {
+  transform: rotate(180deg);
+}
+.player-dd-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 4px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-6px) scale(0.96);
+  pointer-events: none;
+  transition: opacity 0.2s var(--ease-out), transform 0.2s var(--ease-out);
+  box-shadow: var(--shadow-md);
+  z-index: 100;
+}
+.player-dd.is-open .player-dd-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+.player-dd-opt {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--fg-primary);
+  font-size: var(--text-sm);
+  font-family: var(--font-body);
+  font-weight: var(--fw-medium);
+  cursor: pointer;
+  transition: all 0.15s var(--ease-out);
+  text-align: left;
+}
+.player-dd-opt:hover {
+  background: var(--bg-surface);
+}
+.player-dd-opt.is-selected {
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.08);
+}

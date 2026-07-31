@@ -86,6 +86,10 @@
   font-family: var(--font-body); font-size: var(--text-md);
   transition: all var(--duration-fast) var(--ease-out);
 }
+.form-group select option {
+  background: var(--bg-elevated);
+  color: var(--fg-primary);
+}
 .form-group input:focus,
 .form-group select:focus,
 .form-group textarea:focus {

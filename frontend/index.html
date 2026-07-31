@@ -591,19 +591,35 @@
       </div>
       <!-- Tab: 播放 -->
       <div class="settings-panel" id="tab-playback">
-        <div class="form-group" id="mpvPathGroup">
-          <label for="settingsMpvPath">mpv 可执行文件路径</label>
+        <div class="form-group">
+          <label>播放器</label>
           <div class="input-with-btn">
-            <input type="text" id="settingsMpvPath" placeholder="mpv">
-            <button class="btn btn-sm" onclick="browseFile('settingsMpvPath')">浏览</button>
+            <div class="player-dd" id="playerModeDropdown">
+              <button type="button" class="player-dd-trigger" id="playerDdTrigger" onclick="togglePlayerDropdown(event)">
+                <span class="player-dd-text" id="playerDdText">mpv</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="player-dd-chevron"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="player-dd-menu" id="playerDdMenu">
+                <!-- populated by JS -->
+              </div>
+            </div>
+            <input type="text" id="settingsPlayerPath" placeholder="路径，留空自动搜索 PATH">
+            <button class="btn btn-sm" onclick="browsePlayerExecutable()">浏览</button>
           </div>
+          <p class="form-hint" id="playerPathHint"></p>
         </div>
         <div class="form-group">
-          <label class="checkbox-label">
-            <input type="checkbox" id="settingsAutoMark">
-            <span class="checkbox-visual"></span>
-            <span>播放下一集时自动标记前序集数为已观看</span>
-          </label>
+          <label>自动标记前序集数</label>
+          <p class="form-hint mt-0">播放下一集时自动将前序集标记为已观看</p>
+          <div class="dashboard-layout-list" style="margin-top:0.75rem">
+            <div class="dashboard-layout-item" style="cursor:default">
+              <label class="toggle-switch" style="margin:0">
+                <input type="checkbox" id="settingsAutoMark">
+                <span class="toggle-slider"></span>
+              </label>
+              <span class="dashboard-layout-label">启用自动标记</span>
+            </div>
+          </div>
         </div>
       </div>
 

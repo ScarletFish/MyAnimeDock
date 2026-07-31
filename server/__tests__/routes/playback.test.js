@@ -1,7 +1,7 @@
 // server/__tests__/routes/playback.test.js
 // Route handler tests for playback.js
 //   Simple: handleMpvStatus, handleProgress
-//   Complex: handlePlay (mock mpv-controller lazy require)
+//   Complex: handlePlay (mock registry.getStrategy)
 const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
@@ -168,29 +168,38 @@ describe('playback route handlers', () => {
   });
 
   describe('handlePlay', () => {
-    // Lazy requires: const { checkMpvAvailable } = require('../mpv-controller');
-    //               const { startMpv } = require('../mpv-controller');
-    let origMpvController;
+    let origRegistry;
     let tmpFile;
 
     before(() => {
-      const mp = require.resolve('../../mpv-controller');
-      origMpvController = require.cache[mp]?.exports;
-      require.cache[mp] = {
-        id: mp, filename: mp, loaded: true,
-        exports: {
-          checkMpvAvailable: () => true,
-          startMpv: (mpvPath, filePath, startSeconds, callbacks) => {
-            // Simulate successful mpv spawn
-            process.nextTick(() => {
-              // onProgress with final=true to signal completion
-              callbacks.onProgress?.({
-                sessionId: null, filePath, progress: 0.5,
-                peakPos: 0.5, watched: false, duration: 1200, final: true,
-              });
+      // Mock registry.getStrategy to return a mock mpv strategy class
+      class MockMpvStrategy {
+        static checkAvailable() { return true; }
+        start(mpvPath, filePath, startSeconds, callbacks, sessionId) {
+          // Simulate successful mpv spawn
+          process.nextTick(() => {
+            // onProgress with final=true to signal completion
+            callbacks.onProgress?.({
+              sessionId: null, filePath, progress: 0.5,
+              peakPos: 0.5, watched: false, duration: 1200, final: true,
             });
-            return Promise.resolve(null);
-          },
+          });
+          return { stop: () => {} };
+        }
+        stop() {}
+      }
+      const regPath = require.resolve('../../players/registry');
+      origRegistry = require.cache[regPath]?.exports;
+      require.cache[regPath] = {
+        id: regPath, filename: regPath, loaded: true,
+        exports: {
+          getStrategy: (type) => type === 'mpv' ? MockMpvStrategy : null,
+          register: () => {},
+          getAvailable: () => [],
+          getDefault: () => null,
+          listTypes: () => ['mpv'],
+          _setMock: () => {},
+          _reset: () => {},
         },
       };
       tmpFile = path.join(os.tmpdir(), 'test-play-' + Date.now() + '.mp4');
@@ -198,8 +207,8 @@ describe('playback route handlers', () => {
     });
 
     after(() => {
-      const mp = require.resolve('../../mpv-controller');
-      require.cache[mp] = origMpvController;
+      const regPath = require.resolve('../../players/registry');
+      require.cache[regPath] = origRegistry;
       try { fs.unlinkSync(tmpFile); } catch (_) {}
     });
 

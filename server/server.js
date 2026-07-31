@@ -18,6 +18,9 @@ const {
 } = require('./lib/utils');
 const ThumbnailQueue = require('./thumbnail-queue');
 
+// ── 播放器策略注册（加载即自注册到 registry）──
+require('./players/mpv-strategy');
+
 // ── 引导日志 ──
 bootLog('=== BOOT: server.js init ===');
 bootLog(`PKG=${!!process.pkg} EXE=${process.execPath} CWD=${process.cwd()}`);

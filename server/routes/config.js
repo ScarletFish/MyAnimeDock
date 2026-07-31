@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const { jsonResp, readBody } = require('../lib/utils');
 const { saveConfig } = require('../lib/config');
+const registry = require('../players/registry');
 
 module.exports = {
   handleGetConfig(req, res, state) {
@@ -11,7 +12,9 @@ module.exports = {
       ? fs.existsSync(config.mediaDir) && fs.statSync(config.mediaDir).isDirectory()
       : false;
     const firstRun = !config.mediaDir && (!data?.library || data.library.length === 0);
-    jsonResp(res, 200, { ...config, dirValid, firstRun, autoImport: { count: 0, message: '' } });
+    // 附上可用播放器列表供前端渲染选择器
+    const players = registry.getAvailable(config);
+    jsonResp(res, 200, { ...config, players, dirValid, firstRun, autoImport: { count: 0, message: '' } });
   },
 
   handleGetNotifications(req, res, state) {
@@ -40,7 +43,7 @@ module.exports = {
         }
         config.mediaDir = resolved;
       }
-      config.playerMode = 'mpv';
+      if (parsed.playerMode !== undefined) config.playerMode = parsed.playerMode;
       if (parsed.mpvPath !== undefined) config.mpvPath = parsed.mpvPath;
       if (parsed.theme !== undefined) config.theme = parsed.theme;
       if (parsed.themeMode !== undefined) config.themeMode = parsed.themeMode;

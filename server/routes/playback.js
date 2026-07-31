@@ -83,8 +83,8 @@ module.exports = {
       if (!filePath) { jsonResp(res, 400, { error: 'filePath is required' }); return; }
       if (!fs.existsSync(filePath)) { jsonResp(res, 404, { error: 'File not found' }); return; }
       const mpvPath = config.mpvPath || 'mpv';
-      const { checkMpvAvailable } = require('../mpv-controller');
-      if (!checkMpvAvailable(mpvPath)) {
+      const MpvPlayerStrategy = require('../players/registry').getStrategy('mpv');
+      if (!MpvPlayerStrategy || !MpvPlayerStrategy.checkAvailable(mpvPath)) {
         jsonResp(res, 400, { error: '未检测到 mpv 播放器。请安装 mpv 后在设置 → 播放 中配置路径。' });
         return;
       }
@@ -125,12 +125,12 @@ module.exports = {
         db.savePlaySessions(data);
         broadcastMpvStatus?.();
       }
-      const { startMpv } = require('../mpv-controller');
+      const strategy = new MpvPlayerStrategy();
       try {
         let settled = false;
         let spawnError = null;
         const spawnResult = await new Promise((resolve) => {
-          startMpv(mpvPath, filePath, startSeconds || 0, {
+          strategy.start(mpvPath, filePath, startSeconds || 0, {
             onProgress: ({ sessionId: cbSid, filePath: fp, progress, peakPos, watched, duration, final }) => {
               if (cbSid !== sessionId) return;
               const active = activePlays.get(fp);

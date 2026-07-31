@@ -234,7 +234,10 @@ async function openSettings() {
     const config = await API.get('/api/config');
     configCache = config;
     document.getElementById('settingsMediaDir').value = config.mediaDir || '';
-    document.getElementById('settingsMpvPath').value = config.mpvPath || '';
+
+    // 填充播放器下拉
+    populatePlayerDropdown(config.players || [], config.playerMode || 'mpv', config.mpvPath || '');
+
     document.getElementById('settingsAutoMark').checked = config.autoMarkWatched !== false;
     document.getElementById('settingsError').textContent = '';
 
@@ -418,7 +421,8 @@ async function bangumiUnbind() {
 
 async function saveSettings() {
   const mediaDir = document.getElementById('settingsMediaDir').value.trim();
-  const mpvPath = document.getElementById('settingsMpvPath').value.trim();
+  const playerMode = document.getElementById('playerModeDropdown')?.dataset.playerMode || 'mpv';
+  const mpvPath = document.getElementById('settingsPlayerPath').value.trim();
 
   if (!mediaDir) {
     document.getElementById('settingsError').textContent = '请输入媒体目录路径';
@@ -452,7 +456,7 @@ async function saveSettings() {
 
     await API.post('/api/config', {
       mediaDir,
-      playerMode: 'mpv',
+      playerMode,
       mpvPath,
       theme: newTheme,
       themeMode: newThemeMode,
@@ -891,6 +895,95 @@ async function openDialog(options) {
   return null;
 }
 
+/**
+ * 填充播放器自定义下拉菜单
+ */
+function populatePlayerDropdown(players, currentMode, currentPath) {
+  const container = document.getElementById('playerModeDropdown');
+  const menu = document.getElementById('playerDdMenu');
+  const text = document.getElementById('playerDdText');
+  const pathInput = document.getElementById('settingsPlayerPath');
+  const pathHint = document.getElementById('playerPathHint');
+  if (!container || !menu) return;
+
+  // 构建选项
+  menu.innerHTML = '';
+  for (const p of players) {
+    const opt = document.createElement('button');
+    opt.type = 'button';
+    opt.className = 'player-dd-opt' + (p.type === currentMode ? ' is-selected' : '');
+    opt.dataset.value = p.type;
+    opt.textContent = p.displayName || p.type;
+    opt.addEventListener('click', function () { selectPlayerOption(this); });
+    menu.appendChild(opt);
+  }
+
+  // 设置当前值
+  container.dataset.playerMode = currentMode;
+  if (text) text.textContent = currentMode;
+
+  // 路径
+  if (pathInput) pathInput.value = currentPath || '';
+  if (pathHint) {
+    pathHint.textContent = currentPath
+      ? `当前路径: ${currentPath}`
+      : '留空则自动搜索 PATH';
+  }
+}
+
+function togglePlayerDropdown(event) {
+  event.stopPropagation();
+  const dd = document.getElementById('playerModeDropdown');
+  if (!dd) return;
+  dd.classList.toggle('is-open');
+}
+
+function selectPlayerOption(el) {
+  const dd = document.getElementById('playerModeDropdown');
+  if (!dd) return;
+
+  // 更新选中态
+  dd.querySelectorAll('.player-dd-opt').forEach(function (o) { o.classList.remove('is-selected'); });
+  el.classList.add('is-selected');
+
+  // 更新显示值和 dataset
+  const value = el.dataset.value;
+  dd.dataset.playerMode = value;
+  const text = document.getElementById('playerDdText');
+  if (text) text.textContent = el.textContent;
+
+  // 关闭菜单
+  dd.classList.remove('is-open');
+}
+
+// 点击外部关闭播放器下拉
+document.addEventListener('click', function (e) {
+  var dd = document.getElementById('playerModeDropdown');
+  if (!dd) return;
+  if (dd.classList.contains('is-open') && !e.target.closest('.player-dd')) {
+    dd.classList.remove('is-open');
+  }
+});
+
+async function browsePlayerExecutable() {
+  const mode = document.getElementById('playerModeDropdown')?.dataset.playerMode || 'mpv';
+  const name = { mpv: 'mpv 播放器', vlc: 'VLC 播放器', mpchc: 'MPC-HC 播放器' }[mode] || mode + ' 播放器';
+  try {
+    const result = await openDialog({
+      multiple: false,
+      title: '选择 ' + name,
+      filters: [{ name: '可执行文件', extensions: ['exe', 'com'] }]
+    });
+    if (result) {
+      document.getElementById('settingsPlayerPath').value = result;
+    } else if (!window.__TAURI__) {
+      showToast('浏览器模式下请在输入框中手动输入路径', 'info');
+    }
+  } catch (e) {
+    showToast('选择文件失败: ' + e.message, 'error');
+  }
+}
+
 async function browseFolder(inputId) {
   try {
     const selected = await openDialog({
@@ -905,23 +998,6 @@ async function browseFolder(inputId) {
     }
   } catch (e) {
     showToast('选择目录失败: ' + e.message, 'error');
-  }
-}
-
-async function browseFile(inputId) {
-  try {
-    const selected = await openDialog({
-      multiple: false,
-      title: '选择 mpv 可执行文件',
-      filters: [{ name: '可执行文件', extensions: ['exe', 'com'] }]
-    });
-    if (selected) {
-      document.getElementById(inputId).value = selected;
-    } else if (!window.__TAURI__) {
-      showToast('浏览器模式下请在输入框中手动输入路径', 'info');
-    }
-  } catch (e) {
-      showToast('选择文件失败: ' + e.message, 'error');
   }
 }
 

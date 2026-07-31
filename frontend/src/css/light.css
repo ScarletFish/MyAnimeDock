@@ -31,24 +31,29 @@
 }
 
 /* ─── Buttons ─── */
-:is([data-theme="light"], [data-theme-mode="light"]) .btn { border-color: rgba(0, 0, 0, 0.10); }
-:is([data-theme="light"], [data-theme-mode="light"]) .btn:hover:not(.btn-primary):not(.btn-outline):not(.btn-ghost):not(.btn-danger):not(.btn-accent) {
-  border-color: rgba(0, 0, 0, 0.20);
-  background: rgba(0, 0, 0, 0.03);
+/* Explicit surface bg so all btn variants look uniform across containers;
+   --bg-surface (#fff) matches .discovery-actions & .input-with-btn .btn-sm */
+:is([data-theme="light"], [data-theme-mode="light"]) .btn {
+  border-color: rgba(0, 0, 0, 0.16);
+  background: var(--bg-surface);
 }
-:is([data-theme="light"], [data-theme-mode="light"]) .btn-outline:hover { background: rgba(var(--accent-rgb), 0.06); }
-:is([data-theme="light"], [data-theme-mode="light"]) .btn-primary { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06); }
+/* hover: border deepens only, no background darkening */
+:is([data-theme="light"], [data-theme-mode="light"]) .btn:hover:not(.btn-primary):not(.btn-outline):not(.btn-ghost):not(.btn-danger):not(.btn-accent) {
+  border-color: rgba(0, 0, 0, 0.28);
+}
+/* outline: accent border on hover, bg stays white */
+:is([data-theme="light"], [data-theme-mode="light"]) .btn-outline:hover { border-color: var(--accent); }
+:is([data-theme="light"], [data-theme-mode="light"]) .btn-primary { background: var(--accent-gradient); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06); }
 :is([data-theme="light"], [data-theme-mode="light"]) .btn-primary:hover { box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08); }
 :is([data-theme="light"], [data-theme-mode="light"]) .btn-danger { border-color: rgba(239, 68, 68, 0.20); }
 :is([data-theme="light"], [data-theme-mode="light"]) .btn-danger:hover { background: rgba(239, 68, 68, 0.06); }
-:is([data-theme="light"], [data-theme-mode="light"]) .btn-accent { box-shadow: none; }
+:is([data-theme="light"], [data-theme-mode="light"]) .btn-accent { background: var(--accent-gradient); box-shadow: none; }
 :is([data-theme="light"], [data-theme-mode="light"]) .btn-ghost {
-  border-color: rgba(0, 0, 0, 0.12);
+  border-color: rgba(0, 0, 0, 0.16);
   color: var(--fg-secondary);
 }
 :is([data-theme="light"], [data-theme-mode="light"]) .btn-ghost:hover {
-  background: rgba(0, 0, 0, 0.04);
-  border-color: rgba(0, 0, 0, 0.22);
+  border-color: rgba(0, 0, 0, 0.28);
   color: var(--fg-primary);
 }
 

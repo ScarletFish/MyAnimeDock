@@ -19,7 +19,7 @@
   cursor: pointer;
   inset: 0;
   box-sizing: border-box;
-  background: var(--bg);
+  background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 999px;
   transition: all var(--duration-fast) var(--ease-out);

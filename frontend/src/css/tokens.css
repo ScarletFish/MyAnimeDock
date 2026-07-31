@@ -28,6 +28,7 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
   --warning: #f59e0b;
   --warning-rgb: 245, 158, 11;
   --error: #ef4444;
+  --error-rgb: 239, 68, 68;
   --info: #a78bfa;
 
   --border: rgba(225, 58, 90, 0.08);
@@ -55,6 +56,7 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.5);
   --shadow-md: 0 4px 24px rgba(0, 0, 0, 0.6);
   --shadow-lg: 0 8px 48px rgba(0, 0, 0, 0.7);
+  --shadow-xl: 0 12px 40px rgba(0, 0, 0, 0.5);
 
   --scale: 1;
 

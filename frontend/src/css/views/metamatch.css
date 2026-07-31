@@ -198,8 +198,8 @@
   align-items: center;
   justify-content: center;
 }
-.mm-filter-dot:hover { background: var(--bg-hover); }
-.mm-filter-dot--active { background: var(--bg-active); }
+.mm-filter-dot:hover { background: var(--bg-elevated); }
+.mm-filter-dot--active { background: var(--bg-surface); }
 .dot {
   width: 10px; height: 10px;
   border-radius: 50%;

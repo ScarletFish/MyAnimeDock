@@ -131,7 +131,7 @@
 .wishlist-detail-summary {
   font-size: var(--text-md);
   line-height: 1.7;
-  color: var(--text2);
+  color: var(--fg-secondary);
   margin: 0.75rem 0;
 }
 

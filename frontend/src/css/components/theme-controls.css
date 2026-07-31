@@ -76,7 +76,7 @@
   line-height: 1; border-radius: var(--radius-sm);
   transition: color var(--duration-fast) var(--ease-out), background var(--duration-fast) var(--ease-out);
 }
-.theme-dock-close:hover { color: var(--fg-primary); background: var(--hover-bg); }
+.theme-dock-close:hover { color: var(--fg-primary); background: var(--bg-elevated); }
 
 /* ─── Range Slider ─── */
 input[type="range"] {

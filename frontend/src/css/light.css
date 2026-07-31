@@ -52,6 +52,13 @@
   color: var(--fg-primary);
 }
 
+/* ─── Input + browse button row ─── */
+:is([data-theme="light"], [data-theme-mode="light"]) .input-with-btn .btn-sm:hover {
+  border-color: rgba(var(--accent-rgb), 0.35) !important;
+  background: var(--bg-surface) !important;
+  color: var(--fg-primary) !important;
+}
+
 /* ─── Search ─── */
 :is([data-theme="light"], [data-theme-mode="light"]) .search-input {
   background: var(--bg-card);

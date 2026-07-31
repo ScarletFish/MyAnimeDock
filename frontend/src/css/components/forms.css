@@ -223,8 +223,21 @@
   display: flex;
   gap: var(--space-2);
 }
-.input-with-btn input { flex: 1; min-width: 0; }
+.settings-panel .form-group input[type="text"],
+.settings-panel .form-group input[type="password"] {
+  background: var(--bg-surface);
+}
+.form-group .input-with-btn input {
+  flex: 1;
+  min-width: 0;
+}
 .input-with-btn .btn-sm {
   font-size: var(--text-md);
   padding: var(--space-1) var(--space-4);
+  background: var(--bg-surface);
+}
+.input-with-btn .btn-sm:hover {
+  background: var(--bg-surface);
+  border-color: rgba(var(--accent-rgb), 0.35);
+  color: var(--fg-primary);
 }

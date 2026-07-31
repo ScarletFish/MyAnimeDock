@@ -3,7 +3,7 @@
 @utility modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: var(--overlay-dark);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   z-index: 250;
@@ -23,7 +23,7 @@
 @utility modal {
   position: relative;
   background: var(--bg-elevated);
-  border: 1px solid var(--border);
+  border: var(--space-025) solid var(--border);
   border-radius: var(--radius-lg);
   padding: var(--space-8);
   width: 90%;
@@ -99,7 +99,7 @@
   justify-content: space-between;
   margin-bottom: var(--space-6);
   padding-bottom: var(--space-4);
-  border-bottom: 1px solid var(--border);
+  border-bottom: var(--space-025) solid var(--border);
 
   h2 {
     margin-bottom: 0;
@@ -203,7 +203,7 @@
 /* ─── Footer (status-modal) ─── */
 .status-modal-footer {
   display: flex; justify-content: flex-end;
-  padding: var(--space-4) 0 0; border-top: 1px solid var(--border); margin-top: var(--space-2);
+  padding: var(--space-4) 0 0; border-top: var(--space-025) solid var(--border); margin-top: var(--space-2);
 }
 .status-modal-footer .btn { padding: var(--space-2) var(--space-8); font-size: var(--text-base); }
 
@@ -223,7 +223,7 @@
 }
 .settings-header-top .btn-icon {
   width: 32px; height: 32px; border-radius: var(--radius-sm);
-  background: none; border: 1px solid var(--border);
+  background: none; border: var(--space-025) solid var(--border);
   color: var(--fg-muted);
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; transition: all var(--duration-fast) var(--ease-out);
@@ -232,7 +232,7 @@
   color: var(--fg-primary); border-color: var(--border-hover); background: var(--bg-surface);
 }
 .settings-header-top .btn-icon:focus-visible {
-  outline: 2px solid var(--accent); outline-offset: 2px;
+  outline: var(--space-050) solid var(--accent); outline-offset: 2px;
 }
 .settings-header-top .visual-settings-btn {
   gap: var(--space-2); padding: var(--space-1) var(--space-3); width: auto;
@@ -245,7 +245,7 @@
 
 .settings-tabs {
   display: flex; gap: 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: var(--space-025) solid var(--border);
   margin: 0 calc(-1 * var(--space-6)); padding: 0 var(--space-6);
 }
 .settings-tab {
@@ -269,7 +269,7 @@
 .settings-tab.active { color: var(--fg-primary); }
 .settings-tab.active::after { width: 60%; }
 .settings-tab:focus-visible {
-  outline: 2px solid var(--accent); outline-offset: -2px;
+  outline: var(--space-050) solid var(--accent); outline-offset: -2px;
   border-radius: var(--radius-sm);
 }
 
@@ -281,7 +281,7 @@
 .settings-panel { display: none; animation: settings-fade-in 250ms var(--ease-out) both; }
 .settings-panel.active { display: block; }
 .settings-panel .form-group + .form-group {
-  padding-top: var(--space-1); border-top: 1px solid var(--border);
+  padding-top: var(--space-1); border-top: var(--space-025) solid var(--border);
 }
 
 @keyframes settings-fade-in {
@@ -292,11 +292,11 @@
 /* ─── Status Modal ─── */
 .status-modal {
   padding: 0 !important; overflow: visible; max-width: 680px;
-  background: rgba(0, 0, 0, 0.12);
+  background: var(--border);
   -webkit-backdrop-filter: blur(40px) saturate(1.4);
   backdrop-filter: blur(40px) saturate(1.4);
-  border: 1px solid rgba(var(--accent-rgb), 0.12);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(var(--accent-rgb), 0.06);
+  border: var(--space-025) solid rgba(var(--accent-rgb), 0.12);
+  box-shadow: 0 var(--space-2) 32px var(--overlay-dark), inset 0 var(--space-025) 0 rgba(var(--accent-rgb), 0.06);
 }
 .status-modal-bg-wrap {
   position: absolute; inset: 0; overflow: hidden;
@@ -318,7 +318,7 @@
   position: absolute; inset: 0; z-index: 1;
   -webkit-backdrop-filter: blur(40px) saturate(1.2);
   backdrop-filter: blur(40px) saturate(1.2);
-  background: rgba(0, 0, 0, 0.25);
+  background: var(--overlay-dark);
   transition: background 0.3s ease;
 }
 .status-modal-close {
@@ -334,8 +334,8 @@
 
 .status-modal-inner {
   position: relative; z-index: 2;
-  background: rgba(15, 12, 9, 0.25);
-  border: 1px solid rgba(var(--accent-rgb), 0.06);
+  background: var(--bg-elevated);
+  border: var(--space-025) solid rgba(var(--accent-rgb), 0.06);
   padding: var(--space-6) var(--space-6) var(--space-5);
   border-radius: var(--radius-lg);
   color: var(--fg-secondary);
@@ -353,24 +353,24 @@
 .status-modal .num-stepper,
 .status-modal .date-segments,
 .status-modal .notes-input {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.1);
+  background: var(--overlay-glass-border);
+  border-color: var(--overlay-glass-border);
 }
 .status-modal .num-stepper-btn { color: inherit; }
 .status-modal .num-stepper-val { color: inherit; }
 .status-modal .notes-input { color: var(--fg-secondary); }
 .status-modal .num-stepper-btn:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--overlay-glass);
   color: var(--fg-primary);
 }
 .status-modal .num-stepper-btn:active {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--overlay-glass);
 }
 .status-modal-close:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--overlay-glass);
 }
 .status-modal .date-seg:focus,
 .status-modal .notes-input:focus {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: var(--overlay-glass-border);
+  border-color: var(--overlay-light);
 }

@@ -10,11 +10,11 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: 9px 12px;
+  padding: var(--space-1) 12px;
   padding-right: 28px;
   min-width: 7em;
   background: var(--bg-elevated);
-  border: 1px solid var(--border);
+  border: var(--space-025) solid var(--border);
   border-radius: var(--radius-sm);
   color: var(--fg-primary);
   font-family: inherit;
@@ -32,7 +32,7 @@
 
 .sort-dropdown:focus .sort-dropdown-trigger {
   border-color: rgba(var(--accent-rgb), 0.4);
-  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.08);
+  box-shadow: 0 0 0 var(--space-075) rgba(var(--accent-rgb), 0.08);
 }
 
 @utility sort-dropdown-chevron {
@@ -55,7 +55,7 @@
   left: 0;
   width: 100%;
   background: var(--bg-elevated);
-  border: 1px solid var(--border);
+  border: var(--space-025) solid var(--border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-md);
   z-index: 200;
@@ -75,7 +75,7 @@
 }
 
 @utility sort-dropdown-option {
-  padding: 8px 12px;
+  padding: var(--space-2) 12px;
   color: var(--fg-secondary);
   cursor: pointer;
   transition: all var(--duration-fast) var(--ease-out);
@@ -99,20 +99,20 @@
 
 @utility context-menu {
   position: fixed;
-  z-index: 400;
+  z-index: var(--fw-normal);
   min-width: 160px;
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  background: rgba(28, 28, 33, 0.94);
+  gap: var(--space-025);
+  background: var(--bg-elevated);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 10px;
-  padding: 6px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2),
-              0 8px 24px rgba(0, 0, 0, 0.3),
-              0 16px 48px rgba(0, 0, 0, 0.2);
+  border: var(--space-025) solid var(--overlay-glass-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-150);
+  box-shadow: 0 var(--space-050) var(--space-1) var(--overlay-dark-soft),
+              0 var(--space-2) 24px var(--overlay-dark),
+              0 16px 48px var(--overlay-dark-soft);
   opacity: 0;
   pointer-events: none;
   transform: scale(0.92) translateY(-4px);
@@ -129,9 +129,9 @@
 @utility context-menu-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 14px;
-  border-radius: 6px;
+  gap: var(--space-2);
+  padding: var(--space-2) 14px;
+  border-radius: var(--radius-sm);
   font-size: var(--text-sm);
   font-weight: var(--fw-medium);
   color: var(--fg-primary);
@@ -179,8 +179,8 @@
 
 @utility context-menu-divider {
   height: 1px;
-  background: rgba(255, 255, 255, 0.06);
-  margin: 4px 12px;
+  background: var(--overlay-glass-border);
+  margin: var(--space-1) 12px;
 }
 
 @utility context-menu-danger {
@@ -194,29 +194,29 @@
 .status-dd-trigger {
   width: 100%; display: flex; align-items: center; gap: 0.5rem;
   padding: 0 12px; height: 40px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--overlay-glass-border);
+  border: var(--space-025) solid var(--overlay-glass-border);
   border-radius: var(--radius-sm);
   color: var(--fg-primary);
   font-size: var(--text-base); font-family: var(--font-body);
   cursor: pointer; transition: border-color 0.2s ease, background 0.2s ease;
   outline: none; -webkit-appearance: none;
 }
-.status-dd-trigger:hover { background: rgba(255, 255, 255, 0.1); }
-.status-dd-trigger:focus-visible { border-color: rgba(255, 255, 255, 0.2); background: rgba(255, 255, 255, 0.1); }
+.status-dd-trigger:hover { background: var(--overlay-glass-border); }
+.status-dd-trigger:focus-visible { border-color: var(--overlay-light); background: var(--overlay-glass-border); }
 .status-dd-text { flex: 1; text-align: left; font-weight: var(--fw-medium); }
 .status-dd-chevron { flex-shrink: 0; color: var(--fg-muted); transition: transform 0.25s var(--ease-out); }
 .status-dd.is-open .status-dd-chevron { transform: rotate(180deg); }
 
 .status-dd-menu {
   position: absolute; top: calc(100% + 4px); left: 0; right: 0;
-  background: var(--bg-elevated); border: 1px solid var(--border);
-  border-radius: var(--radius-md); padding: 4px;
+  background: var(--bg-elevated); border: var(--space-025) solid var(--border);
+  border-radius: var(--radius-md); padding: var(--space-1);
   opacity: 0; visibility: hidden;
   transform: translateY(-6px) scale(0.96);
   pointer-events: none;
   transition: opacity 0.2s var(--ease-out), transform 0.2s var(--ease-out);
-  box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+  box-shadow: var(--shadow-lg);
   max-height: 280px; overflow-y: auto; z-index: 100;
 }
 .status-dd.is-open .status-dd-menu {
@@ -224,7 +224,7 @@
 }
 .status-dd-opt {
   width: 100%; display: flex; align-items: center; gap: 0.625rem;
-  padding: 10px 12px; background: none; border: none;
+  padding: var(--space-250) 12px; background: none; border: none;
   border-radius: var(--radius-sm);
   color: var(--fg-primary);
   font-size: var(--text-sm); font-family: var(--font-body);
@@ -257,7 +257,7 @@
   width: 100%;
   padding: var(--space-2) var(--space-3);
   background: var(--bg-surface);
-  border: 1px solid var(--border);
+  border: var(--space-025) solid var(--border);
   border-radius: var(--radius-sm);
   color: var(--fg-primary);
   font-family: var(--font-body);
@@ -274,7 +274,7 @@
 }
 .player-dd-trigger:focus-visible {
   border-color: rgba(var(--accent-rgb), 0.4);
-  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.08);
+  box-shadow: 0 0 0 var(--space-075) rgba(var(--accent-rgb), 0.08);
 }
 .player-dd-text {
   flex: 1;
@@ -295,9 +295,9 @@
   left: 0;
   right: 0;
   background: var(--bg-elevated);
-  border: 1px solid var(--border);
+  border: var(--space-025) solid var(--border);
   border-radius: var(--radius-md);
-  padding: 4px;
+  padding: var(--space-1);
   opacity: 0;
   visibility: hidden;
   transform: translateY(-6px) scale(0.96);

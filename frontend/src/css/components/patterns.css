@@ -25,7 +25,7 @@
   padding: var(--space-2) var(--space-3);
   background: var(--bg-elevated);
   border-radius: var(--radius-md);
-  border: 1px solid var(--border);
+  border: var(--space-025) solid var(--border);
   cursor: pointer;
   transition: all var(--duration-fast) var(--ease-out);
 }
@@ -109,7 +109,7 @@
   white-space: nowrap;
 }
 .tag-pill--warn {
-  background: rgba(245, 158, 11, 0.12);
+  background: rgba(var(--warning-rgb), 0.12);
   color: var(--warning);
 }
 .tag-pill--more {
@@ -130,7 +130,7 @@
 @utility section-header {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: var(--space-3);
   padding-left: 0.75rem;
   position: relative;
 
@@ -205,8 +205,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.125rem;
-  padding: 0.5rem 0.75rem;
+  gap: var(--space-050);
+  padding: var(--space-2) 0.75rem;
   font-size: var(--text-base);
   color: var(--fg-muted);
   white-space: nowrap;
@@ -234,7 +234,7 @@
 @utility section-card {
   background: var(--bg-elevated);
   border-radius: var(--radius-lg);
-  border: 1px solid var(--border);
+  border: var(--space-025) solid var(--border);
 }
 
 /* ─── Scroll Pagination Dots ─── *

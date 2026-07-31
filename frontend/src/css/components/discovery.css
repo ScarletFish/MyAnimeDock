@@ -74,7 +74,7 @@
   background: var(--bg-elevated);
   padding: var(--space-1) var(--space-3);
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
+  border: var(--space-025) solid var(--border);
   white-space: nowrap;
   line-height: 1.5;
 }
@@ -92,7 +92,7 @@
 /* ─── Discovery Filter ─── */
 @utility filter-group {
   @apply flex overflow-hidden;
-  border: 1px solid var(--border);
+  border: var(--space-025) solid var(--border);
   border-radius: var(--radius-md);
 }
 
@@ -131,7 +131,7 @@
   margin-bottom: var(--space-2);
   padding: var(--space-1) var(--space-150);
   background: var(--bg-elevated);
-  border: 1px solid rgba(var(--accent-rgb), 0.15);
+  border: var(--space-025) solid rgba(var(--accent-rgb), 0.15);
   border-radius: var(--radius-md);
   position: sticky;
   top: 0;
@@ -157,7 +157,7 @@
 }
 
 .discovery-actions--stuck {
-  box-shadow: var(--shadow-md), 0 2px 12px rgba(var(--accent-rgb), 0.08);
+  box-shadow: var(--shadow-md), 0 var(--space-050) var(--space-3) rgba(var(--accent-rgb), 0.08);
 }
 
 @utility discovery-actions-left {
@@ -181,7 +181,7 @@
   padding: 0;
   margin-bottom: 6px;
   background: var(--bg-elevated);
-  border: 1px solid var(--border);
+  border: var(--space-025) solid var(--border);
   border-radius: var(--radius-md);
   transition: border-color var(--duration-fast) var(--ease-out);
 }
@@ -214,7 +214,7 @@
   color: var(--fg-muted);
   cursor: pointer;
   transition: color var(--duration-fast), background var(--duration-fast);
-  border-right: 1px solid transparent;
+  border-right: var(--space-025) solid transparent;
 }
 
 .discovery-card-toggle:hover {
@@ -262,7 +262,7 @@
   width: 20px;
   height: 20px;
   border-radius: var(--radius-sm);
-  border: 2px solid rgba(var(--accent-rgb), 0.55);
+  border: var(--space-050) solid rgba(var(--accent-rgb), 0.55);
   flex-shrink: 0;
   transition: all var(--duration-fast) var(--ease-spring);
   background: rgba(var(--accent-rgb), 0.15);
@@ -282,7 +282,7 @@
 .discovery-cb:checked ~ .discovery-cb-visual {
   background: var(--accent-gradient);
   border-color: var(--accent);
-  box-shadow: 0 2px 8px var(--accent-glow);
+  box-shadow: 0 var(--space-050) var(--space-2) var(--accent-glow);
 }
 
 .discovery-cb:checked ~ .discovery-cb-visual svg {
@@ -325,13 +325,13 @@
 
 @utility discovery-card-title-row {
   @apply flex items-center;
-  gap: 8px;
+  gap: var(--space-2);
   min-width: 0;
 }
 
 @utility discovery-card-row-actions {
   @apply flex items-center;
-  gap: 4px;
+  gap: var(--space-1);
   opacity: 0;
   transition: opacity var(--duration-fast) var(--ease-out);
 }
@@ -342,14 +342,14 @@
 
 @utility discovery-card-action {
   @apply inline-flex items-center;
-  gap: 3px;
-  padding: 2px 8px;
+  gap: var(--space-075);
+  padding: var(--space-050) var(--space-1);
   font-size: var(--text-xs);
   font-weight: var(--fw-medium);
   font-family: inherit;
   color: var(--fg-muted);
   background: transparent;
-  border: 1px solid var(--border);
+  border: var(--space-025) solid var(--border);
   border-radius: 100px;
   cursor: pointer;
   white-space: nowrap;
@@ -369,20 +369,20 @@
 
 .discovery-card-unlink:hover {
   color: var(--error);
-  border-color: rgba(239, 68, 68, 0.3);
-  background: rgba(239, 68, 68, 0.06);
+  border-color: rgba(var(--error-rgb), 0.3);
+  background: rgba(var(--error-rgb), 0.06);
 }
 
 .discovery-card-exclude:hover {
   color: var(--warning);
-  border-color: rgba(245, 158, 11, 0.3);
-  background: rgba(245, 158, 11, 0.06);
+  border-color: rgba(var(--warning-rgb), 0.3);
+  background: rgba(var(--warning-rgb), 0.06);
 }
 
 .discovery-card-unexclude:hover {
   color: var(--success);
-  border-color: rgba(34, 197, 94, 0.3);
-  background: rgba(34, 197, 94, 0.06);
+  border-color: rgba(var(--success-rgb), 0.3);
+  background: rgba(var(--success-rgb), 0.06);
 }
 
 @utility discovery-card-meta {
@@ -400,8 +400,8 @@
 @utility discovery-badge {
   font-size: var(--text-2xs);
   font-weight: var(--fw-semibold);
-  padding: 2px 8px;
-  border-radius: 99px;
+  padding: var(--space-050) var(--space-1);
+  border-radius: var(--radius-lg);
   letter-spacing: 0.02em;
   flex-shrink: 0;
   margin-left: auto;
@@ -418,7 +418,7 @@
 }
 
 .discovery-badge--excluded {
-  background: rgba(245, 158, 11, 0.15);
+  background: rgba(var(--warning-rgb), 0.15);
   color: var(--warning);
 }
 
@@ -432,7 +432,7 @@
   position: relative;
   font-size: var(--text-xs);
   color: var(--fg-muted);
-  padding: 2px 10px 2px 44px;
+  padding: var(--space-050) var(--space-1) var(--space-050) var(--space-3);
   font-family: var(--font-body);
   opacity: 0.78;
   line-height: 1.6;
@@ -449,14 +449,14 @@
   top: 50%;
   width: 26px;
   height: 0;
-  border-top: 1px solid var(--border);
+  border-top: var(--space-025) solid var(--border);
   opacity: 0.3;
 }
 
 @utility discovery-card-files {
   @apply list-none;
   margin: 0;
-  padding: 0 10px 6px 44px;
+  padding: 0 var(--space-250) var(--space-150) 44px;
 }
 
 .discovery-card-files.collapsed {
@@ -469,7 +469,7 @@
   min-height: 26px;
   font-size: var(--text-sm);
   color: var(--fg-muted);
-  padding: 1px 6px;
+  padding: var(--space-025) var(--space-075);
   border-radius: var(--radius-sm);
   transition: background var(--duration-fast);
   position: relative;
@@ -495,7 +495,7 @@
   bottom: 0;
   width: 3px;
   background: var(--accent-soft);
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
   opacity: 0.6;
   pointer-events: none;
 }
@@ -535,10 +535,10 @@
 
 @utility tag {
   @apply inline-flex items-center;
-  gap: 4px;
+  gap: var(--space-1);
   font-size: var(--text-2xs);
   font-weight: var(--fw-semibold);
-  padding: 2px 8px;
+  padding: var(--space-050) var(--space-1);
   border-radius: 100px;
   white-space: nowrap;
 }

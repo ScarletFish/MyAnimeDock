@@ -7,9 +7,9 @@
 .mylist-section-header {
   display: flex;
   align-items: baseline;
-  gap: 0.5rem;
+  gap: var(--space-2);
   margin-bottom: 0.75rem;
-  padding: 0.25rem 0.25rem 0.25rem 0.75rem;
+  padding: var(--space-1) 0.25rem var(--space-1) 0.75rem;
   position: relative;
 }
 .mylist-section-header::before {
@@ -39,7 +39,7 @@
   background: var(--bg-elevated);
   padding: var(--space-025) var(--space-2);
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
+  border: var(--space-025) solid var(--border);
 }
 
 /* ─── My List Status Bar ─── */
@@ -59,7 +59,7 @@
   font-weight: var(--fw-medium);
   color: var(--fg-muted);
   background: transparent;
-  border: 1px solid var(--border);
+  border: var(--space-025) solid var(--border);
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all var(--duration-fast) var(--ease-out);
@@ -80,7 +80,7 @@
   font-size: var(--text-sm);
   font-weight: var(--fw-semibold);
 }
-.mylist-status-item.active b { color: #fff; }
+.mylist-status-item.active b { color: var(--on-accent); }
 
 /* ─── My List Sort Dropdown ─── */
 .mylist-sort-bar { position: relative; margin-left: auto; }
@@ -88,7 +88,7 @@
 /* Wishlist card */
 .anime-card--wish:hover {
   transform: translateY(-4px) scale(1.01);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 var(--space-2) 32px rgba(0, 0, 0, 0.4);
   border-color: rgba(var(--accent-rgb), 0.1);
 }
 .anime-card--wish:hover img { transform: scale(1.05); }
@@ -122,7 +122,7 @@
 }
 
 .wishlist-detail-rating {
-  margin: 0.5rem 0;
+  margin: var(--space-2) 0;
   font-size: var(--text-lg);
   font-weight: var(--fw-semibold);
   color: var(--accent);
@@ -132,12 +132,12 @@
   font-size: var(--text-md);
   line-height: 1.7;
   color: var(--fg-secondary);
-  margin: 0.75rem 0;
+  margin: var(--space-3) 0;
 }
 
 .wishlist-detail-actions {
   display: flex;
-  gap: 0.75rem;
+  gap: var(--space-3);
   margin-top: 1rem;
 }
 

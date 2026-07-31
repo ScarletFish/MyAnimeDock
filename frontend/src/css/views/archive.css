@@ -41,7 +41,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 1.25rem 0.75rem;
+  padding: var(--space-5) 0.75rem;
   background: var(--bg-elevated);
   gap: var(--space-150);
 }
@@ -65,7 +65,7 @@
 
 @media (max-width: 768px) {
   .archive-magazine-meta { flex-direction: column; gap: 1px; }
-  .archive-magazine-stat { padding: 1rem 0.75rem; flex-direction: row; justify-content: space-between; }
+  .archive-magazine-stat { padding: var(--space-4) 0.75rem; flex-direction: row; justify-content: space-between; }
   .archive-magazine-stat-label { font-size: var(--text-sm); }
   .archive-magazine-essay { padding: 0; }
   .archive-magazine-essay::before { display: none; }

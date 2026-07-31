@@ -8,7 +8,7 @@
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-  border-right: 1px solid var(--border);
+  border-right: var(--space-025) solid var(--border);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -21,7 +21,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-bottom: 1px solid var(--border);
+  border-bottom: var(--space-025) solid var(--border);
   cursor: pointer;
   position: relative;
 }
@@ -51,16 +51,16 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.125rem;
+  gap: var(--space-050);
 }
 
 .sidebar-bottom {
   padding: var(--space-2);
-  border-top: 1px solid var(--border);
+  border-top: var(--space-025) solid var(--border);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.125rem;
+  gap: var(--space-050);
 }
 
 .nav-btn {
@@ -130,7 +130,7 @@
   font-size: var(--text-sm);
   font-weight: var(--fw-medium);
   white-space: nowrap;
-  border: 1px solid var(--border);
+  border: var(--space-025) solid var(--border);
   opacity: 0;
   pointer-events: none;
   transition: opacity var(--duration-fast) var(--ease-out);
@@ -156,7 +156,7 @@
   background: var(--glass-bg);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--border);
+  border: var(--space-025) solid var(--border);
   border-radius: var(--radius-sm);
   padding: var(--space-1) var(--space-3);
   font-size: var(--text-base);
@@ -173,8 +173,8 @@
   width: 8px;
   height: 8px;
   background: var(--glass-bg);
-  border-left: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
+  border-left: var(--space-025) solid var(--border);
+  border-bottom: var(--space-025) solid var(--border);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
 }
@@ -190,7 +190,7 @@
   font-size: var(--text-sm);
   font-weight: var(--fw-medium);
   white-space: nowrap;
-  border: 1px solid var(--border);
+  border: var(--space-025) solid var(--border);
   pointer-events: none;
   opacity: 0;
   transform: translateY(4px);

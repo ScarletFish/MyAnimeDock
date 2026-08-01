@@ -118,7 +118,6 @@
   background: var(--bg-surface);
 }
 
-/* Stats tooltip */
 .stats-tooltip {
   display: none;
   position: fixed;
@@ -134,7 +133,6 @@
   white-space: nowrap;
 }
 
-/* D3 chart containers */
 #activityChartContainer,
 #ratingChartContainer,
 #seasonChartContainer {
@@ -142,4 +140,3 @@
   display: flex;
   justify-content: center;
 }
-

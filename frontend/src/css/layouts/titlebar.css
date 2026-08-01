@@ -17,7 +17,6 @@
   --scale: 1; /* fixed, not affected by zoom */
 }
 
-/* Subtle top-edge highlight */
 #titlebar::before {
   content: '';
   position: absolute;
@@ -32,7 +31,6 @@
   );
 }
 
-/* Accent glow line below title bar */
 #titlebar::after {
   content: '';
   position: absolute;
@@ -227,7 +225,6 @@
   white-space: nowrap;
 }
 
-/* Empty / no-results */
 .titlebar__search-empty {
   padding: var(--space-4);
   text-align: center;
@@ -273,4 +270,3 @@
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--bg-surface); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--fg-muted); }
-

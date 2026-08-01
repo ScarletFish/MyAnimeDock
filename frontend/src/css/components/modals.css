@@ -349,7 +349,6 @@
 }
 .status-modal-heading::before { display: none; }
 
-/* Neutralize accent-tinted form elements inside status modal */
 .status-modal .num-stepper,
 .status-modal .date-segments,
 .status-modal .notes-input {

@@ -1,5 +1,4 @@
 /* ─── Light Theme Overrides ─── */
-/* All light-mode rules consolidated under one selector. */
 
 :is([data-theme="light"], [data-theme-mode="light"]) {
 
@@ -31,11 +30,9 @@
     border-color: rgba(0, 0, 0, 0.16);
     background: var(--bg-surface);
   }
-  /* hover: border deepens only, no background darkening */
   .btn:hover:not(.btn-primary):not(.btn-outline):not(.btn-ghost):not(.btn-danger):not(.btn-accent) {
     border-color: rgba(0, 0, 0, 0.28);
   }
-  /* outline: accent border on hover, bg stays white */
   .btn-outline:hover { border-color: var(--accent); }
   .btn-primary { background: var(--accent-gradient); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06); }
   .btn-primary:hover { box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08); }
@@ -262,7 +259,6 @@
   }
 
   /* ─── Discovery ─── */
-  /* discovery hero replaced by view-header — no light override needed */
   .discovery-hero-path { color: var(--fg-muted); }
   .stat-pill {
     background: var(--bg-card);

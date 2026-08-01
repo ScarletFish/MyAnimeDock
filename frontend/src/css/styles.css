@@ -24,7 +24,6 @@
   --color-border: var(--border);
   --color-border-hover: var(--border-hover);
 
-  /* Spacing: bridge --space-* to p-/m-/gap- utilities */
   --spacing-025: var(--space-025);
   --spacing-050: var(--space-050);
   --spacing-075: var(--space-075);
@@ -41,40 +40,33 @@
   --spacing-10: var(--space-10);
   --spacing-12: var(--space-12);
 
-  /* Border radius */
   --radius-xs: var(--radius-xs);
   --radius-sm: var(--radius-sm);
   --radius-md: var(--radius-md);
   --radius-lg: var(--radius-lg);
 
-  /* Font families */
   --font-body: var(--font-body);
   --font-display: var(--font-display);
   --font-accent: var(--font-accent);
   --font-mono: var(--font-mono);
 
-  /* Font weights */
   --font-weight-normal: var(--fw-normal);
   --font-weight-medium: var(--fw-medium);
   --font-weight-semibold: var(--fw-semibold);
   --font-weight-bold: var(--fw-bold);
   --font-weight-extrabold: var(--fw-extrabold);
 
-  /* Shadows */
   --shadow-sm: var(--shadow-sm);
   --shadow-md: var(--shadow-md);
   --shadow-lg: var(--shadow-lg);
 }
 
-/* ── Foundation ── */
 @import "./tokens.css";
 @import "./base.css";
 
-/* ── Layouts ── */
 @import "./layouts/titlebar.css";
 @import "./layouts/sidebar.css";
 
-/* ── Components ── */
 @import "./components/buttons.css";
 @import "./components/forms.css";
 @import "./components/badges.css";
@@ -85,16 +77,13 @@
 @import "./components/card-grid.css";
 @import "./components/discovery.css";
 
-/* ── Cross-view patterns ── */
 @import "./components/patterns.css";
 
-/* ── Detail page ── */
 @import "./views/detail-layout.css";
 @import "./views/detail-episodes.css";
 @import "./views/detail-characters.css";
 @import "./views/detail-banner.css";
 
-/* ── Views ── */
 @import "./views/mylist.css";
 @import "./views/archive.css";
 @import "./views/metamatch.css";

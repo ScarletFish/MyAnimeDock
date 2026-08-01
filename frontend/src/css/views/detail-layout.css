@@ -182,7 +182,6 @@
   flex-wrap: wrap;
   justify-content: flex-end;
 }
-/* .info-tag / .info-tag--warn → tag-pill tag-pill--secondary / tag-pill--warn (patterns.css) */
 
 .detail-tags { margin-bottom: var(--space-2); }
 .detail-tags-list {
@@ -190,7 +189,6 @@
   flex-wrap: wrap;
   gap: var(--space-1);
 }
-/* .detail-tag → tag-pill (utility in patterns.css) */
 
 .detail-summary {
   color: var(--fg-secondary);
@@ -209,7 +207,6 @@
   padding: var(--space-150) var(--space-350);
 }
 
-/* Right column */
 .detail-right { min-width: 0; }
 
 .detail-episodes-header {

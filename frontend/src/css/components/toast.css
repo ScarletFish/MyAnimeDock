@@ -115,7 +115,6 @@
   animation: toastProgress linear forwards;
 }
 
-/* Left accent bar */
 .toast::before {
   content: '';
   position: absolute;
@@ -126,7 +125,6 @@
   border-radius: var(--radius-sm) 0 0 var(--radius-sm);
 }
 
-/* Data-type variants */
 .toast[data-type="success"]::before { background: var(--success); }
 .toast[data-type="error"]::before   { background: var(--error); }
 .toast[data-type="warning"]::before { background: var(--warning); }
@@ -144,4 +142,3 @@
 .toast[data-type="warning"] .toast-progress { background: var(--warning); }
 .toast[data-type="info"]    .toast-progress { background: var(--info); }
 .toast[data-type="silent"]  .toast-progress { background: var(--fg-muted); }
-

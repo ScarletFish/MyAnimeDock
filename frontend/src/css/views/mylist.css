@@ -85,7 +85,6 @@
 /* ─── My List Sort Dropdown ─── */
 .mylist-sort-bar { position: relative; margin-left: auto; }
 
-/* Wishlist card */
 .anime-card--wish:hover {
   transform: translateY(-4px) scale(1.01);
   box-shadow: 0 var(--space-2) 32px rgba(0, 0, 0, 0.4);
@@ -104,7 +103,6 @@
   color: var(--accent-soft);
 }
 
-/* Wishlist detail modal */
 .wishlist-detail-modal { max-width: 32rem !important; }
 
 .wishlist-detail-cover {
@@ -141,7 +139,6 @@
   margin-top: 1rem;
 }
 
-/* Context menu active override (mylist context) */
 .context-menu-item--active {
   color: var(--accent) !important;
   font-weight: var(--fw-semibold);

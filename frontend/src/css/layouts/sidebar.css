@@ -116,7 +116,6 @@
   background: rgba(var(--error-rgb), 0.06) !important;
 }
 
-/* Tooltip on hover */
 .nav-btn::after {
   content: attr(data-tip);
   position: absolute;

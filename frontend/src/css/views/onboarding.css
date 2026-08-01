@@ -52,7 +52,6 @@
   text-align: left;
 }
 
-/* Field group */
 
 .onb-field {
   margin-bottom: var(--space-5);
@@ -146,7 +145,6 @@
   color: var(--fg-secondary, #a0a0bf);
 }
 
-/* Error */
 
 .onb-error {
   font-size: var(--text-base);
@@ -156,7 +154,6 @@
   line-height: 1.4;
 }
 
-/* Submit button */
 
 .onb-submit {
   display: block;
@@ -188,7 +185,6 @@
   transform: none;
 }
 
-/* Light mode overrides */
 [data-theme-mode="light"] .onb-field__input {
   background: var(--bg-elevated);
   border-color: var(--border);
@@ -202,4 +198,3 @@
 [data-theme-mode="light"] .onb-field__browse:hover {
   filter: brightness(0.95);
 }
-

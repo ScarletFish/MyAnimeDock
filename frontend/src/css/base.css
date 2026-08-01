@@ -202,13 +202,11 @@ html {
 
 /* ─── Light theme overrides for settings ─── */
 /* ─── Theme Transition ─── */
-/* Main content transitions slower, following behind */
 html.theme-transitioning,
 html.theme-transitioning * {
   transition: background-color 0.4s ease, color 0.4s ease !important;
 }
 
-/* Settings modal transitions faster — leads the color change */
 html.theme-transitioning .modal-overlay,
 html.theme-transitioning .modal,
 html.theme-transitioning .modal *,
@@ -216,7 +214,6 @@ html.theme-transitioning .modal-overlay * {
   transition: background-color 0.15s ease, color 0.15s ease !important;
 }
 
-/* Theme dock transitions at the same speed as main content */
 html.theme-transitioning .theme-dock {
   transition: background-color 0.4s ease, color 0.4s ease, transform 0.35s cubic-bezier(0.22, 1, 0.36, 1) !important;
 }
@@ -224,7 +221,6 @@ html.theme-transitioning .theme-dock {
 /* ─── Responsive ─── */
 @media (max-width: 1023px) {
   .view { padding: 1.5rem; }
-  /* discovery hero replaced by view-header — no hero padding needed */
 }
 
 @media (max-width: 768px) {
@@ -236,7 +232,6 @@ html.theme-transitioning .theme-dock {
   .detail-left { position: static; }
   .detail-cover-wrap { max-width: 240px; }
   .detail-episodes-header h3 { font-size: var(--text-lg); }
-  /* discovery hero replaced by view-header — responsive handled by .view-header rule above */
   .discovery-stats { flex-wrap: wrap; gap: var(--space-2); }
   .discovery-actions { flex-wrap: wrap; }
   .detail-nav-left { width: 30px; }
@@ -268,33 +263,27 @@ html.theme-transitioning .theme-dock {
   #detailView.detail-enter-active { animation: none !important; }
   .view { animation: none !important; }
   .detail-nav-arrow { transition-duration: 0.01ms !important; }
-  /* Card hover effects */
   .anime-card:hover { transform: none !important; }
   .anime-card:hover img { transform: none !important; }
   .anime-card .overlay { transition-duration: 0.01ms !important; }
   .anime-card:hover .overlay { transform: none !important; opacity: 1 !important; }
   .anime-card::after { transition-duration: 0.01ms !important; }
-  /* Dashboard card hover effects */
   .dashboard-card { transition-duration: 0.01ms !important; }
   .dashboard-card::after { transition-duration: 0.01ms !important; }
   .dashboard-card:hover { transform: none !important; }
   .dashboard-card:hover .dashboard-card-cover img { transform: none !important; }
-  /* Continue-card hover effects */
   .dashboard-continue-card { transition-duration: 0.01ms !important; }
   .dashboard-continue-card:hover { transform: none !important; }
   .dashboard-continue-btn:hover { transform: none !important; }
-  /* Status modal - disable anim */
   .status-dd-menu {
     transition-duration: 0.01ms !important;
     transform: none !important;
     opacity: 1 !important;
   }
-  /* Heatmap hover effects */
   .heatmap-cell:hover { transform: none !important; }
   .heatmap-cell::after { transition-duration: 0.01ms !important; }
   .heatmap-cell { animation: none !important; }
   .settings-panel { animation: none !important; }
-  /* Episode card hover effects */
   .episode-card,
   .episode-card:hover { transition: none !important; transform: none !important; }
   .episode-card:hover .episode-card-bg { transform: none !important; }

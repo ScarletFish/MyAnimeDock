@@ -247,6 +247,7 @@
   flex-shrink: 0;
   scroll-snap-align: start;
   width: calc((100% - var(--gap, var(--space-4)) * (var(--cols, 4) - 1)) / var(--cols, 4));
+  max-width: 400px;
 }
 
 /* ─── Horizontal Scroll Section ─── *

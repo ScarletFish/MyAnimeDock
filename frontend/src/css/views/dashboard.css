@@ -320,23 +320,39 @@
   font-weight: var(--fw-medium); white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
-.dashboard-continue-btn {
-  flex-shrink: 0;
-  display: inline-flex; align-items: center; gap: var(--space-1);
-  padding: var(--space-2) 18px; border: none;   border-radius: var(--radius-pill);
-  background: var(--accent-gradient); color: var(--on-accent);
-  font-size: var(--text-sm); font-weight: var(--fw-semibold);
+.dashboard-continue-play {
+  position: absolute;
+  right: var(--space-4);
+  bottom: var(--space-4);
+  width: calc(48px * var(--scale));
+  height: calc(48px * var(--scale));
+  border-radius: 50%;
+  background: var(--overlay-dark-soft);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 2px solid rgba(var(--accent-rgb), 0.25);
+  color: var(--on-image);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
+  z-index: 2;
   transition: all 0.2s var(--ease-out);
-  box-shadow: 0 var(--space-075) var(--space-350) rgba(var(--accent-rgb), 0.35);
-  line-height: 1;
 }
-.dashboard-continue-btn:hover {
-  transform: scale(1.05);
-  box-shadow: 0 5px 20px rgba(var(--accent-rgb), 0.45);
+.dashboard-continue-play:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 24px rgba(var(--accent-rgb), 0.5);
 }
-.dashboard-continue-btn:active { transform: scale(0.95); }
-.dashboard-continue-btn svg { width: 14px; height: 14px; flex-shrink: 0; }
+.dashboard-continue-play:active {
+  transform: scale(0.92);
+  transition-duration: 0.08s;
+}
+.dashboard-continue-play svg {
+  width: calc(20px * var(--scale));
+  height: calc(20px * var(--scale));
+  margin-left: 2px;
+}
 
 /* ─── All Anime Section ─── */
 .all-anime-toolbar {

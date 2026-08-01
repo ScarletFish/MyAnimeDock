@@ -274,7 +274,7 @@ html.theme-transitioning .theme-dock {
   .dashboard-card:hover .dashboard-card-cover img { transform: none !important; }
   .dashboard-continue-card { transition-duration: 0.01ms !important; }
   .dashboard-continue-card:hover { transform: none !important; }
-  .dashboard-continue-btn:hover { transform: none !important; }
+  .dashboard-continue-play:hover { transform: none !important; }
   .status-dd-menu {
     transition-duration: 0.01ms !important;
     transform: none !important;
@@ -321,9 +321,7 @@ html[data-reduce-motion="true"] .dashboard-card:hover .dashboard-card-cover img 
 
 html[data-reduce-motion="true"] .dashboard-continue-card { transition-duration: 0.01ms !important; }
 html[data-reduce-motion="true"] .dashboard-continue-card:hover { transform: none !important; }
-html[data-reduce-motion="true"] .dashboard-continue-btn:hover { transform: none !important; }
-
-html[data-reduce-motion="true"] .dashboard-continue-btn:hover { transform: none !important; }
+html[data-reduce-motion="true"] .dashboard-continue-play:hover { transform: none !important; }
 
 html[data-reduce-motion="true"] .status-dd-menu {
   transition-duration: 0.01ms !important;

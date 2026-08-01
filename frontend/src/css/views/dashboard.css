@@ -236,7 +236,7 @@
 
 /* ─── Continue Watching ─── */
 @media (max-width: 1400px) {
-  .hscroll-section { --cols: 2; }
+  [data-section="continueWatch"] { --cols: 3; }
 }
 
 .dashboard-continue-scroll {

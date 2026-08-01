@@ -9,6 +9,7 @@
 | 按钮 | `.btn` / `.btn-primary` / `.btn-danger` / `.btn-outline` | `components/buttons.css` |
 | 标签/角标 | `.badge` | `components/badges.css` |
 | 卡片布局 | `.anime-card` | `components/card-grid.css` |
+| 水平分页滚动 | `.hscroll-section` + `.hscroll-card` | `components/patterns.css` |
 | 下拉框 | `.sort-dropdown` / `createDropdown()` | `components/dropdowns.css` + `components.js` |
 | 模态框 | `.modal-overlay` + `.modal-panel` | `components/modals.css` |
 | 输入框/搜索 | `.search-input` / `.filter-input` / `.select-native` | `components/forms.css` |
@@ -20,6 +21,47 @@
 | 主题选择器 | `.theme-dock` | `components/theme-controls.css` |
 
 > 更多组件见对应 `.css` 文件。**写新 UI 前先查这些有没有现成的。**
+
+### 水平分页滚动（hscroll）
+
+用于横向滚动 + 分页圆点指示器的场景（剧集列表、关联作品、推荐等）。
+
+**新增步骤：**
+
+1. **HTML** — 用标准结构，设 `--cols` 控制每页列数：
+```html
+<div class="hscroll-section" style="--cols:4">
+  <div class="hscroll-header section-header">
+    <span class="section-title">模块标题</span>
+  </div>
+  <div class="hscroll-container">
+    <div class="my-card">卡片1</div>
+    <div class="my-card">卡片2</div>
+  </div>
+</div>
+```
+
+2. **CSS** — 卡片用 `@apply hscroll-card`：
+```css
+.my-card {
+  @apply hscroll-card;
+  /* 按需加其他样式 */
+}
+```
+
+3. **断点** — 在 view CSS 中用唯一选择器设置：
+```css
+@media (max-width: 1400px) {
+  [data-section="my-module"] { --cols: 2; }
+}
+```
+
+**注意事项：**
+- `--cols` 默认4，可通过 `style="--cols:N"` 或 CSS 覆盖
+- `--gap` 默认 `var(--space-4)`，可按需覆盖
+- media query 选择器必须唯一（用 `[data-section="xxx"]` 或 ID），避免影响其他 hscroll section
+- JS `initHScrolls()` 自动查找 `.hscroll-section` 并注入圆点，无需手动调用
+- 卡片宽度从 `--cols` 自动计算，无需手写 `calc()`
 
 ### Token 引用规则
 

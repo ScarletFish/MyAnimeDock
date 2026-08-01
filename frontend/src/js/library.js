@@ -51,7 +51,7 @@ async function loadLibrary(soft = false) {
         var statsBody = document.getElementById('dashSection-stats');
         if (statsBody) await renderStatsSection(libraryData, statsBody);
         var contBody = document.getElementById('dashSection-continueWatch');
-        if (contBody) renderContinueSection(libraryData, contBody);
+        if (contBody) renderContinueSectionFull(contBody, false);
         __debug.snapshot('loadLibrary soft — before restore');
         restoreLibraryScroll();
         return;
@@ -158,31 +158,7 @@ function renderDashboard() {
   }
   if (sectionIds.indexOf('continueWatch') !== -1) {
     var contBody = document.getElementById('dashSection-continueWatch');
-    if (contBody) {
-      renderContinueSection(libraryData, contBody);
-      var scrollEl = contBody.querySelector('.dashboard-continue-scroll');
-      if (scrollEl) {
-        var section = contBody.closest('.dashboard-section');
-        var header = section ? section.querySelector('.dashboard-section-header') : null;
-        initScrollDots({
-          scroll: scrollEl,
-          cardSelector: '.dashboard-continue-card',
-          total: scrollEl.querySelectorAll('.dashboard-continue-card').length,
-          dotsParent: header,
-        });
-        // GSAP stagger entrance animation
-        var cards = scrollEl.querySelectorAll('.dashboard-continue-card');
-        if (cards.length && typeof gsap !== 'undefined') {
-          gsap.from(cards, {
-            y: 30, autoAlpha: 0, scale: 0.92,
-            duration: 0.6,
-            ease: "back.out(1.4)",
-            stagger: { each: 0.08, from: "start" },
-            clearProps: "all"
-          });
-        }
-      }
-    }
+    if (contBody) renderContinueSectionFull(contBody, true);
   }
   if (!librarySortDropdown) {
     librarySortDropdown = createDropdown({
@@ -347,6 +323,36 @@ function renderContinueSection(data, container) {
 
 // Sort function owned by mylist.js — sortAnimeItems(items, sortMode)
 // Sort options owned by mylist.js — ANIME_SORT_OPTIONS
+
+
+// 渲染继续观看区域：renderContinueSection 重建 DOM 后必须重新初始化圆点
+// （软刷新与硬渲染共用，避免旧 scroll 元素上的绑定失效导致点击无反应）
+function renderContinueSectionFull(container, animate) {
+  if (!container) return;
+  renderContinueSection(libraryData, container);
+  var scrollEl = container.querySelector('.dashboard-continue-scroll');
+  if (!scrollEl) return;
+  var section = container.closest('.dashboard-section');
+  var header = section ? section.querySelector('.dashboard-section-header') : null;
+  initScrollDots({
+    scroll: scrollEl,
+    cardSelector: '.dashboard-continue-card',
+    total: scrollEl.querySelectorAll('.dashboard-continue-card').length,
+    dotsParent: header,
+  });
+  if (!animate) return;
+  // GSAP stagger entrance animation
+  var cards = scrollEl.querySelectorAll('.dashboard-continue-card');
+  if (cards.length && typeof gsap !== 'undefined') {
+    gsap.from(cards, {
+      y: 30, autoAlpha: 0, scale: 0.92,
+      duration: 0.6,
+      ease: "back.out(1.4)",
+      stagger: { each: 0.08, from: "start" },
+      clearProps: "all"
+    });
+  }
+}
 
 
 function switchLibrarySort(mode) {

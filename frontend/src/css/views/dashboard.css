@@ -235,14 +235,8 @@
 }
 
 /* ─── Continue Watching ─── */
-.dashboard-continue-section {
-  --cols: 4;
-}
-@media (max-width: 1439px) {
-  .dashboard-continue-section { --cols: 3; }
-}
-@media (max-width: 799px) {
-  .dashboard-continue-section { --cols: 2; }
+@media (max-width: 1400px) {
+  .hscroll-section { --cols: 2; }
 }
 
 .dashboard-continue-scroll {

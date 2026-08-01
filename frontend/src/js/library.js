@@ -245,18 +245,32 @@ function navigateToDetailWithPlay(id, rect) {
 var pendingAutoPlay = null;
 
 // ─── Horizontal Scroll Abstraction ───
-function initHScrolls() {
-  document.querySelectorAll('.hscroll-section').forEach(function(section) {
+// .hscroll-section 可配置 data- 属性:
+//   data-cols="7"           → 每页列数 (默认4)
+//   data-card=".rec-card"   → 卡片选择器 (默认 .hscroll-card)
+//   data-gap="var(--space-3)" → 间距 token
+function initHScrolls(root) {
+  (root || document).querySelectorAll('.hscroll-section').forEach(function(section) {
     var scroll = section.querySelector('.hscroll-container');
-    var header = section.querySelector('.hscroll-header');
-    var cards = scroll ? scroll.querySelectorAll('.hscroll-card') : [];
+    var header = section.querySelector('.hscroll-header') ||
+                 section.querySelector('.dashboard-section-header');
+    var cardSel = section.dataset.card || '.hscroll-card';
+    var cards = scroll ? scroll.querySelectorAll(cardSel) : [];
     if (!scroll || !cards.length) return;
+
+    // 设置 --cols CSS 变量
+    if (section.dataset.cols) {
+      section.style.setProperty('--cols', section.dataset.cols);
+    }
+    if (section.dataset.gap) {
+      section.style.setProperty('--gap', section.dataset.gap);
+    }
 
     initScrollDots({
       scroll: scroll,
-      cardSelector: '.hscroll-card',
+      cardSelector: cardSel,
       total: cards.length,
-      dotsParent: header || section.querySelector('.dashboard-section-header'),
+      dotsParent: header,
     });
   });
 }

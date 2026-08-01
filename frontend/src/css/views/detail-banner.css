@@ -142,32 +142,20 @@
 }
 
 .relation-scroll {
-  display: flex;
+  @apply hscroll;
   gap: var(--space-3);
-  overflow-x: auto;
-  overflow-y: hidden;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
   padding: var(--space-1) 0 var(--space-2) 0;
 }
-.relation-scroll::-webkit-scrollbar { display: none; }
 
 .relation-card {
-  flex-shrink: 0;
-  width: calc((100% - var(--space-3) * 6) / 7);
-  scroll-snap-align: start;
+  @apply hscroll-card;
   cursor: pointer;
   transition: transform 0.15s var(--ease-out);
   border-radius: var(--radius-md);
   overflow: hidden;
 }
 @media (max-width: 1439px) {
-  .relation-card { width: calc((100% - var(--space-3) * 4) / 5); }
-}
-@media (max-width: 799px) {
-  .relation-card { width: calc((100% - var(--space-3) * 3) / 4); }
+  #detailRelations, #detailRecommendations { --cols: 5; }
 }
 .relation-card:hover { transform: translateY(-3px); }
 .relation-card:active { transform: translateY(-1px); }

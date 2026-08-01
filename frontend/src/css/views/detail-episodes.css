@@ -35,25 +35,16 @@
 /* ─── Episode Scroll ───
  * scroll-dots / scroll-dot utilities in patterns.css */
 .episode-list-scroll {
-  display: flex;
+  @apply hscroll;
   gap: var(--space-4);
-  overflow-x: auto;
-  overflow-y: hidden;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
   padding: var(--space-1) 0 var(--space-2) 0;
   scroll-behavior: smooth;
 }
-.episode-list-scroll::-webkit-scrollbar { display: none; }
 
 /* ─── Episode Card ─── */
 .episode-card {
+  @apply hscroll-card;
   position: relative;
-  flex-shrink: 0;
-  width: calc((100% - var(--space-4) * 3) / 4);
-  scroll-snap-align: start;
   border-radius: var(--radius-lg);
   overflow: hidden;
   cursor: pointer;
@@ -106,10 +97,7 @@
 }
 
 @media (max-width: 1439px) {
-  .episode-card { width: calc((100% - var(--space-4) * 2) / 3); }
-}
-@media (max-width: 799px) {
-  .episode-card { width: calc((100% - var(--space-4) * 1) / 2); }
+  .episode-list-section { --cols: 3; }
 }
 
 /* ─── Episode Number badge ─── */

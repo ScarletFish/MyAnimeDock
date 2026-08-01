@@ -200,6 +200,15 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
   --border: rgba(0, 0, 0, 0.12);
   --border-hover: rgba(150, 122, 14, 0.25);
 
+  --bg-elevated: #ffffff;
+  --bg-surface: #ffffff;
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --overlay-glass: rgba(0, 0, 0, 0.04);
+  --overlay-glass-border: rgba(0, 0, 0, 0.08);
+  --overlay-glass-hover: rgba(0, 0, 0, 0.07);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 /* ─── Ocean Theme ─── */
@@ -250,6 +259,15 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
   --border: rgba(0, 0, 0, 0.12);
   --border-hover: rgba(3, 105, 161, 0.25);
 
+  --bg-elevated: #ffffff;
+  --bg-surface: #ffffff;
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --overlay-glass: rgba(0, 0, 0, 0.04);
+  --overlay-glass-border: rgba(0, 0, 0, 0.08);
+  --overlay-glass-hover: rgba(0, 0, 0, 0.07);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 /* ─── Sakura Theme ─── */
@@ -299,6 +317,15 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
   --border: rgba(0, 0, 0, 0.12);
   --border-hover: rgba(236, 72, 153, 0.25);
 
+  --bg-elevated: #ffffff;
+  --bg-surface: #ffffff;
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --overlay-glass: rgba(0, 0, 0, 0.04);
+  --overlay-glass-border: rgba(0, 0, 0, 0.08);
+  --overlay-glass-hover: rgba(0, 0, 0, 0.07);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 /* ─── Emerald Theme ─── */
@@ -348,6 +375,15 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
   --border: rgba(0, 0, 0, 0.12);
   --border-hover: rgba(5, 128, 80, 0.25);
 
+  --bg-elevated: #ffffff;
+  --bg-surface: #ffffff;
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --overlay-glass: rgba(0, 0, 0, 0.04);
+  --overlay-glass-border: rgba(0, 0, 0, 0.08);
+  --overlay-glass-hover: rgba(0, 0, 0, 0.07);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 /* ─── Violet Theme ─── */
@@ -398,6 +434,15 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
   --border: rgba(0, 0, 0, 0.12);
   --border-hover: rgba(109, 40, 217, 0.25);
 
+  --bg-elevated: #ffffff;
+  --bg-surface: #ffffff;
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --overlay-glass: rgba(0, 0, 0, 0.04);
+  --overlay-glass-border: rgba(0, 0, 0, 0.08);
+  --overlay-glass-hover: rgba(0, 0, 0, 0.07);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 /* ─── Background Atmosphere ─── */

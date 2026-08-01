@@ -70,6 +70,11 @@ const ALLOWED_RAW = /^(0|auto|transparent|none|inherit|initial|unset|100%|100vh|
 const GRADIENT = /(linear|radial|conic|repeating-linear)-gradient\(/;
 const HAS_VAR = /\bvar\(--/;
 
+// Config-type custom properties set at call sites (not design tokens).
+// They are consumed with a fallback (var(--x, default)) and defined
+// per-instance via CSS or data-* attributes — exempt from GHOST-TOKEN.
+const CONFIG_VARS = new Set(['cols', 'gap']);
+
 /** Collect all --token references in a line */
 const VAR_REF = /var\(--([a-zA-Z0-9_-]+)/g;
 
@@ -184,15 +189,15 @@ const rules = [
       const re = /var\(--([a-zA-Z0-9_-]+)/g;
       while ((m = re.exec(line)) !== null) refs.push(m[1]);
       // Check each reference against known tokens (read from tokens.css)
-      // This is validated at init time against the token registry
-      return refs.some(name => !knownTokens.has(name));
+      // Config vars (--cols, --gap) are exempt — set at call sites, not tokens
+      return refs.some(name => !knownTokens.has(name) && !CONFIG_VARS.has(name));
     },
     msg: line => {
       const refs = [];
       let m;
       const re = /var\(--([a-zA-Z0-9_-]+)/g;
       while ((m = re.exec(line)) !== null) refs.push(m[1]);
-      const unknown = refs.filter(n => !knownTokens.has(n));
+      const unknown = refs.filter(n => !knownTokens.has(n) && !CONFIG_VARS.has(n));
       return `  Unknown token${unknown.length > 1 ? 's' : ''}: ${unknown.map(n => `--${n}`).join(', ')} in: ${clean(line).slice(0, 100)}`;
     },
   },

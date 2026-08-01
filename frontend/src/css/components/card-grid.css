@@ -3,7 +3,7 @@
 @utility grid-container {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(11.75rem, 1fr));
-  gap: clamp(var(--space-250), 1.2vw, var(--space-3));
+  gap: clamp(var(--space-350), 1.2vw, var(--space-5));
 }
 
 @utility anime-card {

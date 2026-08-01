@@ -75,6 +75,8 @@ html {
 /* ─── View Transitions ─── */
 .view {
   padding: var(--space-12);
+  max-width: 1920px;
+  margin: 0 auto;
   animation: fadeSlideUp 0.4s var(--ease-out);
 }
 

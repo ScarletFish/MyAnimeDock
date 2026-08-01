@@ -158,7 +158,20 @@ function renderDashboard() {
   }
   if (sectionIds.indexOf('continueWatch') !== -1) {
     var contBody = document.getElementById('dashSection-continueWatch');
-    if (contBody) renderContinueSection(libraryData, contBody);
+    if (contBody) {
+      renderContinueSection(libraryData, contBody);
+      var scrollEl = contBody.querySelector('.dashboard-continue-scroll');
+      if (scrollEl) {
+        var section = contBody.closest('.dashboard-section');
+        var header = section ? section.querySelector('.dashboard-section-header') : null;
+        initScrollDots({
+          scroll: scrollEl,
+          cardSelector: '.dashboard-continue-card',
+          total: scrollEl.querySelectorAll('.dashboard-continue-card').length,
+          dotsParent: header,
+        });
+      }
+    }
   }
   if (!librarySortDropdown) {
     librarySortDropdown = createDropdown({
@@ -275,14 +288,14 @@ function renderContinueSection(data, container) {
           '<div class="dashboard-continue-info">' +
             '<div class="dashboard-continue-label">继续播放</div>' +
             '<div class="dashboard-continue-title">' + title + '</div>' +
-            '<div class="dashboard-continue-progress-wrap">' +
-              '<div class="dashboard-continue-progress"><div class="dashboard-continue-progress-bar" style="width:' + (ep ? Math.round((ep.progress || 0) / (ep.duration || 1) * 100) : 0) + '%"></div></div>' +
-              '<span class="dashboard-continue-progress-label">第 ' + (ep ? ep.number : '?') + ' / ' + total + ' 集</span>' +
-            '</div>' +
           '</div>' +
         '</div>' +
         '<div class="dashboard-continue-play" onclick="event.stopPropagation();navigateToDetailWithPlay(\'' + escAttr(a.id) + '\', this)">' +
           '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><polygon points="8 5 19 12 8 19 8 5"/></svg>' +
+        '</div>' +
+        '<div class="dashboard-continue-progress-bar-wrap">' +
+          '<div class="dashboard-continue-progress-bar"><div class="dashboard-continue-progress-fill" style="width:' + (ep ? Math.round((ep.progress || 0) / (ep.duration || 1) * 100) : 0) + '%"></div></div>' +
+          '<span class="dashboard-continue-progress-label">第 ' + (ep ? ep.number : '?') + ' / ' + total + ' 集</span>' +
         '</div>' +
       '</div>';
     }).join('') +

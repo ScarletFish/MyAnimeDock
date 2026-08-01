@@ -239,38 +239,42 @@
   display: flex;
   gap: var(--space-4);
   overflow-x: auto;
-  padding-bottom: var(--space-2);
-  scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding: var(--space-1) 0 var(--space-2) 0;
+  scroll-behavior: smooth;
 }
-.dashboard-continue-scroll::-webkit-scrollbar { height: 4px; }
-.dashboard-continue-scroll::-webkit-scrollbar-track { background: transparent; }
-.dashboard-continue-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: var(--radius-xs); }
+.dashboard-continue-scroll::-webkit-scrollbar { display: none; }
 
 .dashboard-continue-card {
   flex-shrink: 0;
-  width: 480px; height: 210px;
+  width: calc((100% - var(--space-4) * 3) / 4);
+  aspect-ratio: 16 / 7;
+  scroll-snap-align: start;
   position: relative;
   border-radius: var(--radius-lg);
   overflow: hidden;
   cursor: pointer;
-  background: var(--bg-elevated);
+  background: var(--bg-card);
   border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
   transition:
-    transform 0.35s var(--ease-spring),
-    border-color 0.25s var(--ease-out),
-    box-shadow 0.4s var(--ease-out);
-  will-change: transform;
+    box-shadow 0.25s var(--ease-out),
+    border-color 0.25s var(--ease-out);
 }
 .dashboard-continue-card:hover {
-  transform: translateY(-3px) scale(1.015);
-  border-color: rgba(var(--accent-rgb), 0.2);
+  border-color: rgba(var(--accent-rgb), 0.25);
   box-shadow:
-    0 var(--space-250) 36px var(--overlay-dark),
-    0 0 40px rgba(var(--accent-rgb), 0.06);
+    var(--shadow-xl, 0 var(--space-3) 40px rgba(0, 0, 0, 0.5)),
+    0 0 60px rgba(var(--accent-rgb), 0.06);
 }
-.dashboard-continue-card:active { transform: scale(0.985); }
+.dashboard-continue-card:active {
+  box-shadow: var(--shadow-sm);
+  transition-duration: 0.1s;
+}
 
 .dashboard-continue-bg {
   position: absolute; inset: 0;
@@ -322,10 +326,10 @@
 }
 .dashboard-continue-play {
   position: absolute;
-  right: var(--space-4);
-  bottom: var(--space-4);
-  width: calc(48px * var(--scale));
-  height: calc(48px * var(--scale));
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%) scale(0.7);
+  width: calc(56px * var(--scale));
+  height: calc(56px * var(--scale));
   border-radius: 50%;
   background: var(--overlay-dark-soft);
   backdrop-filter: blur(10px);
@@ -337,21 +341,62 @@
   justify-content: center;
   cursor: pointer;
   z-index: 2;
-  transition: all 0.2s var(--ease-out);
+  opacity: 0;
+  transition:
+    opacity 0.3s var(--ease-out),
+    transform 0.35s var(--ease-spring),
+    background 0.2s var(--ease-out),
+    border-color 0.2s var(--ease-out),
+    box-shadow 0.3s var(--ease-out);
+}
+.dashboard-continue-card:hover .dashboard-continue-play {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
 }
 .dashboard-continue-play:hover {
   background: var(--accent);
   border-color: var(--accent);
-  box-shadow: 0 0 24px rgba(var(--accent-rgb), 0.5);
+  box-shadow: 0 0 32px rgba(var(--accent-rgb), 0.55);
 }
 .dashboard-continue-play:active {
-  transform: scale(0.92);
+  transform: translate(-50%, -50%) scale(0.92);
   transition-duration: 0.08s;
 }
 .dashboard-continue-play svg {
-  width: calc(20px * var(--scale));
-  height: calc(20px * var(--scale));
+  width: calc(22px * var(--scale));
+  height: calc(22px * var(--scale));
   margin-left: 2px;
+}
+
+/* ─── Bottom progress bar ─── */
+.dashboard-continue-progress-bar-wrap {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  z-index: 2;
+}
+.dashboard-continue-progress-bar {
+  flex: 1;
+  height: 3px;
+  background: var(--overlay-light-soft);
+  border-radius: var(--radius-xs);
+  overflow: hidden;
+}
+.dashboard-continue-progress-fill {
+  height: 100%;
+  background: var(--accent-gradient);
+  border-radius: var(--radius-xs);
+  transition: width 0.3s var(--ease-out);
+}
+.dashboard-continue-progress-label {
+  font-size: var(--text-2xs);
+  color: var(--overlay-light);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ─── All Anime Section ─── */

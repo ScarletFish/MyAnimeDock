@@ -170,6 +170,17 @@ function renderDashboard() {
           total: scrollEl.querySelectorAll('.dashboard-continue-card').length,
           dotsParent: header,
         });
+        // GSAP stagger entrance animation
+        var cards = scrollEl.querySelectorAll('.dashboard-continue-card');
+        if (cards.length && typeof gsap !== 'undefined') {
+          gsap.from(cards, {
+            y: 30, autoAlpha: 0, scale: 0.92,
+            duration: 0.6,
+            ease: "back.out(1.4)",
+            stagger: { each: 0.08, from: "start" },
+            clearProps: "all"
+          });
+        }
       }
     }
   }

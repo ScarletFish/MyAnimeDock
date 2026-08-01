@@ -162,7 +162,14 @@ function renderDashboard() {
       renderContinueSection(libraryData, contBody);
       var scrollEl = contBody.querySelector('.dashboard-continue-scroll');
       if (scrollEl) {
-        initHScrolls();
+        var section = contBody.closest('.dashboard-section');
+        var header = section ? section.querySelector('.dashboard-section-header') : null;
+        initScrollDots({
+          scroll: scrollEl,
+          cardSelector: '.dashboard-continue-card',
+          total: scrollEl.querySelectorAll('.dashboard-continue-card').length,
+          dotsParent: header,
+        });
         // GSAP stagger entrance animation
         var cards = scrollEl.querySelectorAll('.dashboard-continue-card');
         if (cards.length && typeof gsap !== 'undefined') {
@@ -251,7 +258,8 @@ var pendingAutoPlay = null;
 //   data-gap="var(--space-3)" → 间距 token
 function initHScrolls(root) {
   (root || document).querySelectorAll('.hscroll-section').forEach(function(section) {
-    var scroll = section.querySelector('.hscroll-container');
+    var scroll = section.querySelector('.hscroll-container') ||
+                 section.querySelector('.dashboard-continue-scroll');
     var header = section.querySelector('.hscroll-header') ||
                  section.querySelector('.dashboard-section-header');
     var cardSel = section.dataset.card || '.hscroll-card';

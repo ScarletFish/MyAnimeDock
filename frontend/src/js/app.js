@@ -1310,7 +1310,6 @@ window.openVisualDock = openVisualDock;
 window.openSettings = openSettings;
 window.saveSettings = saveSettings;
 window.browseFolder = browseFolder;
-window.browseFile = browseFile;
 window.switchSettingsTab = switchSettingsTab;
 
 // ─── Settings tab switching (defined in old public/index.html inline script) ───

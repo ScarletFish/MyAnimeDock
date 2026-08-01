@@ -237,6 +237,18 @@
   border: 1px solid var(--border);
 }
 
+/* ─── Horizontal Scroll Card ─── *
+ * Usage: apply to cards inside .hscroll container.
+ * Width auto-calculated from --cols variable (default 4).
+ * Responsive: set --cols on parent .hscroll-section via media query.
+ *   .hscroll-section { --cols: 3; }  // 3 cards per page
+ */
+@utility hscroll-card {
+  flex-shrink: 0;
+  scroll-snap-align: start;
+  width: calc((100% - var(--gap, var(--space-4)) * (var(--cols, 4) - 1)) / var(--cols, 4));
+}
+
 /* ─── Scroll Pagination Dots ─── *
  * Dots indicator for any horizontal scroll section (episode list, etc.)
  */

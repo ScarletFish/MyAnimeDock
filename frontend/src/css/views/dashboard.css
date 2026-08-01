@@ -235,25 +235,26 @@
 }
 
 /* ─── Continue Watching ─── */
+.dashboard-continue-section {
+  --cols: 4;
+}
+@media (max-width: 1439px) {
+  .dashboard-continue-section { --cols: 3; }
+}
+@media (max-width: 799px) {
+  .dashboard-continue-section { --cols: 2; }
+}
+
 .dashboard-continue-scroll {
-  display: flex;
+  @apply hscroll;
   gap: var(--space-4);
-  overflow-x: auto;
-  overflow-y: hidden;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
   padding: var(--space-1) 0 var(--space-2) 0;
   scroll-behavior: smooth;
 }
-.dashboard-continue-scroll::-webkit-scrollbar { display: none; }
 
 .dashboard-continue-card {
-  flex-shrink: 0;
-  width: calc((100% - var(--space-4) * 3) / 4);
+  @apply hscroll-card;
   aspect-ratio: 16 / 8;
-  scroll-snap-align: start;
   position: relative;
   border-radius: var(--radius-lg);
   overflow: hidden;

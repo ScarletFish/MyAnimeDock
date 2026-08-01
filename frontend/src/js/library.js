@@ -131,7 +131,7 @@ function renderDashboard() {
         break;
       case 'continueWatch':
         sectionIds.push('continueWatch');
-        sectionHTML += '<div class="dashboard-section" data-section="continueWatch">' +
+        sectionHTML += '<div class="dashboard-section hscroll-section" data-section="continueWatch">' +
           '<div class="dashboard-section-header"><span class="dashboard-section-title">继续观看</span></div>' +
           '<div class="dashboard-section-body" id="dashSection-continueWatch"></div></div>';
         break;
@@ -162,14 +162,7 @@ function renderDashboard() {
       renderContinueSection(libraryData, contBody);
       var scrollEl = contBody.querySelector('.dashboard-continue-scroll');
       if (scrollEl) {
-        var section = contBody.closest('.dashboard-section');
-        var header = section ? section.querySelector('.dashboard-section-header') : null;
-        initScrollDots({
-          scroll: scrollEl,
-          cardSelector: '.dashboard-continue-card',
-          total: scrollEl.querySelectorAll('.dashboard-continue-card').length,
-          dotsParent: header,
-        });
+        initHScrolls();
         // GSAP stagger entrance animation
         var cards = scrollEl.querySelectorAll('.dashboard-continue-card');
         if (cards.length && typeof gsap !== 'undefined') {
@@ -250,6 +243,23 @@ function navigateToDetailWithPlay(id, rect) {
 }
 
 var pendingAutoPlay = null;
+
+// ─── Horizontal Scroll Abstraction ───
+function initHScrolls() {
+  document.querySelectorAll('.hscroll-section').forEach(function(section) {
+    var scroll = section.querySelector('.hscroll-container');
+    var header = section.querySelector('.hscroll-header');
+    var cards = scroll ? scroll.querySelectorAll('.hscroll-card') : [];
+    if (!scroll || !cards.length) return;
+
+    initScrollDots({
+      scroll: scroll,
+      cardSelector: '.hscroll-card',
+      total: cards.length,
+      dotsParent: header || section.querySelector('.dashboard-section-header'),
+    });
+  });
+}
 
 function renderContinueSection(data, container) {
   var watching = data.filter(function(a) {

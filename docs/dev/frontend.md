@@ -13,6 +13,8 @@
 | 下拉框 | `.sort-dropdown` / `createDropdown()` | `components/dropdowns.css` + `components.js` |
 | 模态框 | `.modal-overlay` + `.modal-panel` | `components/modals.css` |
 | 输入框/搜索 | `.search-input` / `.filter-input` / `.select-native` | `components/forms.css` |
+| 开关 | `.toggle-switch` + `.toggle-slider` | `components/forms.css` |
+| 单选胶囊组 | `.seg-radio-group` + `.seg-radio-item`（原生 radio，`:has(:checked)` 高亮） | `components/forms.css` |
 | Toast 提示 | `.toast` + `.toast-visible` | `components/toast.css` |
 | 加载中 | `.loading-spinner` | `components/patterns.css` |
 | 分页 | `.pagination` | `components/patterns.css` |

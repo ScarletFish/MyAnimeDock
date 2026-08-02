@@ -4,23 +4,33 @@
 
 以下逻辑散落在代码中但未在任一文件里显式声明，阅读 / 修改播放流程前必读：
 
-### 看完判定（Finish Confirm Dialog）
-`frontend/src/js/detail.js:609-641,847-876`
+### 看完判定（Finish Confirm）
+`frontend/src/js/detail.js:572,611,849` — `findPendingFinishConfirm` / `showFinishConfirm` / `checkAndShowFinishConfirm`
 
 **后端不再自动标记 watched**（`server/mpv-controller.js` 不再设 `WATCHED_RATIO`，`/api/play` 的 `final` 回调不再写 `ep.watched`）。
 
-看完由前端弹窗确认：
+看完处理由设置项"进度确认"决定，三态互斥（`localStorage['myAnimDock_finishConfirm']`，默认 `prompt`；存量 `on` 自动迁移为 `prompt`）：
+
+| 模式 | 值 | 行为 |
+|------|----|------|
+| 弹窗确认 | `prompt`（默认） | 弹模态框问"是否标记为已看完"，[标记]/[取消] |
+| 自动标记 | `auto` | 直接标记，Toast + 滚动下一集，不弹窗 |
+| 不处理 | `off` | 什么都不做（等价于旧的关闭开关） |
 
 ```
 mpv 关闭 → SSE `mpv-status: {active: false}` → app.js 全局监听 onGlobalMpvStatus
   → 自动聚焦 App 窗口（focusAppWindow，不跳页）
   → 在详情页且结束的正是当前番 → window.handleDetailPlaybackEnded(animeId)
       → checkAndShowFinishConfirm(anime)
+        → mode = localStorage['myAnimDock_finishConfirm'] || 'prompt'（on→prompt 迁移）
+        → off → return（不处理）
         → findPendingFinishConfirm(anime):
             遍历 episodes，找 ep.progress / ep.duration >= 0.9
-        → 找到后弹出模态框："第 N / 总 集" + "是否标记为已看完？"
-        → [取消] → _dismissedFinishConfirm Set 记录，不再弹（刷新页面后重置）
-        → [标记] → POST /api/progress { watched: true, progress: 0 }
+        → prompt 模式：弹出模态框："第 N / 总 集" + "是否标记为已看完？"
+            → [取消] → _dismissedFinishConfirm Set 记录，不再弹（刷新页面后重置）
+            → [标记] → 走标记流程
+        → auto 模式：跳过弹窗，直接走标记流程
+        → 标记流程：POST /api/progress { watched: true, progress: 0 }
           → 重新 GET /api/anime/:id 刷新数据
           → re-render 详情页（播放按钮、剧集列表）
           → scrollToNextUnwatched() 滚动列表到下一未观看
@@ -33,7 +43,7 @@ mpv 关闭 → SSE `mpv-status: {active: false}` → app.js 全局监听 onGloba
 - **SSE 监听在全局（app.js `startGlobalMpvStatus`）**，任何页面都能收到播放结束事件；详情页通过 `window.handleDetailPlaybackEnded` 注册消费回调（`detail.js`），返回 false 时由全局兜底（toast + pending）
 - **不在详情页时进度照样落盘**（server 每次事件写库），只丢失结束反馈；pending 机制保证回详情页后补弹"标记看完"
 - **模态框是临时 DOM**（`modal-overlay` + `modal`），用完销毁
-- **`_dismissedFinishConfirm`** 是 `Set`，key 为 `"animeId:epNumber"`，仅当前 session 有效
+- **`_dismissedFinishConfirm`** 是 `Set`，key 为 `"animeId:epNumber"`，仅当前 session 有效；只在 `prompt` 模式下使用
 - 确认后 `progress=0`，`findContinueEpisode` / `findTargetEpisode` 会跳过该集，自然落到下一集
 
 ### 自动标记前序集
@@ -100,7 +110,7 @@ POST /api/play
       │   ├─ onError → clean up session, return error to frontend via Promise
       │   └─ onClose (code≠0 && lived<3s) → report crash to frontend
        ├─ final callback (mpv process close):
-       │   ├─ (不再设置 watched — 由前端完工确认弹窗处理)
+       │   ├─ (不再设置 watched — 由前端完工确认逻辑处理：prompt/auto/off 三态)
        │   ├─ 仅落盘 progress/duration: db.updateEpisodeProgress({ progress, duration })
        │   ├─ Auto-complete check: all episodes watched?
       │   │   ├─ Yes + myEntry exists → myEntry.status = 'completed' + completedAt
@@ -233,8 +243,8 @@ GET /api/anime/:id/sessions
 - UTC/local time：session startTime 存的是 `new Date().toISOString()`，取用时必须用 local 访问器（`getFullYear/getMonth/getDate`），不能用 `toISOString().slice()` 做 UTC 转换
 - **手动 toggle watched 不会触发 auto-complete**。auto-complete 只在 mpv 进程关闭的 `final` 回调中执行。这意味着如果用户通过右击标记最后一集 watched，myListStatus 不会自动变为 completed
 - **无 myList 条目的动画**：播放后不会自动创建 myList 记录。status 更新仅作用于已有的 myList 条目
-- **完工弹窗全局触发 + pending 兜底**：SSE 全局监听（app.js）。播放结束在详情页直接弹；在其他页面则 toast + 记 `pendingFinishAnimeId`，回到该番详情页时补弹。进度数据不受页面切换影响（server 每次事件落盘）
-- **`_dismissedFinishConfirm` 是内存 Set**：刷新页面后重置，同一集可再次弹窗
+- **完工弹窗全局触发 + pending 兜底**：SSE 全局监听（app.js）。播放结束在详情页按"进度确认"三态处理（prompt 弹窗 / auto 直接标记 / off 忽略）；在其他页面则 toast + 记 `pendingFinishAnimeId`，回到该番详情页时补处理。进度数据不受页面切换影响（server 每次事件落盘）
+- **`_dismissedFinishConfirm` 是内存 Set**：刷新页面后重置，同一集可再次弹窗；仅 prompt 模式使用，auto/off 模式不触碰
 - **`lastPlayedEp` 不由完工确认更新**：`lastPlayedEp` 始终由 playSessions 基于 `startTime` 排序生成，标记 watched 不改变它。但 `findTargetEpisode` / `findContinueEpisode` 会跳过已看完的集，所以下一集才是目标
 - **Dashboard 缩略图区分**：targetEp 有 progress 时缩略图取进度位置；progress=0（下一新集）时用 `&time=mid` 取中间帧
 

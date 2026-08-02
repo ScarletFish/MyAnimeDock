@@ -2,6 +2,16 @@
 
 ## MyList 状态
 
+### Get MyList（含 firstPlayedAt）
+```
+GET /api/mylist
+  → routes/mylist.js:handleGetMyList()
+  → 对每个有本地文件的条目，附加 firstPlayedAt = 该动画最早一条 PlaySession.startTime
+  → 用途：状态弹窗打开时，若 startedAt 为空，用 firstPlayedAt 的本地日期预填"开始日期"，
+    避免用户回忆（frontend/src/js/mylist.js:localDateStr — 注意本地日期转换，勿 substring(0,10)）
+  → 纯推导、不落盘；仅当用户在弹窗保存时才随 startedAt 写入 MyList
+```
+
 ### Status Change（手动）
 ```
 PUT /api/mylist/:id/status

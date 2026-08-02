@@ -42,6 +42,40 @@ describe('mylist route handlers', () => {
       assert.strictEqual(res._body[0].source, 'wishlist');
       assert.strictEqual(res._body[0].hasLocalFiles, false);
     });
+
+    it('returns firstPlayedAt as the earliest play session startTime for library items', () => {
+      const state = mockState({
+        data: {
+          library: [{ id: 'anime-1', title: 'Test Anime', episodes: [{ number: 1, watched: false }] }],
+          myList: [{ animeId: 'anime-1', status: 'watching' }],
+          playSessions: [
+            { animeId: 'anime-1', episodeNumber: 1, startTime: '2026-07-20T10:00:00.000Z' },
+            { animeId: 'anime-1', episodeNumber: 2, startTime: '2026-07-01T10:00:00.000Z' },
+            { animeId: 'anime-2', episodeNumber: 1, startTime: '2026-08-01T10:00:00.000Z' },
+          ],
+        },
+      });
+      const req = mockReq({ url: '/api/mylist' });
+      const res = mockRes();
+      mylist.handleGetMyList(req, res, state);
+      assert.strictEqual(res._status, 200);
+      assert.strictEqual(res._body[0].firstPlayedAt, '2026-07-01T10:00:00.000Z');
+    });
+
+    it('returns null firstPlayedAt when the anime has no play sessions', () => {
+      const state = mockState({
+        data: {
+          library: [{ id: 'anime-1', title: 'Test Anime', episodes: [{ number: 1, watched: false }] }],
+          myList: [{ animeId: 'anime-1', status: 'wish' }],
+          playSessions: [{ animeId: 'anime-2', episodeNumber: 1, startTime: '2026-08-01T10:00:00.000Z' }],
+        },
+      });
+      const req = mockReq({ url: '/api/mylist' });
+      const res = mockRes();
+      mylist.handleGetMyList(req, res, state);
+      assert.strictEqual(res._status, 200);
+      assert.strictEqual(res._body[0].firstPlayedAt, null);
+    });
   });
 
   describe('handleUpdateMyListStatus', () => {

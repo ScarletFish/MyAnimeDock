@@ -447,7 +447,9 @@ function openStatusModal(e, id) {
   const startSegs = document.querySelector('.date-segments[data-date="startedAt"]');
   if (startSegs) {
     const storedStart = item && item.startedAt ? item.startedAt : null;
-    setDateToSegments(startSegs, storedStart ? storedStart.substring(0, 10) : _todayStr());
+    // startedAt 未记录时，用最早一次播放的开始时间预填（本地日期，避免 UTC 偏移一天）
+    const firstPlayed = (item && item.firstPlayedAt) ? localDateStr(item.firstPlayedAt) : null;
+    setDateToSegments(startSegs, storedStart ? storedStart.substring(0, 10) : (firstPlayed || _todayStr()));
   }
 
   // End date
@@ -466,6 +468,14 @@ function openStatusModal(e, id) {
 
 function _todayStr() {
   var d = new Date();
+  return d.getFullYear() + '-' +
+    String(d.getMonth() + 1).padStart(2, '0') + '-' +
+    String(d.getDate()).padStart(2, '0');
+}
+
+// ISO 时间戳 → 本地日期 YYYY-MM-DD（不能用 substring(0,10)，UTC+8 会偏移一天）
+function localDateStr(isoStr) {
+  var d = new Date(isoStr);
   return d.getFullYear() + '-' +
     String(d.getMonth() + 1).padStart(2, '0') + '-' +
     String(d.getDate()).padStart(2, '0');

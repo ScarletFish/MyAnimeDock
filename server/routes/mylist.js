@@ -6,6 +6,12 @@ module.exports = {
     const { data } = state;
     const merged = [];
     const animeMap = new Map(data.library.map(a => [a.id, a]));
+    // 每部动画最早一次播放的开始时间（状态弹窗预填"开始日期"用，避免用户回忆）
+    const firstPlayedMap = new Map();
+    for (const s of data.playSessions || []) {
+      const cur = firstPlayedMap.get(s.animeId);
+      if (!cur || new Date(s.startTime) < new Date(cur)) firstPlayedMap.set(s.animeId, s.startTime);
+    }
     for (const item of data.myList || []) {
       if (item.animeId) {
         const anime = animeMap.get(item.animeId);
@@ -23,6 +29,7 @@ module.exports = {
           rating: anime ? (anime.rating || null) : item.rating,
           userRating: item.rating, thoughts: item.thoughts, notes: item.notes,
           progress: item.progress, startedAt: item.startedAt, completedAt: item.completedAt,
+          firstPlayedAt: firstPlayedMap.get(item.animeId) || null,
           importedAt: anime ? anime.importedAt : null,
           status: item.status,
           episodeCount: anime ? anime.episodes.length : 0,

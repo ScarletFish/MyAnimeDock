@@ -6,6 +6,47 @@ let mylistScrollTop = 0;
 let _libraryChangingView = false; // set by showView to skip scroll-save in loadLibrary
 let _mylistChangingView = false;
 
+// ── 全局 mpv-status 监听：播放结束反馈在任何页面生效 ──
+// 进度数据由 server 每次事件落盘（与前端页面无关）；这里负责"播放结束"那一刻的
+// UI 反馈：自动聚焦窗口（不跳页）+ toast + 回详情页时的兜底"标记看完"弹窗。
+let gMpvActive = false;
+let gMpvAnimeId = null; // 最近一次 active:true 事件的 animeId（end 事件不带 id）
+
+function startGlobalMpvStatus() {
+  var es = new EventSource('/api/events/mpv-status');
+  es.onmessage = function (e) {
+    try { var p = JSON.parse(e.data); onGlobalMpvStatus(p.active, p); } catch (_) {}
+  };
+  // SSE 未就绪时的降级：HTTP 查询一次当前状态
+  API.get('/api/mpv-status').then(function (st) { onGlobalMpvStatus(st.active, st); }).catch(function () {});
+}
+
+function onGlobalMpvStatus(active, payload) {
+  if (active) {
+    gMpvActive = true;
+    gMpvAnimeId = payload.animeId || null;
+    return;
+  }
+  if (!gMpvActive) return; // 非"播放结束"的 inactive（如启动时无播放），忽略
+  gMpvActive = false;
+  var endedAnimeId = gMpvAnimeId;
+  gMpvAnimeId = null;
+
+  // 1. 自动聚焦 App 窗口（不跳转页面）
+  if (typeof focusAppWindow === 'function') focusAppWindow();
+
+  // 2. 正在详情页且播放结束的正是当前番 → 交给 detail.js 刷新 + 弹标记确认
+  if (currentView === 'detail' &&
+      typeof window.handleDetailPlaybackEnded === 'function' &&
+      window.handleDetailPlaybackEnded(endedAnimeId)) {
+    return;
+  }
+
+  // 3. 其他页面 → 通用 toast + 记录 pending，回到该番详情页时补弹"标记看完"
+  showToast('播放已结束，进度已更新', 'success');
+  if (endedAnimeId) window.pendingFinishAnimeId = endedAnimeId;
+}
+
 function showView(view) {
   const mc = document.querySelector('.main-content');
 
@@ -1062,6 +1103,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   applyZoom(configCache?.uiScale || 1);
   applyDetailTitleBg();
   showView('library');
+  startGlobalMpvStatus();
 
   // First-run: show onboarding overlay (defined in onboarding.js)
   if (configCache?.firstRun) {

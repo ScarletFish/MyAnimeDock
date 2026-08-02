@@ -12,21 +12,26 @@
 看完由前端弹窗确认：
 
 ```
-mpv 关闭 → SSE `mpv-status: {active: false}` → detail.js 收到
-  → checkAndShowFinishConfirm(anime)
-    → findPendingFinishConfirm(anime):
-        遍历 episodes，找 ep.progress / ep.duration >= 0.9
-    → 找到后弹出模态框："第 N / 总 集" + "是否标记为已看完？"
-    → [取消] → _dismissedFinishConfirm Set 记录，不再弹（刷新页面后重置）
-    → [标记] → POST /api/progress { watched: true, progress: 0 }
-      → 重新 GET /api/anime/:id 刷新数据
-      → re-render 详情页（播放按钮、剧集列表）
-      → scrollToNextUnwatched() 滚动列表到下一未观看
-      → Toast "已标记第 N 集为已看完"
+mpv 关闭 → SSE `mpv-status: {active: false}` → app.js 全局监听 onGlobalMpvStatus
+  → 自动聚焦 App 窗口（focusAppWindow，不跳页）
+  → 在详情页且结束的正是当前番 → window.handleDetailPlaybackEnded(animeId)
+      → checkAndShowFinishConfirm(anime)
+        → findPendingFinishConfirm(anime):
+            遍历 episodes，找 ep.progress / ep.duration >= 0.9
+        → 找到后弹出模态框："第 N / 总 集" + "是否标记为已看完？"
+        → [取消] → _dismissedFinishConfirm Set 记录，不再弹（刷新页面后重置）
+        → [标记] → POST /api/progress { watched: true, progress: 0 }
+          → 重新 GET /api/anime/:id 刷新数据
+          → re-render 详情页（播放按钮、剧集列表）
+          → scrollToNextUnwatched() 滚动列表到下一未观看
+          → Toast "已标记第 N 集为已看完"
+  → 不在详情页 → Toast "播放已结束，进度已更新" + 记 window.pendingFinishAnimeId
+      → 之后回到该番详情页（showDetail）→ 补弹完工确认
 ```
 
 关键点：
-- **只在前端详情页触发** — 离开详情页时不弹窗，进度保留
+- **SSE 监听在全局（app.js `startGlobalMpvStatus`）**，任何页面都能收到播放结束事件；详情页通过 `window.handleDetailPlaybackEnded` 注册消费回调（`detail.js`），返回 false 时由全局兜底（toast + pending）
+- **不在详情页时进度照样落盘**（server 每次事件写库），只丢失结束反馈；pending 机制保证回详情页后补弹"标记看完"
 - **模态框是临时 DOM**（`modal-overlay` + `modal`），用完销毁
 - **`_dismissedFinishConfirm`** 是 `Set`，key 为 `"animeId:epNumber"`，仅当前 session 有效
 - 确认后 `progress=0`，`findContinueEpisode` / `findTargetEpisode` 会跳过该集，自然落到下一集
@@ -46,20 +51,21 @@ mpv 关闭 → SSE `mpv-status: {active: false}` → detail.js 收到
 
 这个逻辑接在 auto-mark 之后，保证统计 `stats("看完")` 会准确地映射到实际看完的动画。
 
-### 前端 SSE + Finish Confirm + Toast
-`frontend/src/js/detail.js:106-146` — `startDetailRefresh()`
+### 前端全局 SSE + Finish Confirm + Toast
+`frontend/src/js/app.js:9-50` — `startGlobalMpvStatus()` / `onGlobalMpvStatus()`；`frontend/src/js/detail.js:116-143` — `window.handleDetailPlaybackEnded`
 
-详情页通过 **SSE**（`EventSource`）监听 `/api/events/mpv-status`，不轮询。
+**SSE 监听是全局的**（app.js 在 `DOMContentLoaded` 时建立 `EventSource` 连 `/api/events/mpv-status`），不随页面切换断开：
 
-当前端收到 `mpv-status: { active: false }`（mpv 从活跃变为不活跃）时：
-1. 检查是否是当前详情页的动画最近在播放（SSE 消息中的 `animeId`）
-2. 调用 `checkAndShowFinishConfirm(anime)` 判断是否需要弹完工确认
-3. 若有进度 >90% 的剧集 → 弹出完工确认弹窗
-4. 重新 GET `/api/anime/:id` 拉取最新数据
-5. 重渲染详情页（播放按钮、剧集列表、进度统计）
-6. 显示 toast：`"播放已结束，进度已更新"`
+当前端收到 `mpv-status: { active: false }`（mpv 从活跃变为不活跃）时，`onGlobalMpvStatus` 统一处理：
+1. 自动聚焦 App 窗口（`focusAppWindow`，Tauri 下 `unminimize + setFocus`，**不跳转页面**）
+2. 若当前在详情页且结束的番正是当前展示的番 → 调用 `window.handleDetailPlaybackEnded(animeId)` 消费事件：刷新数据 + `checkAndShowFinishConfirm` + toast
+3. 否则（其他页面或番不匹配）→ 通用 toast `"播放已结束，进度已更新"` + 记录 `window.pendingFinishAnimeId`
 
-**SSE 之外还有一层 HTTP 兜底：** 每次调用 `startDetailRefresh()` 时（进入详情页），除 `EventSource` 外还会立即发一次 `GET /api/mpv-status` 查询当前播放状态（`detail.js:142`）。这解决了 SSE 刚建立时的延迟以及不支持的浏览器降级。
+`handleDetailPlaybackEnded` 返回 `true` 表示已消费（详情页刷新），返回 `false` 则由全局兜底处理。`startDetailRefresh` / `stopDetailRefresh` 保留为兼容占位（不再各自建连接）。
+
+**Pending 兜底：** 播放结束在非详情页时，回到该番详情页（`showDetail`）会检查 `window.pendingFinishAnimeId === id`，命中则补弹完工确认。end 事件本身不带 animeId，靠最近一次 `active:true` 事件缓存的 `gMpvAnimeId` 补全。
+
+**HTTP 兜底：** `startGlobalMpvStatus()` 建立 SSE 后立即发一次 `GET /api/mpv-status` 查询当前播放状态（`app.js`）。这解决 SSE 刚建立时的延迟以及不支持的浏览器降级。
 
 ## 开始播放
 
@@ -227,7 +233,7 @@ GET /api/anime/:id/sessions
 - UTC/local time：session startTime 存的是 `new Date().toISOString()`，取用时必须用 local 访问器（`getFullYear/getMonth/getDate`），不能用 `toISOString().slice()` 做 UTC 转换
 - **手动 toggle watched 不会触发 auto-complete**。auto-complete 只在 mpv 进程关闭的 `final` 回调中执行。这意味着如果用户通过右击标记最后一集 watched，myListStatus 不会自动变为 completed
 - **无 myList 条目的动画**：播放后不会自动创建 myList 记录。status 更新仅作用于已有的 myList 条目
-- **完工弹窗只在前端详情页触发**：不在详情页时 mpv 关闭不会弹窗，进度保留。切回详情页后由 SSE 事件触发
+- **完工弹窗全局触发 + pending 兜底**：SSE 全局监听（app.js）。播放结束在详情页直接弹；在其他页面则 toast + 记 `pendingFinishAnimeId`，回到该番详情页时补弹。进度数据不受页面切换影响（server 每次事件落盘）
 - **`_dismissedFinishConfirm` 是内存 Set**：刷新页面后重置，同一集可再次弹窗
 - **`lastPlayedEp` 不由完工确认更新**：`lastPlayedEp` 始终由 playSessions 基于 `startTime` 排序生成，标记 watched 不改变它。但 `findTargetEpisode` / `findContinueEpisode` 会跳过已看完的集，所以下一集才是目标
 - **Dashboard 缩略图区分**：targetEp 有 progress 时缩略图取进度位置；progress=0（下一新集）时用 `&time=mid` 取中间帧

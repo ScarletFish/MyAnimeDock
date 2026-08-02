@@ -1,8 +1,6 @@
 gsap.registerPlugin(Flip);
 
 let currentAnime = null;
-let detailRefreshTimer = null, detailRefreshES = null;
-let wasMpvActive = false;
 
 // Wishlist mode (set when viewing mylist wishlist items)
 let isWishlistMode = false;
@@ -14,6 +12,18 @@ const _recCache = createTimedCacheMap(_CACHE_TTL);
 
 // Character grid: large max-height for smooth CSS transition (replaces 'none')
 const MAX_GRID_HEIGHT = 10000;
+
+/**
+ * 播放器关闭后自动将 App 窗口带回前台（Windows 前台锁限制时系统会闪烁任务栏兜底）。
+ * 浏览器环境（无 Tauri API）直接无操作。
+ */
+function focusAppWindow() {
+  if (!(window.__TAURI__ && window.__TAURI__.window)) return;
+  try {
+    var win = window.__TAURI__.window.getCurrentWindow();
+    win.unminimize().then(function () { return win.setFocus(); }).catch(function () {});
+  } catch (_) {}
+}
 
 function checkToggleOverflow(wrap, listSel, toggleSel) {
   if (!wrap) return;
@@ -103,48 +113,34 @@ function resetDetailEnter() {
   document.querySelectorAll('.detail-ripple').forEach(el => el.remove());
 }
 
-function startDetailRefresh() {
-  stopDetailRefresh();
-  wasMpvActive = false;
+// 全局 mpv-status SSE 监听已移至 app.js（startGlobalMpvStatus），
+// 详情页不再自行建立连接；保留 startDetailRefresh/stopDetailRefresh 作为兼容占位。
+function startDetailRefresh() {}
+function stopDetailRefresh() {}
 
-  function onMpvStatus(active, payload) {
-    if (!currentAnime) { stopDetailRefresh(); return; }
-    if (wasMpvActive && !active) {
-      // mpv 刚结束 → 刷新数据
-      API.get(`/api/anime/${encodeURIComponent(currentAnime.id)}`).then(updated => {
-        currentAnime = updated;
-        AppState.set('currentAnime', currentAnime);
-        renderDetail();
-        checkAndShowFinishConfirm(currentAnime);
-        var _allDone = currentAnime.episodes && currentAnime.episodes.length > 0
-          && currentAnime.episodes.every(function(e) { return e.watched; });
-        if (_allDone && currentAnime.myListStatus === 'completed') {
-          showToast('播放已结束，已看完所有剧集', 'success');
-          return;
-        }
-        showToast('播放已结束，进度已更新', 'success');
-      });
+/**
+ * 全局播放结束回调（由 app.js 的 onGlobalMpvStatus 调用）。
+ * 仅当当前详情页展示的正是播放结束的番时才消费事件（返回 true），
+ * 否则返回 false，由全局逻辑兜底（toast + pending 标记）。
+ */
+window.handleDetailPlaybackEnded = function (endedAnimeId) {
+  if (!currentAnime) return false;
+  if (endedAnimeId && currentAnime.id !== endedAnimeId) return false;
+  API.get(`/api/anime/${encodeURIComponent(currentAnime.id)}`).then(updated => {
+    currentAnime = updated;
+    AppState.set('currentAnime', currentAnime);
+    renderDetail();
+    checkAndShowFinishConfirm(currentAnime);
+    var _allDone = currentAnime.episodes && currentAnime.episodes.length > 0
+      && currentAnime.episodes.every(function(e) { return e.watched; });
+    if (_allDone && currentAnime.myListStatus === 'completed') {
+      showToast('播放已结束，已看完所有剧集', 'success');
+      return;
     }
-    wasMpvActive = active;
-  }
-
-  // SSE 事件流（被动接收，无需轮询）
-  var es = new EventSource('/api/events/mpv-status');
-  es.onmessage = function(e) {
-    try { var p = JSON.parse(e.data); onMpvStatus(p.active, p); } catch (_) {}
-  };
-  es.onerror = function() {
-    // EventSource 会自动重连，无需处理
-  };
-  detailRefreshES = es;
-
-  // 先用一次 HTTP 查询兜底（页面刚加载时 SSE 可能有延迟，以及 SSE 不支持时的降级）
-  API.get('/api/mpv-status').then(function(st) { onMpvStatus(st.active, st); }).catch(function() {});
-}
-
-function stopDetailRefresh() {
-  if (detailRefreshES) { detailRefreshES.close(); detailRefreshES = null; }
-}
+    showToast('播放已结束，进度已更新', 'success');
+  });
+  return true;
+};
 
 async function showDetail(id, fromRect, fromSrc, sourceView = 'library') {
   isWishlistMode = false;
@@ -174,6 +170,12 @@ async function showDetail(id, fromRect, fromSrc, sourceView = 'library') {
 
     document.getElementById('headerTitle').textContent = currentAnime.bangumiTitle || currentAnime.title;
     startDetailRefresh();
+
+    // 播放结束于其他页面 → 回到该番详情页时补弹"标记看完"确认
+    if (window.pendingFinishAnimeId === id) {
+      window.pendingFinishAnimeId = null;
+      checkAndShowFinishConfirm(currentAnime);
+    }
 
     // Auto-play from continue watching section
     if (typeof pendingAutoPlay !== 'undefined' && pendingAutoPlay === id) {

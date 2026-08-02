@@ -313,7 +313,8 @@ function renderContinueSection(data, container) {
           '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><polygon points="8 5 19 12 8 19 8 5"/></svg>' +
         '</div>' +
         '<div class="dashboard-continue-progress-bar-wrap">' +
-          '<div class="dashboard-continue-progress-bar"><div class="dashboard-continue-progress-fill" style="width:' + (ep ? Math.round((ep.progress || 0) / (ep.duration || 1) * 100) : 0) + '%"></div></div>' +
+          // 进度条 = 集数占整季比例
+          '<div class="dashboard-continue-progress-bar"><div class="dashboard-continue-progress-fill" style="width:' + (ep && total ? Math.round(ep.number / total * 100) : 0) + '%"></div></div>' +
           '<span class="dashboard-continue-progress-label">第 ' + (ep ? ep.number : '?') + ' / ' + total + ' 集</span>' +
         '</div>' +
       '</div>';

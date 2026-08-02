@@ -308,9 +308,12 @@ async function openSettings() {
     if (detailTitleBg) detailTitleBg.checked = localStorage.getItem('myAnimDock_detailTitleBg') === 'on';
     applyDetailTitleBg();
 
-    // Finish confirm toggle (default on)
-    var finishConfirm = document.getElementById('settingsFinishConfirm');
-    if (finishConfirm) finishConfirm.checked = localStorage.getItem('myAnimDock_finishConfirm') !== 'off';
+    // Finish confirm mode (prompt/auto/off), 默认 prompt；存量 on/off 迁移
+    var mode = localStorage.getItem('myAnimDock_finishConfirm') || 'prompt';
+    if (mode === 'on') mode = 'prompt';
+    if (mode === 'off') mode = 'off';
+    var finishRadio = document.querySelector('input[name="settingsFinishConfirmMode"][value="' + mode + '"]');
+    if (finishRadio) finishRadio.checked = true;
 
     // Preload DB info
     if (typeof refreshDbInfo === 'function') refreshDbInfo();
@@ -522,10 +525,10 @@ async function saveSettings() {
       applyDetailTitleBg();
     }
 
-    // Save finish confirm toggle
-    var finishConfirm = document.getElementById('settingsFinishConfirm');
-    if (finishConfirm) {
-      localStorage.setItem('myAnimDock_finishConfirm', finishConfirm.checked ? 'on' : 'off');
+    // Save finish confirm mode
+    var finishMode = document.querySelector('input[name="settingsFinishConfirmMode"]:checked');
+    if (finishMode) {
+      localStorage.setItem('myAnimDock_finishConfirm', finishMode.value);
     }
 
     closeModal('settingsModal');

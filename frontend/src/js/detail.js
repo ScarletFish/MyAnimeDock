@@ -843,39 +843,38 @@ var _dismissedFinishConfirm = new Set();
 
 /**
  * 检查刚播完的剧集是否需要弹窗确认标记看完。
- * 条件：lastPlayedEp 的进度 > 90% 且未标记 watched 且未 dismissed。
+ * 模式：prompt（弹窗确认，默认）/ auto（自动标记）/ off（不处理）；存量 on/off 迁移
  * 仅在 detail 页面调用（需要 currentAnime）。
  */
 async function checkAndShowFinishConfirm(anime) {
   if (!anime) return;
-  // 设置中关闭了完工弹窗（默认开启）
-  if (localStorage.getItem('myAnimDock_finishConfirm') === 'off') return;
+  // 模式：prompt（弹窗确认，默认）/ auto（自动标记）/ off（不处理）；存量 on/off 迁移
+  var mode = localStorage.getItem('myAnimDock_finishConfirm') || 'prompt';
+  if (mode === 'on') mode = 'prompt';
+  if (mode === 'off') return;
   var ep = findPendingFinishConfirm(anime);
   if (!ep) return;
   var key = anime.id + ':' + ep.number;
-  if (_dismissedFinishConfirm.has(key)) return;
-
-  var finished = await showFinishConfirm(anime, ep);
-  if (finished) {
-    try {
-      await API.post('/api/progress', {
-        animeId: anime.id,
-        episodeNumber: ep.number,
-        watched: true,
-        progress: 0
-      });
-      // 重新获取最新数据
-      currentAnime = await API.get('/api/anime/' + encodeURIComponent(anime.id));
-      AppState.set('currentAnime', currentAnime);
-      renderDetail();
-      // 滚动剧集列表到下一集未观看
-      scrollToNextUnwatched(currentAnime, ep.number);
-      showToast('已标记第 ' + ep.number + ' 集为已看完', 'success');
-    } catch (e) {
-      showToast('标记失败: ' + e.message, 'error');
-    }
-  } else {
-    _dismissedFinishConfirm.add(key);
+  if (mode === 'prompt') {
+    if (_dismissedFinishConfirm.has(key)) return;
+    var finished = await showFinishConfirm(anime, ep);
+    if (!finished) { _dismissedFinishConfirm.add(key); return; }
+  }
+  // auto 模式或用户确认 → 标记看完
+  try {
+    await API.post('/api/progress', {
+      animeId: anime.id,
+      episodeNumber: ep.number,
+      watched: true,
+      progress: 0
+    });
+    currentAnime = await API.get('/api/anime/' + encodeURIComponent(anime.id));
+    AppState.set('currentAnime', currentAnime);
+    renderDetail();
+    scrollToNextUnwatched(currentAnime, ep.number);
+    showToast('已标记第 ' + ep.number + ' 集为已看完', 'success');
+  } catch (e) {
+    showToast('标记失败: ' + e.message, 'error');
   }
 }
 

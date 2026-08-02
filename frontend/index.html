@@ -637,7 +637,7 @@
               <input type="checkbox" id="anilistEnabled">
               <span class="toggle-slider"></span>
             </label>
-            <span style="font-size:var(--text-md);color:var(--fg-secondary);line-height:24px">启用 AniList</span>
+            <span class="dashboard-layout-label">启用 AniList</span>
           </div>
           <blockquote class="form-hint" style="border-inline-start: 2px solid var(--border); padding-inline-start: var(--space-3); margin: 0; font-style: normal;">罗马音标题<br>横幅图</blockquote>
         </div>
@@ -689,15 +689,20 @@
         </div>
         <div class="form-group">
           <label>进度确认</label>
-          <p class="form-hint mt-0">观看进度超过90%后，是否显示标记弹窗</p>
-          <div class="dashboard-layout-list" style="margin-top:0.75rem">
-            <div class="dashboard-layout-item" style="cursor:default">
-              <label class="toggle-switch" style="margin:0">
-                <input type="checkbox" id="settingsFinishConfirm">
-                <span class="toggle-slider"></span>
-              </label>
-              <span class="dashboard-layout-label">弹窗确认</span>
-            </div>
+          <p class="form-hint mt-0">观看进度超过90%未标记时</p>
+          <div class="seg-radio-group" style="margin-top:0.75rem">
+            <label class="seg-radio-item">
+              <input type="radio" name="settingsFinishConfirmMode" value="prompt" checked>
+              <span>弹窗确认</span>
+            </label>
+            <label class="seg-radio-item">
+              <input type="radio" name="settingsFinishConfirmMode" value="auto">
+              <span>自动标记</span>
+            </label>
+            <label class="seg-radio-item">
+              <input type="radio" name="settingsFinishConfirmMode" value="off">
+              <span>不处理</span>
+            </label>
           </div>
         </div>
       </div>

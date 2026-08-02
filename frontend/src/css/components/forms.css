@@ -14,6 +14,8 @@
   }
 }
 
+input[type="radio"] { accent-color: var(--accent); }
+
 .toggle-slider {
   position: absolute;
   cursor: pointer;
@@ -72,11 +74,14 @@
   content: ''; position: absolute; left: -16px; top: 4px; bottom: 4px;
   width: 2px; border-radius: 1px; background: var(--accent); opacity: 0.35;
 }
-.form-group label {
+.form-group > label {
   display: block;
-  font-size: var(--text-sm); font-weight: var(--fw-semibold);
+  font-size: var(--text-base); font-weight: var(--fw-semibold);
   color: var(--fg-secondary); margin-bottom: var(--space-2); letter-spacing: 0.02em;
 }
+/* Settings-only: align control text to --text-sm so section titles (--text-base) stay visually larger */
+.settings-panel .dashboard-layout-label { font-size: var(--text-sm); }
+.settings-panel .seg-radio-item { font-size: var(--text-sm); }
 .form-group input[type="text"],
 .form-group input[type="password"],
 .form-group select,
@@ -107,10 +112,6 @@
 .form-group textarea { resize: vertical; min-height: 90px; }
 .form-hint {
   font-size: var(--text-xs); color: var(--fg-muted); margin-top: 4px;
-}
-
-#tab-database .form-hint {
-  font-size: var(--text-sm);
 }
 
 /* ─── Number Stepper ─── */
@@ -207,7 +208,7 @@
 }
 .db-info-value {
   font-size: var(--text-md); color: var(--fg-primary);
-  font-weight: var(--fw-semibold); font-variant-numeric: tabular-nums;
+  font-weight: var(--fw-normal); font-variant-numeric: tabular-nums;
   min-width: 0;
 }
 .db-action-row {
@@ -241,3 +242,70 @@
   border-color: rgba(var(--accent-rgb), 0.35);
   color: var(--fg-primary);
 }
+
+/* ─── Segment Radio Group (pill-style radio group) ─── */
+/*  Works with native <input type="radio"> inside <label> containers.
+    Container uses :has() to detect checked state — no JS class toggling needed.
+    Reuses the visual language of seg-control/seg-item but adapted for radios. */
+@utility seg-radio-group {
+  display: flex;
+  gap: var(--space-075);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-075);
+}
+
+@utility seg-radio-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  padding: var(--space-250) var(--space-3);
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  font-size: var(--text-md);
+  font-family: var(--font-body);
+  font-weight: var(--fw-normal);
+  line-height: 24px;
+  color: var(--fg-secondary);
+  transition: all var(--duration-fast) var(--ease-out);
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+
+  input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+  }
+
+  &:hover {
+    background: var(--bg-elevated);
+  }
+
+  &:has(input:checked) {
+    color: var(--fg-primary);
+    background: rgba(var(--accent-rgb), 0.1);
+    font-weight: var(--fw-semibold);
+  }
+
+  &:has(input:focus-visible) {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+}
+
+/* Responsive: wrap items on very narrow screens */
+@media (max-width: 380px) {
+  .seg-radio-group {
+    flex-wrap: wrap;
+  }
+  .seg-radio-item {
+    flex: 1 1 calc(50% - var(--space-075));
+  }
+}
+

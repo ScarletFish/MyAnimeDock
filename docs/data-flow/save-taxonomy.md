@@ -43,7 +43,7 @@ async loadData() {
   ├─ Read all Anime + Episode from SQLite
   ├─ Read all PlaySession from SQLite
   ├─ Read ScannedTree from SQLite (JSON stringified in single row)
-  ├─ Convert Prisma models → legacy JSON format
+  ├─ Convert SQLite rows → legacy JSON format
   └─ Return → server.js assigns to global `data`
 }
 ```

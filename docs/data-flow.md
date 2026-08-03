@@ -30,9 +30,9 @@
 │    • HTTP server @ :3456                                          │
 │    • Routes: config, discovery, library, playback, mylist, stats, │
 │      bangumi — each exports handler(req, res, state)              │
-│    • Persistence: SQLite (Prisma ORM) — library/playSessions      │
+│    • Persistence: SQLite (better-sqlite3) — library/playSessions    │
 │    • JSON files: config.json, scanned-tree.json                   │
-│    • Static files: public/ covers/ thumbs/                        │
+│    • Static files: frontend/dist/ covers/ thumbs/                  │
 │    • ffmpeg: thumbnail extraction + cover resize                  │
 └──────────────────────────────────────────────────────────────────┘
 ```

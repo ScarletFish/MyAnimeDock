@@ -7,14 +7,14 @@
 - API 响应字段改了就改——**不保留旧字段**，不加 deprecated 过渡期，不做向后兼容
 - 前端和后端一起改，一起验证
 - 旧代码/旧字段/旧路由 → 直接删。留着的死代码是未来的 bug 源
-- 唯一的"兼容"场景：SQLite 数据库 schema 迁移（通过 Prisma migration，只加字段不改现有数据）
+- 唯一的"兼容"场景：SQLite 数据库 schema 迁移（通过 db.js 版本化迁移器，只加字段不改现有数据）
 
 ## 架构概要
 
 ```
 server/
 ├── server.js           → HTTP 服务入口，路由注册 + 中间件
-├── db.js               → Prisma/SQLite 封装层
+├── db.js               → better-sqlite3 原生 SQL 封装层
 ├── scanner.js           → 媒体目录扫描 + 文件夹名解析
 ├── mpv-controller.js    → mpv IPC 播放进度追踪
 ├── thumbnail-queue.js   → ffmpeg 缩略图生成队列
@@ -101,12 +101,13 @@ db.loadData() → 读 SQLite 初始化
   db.saveScannedTree(tree)        → JSON 文件同步写入
 ```
 
-### Prisma 注意事项
+### better-sqlite3 注意事项
 
-- `prisma/schema.prisma` 定义表结构
-- 修改 schema → `npm run prisma:migrate` 创建迁移 + `npm run prisma:generate` 重生成客户端
+- `server/db.js` 用 better-sqlite3 原生 SQL，单例 `Database`（PRAGMA `foreign_keys=ON` / WAL / busy_timeout）
+- schema 变更：改 `db.js` 的 INIT_SQL + 迁移，`npm run db:migrate` 触发 `ensureSchema()` 版本化迁移（写 MigrationLog 表，v2_merge_wishlist 已在案）
+- **布尔陷阱**：SQLite 布尔存 0/1，读回后需 `!!` 强转（downloaded/watched），否则透传给前端会挂 `if (a.downloaded)` 和 `watched === true` 断言
+- **undefined 字段陷阱**：动态 SET 前必须过滤 `undefined` 键，否则 `SET x = undefined` 直接报错（ORM 会忽略 undefined，原生 SQL 层不会）
 - 连接串固定 `file:./anime.db`
-- 引擎：pkg 模式下通过 `PRISMA_QUERY_ENGINE_LIBRARY` 环境变量指定
 
 ## Scanner 约定
 

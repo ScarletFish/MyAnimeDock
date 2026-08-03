@@ -14,9 +14,8 @@ MyAnimeDocker/
 │
 ├── server/                    # === 后端 (Node.js HTTP) ===
 ├── frontend/                  # === 前端源码 (Vite 构建) ===
-├── public/                    # === 前端产物/静态资源 ===
 ├── src-tauri/                 # === Tauri v2 桌面壳 (Rust) ===
-├── prisma/                    # === Prisma ORM (SQLite) ===
+├── prisma/                    # === DB 文件存放（better-sqlite3 读写）===
 ├── docs/                      # === 项目文档 ===
 ├── scripts/                   # === 构建/打包脚本 ===
 ├── .agents/                   # Agent skill 文件
@@ -31,7 +30,7 @@ MyAnimeDocker/
 ```
 server/
 ├── server.js                  # HTTP 入口：注册路由 + 中间件
-├── db.js                      # Prisma/SQLite 封装（load/save 方法）
+├── db.js                      # better-sqlite3 原生 SQL 封装（ensureSchema + MigrationLog 版本化迁移器）
 ├── scanner.js                 # 媒体目录扫描 + 文件夹名解析
 ├── mpv-controller.js          # mpv IPC 播放进度追踪
 ├── thumbnail-queue.js         # ffmpeg 缩略图生成队列
@@ -94,12 +93,14 @@ server/
 
 ```
 frontend/
-├── index.html                 # HTML 入口（19 个 <script> 严格顺序）
+├── index.html                 # HTML 入口（22 个 <script> 严格顺序）
 ├── vite.config.js             # Vite 配置（复制模式）
 ├── package.json
 │
 ├── src/
-│   ├── js/                    # 前端 JS 源码（20 个文件）
+│   ├── js/                    # 前端 JS 源码（22 个文件）
+│   │   ├── i18n-zh.js         #   i18n 文案字典（唯一，改文案只改这里）
+│   │   ├── i18n.js            #   i18next 初始化 + 全局 t() + data-i18n 绑定
 │   │   ├── state.js           #   UI 全局状态管理
 │   │   ├── debug.js           #   F12 调试系统
 │   │   ├── ui.js              #   通用 UI 工具
@@ -153,23 +154,8 @@ frontend/
 │           ├── onboarding.css
 │           └── keyboard.css
 │
-└── public/                    # Vite 静态资源目录
-    └── icon.svg
-```
-
----
-
-## public/ — 第三方静态资源（vendor）
-
-```
-public/
-└── vendor/                    # 第三方库（非 npm，直接引用）
-    ├── gsap/
-    │   ├── gsap.min.js
-    │   ├── Flip.min.js
-    │   └── ScrollTrigger.min.js
-    ├── d3/
-    └── wordcloud/
+│   └── public/                    # Vite 静态资源目录（第三方库，构建时复制到 dist/）
+│       └── vendor/            # gsap/d3/wordcloud/i18next
 ```
 
 ---
@@ -193,8 +179,9 @@ src-tauri/
 │   └── shell.json             #   Shell（sidecar）权限
 │
 ├── sidecar-modules/           # Sidecar 运行时依赖
-│   ├── @prisma/               #   Prisma 客户端 for pkg
-│   ├── prisma-engine/         #   Prisma 引擎二进制
+│   ├── better-sqlite3/        #   原生 SQLite 模块（含 .node 二进制）
+│   ├── bindings/              #   原生模块绑定依赖
+│   ├── file-uri-to-path/      #   文件 URI 工具
 │   └── ffmpeg.exe             #   ffmpeg 捆绑
 │
 ├── icons/                     # 应用图标
@@ -211,21 +198,14 @@ src-tauri/
 
 ---
 
-## prisma/ — ORM / 数据库
+## prisma/ — DB 文件存放
 
 ```
 prisma/
-├── schema.prisma              # 表结构定义（Anime/Episode/MyList/Memory/PlaySession）
-├── anime.db                   # SQLite 数据库（运行时复制到 DATA_DIR）
-├── migrations/                # 数据库迁移历史
-│   ├── migration_lock.toml
-│   ├── 20260617110218_init/
-│   ├── 20260621164732_add_season_chain/
-│   ├── 20260625162226_mylist/
-│   └── 20260704062223_add_mylist_fields/
-├── prisma/                    # Prisma 客户端产物
-└── server/                    # server/ 引用的 Prisma 客户端
+└── anime.db                   # SQLite 数据库（better-sqlite3 读写，DATA_DIR 指向此文件）
 ```
+
+> schema 与迁移不由此目录管理：表结构真源在 `server/db.js`（INIT_SQL + `ensureSchema()` 版本化迁移器，写 MigrationLog 表）。`npm run db:migrate` 触发迁移。
 
 ---
 
@@ -274,11 +254,12 @@ docs/
 | 组件样式 | `frontend/src/css/components/*.css` (10 个) |
 | 布局样式 | `frontend/src/css/layouts/*.css` (2 个) |
 | 设计 Token | `frontend/src/css/tokens.css` |
-| 第三方库 | `public/vendor/` (gsap/d3/wordcloud) |
+| 第三方库 | `frontend/public/vendor/` (gsap/d3/wordcloud/i18next) |
+| 前端文案字典 | `frontend/src/js/i18n-zh.js`（i18n，改文案只改这里） |
+| 前端检查脚本 | `scripts/check-frontend.js`（`npm run check:frontend` 一键检查+构建） |
 | Rust 入口 | `src-tauri/src/main.rs` |
 | Tauri 配置 | `src-tauri/tauri.conf.json` |
-| Prisma schema | `prisma/schema.prisma` |
-| 数据库迁移 | `prisma/migrations/` (4 个) |
+| DB schema 与迁移 | `server/db.js`（`ensureSchema` + MigrationLog，`npm run db:migrate`） |
 | 后端测试 | `server/__tests__/` |
 | 路由测试 | `server/__tests__/routes/*.test.js` (8 个) |
 | 配置文件 | `server/config.json` |

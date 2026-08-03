@@ -135,13 +135,13 @@ assert.strictEqual(res._body.ok, true);
 - 文件系统操作（scanner）用真实临时目录
 - 对于 route 测试：`state.db` 方法用 mock async 函数，不连真实 SQLite
 
-## Prisma 环境
+## 数据层测试环境
 
 测试使用独立的 in-memory SQLite 数据库，不污染 `anime.db`。`db.test.js` 中：
 
 ```js
 beforeEach(() => {
-  // 创建新 Prisma 客户端连接内存数据库
+  // 创建新的 better-sqlite3 内存数据库
   db.init({ databaseUrl: 'file:./test.db' });
 });
 

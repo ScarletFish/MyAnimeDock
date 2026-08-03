@@ -30,6 +30,8 @@ src-tauri/.cargo/
 
 # Prisma
 *.db
+*.db-shm
+*.db-wal
 
 # Tauri sidecar build artifacts
 src-tauri/server-x86_64*
@@ -39,10 +41,6 @@ src-tauri/sidecar-modules/
 # Build artifacts
 build-tauri.bat
 rustup-init.exe
-
-# Generated Prisma working directories
-prisma/prisma/
-prisma/server/
 
 # Generated runtime files
 server/.port

@@ -6,6 +6,7 @@
 |------|---------|------|
 | `process.exit(0)` 跳过 `server.close()` | 退出行为 | `AGENTS.md` Gotchas |
 | 封面路径迁移后不存在 | Covers | `startup-config.md` |
+| 清理缓存时注意数据库引用（banner 本地路径引用需同步置 null） | Banners | `import-metadata.md` |
 | Bangumi API fetch 在 pkg 中需 polyfill | Metadata | `import-metadata.md` |
 | CSS `--scale` 禁止 `zoom` | UI | `docs/dev/frontend.md` |
 | anilistId 唯一性冲突处理 | DB | `save-taxonomy.md` |

@@ -222,7 +222,7 @@ module.exports = {
   },
 
   // POST /api/db/clear-cache — 清除缓存文件（封面/缩略图/横幅）
-  async handleDbClearCache(req, res) {
+  async handleDbClearCache(req, res, state) {
     try {
       const body = await readBody(req);
       const { target } = JSON.parse(body || '{}');
@@ -259,6 +259,22 @@ module.exports = {
         }
         results[t] = { ok: true, cleared, size: freed };
       }
+      // 清横幅缓存后，同步清掉 DB 里指向已删文件的本地路径引用（置 null），
+      // 解锁懒加载重下（library.js handleGetAnime 的 syncAnilistDetail / backfill）
+      if (targets.includes('banners') && state?.data?.library) {
+        const clearedIds = new Set();
+        for (const a of state.data.library) {
+          if (a.anilistBanner && a.anilistBanner !== '__none__' && !a.anilistBanner.startsWith('http')) {
+            a.anilistBanner = null;
+            clearedIds.add(a.id);
+          }
+        }
+        if (clearedIds.size > 0 && state.db?.saveLibrary) {
+          await state.db.saveLibrary(state.data, clearedIds);
+        }
+        results.banners = { ...(results.banners || {}), refsCleared: clearedIds.size };
+      }
+
       jsonResp(res, 200, { ok: true, results });
     } catch (e) {
       jsonResp(res, 500, { error: '清除缓存失败: ' + e.message });

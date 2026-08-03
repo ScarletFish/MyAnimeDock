@@ -60,6 +60,8 @@ POST /api/bangumi/fetch (for library items — already imported)
 
 ### 搜索优化策略
 
+> **清横幅缓存行为**：`POST /api/db/clear-cache`（`db-manager.js handleDbClearCache`）清 `banners` 目标时，会同步把 DB 中 `anilistBanner` 为**本地路径**（非 http / 非 `__none__` / 非 null）的引用置 null 并落盘（`saveLibrary`）。这样本地路径才不会卡死上表懒加载条件——置 null 后打开详情页即触发 `syncAnilistDetail` 重新下载。远程 URL / `__none__` / 已有 null 的引用不动。
+
 1. **搜索词分级**：两档优先搜索（romaji / 日文名 → 英文 / 中文 / 文件夹名），前者命中即停
 2. **搜索结果预取 banner**：流内内联 AniList 搜索从 SEARCH 结果直接提取 `bannerImage` + `title_english`，对 ~80%+ 条目免去后续 DETAIL_QUERY
 3. **去重缓存**：`registry._searchCache`（5 分钟 TTL）缓存 SEARCH 结果；`anilist._pendingSearches` Map 共享相同关键词的 in-flight Promise

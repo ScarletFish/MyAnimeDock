@@ -90,7 +90,7 @@ assert.deepStrictEqual(parseFolderName('[bgm5] Title (2024)'), {
 | `mylist.test.js` | 13 | 6/7 | 仅 state mock |
 | `config.test.js` | 14 | 4/4 | 仅 state mock |
 | `stats.test.js` | 19 | 6/6 | 仅 state mock |
-| `db-manager.test.js` | 13 | 6/8 | state.db mock + fs monkey-patch; 跳过二进制流/文件读取 |
+| `db-manager.test.js` | 15 | 6/8 | state.db mock + fs monkey-patch; 跳过二进制流/文件读取 |
 | `discovery.test.js` | 23 | 5/6 | state mock + require.cache mock for scanner; 跳过 SSE |
 | `library.test.js` | 9 | 3/5 | state mock; 跳过 SSE/AniList |
 | `bangumi.test.js` | 18 | 8/9 | require.cache mock for scrapers + scanner |

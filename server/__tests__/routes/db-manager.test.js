@@ -253,6 +253,50 @@ describe('db-manager route handlers', () => {
       assert.ok(res._body.results.covers);
       assert.ok(res._body.results.banners);
     });
+
+    it('nulls local-path banner refs (unlocking lazy re-download) when banners cache cleared', async () => {
+      let savedIds = null;
+      const state = mockState({
+        data: {
+          library: [
+            { id: 'a1', anilistBanner: 'D:/data/banners/al-196187.jpg' },   // 本地路径 → 置 null
+            { id: 'a2', anilistBanner: '__none__' },                        // 语义标记 → 不动
+            { id: 'a3', anilistBanner: 'https://s4.anilist.co/banner.jpg' },// 远程 URL → 不动
+            { id: 'a4', anilistBanner: null },                              // 本就无 → 不动
+          ],
+        },
+        db: {
+          saveLibrary: async (data, ids) => { savedIds = ids; },
+        },
+      });
+      const req = mockReq({ url: '/api/db/clear-cache', method: 'POST', body: JSON.stringify({ target: 'banners' }) });
+      const res = mockRes();
+      await dbmgr.handleDbClearCache(req, res, state);
+
+      assert.strictEqual(res._status, 200);
+      assert.strictEqual(res._body.results.banners.refsCleared, 1);
+      assert.strictEqual(state.data.library[0].anilistBanner, null);
+      assert.strictEqual(state.data.library[1].anilistBanner, '__none__');
+      assert.strictEqual(state.data.library[2].anilistBanner, 'https://s4.anilist.co/banner.jpg');
+      assert.strictEqual(state.data.library[3].anilistBanner, null);
+      assert.ok(savedIds, 'saveLibrary should be called with cleared ids');
+      assert.ok(savedIds.has('a1'));
+    });
+
+    it('does not null banner refs when only thumbs cleared', async () => {
+      const state = mockState({
+        data: {
+          library: [{ id: 'a1', anilistBanner: 'D:/data/banners/al-196187.jpg' }],
+        },
+      });
+      const req = mockReq({ url: '/api/db/clear-cache', method: 'POST', body: JSON.stringify({ target: 'thumbs' }) });
+      const res = mockRes();
+      await dbmgr.handleDbClearCache(req, res, state);
+
+      assert.strictEqual(res._status, 200);
+      assert.strictEqual(state.data.library[0].anilistBanner, 'D:/data/banners/al-196187.jpg');
+      assert.strictEqual(res._body.results.banners, undefined);
+    });
   });
 
   describe('handleDbReset', () => {

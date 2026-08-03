@@ -1,11 +1,23 @@
-// server/db.js — Prisma/SQLite 数据层封装（单存储）
+// server/db.js — SQLite 数据层封装（单存储，better-sqlite3 原生 SQL）
 // SQLite 是 library / playSessions 唯一持久化目标
 // scannedTree 和 config 由 server.js 独立管理 JSON 文件
 // 提供 loadData() / saveAll() / shutdown()
 
 const path = require('path');
 const fs = require('fs');
-const { PrismaClient } = require('@prisma/client');
+
+// better-sqlite3 是原生模块：dev 模式直接 require；pkg 快照无法内嵌 .node，
+// 必须从 exe 旁的 sidecar-modules 运行时加载（动态 require + NODE_PATH，
+// 使 better-sqlite3 内部的 bindings/file-uri-to-path 也能解析）。
+let Database;
+if (process.pkg) {
+  const sidecarDir = path.join(path.dirname(process.execPath), 'sidecar-modules');
+  process.env.NODE_PATH = sidecarDir + path.delimiter + (process.env.NODE_PATH || '');
+  require('module').Module._initPaths();
+  Database = require(path.join(sidecarDir, 'better-sqlite3'));
+} else {
+  Database = require('better-sqlite3');
+}
 const logger = require('./logger').child('[DB]');
 
 // 数据目录：pkg 模式在 %APPDATA%/MyAnimeDock（可写），开发模式在项目根
@@ -21,10 +33,9 @@ if (!fs.existsSync(DATA_DIR)) {
 
 // 开发模式：DB 在 prisma/anime.db（迁移已有）
 // 生产模式：DB 在 %APPDATA%/MyAnimeDock/anime.db（可写）
-// 使用绝对路径 + 正斜杠，因为 Prisma 将相对路径解析为相对 schema 目录
 const DB_PATH = process.pkg
-  ? `file:${path.join(DATA_DIR, 'anime.db').replace(/\\/g, '/')}`
-  : `file:${path.join(DATA_DIR, 'prisma', 'anime.db').replace(/\\/g, '/')}`;
+  ? path.join(DATA_DIR, 'anime.db')
+  : path.join(DATA_DIR, 'prisma', 'anime.db');
 // 用于文件存在性检查（pkg 模式下 DB 直接在 DATA_DIR，dev 模式在 prisma/ 子目录）
 const DB_FILE = process.pkg
   ? path.join(DATA_DIR, 'anime.db')
@@ -32,15 +43,19 @@ const DB_FILE = process.pkg
 
 // ─── pkg 模式：原生模块路径修复 ───
 // pkg 无法打包 .node 原生模块，需要从外部 node_modules/ 加载。
-// copy-sidecar-deps.js 在构建时复制这些模块到 src-tauri/node_modules/。
+// copy-sidecar-deps.js 在构建时复制这些模块到 src-tauri/sidecar-modules/。
 // Tauri 安装后这些文件在 resources/ 子目录下，而非 exe 同级。
-// 此代码搜索多个候选路径确保找到引擎和原生模块。
+// 此代码搜索多个候选路径确保找到原生模块。
+// 注：better-sqlite3 是原生 .node 模块，pkg 快照无法内联，需运行时 require。
+//     PRISMA_QUERY_ENGINE_LIBRARY / NODE_PATH / Module._initPaths hack 已随
+//     Prisma 弃用而删除；FFMPEG_BIN 逻辑保留。
+
+let nodeModulesDir = null;
 
 if (process.pkg) {
   const exeDir = path.dirname(process.execPath);
-  
+
   // 候选路径：exe同级 → Tauri资源目录（resources/ 子目录）
-  // Tauri MSI/NSIS 将 bundled resources 放在 resources/ 子目录
   const nodeModulesCandidates = [
     path.join(exeDir, 'sidecar-modules'),                 // 开发/独立部署
     path.join(exeDir, 'resources', 'sidecar-modules'),    // Tauri MSI安装
@@ -48,32 +63,15 @@ if (process.pkg) {
     path.join(exeDir, 'node_modules'),                    // 旧路径回退
     path.join(exeDir, 'resources', 'node_modules'),       // 旧路径回退
   ];
-  
-  let nodeModulesDir = null;
+
   for (const dir of nodeModulesCandidates) {
     if (fs.existsSync(dir)) {
       nodeModulesDir = dir;
       break;
     }
   }
-  
+
   if (nodeModulesDir) {
-    // Prisma 查询引擎路径（Tauri resources glob 不匹配 . 开头路径，使用 prisma-engine/）
-    const prismaEngine = path.join(nodeModulesDir, 'prisma-engine', 'query_engine-windows.dll.node');
-      if (fs.existsSync(prismaEngine)) {
-        process.env.PRISMA_QUERY_ENGINE_LIBRARY = prismaEngine;
-        logger.info(`Prisma engine: ${prismaEngine}`);
-      } else {
-        logger.warn('Prisma engine not found — SQLite will be unavailable');
-      }
-    
-    // 配置 NODE_PATH 让 require() 能找到 Prisma 等模块
-    const existingPath = process.env.NODE_PATH || '';
-    const sep = existingPath ? ';' : '';
-    process.env.NODE_PATH = existingPath + sep + nodeModulesDir;
-    require('module').Module._initPaths();
-    logger.info(`Added NODE_PATH: ${nodeModulesDir}`);
-    
     // ffmpeg 二进制路径（ffmpeg-static 检查 FFMPEG_BIN 环境变量）
     const ffmpegBin = path.join(nodeModulesDir, 'ffmpeg.exe');
     if (fs.existsSync(ffmpegBin)) {
@@ -86,10 +84,10 @@ if (process.pkg) {
 }
 
 // ─── 首次启动自动建表 SQL ───
-// 首次启动时 anime.db 不存在，PrismaClient 连接后自动创建空文件，
+// 首次启动时 anime.db 不存在，连接后自动创建空文件，
 // 但不会创建表。以下 SQL 在首次启动时自建制表（CREATE TABLE IF NOT EXISTS）。
 const INIT_SQL = [
-  `CREATE TABLE IF NOT EXISTS "Anime" ("id" TEXT NOT NULL PRIMARY KEY, "folderPath" TEXT NOT NULL, "folderName" TEXT NOT NULL, "title" TEXT NOT NULL, "season" INTEGER, "importedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "downloaded" BOOLEAN NOT NULL DEFAULT true, "bangumiId" INTEGER, "bangumiTitle" TEXT, "bangumiTitleJp" TEXT, "summary" TEXT, "coverUrl" TEXT, "localCover" TEXT, "rating" REAL, "source" TEXT, "pinyinTitle" TEXT, "matchedSeason" INTEGER, "metadata" TEXT, "anilistId" INTEGER, "anilistBanner" TEXT, "anilistCover" TEXT, "anilistTitleEn" TEXT)`,
+  `CREATE TABLE IF NOT EXISTS "Anime" ("id" TEXT NOT NULL PRIMARY KEY, "folderPath" TEXT NOT NULL, "folderName" TEXT NOT NULL, "title" TEXT NOT NULL, "season" INTEGER, "importedAt" DATETIME NOT NULL DEFAULT (unixepoch() * 1000), "downloaded" BOOLEAN NOT NULL DEFAULT true, "bangumiId" INTEGER, "bangumiTitle" TEXT, "bangumiTitleJp" TEXT, "summary" TEXT, "coverUrl" TEXT, "localCover" TEXT, "rating" REAL, "source" TEXT, "pinyinTitle" TEXT, "matchedSeason" INTEGER, "metadata" TEXT, "anilistId" INTEGER, "anilistBanner" TEXT, "anilistCover" TEXT, "anilistTitleEn" TEXT)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "Anime_folderPath_key" ON "Anime"("folderPath")`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "Anime_bangumiId_key" ON "Anime"("bangumiId")`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "Anime_anilistId_key" ON "Anime"("anilistId")`,
@@ -106,7 +104,7 @@ const INIT_SQL = [
   `CREATE INDEX IF NOT EXISTS "PlaySession_animeId_idx" ON "PlaySession"("animeId")`,
   `CREATE INDEX IF NOT EXISTS "PlaySession_sessionId_idx" ON "PlaySession"("sessionId")`,
   `CREATE INDEX IF NOT EXISTS "PlaySession_startTime_idx" ON "PlaySession"("startTime")`,
-  `CREATE TABLE IF NOT EXISTS "MyList" ("id" TEXT NOT NULL PRIMARY KEY, "animeId" TEXT REFERENCES "Anime"("id") ON DELETE CASCADE, "bangumiId" INTEGER, "title" TEXT NOT NULL DEFAULT '', "bangumiTitle" TEXT, "coverUrl" TEXT, "summary" TEXT, "status" TEXT NOT NULL DEFAULT 'watching', "rating" REAL, "thoughts" TEXT, "notes" TEXT, "startedAt" DATETIME, "completedAt" DATETIME, "progress" INTEGER, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" DATETIME NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS "MyList" ("id" TEXT NOT NULL PRIMARY KEY, "animeId" TEXT REFERENCES "Anime"("id") ON DELETE CASCADE, "bangumiId" INTEGER, "title" TEXT NOT NULL DEFAULT '', "bangumiTitle" TEXT, "coverUrl" TEXT, "summary" TEXT, "status" TEXT NOT NULL DEFAULT 'watching', "rating" REAL, "thoughts" TEXT, "notes" TEXT, "startedAt" DATETIME, "completedAt" DATETIME, "progress" INTEGER, "createdAt" DATETIME NOT NULL DEFAULT (unixepoch() * 1000), "updatedAt" DATETIME NOT NULL)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "MyList_animeId_key" ON "MyList"("animeId")`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "MyList_bangumiId_key" ON "MyList"("bangumiId")`,
   `CREATE INDEX IF NOT EXISTS "MyList_animeId_idx" ON "MyList"("animeId")`,
@@ -114,25 +112,125 @@ const INIT_SQL = [
   `CREATE INDEX IF NOT EXISTS "MyList_status_idx" ON "MyList"("status")`,
   `CREATE TABLE IF NOT EXISTS "ScannedTree" ("id" TEXT NOT NULL PRIMARY KEY DEFAULT 'current', "data" TEXT NOT NULL, "updatedAt" DATETIME NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS "Config" ("id" TEXT NOT NULL PRIMARY KEY DEFAULT 'singleton', "data" TEXT NOT NULL, "updatedAt" DATETIME NOT NULL)`,
-  `CREATE TABLE IF NOT EXISTS "MigrationLog" ("id" TEXT NOT NULL PRIMARY KEY, "version" TEXT NOT NULL, "appliedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "description" TEXT)`,
+  `CREATE TABLE IF NOT EXISTS "MigrationLog" ("id" TEXT NOT NULL PRIMARY KEY, "version" TEXT NOT NULL, "appliedAt" DATETIME NOT NULL DEFAULT (unixepoch() * 1000), "description" TEXT)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "MigrationLog_version_key" ON "MigrationLog"("version")`,
 ];
 
-let prisma = null;
+// ─── 单例数据库连接 ───
+let db = null;
 
-function getPrisma() {
-  if (!prisma) {
-    prisma = new PrismaClient({
-      datasources: { db: { url: DB_PATH } },
-    });
+function getDb() {
+  if (!db) {
+    db = new Database(DB_PATH);
+    db.pragma('journal_mode = WAL');
+    db.pragma('busy_timeout = 5000');
+    // 🔴 必写：否则 ON DELETE CASCADE 级联删除静默失效
+    db.pragma('foreign_keys = ON');
   }
-  return prisma;
+  return db;
+}
+
+// ─── 版本化迁移函数表 ───
+// "schema sync"（ensureSchema 的 CREATE TABLE IF NOT EXISTS + ALTER 补列循环）是基线，
+// 幂等且已被测试覆盖，不在此表登记。此表仅登记需显式数据/结构变更的版本。
+// 每个版本 `up(db)` 内自行完成变更；MigrationLog 记录已应用版本，重复启动天然跳过。
+// 注意：`up` 中禁用 VACUUM（better-sqlite3 不允许在事务内 VACUUM；此处也不包事务）。
+const MIGRATIONS = [
+  {
+    version: 'v2_merge_wishlist',
+    description: 'Merge Wishlist into MyList — nullable animeId + bangumiId fields',
+    up(d) {
+      // 检查旧表是否仍有 NOT NULL 约束
+      const colInfo = d.prepare(`SELECT name, "notnull" FROM pragma_table_info('MyList')`).all();
+      const animeIdCol = colInfo.find(c => c.name === 'animeId');
+      if (animeIdCol && animeIdCol.notnull === 1) {
+        logger.info('[Migration v2] Merging Wishlist into MyList — recreating table...');
+        d.exec(`PRAGMA foreign_keys=OFF`);
+
+        // 删除旧索引
+        d.exec(`DROP INDEX IF EXISTS "MyList_animeId_key"`);
+        d.exec(`DROP INDEX IF EXISTS "MyList_animeId_idx"`);
+        d.exec(`DROP INDEX IF EXISTS "MyList_status_idx"`);
+
+        // 创建新表（animeId 可空，含 bangumiId/元数据字段）
+        d.exec(`
+          CREATE TABLE IF NOT EXISTS "MyList_v2" (
+            "id" TEXT NOT NULL PRIMARY KEY,
+            "animeId" TEXT REFERENCES "Anime"("id") ON DELETE CASCADE,
+            "bangumiId" INTEGER,
+            "title" TEXT NOT NULL DEFAULT '',
+            "bangumiTitle" TEXT,
+            "coverUrl" TEXT,
+            "summary" TEXT,
+            "status" TEXT NOT NULL DEFAULT 'watching',
+            "rating" REAL,
+            "thoughts" TEXT,
+            "notes" TEXT,
+            "createdAt" DATETIME NOT NULL DEFAULT (unixepoch() * 1000),
+            "updatedAt" DATETIME NOT NULL
+          )
+        `);
+
+        // 复制旧 MyList 数据
+        d.exec(`
+          INSERT INTO "MyList_v2" ("id", "animeId", "status", "rating", "thoughts", "notes", "createdAt", "updatedAt")
+          SELECT "id", "animeId", "status", "rating", "thoughts", "notes", "createdAt", "updatedAt" FROM "MyList"
+        `);
+
+        // 迁移 Wishlist 数据到 MyList
+        const hasWishlist = d.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='Wishlist'`).all();
+        if (hasWishlist.length > 0) {
+          d.exec(`
+            INSERT INTO "MyList_v2" ("id", "bangumiId", "title", "bangumiTitle", "coverUrl", "summary", "rating", "status", "createdAt", "updatedAt")
+            SELECT "id", "bangumiId", "title", "bangumiTitle", "coverUrl", "summary", "rating", 'wish', "addedAt", "addedAt" FROM "Wishlist"
+          `);
+          d.exec(`DROP TABLE IF EXISTS "Wishlist"`);
+        }
+
+        // 切换表
+        d.exec(`DROP TABLE IF EXISTS "MyList"`);
+        d.exec(`ALTER TABLE "MyList_v2" RENAME TO "MyList"`);
+
+        // 重建索引
+        d.exec(`CREATE UNIQUE INDEX IF NOT EXISTS "MyList_animeId_key" ON "MyList"("animeId")`);
+        d.exec(`CREATE UNIQUE INDEX IF NOT EXISTS "MyList_bangumiId_key" ON "MyList"("bangumiId")`);
+        d.exec(`CREATE INDEX IF NOT EXISTS "MyList_animeId_idx" ON "MyList"("animeId")`);
+        d.exec(`CREATE INDEX IF NOT EXISTS "MyList_bangumiId_idx" ON "MyList"("bangumiId")`);
+        d.exec(`CREATE INDEX IF NOT EXISTS "MyList_status_idx" ON "MyList"("status")`);
+
+        d.exec(`PRAGMA foreign_keys=ON`);
+        logger.info('[Migration v2] Wishlist merged into MyList');
+      } else {
+        // 表已使用新 schema，但可能仍有遗留 Wishlist 表
+        d.exec(`DROP TABLE IF EXISTS "Wishlist"`);
+      }
+    },
+  },
+];
+
+// 运行未应用的版本化迁移，并把应用过的版本写入 MigrationLog。
+// 结束后幂等清理遗留 Wishlist 表（即使已迁移也执行，确保无残留）。
+function runMigrations() {
+  const d = getDb();
+  const applied = new Set(
+    d.prepare(`SELECT version FROM MigrationLog`).all().map(r => r.version)
+  );
+  for (const mig of MIGRATIONS) {
+    if (applied.has(mig.version)) continue;
+    logger.info(`[Migration] ${mig.version}: ${mig.description}`);
+    mig.up(d);
+    d.prepare(`INSERT INTO MigrationLog (id, version, description, appliedAt) VALUES (?, ?, ?, ?)`)
+      .run(mig.version, mig.version, mig.description, Date.now());
+  }
+  // 幂等：无论是否已迁移，都确保遗留 Wishlist 表被清理
+  d.exec(`DROP TABLE IF EXISTS "Wishlist"`);
 }
 
 /**
  * 首次启动时自动创建表结构（CREATE TABLE IF NOT EXISTS）。
- * 对已有表检查缺少的列（如通过 Prisma 迁移添加的列），自动 ALTER TABLE 补充。
+ * 对已有表检查缺少的列（如通过迁移添加的列），自动 ALTER TABLE 补充。
  * 不依赖 Prisma 迁移历史，适用于 pkg 生产环境。
+ * 保持 async 签名以兼容原调用方（内部为同步执行）。
  */
 async function ensureSchema() {
   if (!fs.existsSync(DB_FILE)) {
@@ -144,19 +242,17 @@ async function ensureSchema() {
   }
 
   try {
-    const p = getPrisma();
+    const d = getDb();
 
     // 1. 获取已有表名
-    const existingTables = await p.$queryRawUnsafe(
-      `SELECT name FROM sqlite_master WHERE type='table'`
-    );
+    const existingTables = d.prepare(`SELECT name FROM sqlite_master WHERE type='table'`).all();
     const tableNames = new Set(existingTables.map(r => r.name));
 
     if (tableNames.size === 0) {
       // 全新数据库 — 全量建表
       logger.info('Initializing database schema (fresh)...');
       for (const sql of INIT_SQL) {
-        await p.$executeRawUnsafe(sql);
+        d.exec(sql);
       }
       logger.info('Database schema initialized.');
       return;
@@ -164,7 +260,7 @@ async function ensureSchema() {
 
     // 2. 已有表：先 CREATE TABLE IF NOT EXISTS（新增表），再检查缺少的列
     for (const sql of INIT_SQL) {
-      await p.$executeRawUnsafe(sql);
+      d.exec(sql);
     }
 
     // 3. 对每个预定义表，检查并补充缺少的列
@@ -188,9 +284,7 @@ async function ensureSchema() {
       if (!tableNames.has(table.name)) continue;
 
       // 获取已有列名
-      const colInfo = await p.$queryRawUnsafe(
-        `SELECT name FROM pragma_table_info('${table.name}')`
-      );
+      const colInfo = d.prepare(`SELECT name FROM pragma_table_info('${table.name}')`).all();
       const existingCols = new Set(colInfo.map(c => c.name.toLowerCase()));
 
       for (const col of table.columns) {
@@ -198,88 +292,14 @@ async function ensureSchema() {
 
         // 列缺少 → ALTER TABLE ADD COLUMN
         logger.info(`Adding missing column: ${table.name}.${col.name}`);
-        await p.$executeRawUnsafe(
-          `ALTER TABLE "${table.name}" ADD COLUMN ${col.def}`
-        );
+        d.exec(`ALTER TABLE "${table.name}" ADD COLUMN ${col.def}`);
       }
     }
 
-    // ─── Migration v2: Merge Wishlist into MyList ───
-    // 使 animeId 可空，新增 bangumiId/标题/封面等字段，单表统一管理
-    const migExists = await p.migrationLog.findUnique({ where: { version: 'v2_merge_wishlist' } });
-    if (!migExists) {
-      // 检查旧表是否仍有 NOT NULL 约束
-      const colInfo = await p.$queryRawUnsafe(`SELECT name, "notnull" FROM pragma_table_info('MyList')`);
-      const animeIdCol = colInfo.find(c => c.name === 'animeId');
-      if (animeIdCol && animeIdCol.notnull === 1) {
-        logger.info('[Migration v2] Merging Wishlist into MyList — recreating table...');
-        await p.$executeRawUnsafe(`PRAGMA foreign_keys=OFF`);
-
-        // 删除旧索引
-        await p.$executeRawUnsafe(`DROP INDEX IF EXISTS "MyList_animeId_key"`);
-        await p.$executeRawUnsafe(`DROP INDEX IF EXISTS "MyList_animeId_idx"`);
-        await p.$executeRawUnsafe(`DROP INDEX IF EXISTS "MyList_status_idx"`);
-
-        // 创建新表（animeId 可空，含 bangumiId/元数据字段）
-        await p.$executeRawUnsafe(`
-          CREATE TABLE IF NOT EXISTS "MyList_v2" (
-            "id" TEXT NOT NULL PRIMARY KEY,
-            "animeId" TEXT REFERENCES "Anime"("id") ON DELETE CASCADE,
-            "bangumiId" INTEGER,
-            "title" TEXT NOT NULL DEFAULT '',
-            "bangumiTitle" TEXT,
-            "coverUrl" TEXT,
-            "summary" TEXT,
-            "status" TEXT NOT NULL DEFAULT 'watching',
-            "rating" REAL,
-            "thoughts" TEXT,
-            "notes" TEXT,
-            "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            "updatedAt" DATETIME NOT NULL
-          )
-        `);
-
-        // 复制旧 MyList 数据
-        await p.$executeRawUnsafe(`
-          INSERT INTO "MyList_v2" ("id", "animeId", "status", "rating", "thoughts", "notes", "createdAt", "updatedAt")
-          SELECT "id", "animeId", "status", "rating", "thoughts", "notes", "createdAt", "updatedAt" FROM "MyList"
-        `);
-
-        // 迁移 Wishlist 数据到 MyList
-        const hasWishlist = await p.$queryRawUnsafe(`SELECT name FROM sqlite_master WHERE type='table' AND name='Wishlist'`);
-        if (hasWishlist.length > 0) {
-          await p.$executeRawUnsafe(`
-            INSERT INTO "MyList_v2" ("id", "bangumiId", "title", "bangumiTitle", "coverUrl", "summary", "rating", "status", "createdAt", "updatedAt")
-            SELECT "id", "bangumiId", "title", "bangumiTitle", "coverUrl", "summary", "rating", 'wish', "addedAt", "addedAt" FROM "Wishlist"
-          `);
-          await p.$executeRawUnsafe(`DROP TABLE IF EXISTS "Wishlist"`);
-        }
-
-        // 切换表
-        await p.$executeRawUnsafe(`DROP TABLE IF EXISTS "MyList"`);
-        await p.$executeRawUnsafe(`ALTER TABLE "MyList_v2" RENAME TO "MyList"`);
-
-        // 重建索引
-        await p.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "MyList_animeId_key" ON "MyList"("animeId")`);
-        await p.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "MyList_bangumiId_key" ON "MyList"("bangumiId")`);
-        await p.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "MyList_animeId_idx" ON "MyList"("animeId")`);
-        await p.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "MyList_bangumiId_idx" ON "MyList"("bangumiId")`);
-        await p.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "MyList_status_idx" ON "MyList"("status")`);
-
-        await p.$executeRawUnsafe(`PRAGMA foreign_keys=ON`);
-        logger.info('[Migration v2] Wishlist merged into MyList');
-      } else {
-        // 表已使用新 schema，但可能仍有遗留 Wishlist 表
-        await p.$executeRawUnsafe(`DROP TABLE IF EXISTS "Wishlist"`);
-      }
-
-      await p.migrationLog.create({
-        data: { version: 'v2_merge_wishlist', description: 'Merge Wishlist into MyList — nullable animeId + bangumiId fields' },
-      });
-    } else {
-      // 迁移已完成，确保遗留 Wishlist 表被清理
-      await p.$executeRawUnsafe(`DROP TABLE IF EXISTS "Wishlist"`);
-    }
+    // ─── 版本化迁移 ───
+    // "schema sync"（上方 CREATE TABLE + ALTER 补列循环）是基线，幂等且已被测试覆盖；
+    // MIGRATIONS 表仅登记需显式数据/结构变更的版本，只跑 MigrationLog 未记录过的。
+    await runMigrations();
 
     logger.info('Database schema verified/updated.');
   } catch (e) {
@@ -288,9 +308,9 @@ async function ensureSchema() {
 }
 
 async function shutdown() {
-  if (prisma) {
-    await prisma.$disconnect();
-    prisma = null;
+  if (db) {
+    db.close();
+    db = null;
   }
 }
 
@@ -313,8 +333,9 @@ function animeToLegacy(a) {
     folderName: a.folderName,
     title: a.title,
     season: a.season,
-    importedAt: a.importedAt.toISOString(),
-    downloaded: a.downloaded,
+    importedAt: new Date(a.importedAt).toISOString(),
+    // 🔴 downloaded 存 0/1，必须强转布尔（否则前端 if(a.downloaded) 挂）
+    downloaded: !!a.downloaded,
     bangumiId: a.bangumiId,
     bangumiTitle: a.bangumiTitle,
     bangumiTitleJp: a.bangumiTitleJp,
@@ -338,7 +359,7 @@ function animeToLegacy(a) {
       fileName: e.fileName,
       fileSize: Number(e.fileSize),
       duration: e.duration,
-      watched: e.watched,
+      watched: !!e.watched,
       progress: e.progress,
     })),
   };
@@ -358,10 +379,10 @@ function myListToLegacy(m) {
     thoughts: m.thoughts || '',
     notes: m.notes || '',
     progress: m.progress,
-    startedAt: m.startedAt ? m.startedAt.toISOString() : null,
-    completedAt: m.completedAt ? m.completedAt.toISOString() : null,
-    createdAt: m.createdAt.toISOString(),
-    updatedAt: m.updatedAt.toISOString(),
+    startedAt: m.startedAt ? new Date(m.startedAt).toISOString() : null,
+    completedAt: m.completedAt ? new Date(m.completedAt).toISOString() : null,
+    createdAt: new Date(m.createdAt).toISOString(),
+    updatedAt: new Date(m.updatedAt).toISOString(),
   };
 }
 
@@ -370,12 +391,51 @@ function sessionToLegacy(s) {
     animeId: s.animeId,
     episodeNumber: s.episodeNumber,
     sessionId: s.sessionId,
-    startTime: s.startTime.toISOString(),
-    endTime: s.endTime ? s.endTime.toISOString() : null,
+    startTime: new Date(s.startTime).toISOString(),
+    endTime: s.endTime ? new Date(s.endTime).toISOString() : null,
     duration: s.duration,
     clockTime: s.clockTime,
     progressStart: s.progressStart,
   };
+}
+
+// ─── MyList 行读写辅助 ───
+
+const MYLIST_COLS = ['id', 'animeId', 'bangumiId', 'title', 'bangumiTitle', 'coverUrl', 'summary', 'status', 'rating', 'thoughts', 'notes', 'startedAt', 'completedAt', 'progress', 'createdAt', 'updatedAt'];
+
+function genId() {
+  // 模拟 Prisma cuid 的本地生成（无外部依赖）：时间戳 + 随机片段
+  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}${Math.random().toString(36).slice(2, 6)}`;
+}
+
+function insertMyListRow(d, data) {
+  const now = Date.now();
+  const params = {};
+  for (const c of MYLIST_COLS) {
+    params[c] = (data[c] !== undefined) ? data[c] : null;
+  }
+  if (params.id === null) params.id = genId();
+  params.createdAt = data.createdAt !== undefined ? data.createdAt : now;
+  params.updatedAt = now;
+  const colList = MYLIST_COLS.map(c => `"${c}"`).join(', ');
+  const valList = MYLIST_COLS.map(c => `@${c}`).join(', ');
+  d.prepare(`INSERT INTO MyList (${colList}) VALUES (${valList})`).run(params);
+}
+
+function updateMyListRow(d, id, data) {
+  const params = { ...data, id, updatedAt: Date.now() };
+  const setList = Object.keys(data).map(c => `"${c}" = @${c}`).join(', ');
+  d.prepare(`UPDATE MyList SET ${setList}, "updatedAt" = @updatedAt WHERE "id" = @id`).run(params);
+}
+
+function upsertMyListByAnimeId(d, animeId, data) {
+  const now = Date.now();
+  const existing = d.prepare(`SELECT id FROM MyList WHERE animeId = ?`).get(animeId);
+  if (existing) {
+    updateMyListRow(d, existing.id, data);
+  } else {
+    insertMyListRow(d, { id: animeId, animeId, ...data, createdAt: now });
+  }
 }
 
 // ─── Load ───
@@ -384,23 +444,28 @@ function sessionToLegacy(s) {
 // 若 SQLite 不可用（首次运行/DB 不存在）返回 null，调用者应回退到 JSON 文件。
 async function loadData() {
   try {
-    // 使用独立连接确保表存在（DDL 与主连接隔离）
-    await ensureSchema();
-    const p = getPrisma();
+    ensureSchema();
+    const d = getDb();
 
-    const [animeList, myList, playSessions, scannedTreeRecord] = await Promise.all([
-      p.anime.findMany({ orderBy: { importedAt: 'asc' }, include: { episodes: { orderBy: { number: 'asc' } } } }),
-      p.myList.findMany({ orderBy: { createdAt: 'desc' } }),
-      p.playSession.findMany(),
-      p.scannedTree.findUnique({ where: { id: 'current' } }),
-    ]);
+    const animeRows = d.prepare(`SELECT * FROM Anime ORDER BY importedAt ASC`).all();
+    const episodeRows = d.prepare(`SELECT * FROM Episode ORDER BY number ASC`).all();
+    const myListRows = d.prepare(`SELECT * FROM MyList ORDER BY createdAt DESC`).all();
+    const playSessionRows = d.prepare(`SELECT * FROM PlaySession`).all();
+    const scannedRow = d.prepare(`SELECT * FROM ScannedTree WHERE id = 'current'`).get();
+
+    // include episodes → 二次查询按 animeId 分组，episodes 已按 number 升序
+    const epByAnime = new Map();
+    for (const e of episodeRows) {
+      if (!epByAnime.has(e.animeId)) epByAnime.set(e.animeId, []);
+      epByAnime.get(e.animeId).push(e);
+    }
 
     return {
       discovered: [],
-      library: animeList.map(animeToLegacy),
-      myList: myList.map(myListToLegacy),
-      playSessions: playSessions.map(sessionToLegacy),
-      scannedTree: scannedTreeRecord ? JSON.parse(scannedTreeRecord.data) : [],
+      library: animeRows.map(a => animeToLegacy({ ...a, episodes: epByAnime.get(a.id) || [] })),
+      myList: myListRows.map(myListToLegacy),
+      playSessions: playSessionRows.map(sessionToLegacy),
+      scannedTree: scannedRow ? JSON.parse(scannedRow.data) : [],
     };
   } catch (e) {
     logger.error('Failed to load from SQLite:', e.message);
@@ -421,26 +486,45 @@ async function saveAll(data) {
   ]);
 }
 
+function upsertAnime(d, id, data) {
+  const params = { id };
+  const cols = [];
+  for (const c of Object.keys(data)) {
+    if (data[c] !== undefined) { cols.push(c); params[c] = data[c]; }
+  }
+  if (cols.length === 0) return;
+  const colList = ['id', ...cols].map(c => `"${c}"`).join(', ');
+  const valList = ['@id', ...cols.map(c => `@${c}`)].join(', ');
+  const updList = cols.map(c => `"${c}" = excluded."${c}"`).join(', ');
+  d.prepare(`INSERT INTO Anime (${colList}) VALUES (${valList}) ON CONFLICT("id") DO UPDATE SET ${updList}`).run(params);
+}
+
 async function saveLibrary(data, changedIds = null) {
   if (!data) return;
-  const p = getPrisma();
   try {
-    await p.$transaction(async (tx) => {
+    const d = getDb();
+    const txn = d.transaction((dataInner, changedIdsInner) => {
       const existingIds = new Set(
-        (await tx.anime.findMany({ select: { id: true } })).map(a => a.id)
+        d.prepare(`SELECT id FROM Anime`).all().map(a => a.id)
       );
-      const currentIds = new Set(data.library.map(a => a.id));
+      const currentIds = new Set(dataInner.library.map(a => a.id));
 
       for (const id of existingIds) {
         if (!currentIds.has(id)) {
-          await tx.anime.delete({ where: { id } });
+          // FK ON DELETE CASCADE 会连带清 Episode/PlaySession/MyList
+          d.prepare(`DELETE FROM Anime WHERE id = ?`).run(id);
         }
       }
 
       // If changedIds provided, only upsert those items (still handle deletions above)
-      const toProcess = changedIds
-        ? data.library.filter(a => changedIds.has(a.id))
-        : data.library;
+      const toProcess = changedIdsInner
+        ? dataInner.library.filter(a => changedIdsInner.has(a.id))
+        : dataInner.library;
+
+      const insEpisode = d.prepare(
+        `INSERT INTO Episode (id, animeId, number, filePath, fileName, fileSize, duration, watched, progress, watchedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      );
+      const delEpisodes = d.prepare(`DELETE FROM Episode WHERE animeId = ?`);
 
       for (const a of toProcess) {
         let ratingVal = a.rating;
@@ -449,7 +533,7 @@ async function saveLibrary(data, changedIds = null) {
           if (isNaN(ratingVal)) ratingVal = null;
         }
 
-        // Collect extra fields (no dedicated Prisma column) into metadata JSON
+        // Collect extra fields (no dedicated column) into metadata JSON
         const EXTRA_FIELDS = [
           'characters', 'persons', 'tags', 'date', 'platform',
           'ratingRank', 'ratingTotal', 'infobox', 'collection',
@@ -468,8 +552,8 @@ async function saveLibrary(data, changedIds = null) {
           folderName: a.folderName,
           title: a.title,
           season: a.season,
-          importedAt: new Date(a.importedAt),
-          downloaded: a.downloaded,
+          importedAt: new Date(a.importedAt).getTime(),
+          downloaded: a.downloaded ? 1 : 0,
           bangumiId: a.bangumiId,
           bangumiTitle: a.bangumiTitle,
           bangumiTitleJp: a.bangumiTitleJp,
@@ -489,10 +573,7 @@ async function saveLibrary(data, changedIds = null) {
 
         // Check bangumiId uniqueness — skip if another anime already owns it
         if (a.bangumiId) {
-          const existing = await tx.anime.findFirst({
-            where: { bangumiId: a.bangumiId, NOT: { id: a.id } },
-            select: { id: true },
-          });
+          const existing = d.prepare(`SELECT id FROM Anime WHERE bangumiId = ? AND id != ?`).get(a.bangumiId, a.id);
           if (existing) {
             logger.warn(`bangumiId ${a.bangumiId} already owned by ${existing.id}, skipping ${a.id}`);
             continue;
@@ -501,42 +582,36 @@ async function saveLibrary(data, changedIds = null) {
 
         // Check anilistId uniqueness — current record wins, clear old owner
         if (animeData.anilistId) {
-          const existingAnilist = await tx.anime.findFirst({
-            where: { anilistId: animeData.anilistId, NOT: { id: a.id } },
-            select: { id: true },
-          });
+          const existingAnilist = d.prepare(`SELECT id FROM Anime WHERE anilistId = ? AND id != ?`).get(animeData.anilistId, a.id);
           if (existingAnilist) {
             logger.warn(`anilistId ${animeData.anilistId} already owned by ${existingAnilist.id}, clearing old owner`);
-            await tx.anime.update({
-              where: { id: existingAnilist.id },
-              data: { anilistId: null, anilistBanner: null, anilistCover: null, anilistTitleEn: null },
-            });
+            d.prepare(`UPDATE Anime SET anilistId = NULL, anilistBanner = NULL, anilistCover = NULL, anilistTitleEn = NULL WHERE id = ?`).run(existingAnilist.id);
           }
         }
 
-        await tx.anime.upsert({
-          where: { id: a.id },
-          create: { id: a.id, ...animeData },
-          update: animeData,
-        });
+        upsertAnime(d, a.id, animeData);
 
         if (a.episodes && a.episodes.length > 0) {
-          await tx.episode.deleteMany({ where: { animeId: a.id } });
-          await tx.episode.createMany({
-            data: a.episodes.map(e => ({
-              animeId: a.id,
-              number: e.number,
-              filePath: e.filePath,
-              fileName: e.fileName,
-              fileSize: BigInt(e.fileSize || 0),
-              duration: e.duration,
-              watched: e.watched,
-              progress: e.progress,
-            })),
-          });
+          delEpisodes.run(a.id);
+          for (const e of a.episodes) {
+            insEpisode.run(
+              `${a.id}-${e.number}`,
+              a.id,
+              e.number,
+              e.filePath,
+              e.fileName,
+              Number(e.fileSize || 0),
+              e.duration ?? null,
+              e.watched ? 1 : 0,
+              e.progress ?? 0,
+              null
+            );
+          }
         }
       }
-    }, { timeout: 15000 });
+    });
+
+    txn(data, changedIds);
     const savedCount = changedIds ? changedIds.size : data.library.length;
     logger.info(`Synced library: ${savedCount} anime${changedIds ? ` (incremental, ${data.library.length} total)` : ''}`);
   } catch (e) {
@@ -549,33 +624,35 @@ async function saveLibrary(data, changedIds = null) {
 // animeId 有值 = 本地有文件的条目，bangumiId 有值 = 来自 Bangumi 的 wish 条目
 async function saveMyList(data) {
   if (!data) return;
-  const p = getPrisma();
   try {
-    await p.$transaction(async (tx) => {
-      const existing = await tx.myList.findMany({ select: { id: true, animeId: true, bangumiId: true, status: true } });
+    const d = getDb();
+    const txn = d.transaction((dataInner) => {
+      const existing = d.prepare(`SELECT id, animeId, bangumiId, status FROM MyList`).all();
       const existingByAnimeId = new Map(existing.filter(x => x.animeId).map(x => [x.animeId, x]));
       const existingByBgmId = new Map(existing.filter(x => x.bangumiId && !x.animeId).map(x => [String(x.bangumiId), x]));
       const existingById = new Map(existing.map(x => [x.id, x]));
 
-      const incomingAnimeIds = new Set((data.myList || []).filter(x => x.animeId).map(x => x.animeId));
-      const incomingBgmIds = new Set((data.myList || []).filter(x => !x.animeId && x.bangumiId).map(x => String(x.bangumiId)));
+      const incomingAnimeIds = new Set((dataInner.myList || []).filter(x => x.animeId).map(x => x.animeId));
+      const incomingBgmIds = new Set((dataInner.myList || []).filter(x => !x.animeId && x.bangumiId).map(x => String(x.bangumiId)));
+
+      const delStmt = d.prepare(`DELETE FROM MyList WHERE id = ?`);
 
       // Delete removed animeId-based items
       for (const [animeId, record] of existingByAnimeId) {
         if (!incomingAnimeIds.has(animeId)) {
-          await tx.myList.delete({ where: { id: record.id } });
+          delStmt.run(record.id);
         }
       }
 
       // Delete removed bangumiId-based items
       for (const [bgmId, record] of existingByBgmId) {
         if (!incomingBgmIds.has(bgmId)) {
-          await tx.myList.delete({ where: { id: record.id } });
+          delStmt.run(record.id);
         }
       }
 
       // Upsert incoming items
-      for (const item of data.myList || []) {
+      for (const item of dataInner.myList || []) {
         // Preserve existing DB status when incoming item has no explicit status
         let resolvedStatus = item.status;
         if (!resolvedStatus) {
@@ -586,12 +663,12 @@ async function saveMyList(data) {
         }
         const commonData = {
           status: resolvedStatus,
-          rating: item.rating,
+          rating: item.rating ?? null,
           thoughts: item.thoughts || '',
           notes: item.notes || '',
           progress: item.progress !== undefined ? item.progress : null,
-          startedAt: item.startedAt ? new Date(item.startedAt) : null,
-          completedAt: item.completedAt ? new Date(item.completedAt) : null,
+          startedAt: item.startedAt ? new Date(item.startedAt).getTime() : null,
+          completedAt: item.completedAt ? new Date(item.completedAt).getTime() : null,
           title: item.title || '',
           bangumiTitle: item.bangumiTitle || null,
           coverUrl: item.coverUrl || null,
@@ -600,29 +677,25 @@ async function saveMyList(data) {
 
         if (item.animeId) {
           // Library-linked item — upsert by animeId
-          await tx.myList.upsert({
-            where: { animeId: item.animeId },
-            create: { id: item.animeId, animeId: item.animeId, bangumiId: item.bangumiId || null, ...commonData },
-            update: { ...commonData, bangumiId: item.bangumiId || null },
-          });
+          const existingRow = d.prepare(`SELECT id FROM MyList WHERE animeId = ?`).get(item.animeId);
+          if (existingRow) {
+            updateMyListRow(d, existingRow.id, { ...commonData, bangumiId: item.bangumiId || null });
+          } else {
+            insertMyListRow(d, { id: item.animeId, animeId: item.animeId, bangumiId: item.bangumiId || null, ...commonData });
+          }
         } else if (item.bangumiId) {
           // Wish-only item — lookup by bangumiId
-          const existing = await tx.myList.findFirst({
-            where: { bangumiId: item.bangumiId, animeId: null },
-          });
-          if (existing) {
-            await tx.myList.update({
-              where: { id: existing.id },
-              data: { ...commonData },
-            });
+          const existingRow = d.prepare(`SELECT id FROM MyList WHERE bangumiId = ? AND animeId IS NULL`).get(item.bangumiId);
+          if (existingRow) {
+            updateMyListRow(d, existingRow.id, { ...commonData });
           } else {
-            await tx.myList.create({
-              data: { animeId: null, bangumiId: item.bangumiId, ...commonData },
-            });
+            insertMyListRow(d, { animeId: null, bangumiId: item.bangumiId, ...commonData });
           }
         }
       }
-    }, { timeout: 15000 });
+    });
+
+    txn(data);
     logger.info(`Synced MyList: ${(data.myList || []).length} items`);
   } catch (e) {
     logger.error('SQLite myList save error:', e.message);
@@ -633,12 +706,8 @@ async function saveMyList(data) {
 // ─── 精细化更新：单条 MyList 状态（仅限 library 条目） ───
 async function updateMyItemStatus(animeId, status) {
   try {
-    const p = getPrisma();
-    await p.myList.upsert({
-      where: { animeId },
-      create: { id: animeId, animeId, status },
-      update: { status },
-    });
+    const d = getDb();
+    upsertMyListByAnimeId(d, animeId, { status });
     logger.info(`Updated MyList status: ${animeId} → ${status}`);
   } catch (e) {
     logger.error('MyList status update error:', e.message);
@@ -647,43 +716,42 @@ async function updateMyItemStatus(animeId, status) {
 
 async function savePlaySessions(data) {
   if (!data) return;
-  const p = getPrisma();
   try {
-    await p.$transaction(async (tx) => {
+    const d = getDb();
+    const txn = d.transaction((dataInner) => {
       // Query valid anime IDs from DB (not data.library) to avoid deleting
       // sessions for existing anime when memory state is stale
-      const validRows = await tx.anime.findMany({ select: { id: true } });
+      const validRows = d.prepare(`SELECT id FROM Anime`).all();
       const validIds = new Set(validRows.map(a => a.id));
       if (validIds.size > 0) {
-        await tx.playSession.deleteMany({
-          where: { animeId: { notIn: Array.from(validIds) } },
-        });
+        // 守卫空数组：validIds 非空才拼 NOT IN
+        const ids = Array.from(validIds);
+        const ph = ids.map(() => '?').join(',');
+        d.prepare(`DELETE FROM PlaySession WHERE animeId NOT IN (${ph})`).run(...ids);
       } else {
-        await tx.playSession.deleteMany();
+        d.prepare(`DELETE FROM PlaySession`).run();
       }
 
-      const validSessions = (data.playSessions || []).filter(s => validIds.has(s.animeId));
+      const validSessions = (dataInner.playSessions || []).filter(s => validIds.has(s.animeId));
+      const upsertStmt = d.prepare(
+        `INSERT INTO PlaySession (id, animeId, episodeNumber, sessionId, startTime, endTime, duration, clockTime, progressStart) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT("sessionId") DO UPDATE SET endTime = excluded.endTime, duration = excluded.duration, clockTime = excluded.clockTime`
+      );
       for (const s of validSessions) {
-        await tx.playSession.upsert({
-          where: { sessionId: s.sessionId },
-          create: {
-            animeId: s.animeId,
-            episodeNumber: s.episodeNumber,
-            sessionId: s.sessionId,
-            startTime: new Date(s.startTime),
-            endTime: s.endTime ? new Date(s.endTime) : null,
-            duration: s.duration,
-            clockTime: s.clockTime,
-            progressStart: s.progressStart,
-          },
-          update: {
-            endTime: s.endTime ? new Date(s.endTime) : null,
-            duration: s.duration,
-            clockTime: s.clockTime,
-          },
-        });
+        upsertStmt.run(
+          s.sessionId,
+          s.animeId,
+          s.episodeNumber,
+          s.sessionId,
+          new Date(s.startTime).getTime(),
+          s.endTime ? new Date(s.endTime).getTime() : null,
+          s.duration,
+          s.clockTime,
+          s.progressStart
+        );
       }
-    }, { timeout: 15000 });
+    });
+
+    txn(data);
   } catch (e) {
     logger.error('SQLite playSessions save error:', e.message);
     throw e;
@@ -694,16 +762,15 @@ async function savePlaySessions(data) {
 
 async function updateEpisodeProgress(animeId, epNumber, fields) {
   try {
-    const p = getPrisma();
+    const d = getDb();
     const data = {};
     if (fields.progress !== undefined) data.progress = fields.progress;
     if (fields.duration !== undefined) data.duration = fields.duration;
-    if (fields.watched !== undefined) data.watched = fields.watched;
+    if (fields.watched !== undefined) data.watched = fields.watched ? 1 : 0;
     if (Object.keys(data).length === 0) return true;
-    await p.episode.updateMany({
-      where: { animeId, number: epNumber },
-      data,
-    });
+    const setList = Object.keys(data).map(c => `"${c}" = @${c}`).join(', ');
+    d.prepare(`UPDATE Episode SET ${setList} WHERE "animeId" = @animeId AND "number" = @number`)
+      .run({ ...data, animeId, number: epNumber });
     return true;
   } catch (e) {
     logger.error('Episode progress update error:', e.message);
@@ -714,16 +781,15 @@ async function updateEpisodeProgress(animeId, epNumber, fields) {
 async function updatePlaySession(sessionId, fields) {
   try {
     if (!sessionId) return true;
-    const p = getPrisma();
+    const d = getDb();
     const data = {};
-    if (fields.endTime !== undefined) data.endTime = new Date(fields.endTime);
+    if (fields.endTime !== undefined) data.endTime = new Date(fields.endTime).getTime();
     if (fields.duration !== undefined) data.duration = fields.duration;
     if (fields.clockTime !== undefined) data.clockTime = fields.clockTime;
     if (Object.keys(data).length === 0) return true;
-    await p.playSession.updateMany({
-      where: { sessionId },
-      data,
-    });
+    const setList = Object.keys(data).map(c => `"${c}" = @${c}`).join(', ');
+    d.prepare(`UPDATE PlaySession SET ${setList} WHERE "sessionId" = @sessionId`)
+      .run({ ...data, sessionId });
     return true;
   } catch (e) {
     logger.error('PlaySession update error:', e.message);
@@ -734,11 +800,15 @@ async function updatePlaySession(sessionId, fields) {
 async function updateAnime(id, fields) {
   try {
     if (!id || !fields || Object.keys(fields).length === 0) return true;
-    const p = getPrisma();
-    await p.anime.updateMany({
-      where: { id },
-      data: fields,
-    });
+    const d = getDb();
+    // 动态 SET 过滤 undefined（Prisma 忽略 undefined，原生层必须自己过滤）
+    const data = {};
+    for (const k of Object.keys(fields)) {
+      if (fields[k] !== undefined) data[k] = fields[k];
+    }
+    if (Object.keys(data).length === 0) return true;
+    const setList = Object.keys(data).map(c => `"${c}" = @${c}`).join(', ');
+    d.prepare(`UPDATE Anime SET ${setList} WHERE "id" = @id`).run({ ...data, id });
     return true;
   } catch (e) {
     logger.error('Anime update error:', e.message);
@@ -749,8 +819,8 @@ async function updateAnime(id, fields) {
 async function deletePlaySession(sessionId) {
   try {
     if (!sessionId) return true;
-    const p = getPrisma();
-    await p.playSession.deleteMany({ where: { sessionId } });
+    const d = getDb();
+    d.prepare(`DELETE FROM PlaySession WHERE sessionId = ?`).run(sessionId);
     return true;
   } catch (e) {
     logger.error('PlaySession delete error:', e.message);
@@ -761,11 +831,9 @@ async function deletePlaySession(sessionId) {
 async function updateEpisodesWatched(animeId, episodeNumbers) {
   try {
     if (!episodeNumbers.length) return true;
-    const p = getPrisma();
-    await p.episode.updateMany({
-      where: { animeId, number: { in: episodeNumbers } },
-      data: { watched: true },
-    });
+    const d = getDb();
+    const ph = episodeNumbers.map(() => '?').join(',');
+    d.prepare(`UPDATE Episode SET watched = 1 WHERE "animeId" = ? AND "number" IN (${ph})`).run(animeId, ...episodeNumbers);
     return true;
   } catch (e) {
     logger.error('Episodes watched batch update error:', e.message);
@@ -775,21 +843,17 @@ async function updateEpisodesWatched(animeId, episodeNumbers) {
 
 async function updateMyListItem(animeId, fields) {
   try {
-    const p = getPrisma();
+    const d = getDb();
     const data = {};
     if (fields.status !== undefined) data.status = fields.status;
     if (fields.rating !== undefined) data.rating = fields.rating;
     if (fields.thoughts !== undefined) data.thoughts = fields.thoughts;
     if (fields.notes !== undefined) data.notes = fields.notes;
     if (fields.progress !== undefined) data.progress = fields.progress;
-    if (fields.startedAt !== undefined) data.startedAt = fields.startedAt ? new Date(fields.startedAt) : null;
-    if (fields.completedAt !== undefined) data.completedAt = fields.completedAt ? new Date(fields.completedAt) : null;
+    if (fields.startedAt !== undefined) data.startedAt = fields.startedAt ? new Date(fields.startedAt).getTime() : null;
+    if (fields.completedAt !== undefined) data.completedAt = fields.completedAt ? new Date(fields.completedAt).getTime() : null;
     if (Object.keys(data).length === 0) return true;
-    await p.myList.upsert({
-      where: { animeId },
-      create: { id: animeId, animeId, ...data },
-      update: data,
-    });
+    upsertMyListByAnimeId(d, animeId, data);
     logger.info(`Updated MyList item: ${animeId}`);
     return true;
   } catch (e) {
@@ -798,4 +862,31 @@ async function updateMyListItem(animeId, fields) {
   }
 }
 
-module.exports = { loadData, saveAll, saveLibrary, saveMyList, updateMyItemStatus, updateMyListItem, savePlaySessions, updateEpisodeProgress, updateEpisodesWatched, updatePlaySession, updateAnime, deletePlaySession, shutdown, getPrisma, ensureSchema };
+// ─── 管理操作：clear-sessions / vacuum / reset ───
+// 供 db-manager.js 使用（替代原 getPrisma() 的 deleteMany / $executeRawUnsafe）。
+
+// 清空 PlaySession（等价原 getPrisma().playSession.deleteMany()）
+async function clearSessions() {
+  const d = getDb();
+  d.prepare(`DELETE FROM PlaySession`).run();
+}
+
+// SQLite VACUUM 优化。
+// better-sqlite3 的 VACUUM 不能在事务内执行，此函数不入事务、直接执行。
+async function vacuum() {
+  const d = getDb();
+  d.exec('VACUUM');
+}
+
+// 重置：清空 4 张表（PlaySession / Episode / Anime / MyList）。
+// 等价原 getPrisma() 的 playSession/episode/anime/myList.deleteMany()。
+// 依赖 PRAGMA foreign_keys=ON，Anime 删除会级联清理关联 Episode/PlaySession/MyList。
+async function reset() {
+  const d = getDb();
+  d.prepare(`DELETE FROM PlaySession`).run();
+  d.prepare(`DELETE FROM Episode`).run();
+  d.prepare(`DELETE FROM Anime`).run();
+  d.prepare(`DELETE FROM MyList`).run();
+}
+
+module.exports = { loadData, saveAll, saveLibrary, saveMyList, updateMyItemStatus, updateMyListItem, savePlaySessions, updateEpisodeProgress, updateEpisodesWatched, updatePlaySession, updateAnime, deletePlaySession, shutdown, ensureSchema, clearSessions, vacuum, reset };

@@ -50,18 +50,13 @@ describe('db-manager route handlers', () => {
   });
 
   describe('handleDbClearSessions', () => {
-    it('returns 200 and calls deleteMany + loadData', async () => {
-      let deleteManyCalled = false;
+    it('returns 200 and calls clearSessions + loadData', async () => {
+      let clearSessionsCalled = false;
       let loadDataCalled = false;
-      const mockPrisma = {
-        playSession: {
-          deleteMany: async () => { deleteManyCalled = true; },
-        },
-      };
       const state = mockState({
         data: { playSessions: [{ id: 'old' }] },
         db: {
-          getPrisma: () => mockPrisma,
+          clearSessions: async () => { clearSessionsCalled = true; },
           loadData: async () => {
             loadDataCalled = true;
             return { playSessions: [] };
@@ -72,20 +67,15 @@ describe('db-manager route handlers', () => {
       const res = mockRes();
       await dbmgr.handleDbClearSessions(req, res, state);
       assert.strictEqual(res._status, 200);
-      assert.ok(deleteManyCalled, 'deleteMany should be called');
+      assert.ok(clearSessionsCalled, 'clearSessions should be called');
       assert.ok(loadDataCalled, 'loadData should be called');
       assert.deepStrictEqual(state.data.playSessions, []);
     });
 
     it('returns 500 when db throws', async () => {
-      const mockPrisma = {
-        playSession: {
-          deleteMany: async () => { throw new Error('DB error'); },
-        },
-      };
       const state = mockState({
         db: {
-          getPrisma: () => mockPrisma,
+          clearSessions: async () => { throw new Error('DB error'); },
         },
       });
       const req = mockReq({ url: '/api/db/clear-sessions', method: 'POST', body: '{}' });
@@ -98,14 +88,9 @@ describe('db-manager route handlers', () => {
   describe('handleDbVacuum', () => {
     it('returns 200 and calls VACUUM', async () => {
       let vacuumCalled = false;
-      const mockPrisma = {
-        $executeRawUnsafe: async (sql) => {
-          if (sql === 'VACUUM') vacuumCalled = true;
-        },
-      };
       const state = mockState({
         db: {
-          getPrisma: () => mockPrisma,
+          vacuum: async () => { vacuumCalled = true; },
         },
       });
       const req = mockReq({ url: '/api/db/vacuum', method: 'POST', body: '{}' });
@@ -116,12 +101,9 @@ describe('db-manager route handlers', () => {
     });
 
     it('returns 500 when VACUUM fails', async () => {
-      const mockPrisma = {
-        $executeRawUnsafe: async () => { throw new Error('VACUUM failed'); },
-      };
       const state = mockState({
         db: {
-          getPrisma: () => mockPrisma,
+          vacuum: async () => { throw new Error('VACUUM failed'); },
         },
       });
       const req = mockReq({ url: '/api/db/vacuum', method: 'POST', body: '{}' });
@@ -301,32 +283,25 @@ describe('db-manager route handlers', () => {
 
   describe('handleDbReset', () => {
     it('returns 200 and clears library, myList, playSessions', async () => {
-      const mockPrisma = {
-        playSession: { deleteMany: async () => {} },
-        episode: { deleteMany: async () => {} },
-        anime: { deleteMany: async () => {} },
-        myList: { deleteMany: async () => {} },
-      };
+      let resetCalled = false;
       const state = mockState({
         data: { library: [{ id: '1' }], myList: [{ id: 'm1' }], playSessions: [{ id: 's1' }] },
-        db: { getPrisma: () => mockPrisma },
+        db: { reset: async () => { resetCalled = true; } },
       });
       const req = mockReq({ url: '/api/db/reset', method: 'POST', body: '{}' });
       const res = mockRes();
       await dbmgr.handleDbReset(req, res, state);
       assert.strictEqual(res._status, 200);
+      assert.ok(resetCalled, 'reset should be called');
       assert.strictEqual(state.data.library.length, 0);
       assert.strictEqual(state.data.myList.length, 0);
       assert.strictEqual(state.data.playSessions.length, 0);
     });
 
     it('returns 500 when db throws', async () => {
-      const mockPrisma = {
-        playSession: { deleteMany: async () => { throw new Error('DB error'); } },
-      };
       const state = mockState({
         data: { library: [], myList: [], playSessions: [] },
-        db: { getPrisma: () => mockPrisma },
+        db: { reset: async () => { throw new Error('DB error'); } },
       });
       const req = mockReq({ url: '/api/db/reset', method: 'POST', body: '{}' });
       const res = mockRes();

@@ -9,7 +9,7 @@
 //   const logger = require('./logger');
 //   logger.info('Server started');
 //   const dbLog = logger.child('[DB]');
-//   dbLog.warn('Prisma engine not found');
+//   dbLog.warn('Database engine not found');
 
 const LEVELS = { debug: 0, info: 1, warn: 2, error: 3, none: 99 };
 const LEVEL_LABELS = { debug: 'DEBUG', info: 'INFO ', warn: 'WARN ', error: 'ERROR' };

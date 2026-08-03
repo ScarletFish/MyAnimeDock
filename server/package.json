@@ -11,23 +11,21 @@
     "test:routes": "node --test __tests__/routes/*.test.js"
   },
   "pkg": {
-    "assets": [
-      "../public/**/*"
-    ],
+    "assets": [],
     "scripts": [
       "scanner.js",
       "mpv-controller.js",
       "scrapers/**/*.js"
     ],
-    "targets": ["node18-win-x64"]
+    "targets": ["node22-win-x64"]
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "@prisma/client": "^5.22.0",
     "anitomy": "^0.0.35",
+    "better-sqlite3": "^12.6.0",
     "ffmpeg-static": "^5.3.0",
     "pinyin": "^4.0.0"
   }

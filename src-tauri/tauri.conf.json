@@ -26,11 +26,7 @@
     ],
     "resources": {
       "../frontend/dist": "frontend/dist",
-      "sidecar-modules/prisma-engine": "sidecar-modules/prisma-engine",
-      "sidecar-modules/@prisma/client": "sidecar-modules/@prisma/client",
-      "sidecar-modules/@prisma/debug": "sidecar-modules/@prisma/debug",
-      "sidecar-modules/@prisma/engines-version": "sidecar-modules/@prisma/engines-version",
-      "sidecar-modules/@prisma/get-platform": "sidecar-modules/@prisma/get-platform",
+      "sidecar-modules/better-sqlite3": "sidecar-modules/better-sqlite3",
       "sidecar-modules/ffmpeg.exe": "sidecar-modules/ffmpeg.exe"
     },
     "windows": {

@@ -61,27 +61,6 @@ if (process.pkg) {
   }
 }
 
-// ── pkg 模式：NODE_PATH 让 require() 能找到原生模块 ──
-if (process.pkg) {
-  const nativeDirs = [
-    path.join(path.dirname(process.execPath), 'resources', 'sidecar-modules'),
-    path.join(path.dirname(process.execPath), 'sidecar-modules'),
-  ];
-  for (const dir of nativeDirs) {
-    if (fs.existsSync(dir)) {
-      bootLog(`NODE_PATH candidate found: ${dir}`);
-      if (!process.env.NODE_PATH) process.env.NODE_PATH = '';
-      if (!process.env.NODE_PATH.includes(dir)) {
-        process.env.NODE_PATH += ';' + dir;
-      }
-    } else {
-      bootLog(`NODE_PATH candidate missing: ${dir}`);
-    }
-  }
-  require('module').Module._initPaths();
-  bootLog('NODE_PATH setup done');
-}
-
 // ── 业务模块加载 ──
 bootLog('Loading db...');
 let db;

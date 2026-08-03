@@ -189,8 +189,7 @@ module.exports = {
   async handleDbClearSessions(req, res, state) {
     try {
       const body = await readBody(req);
-      const p = state.db.getPrisma();
-      await p.playSession.deleteMany();
+      await state.db.clearSessions();
 
       // 重新加载数据
       const newData = await state.db.loadData();
@@ -210,9 +209,8 @@ module.exports = {
   // POST /api/db/vacuum — SQLite VACUUM 优化
   async handleDbVacuum(req, res, state) {
     try {
-      const p = state.db.getPrisma();
-      // VACUUM 不能在事务中执行，使用独立连接
-      await p.$executeRawUnsafe('VACUUM');
+      // VACUUM 不能在事务中执行，db.vacuum() 内部直接执行（better-sqlite3）
+      await state.db.vacuum();
       
       const newSize = fs.existsSync(DB_FILE) ? fs.statSync(DB_FILE).size : 0;
       jsonResp(res, 200, { ok: true, message: '数据库优化完成', dbSize: newSize });
@@ -296,12 +294,8 @@ module.exports = {
         logger.info(`Auto-backup before reset: ${backupPath}`);
       }
 
-      // 2. 清空所有表
-      const p = db.getPrisma();
-      await p.playSession.deleteMany();
-      await p.episode.deleteMany();
-      await p.anime.deleteMany();
-      await p.myList.deleteMany();
+      // 2. 清空所有表（db.reset() 内部清空 PlaySession/Episode/Anime/MyList）
+      await db.reset();
 
       // 3. 重置内存数据
       data.library = [];

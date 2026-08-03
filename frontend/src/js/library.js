@@ -62,11 +62,11 @@ async function loadLibrary(soft = false) {
     await renderDashboard();     // 等所有异步 section（stats）加载完
     __debug.snapshot('loadLibrary hard — before restore');
     restoreLibraryScroll();      // 此时内容高度已稳定
-  } catch (e) {
-    // Tauri 初始加载时（frontendDist，非 server 源）静默失败
-    if (!window.location.origin.startsWith('http')) return;
-    showToast('加载动漫库失败: ' + e.message, 'error');
-  }
+} catch (e) {
+      // Tauri 初始加载时（frontendDist，非 server 源）静默失败
+      if (!window.location.origin.startsWith('http')) return;
+      showToast(t('library.loadFailed', { message: e.message }), 'error');
+    }
 }
 
 function restoreLibraryScroll() {
@@ -97,16 +97,16 @@ function renderDashboard() {
           '<path d="M38 40l4-2v4l-4-2z" fill="currentColor" fill-opacity="0.3" stroke="none"/>' +
         '</svg>' +
       '</div>' +
-      '<h2 class="library-empty-title">还没有导入动漫</h2>' +
-      '<p class="library-empty-desc">先去发现页扫描你的动漫文件夹，<br>然后导入到资料库开始管理吧</p>' +
+      '<h2 class="library-empty-title">' + t('library.emptyTitle') + '</h2>' +
+      '<p class="library-empty-desc">' + t('library.emptyDesc1') + '<br>' + t('library.emptyDesc2') + '</p>' +
       '<div class="library-empty-actions">' +
         '<button class="btn btn-primary" onclick="showView(\'discovery\')">' +
           '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>' +
-          '去发现页' +
+          t('library.goDiscovery') +
         '</button>' +
         '<button class="btn" onclick="openSettings()">' +
           '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>' +
-          '设置媒体目录' +
+          t('library.setMediaDir') +
         '</button>' +
       '</div>';
     container.appendChild(emptyState);
@@ -126,19 +126,19 @@ function renderDashboard() {
       case 'stats':
         sectionIds.push('stats');
         sectionHTML += '<div class="dashboard-section" data-section="stats">' +
-          '<div class="dashboard-section-header"><span class="dashboard-section-title">统计概览</span></div>' +
+          '<div class="dashboard-section-header"><span class="dashboard-section-title">' + t('library.statsOverview') + '</span></div>' +
           '<div class="dashboard-section-body" id="dashSection-stats"></div></div>';
         break;
       case 'continueWatch':
         sectionIds.push('continueWatch');
         sectionHTML += '<div class="dashboard-section hscroll-section" data-section="continueWatch">' +
-          '<div class="dashboard-section-header"><span class="dashboard-section-title">继续观看</span></div>' +
+          '<div class="dashboard-section-header"><span class="dashboard-section-title">' + t('library.continueWatching') + '</span></div>' +
           '<div class="dashboard-section-body" id="dashSection-continueWatch"></div></div>';
         break;
       case 'localLibrary':
         sectionIds.push('localLibrary');
         sectionHTML += '<div class="dashboard-section" data-section="localLibrary">' +
-          '<div class="dashboard-section-header"><span class="dashboard-section-title">本地动漫</span>' +
+          '<div class="dashboard-section-header"><span class="dashboard-section-title">' + t('library.localAnime') + '</span>' +
           '<div class="library-sort-bar" id="librarySortDropdown"></div>' +
           '</div>' +
           '<div class="dashboard-section-body" id="dashSection-localLibrary"></div></div>';
@@ -152,7 +152,7 @@ function renderDashboard() {
   if (sectionIds.indexOf('stats') !== -1) {
     var statsBody = document.getElementById('dashSection-stats');
     if (statsBody) {
-      statsBody.innerHTML = '<div class="dashboard-stats-loading">加载中...</div>';
+      statsBody.innerHTML = '<div class="dashboard-stats-loading">' + t('common.loading') + '</div>';
       renderStatsSection(libraryData, statsBody).catch(function() {});
     }
   }
@@ -173,7 +173,7 @@ function renderDashboard() {
 }
 
 function renderStatsSection(data, container) {
-  container.innerHTML = '<div class="dashboard-stats-loading">加载中...</div>';
+  container.innerHTML = '<div class="dashboard-stats-loading">' + t('common.loading') + '</div>';
 
   return API.get('/api/stats').then(function(stats) {
     function fmtTime(sec) {
@@ -193,13 +193,13 @@ function renderStatsSection(data, container) {
     var sizeStr = fmtSize(stats.totalFileSize || 0);
     container.innerHTML =
       '<div class="dashboard-stats">' +
-        '<div class="dashboard-stats-item"><b>' + sizeStr + '</b>大小</div>' +
-        '<div class="dashboard-stats-item"><b>' + stats.totalFileCount + '</b>文件</div>' +
-        '<div class="dashboard-stats-item"><b>' + stats.watching + '</b>追番</div>' +
-        '<div class="dashboard-stats-item"><b>' + stats.completed + '</b>看完</div>' +
-        '<div class="dashboard-stats-item"><b>' + stats.total + '</b>本地</div>' +
-        '<div class="dashboard-stats-item"><b>' + stats.totalEpWatched + '</b>集数</div>' +
-        '<div class="dashboard-stats-item"><b>' + timeStr + '</b>时长</div>' +
+        '<div class="dashboard-stats-item"><b>' + sizeStr + '</b>' + t('library.statSize') + '</div>' +
+        '<div class="dashboard-stats-item"><b>' + stats.totalFileCount + '</b>' + t('library.statFiles') + '</div>' +
+        '<div class="dashboard-stats-item"><b>' + stats.watching + '</b>' + t('library.statWatching') + '</div>' +
+        '<div class="dashboard-stats-item"><b>' + stats.completed + '</b>' + t('library.statCompleted') + '</div>' +
+        '<div class="dashboard-stats-item"><b>' + stats.total + '</b>' + t('library.statLocal') + '</div>' +
+        '<div class="dashboard-stats-item"><b>' + stats.totalEpWatched + '</b>' + t('library.statEpisodeCount') + '</div>' +
+        '<div class="dashboard-stats-item"><b>' + timeStr + '</b>' + t('library.statDuration') + '</div>' +
       '</div>';
   }).catch(function() {
     container.style.display = 'none';
@@ -305,7 +305,7 @@ function renderContinueSection(data, container) {
         '<div class="dashboard-continue-overlay"></div>' +
         '<div class="dashboard-continue-content">' +
           '<div class="dashboard-continue-info">' +
-            '<div class="dashboard-continue-label">继续播放</div>' +
+            '<div class="dashboard-continue-label">' + t('library.continuePlay') + '</div>' +
             '<div class="dashboard-continue-title">' + title + '</div>' +
           '</div>' +
         '</div>' +
@@ -315,7 +315,7 @@ function renderContinueSection(data, container) {
         '<div class="dashboard-continue-progress-bar-wrap">' +
           // 进度条 = 集数占整季比例
           '<div class="dashboard-continue-progress-bar"><div class="dashboard-continue-progress-fill" style="width:' + (ep && total ? Math.round(ep.number / total * 100) : 0) + '%"></div></div>' +
-          '<span class="dashboard-continue-progress-label">第 ' + (ep ? ep.number : '?') + ' / ' + total + ' 集</span>' +
+          '<span class="dashboard-continue-progress-label">' + t('library.episodeProgress', { current: (ep ? ep.number : '?'), total: total }) + '</span>' +
         '</div>' +
       '</div>';
     }).join('') +
@@ -367,9 +367,9 @@ function renderStatusGrids(data) {
 
   // Three status sections: filter null as wish (计划中)
   var sections = [
-    { status: 'watching', label: '进行中' },
-    { status: 'wish', label: '计划中' },
-    { status: 'completed', label: '已完成' }
+    { status: 'watching', label: t('common.watching') },
+    { status: 'wish', label: t('common.wish') },
+    { status: 'completed', label: t('common.completed') }
   ];
 
   container.innerHTML = sections.map(function(cfg) {
@@ -428,21 +428,21 @@ function showContextMenu(e, animeId) {
   menu.innerHTML =
     '<div class="context-menu-item" id="ctxCopyTitle" tabindex="0">' +
       '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>' +
-      '<span>复制标题</span>' +
+      '<span>' + t('library.copyTitle') + '</span>' +
     '</div>' +
     (bangumiId ? '<div class="context-menu-item" id="ctxOpenBgm" tabindex="0">' +
       '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>' +
-      '<span>在 Bangumi 打开</span>' +
+      '<span>' + t('library.openInBgm') + '</span>' +
     '</div>' : '') +
     '<div class="context-menu-divider"></div>' +
     '<div class="context-menu-item" tabindex="0" onclick="event.stopPropagation();contextToggleStatus()">' +
       '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' +
-      '<span>标记状态</span>' +
+      '<span>' + t('library.markStatus') + '</span>' +
     '</div>' +
     '<div class="context-menu-divider"></div>' +
     '<div class="context-menu-item context-menu-danger" id="ctxDelete" tabindex="0">' +
       '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>' +
-      '<span>移除</span>' +
+      '<span>' + t('common.remove') + '</span>' +
     '</div>';
 
   // Bind event listeners
@@ -474,9 +474,9 @@ function contextCopyTitle() {
   const title = anime.bangumiTitle || anime.title || '';
   if (!title) return;
   navigator.clipboard.writeText(title).then(function() {
-    showToast('已复制「' + title + '」', 'success');
+    showToast(t('library.copiedTitle', { title: title }), 'success');
   }).catch(function() {
-    showToast('复制失败', 'error');
+    showToast(t('library.copyFailed'), 'error');
   });
 }
 
@@ -492,7 +492,7 @@ async function contextOpenBgm() {
     try {
       await window.__TAURI__.shell.open(url);
     } catch (e) {
-      showToast('打开浏览器失败', 'error');
+      showToast(t('library.openBrowserFailed'), 'error');
     }
   } else {
     window.open(url, '_blank');
@@ -521,14 +521,14 @@ async function contextDeleteAnime() {
   if (!animeId) return;
   const anime = libraryData.find(a => a.id === animeId);
   const title = anime ? anime.title : animeId;
-  if (!(await showConfirm(`确定移出「${title}」？<br>仅从库中移除，不影响本地文件。`))) return;
+  if (!(await showConfirm(t('library.confirmRemove', { title: title })))) return;
   try {
     await API.del(`/api/anime/${encodeURIComponent(animeId)}`);
-    showToast('已删除', 'success');
+    showToast(t('library.deleted'), 'success');
     loadLibrary();
     if (typeof loadMyList === 'function') loadMyList();
   } catch (e) {
-    showToast('删除失败: ' + e.message, 'error');
+    showToast(t('library.deleteFailed', { message: e.message }), 'error');
   }
 }
 

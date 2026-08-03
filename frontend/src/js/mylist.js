@@ -9,11 +9,11 @@ const MYLIST_STATUS_ORDER = ['watching', 'wish', 'completed', 'on_hold', 'droppe
 // ─── Sort (owned by My List, shared with Dashboard) ───
 
 const ANIME_SORT_OPTIONS = [
-  { key: 'name', label: '名称' },
-  { key: 'recent', label: '最近观看' },
-  { key: 'updated', label: '最近更新' },
-  { key: 'rating', label: '评分' },
-  { key: 'imported', label: '导入时间' },
+  { key: 'name', label: t('mylist.sortName') },
+  { key: 'recent', label: t('mylist.sortRecent') },
+  { key: 'updated', label: t('mylist.sortUpdated') },
+  { key: 'rating', label: t('common.rating') },
+  { key: 'imported', label: t('mylist.sortImported') },
 ];
 
 const mylistSortDropdown = createDropdown({
@@ -98,7 +98,7 @@ async function loadMyList() {
     }
   } catch (e) {
     if (!window.location.origin.startsWith('http')) return;
-    showToast('加载我的列表失败: ' + e.message, 'error');
+    showToast(t('mylist.loadFailed', { message: e.message }), 'error');
   }
 }
 
@@ -115,7 +115,7 @@ function renderMyListStatusBar() {
   });
 
   const statuses = [
-    { key: 'all', label: '全部' },
+    { key: 'all', label: t('common.all') },
     ...MYLIST_STATUS_ORDER.map(s => ({ key: s, label: MYLIST_LABELS[s] || s })),
   ];
 
@@ -161,7 +161,7 @@ function renderMyList() {
     grid.innerHTML = '';
     if (empty) empty.style.display = 'flex';
     const p = empty ? empty.querySelector('p') : null;
-    if (p) p.textContent = mylistFilter === 'all' ? '暂无内容' : '暂无"' + (MYLIST_LABELS[mylistFilter] || '') + '"的条目';
+    if (p) p.textContent = mylistFilter === 'all' ? t('common.empty') : t('mylist.emptyFiltered', { label: (MYLIST_LABELS[mylistFilter] || '') });
     return;
   }
 
@@ -279,9 +279,9 @@ function showWishlistDetail(id) {
       <div class="wishlist-detail-actions">
         <a class="btn btn-primary" href="${(typeof window.getBangumiFrontendUrl === 'function' ? window.getBangumiFrontendUrl() : 'https://bgm.tv')}/subject/${item.bangumiId}" target="_blank" rel="noopener">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-          在 Bangumi 中打开
+          ${t('mylist.openInBgmFull')}
         </a>
-        <button class="btn btn-ghost" onclick="this.closest('.modal-overlay').remove()">关闭</button>
+        <button class="btn btn-ghost" onclick="this.closest('.modal-overlay').remove()">${t('common.close')}</button>
       </div>
       <button class="modal-close-btn" onclick="this.closest('.modal-overlay').remove()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -407,7 +407,7 @@ function openStatusModal(e, id) {
 
   // Title
   const titleEl = document.getElementById('statusModalTitle');
-  if (titleEl) titleEl.textContent = anime ? (anime.bangumiTitle || anime.title || '标记状态') : '标记状态';
+  if (titleEl) titleEl.textContent = anime ? (anime.bangumiTitle || anime.title || t('mylist.markStatus')) : t('mylist.markStatus');
 
   // Cover background
   const bgEl = document.getElementById('statusModalBg');
@@ -424,7 +424,7 @@ function openStatusModal(e, id) {
 
   // Status: vanilla dropdown
   var curStatus = (item && item.status) || 'wish';
-  document.getElementById('statusDdText').textContent = STATUS_LABELS[curStatus] || '计划中';
+  document.getElementById('statusDdText').textContent = STATUS_LABELS[curStatus] || t('common.wish');
   document.getElementById('statusDd').querySelectorAll('.status-dd-opt').forEach(function(o) {
     o.classList.toggle('is-selected', o.getAttribute('data-value') === curStatus);
   });
@@ -518,13 +518,13 @@ async function saveStatusModal() {
 
   try {
     await API.put('/api/mylist/' + encodeURIComponent(id), data);
-    showToast('已保存', 'success');
+    showToast(t('mylist.saved'), 'success');
     closeModal('statusModal');
     hideContextMenu();
     loadMyList();
     if (typeof loadLibrary === 'function') loadLibrary();
   } catch (e) {
-    showToast('保存失败: ' + e.message, 'error');
+    showToast(t('mylist.saveFailed', { message: e.message }), 'error');
   }
 }
 
@@ -542,27 +542,27 @@ function showMyListContextMenu(e, id) {
 
   if (item.source === 'wishlist') {
     menu.innerHTML = `
-      <div class="context-menu-item context-menu-danger" onclick="event.stopPropagation();deleteWishlistItem('${id}')">从愿望单移除</div>`;
+      <div class="context-menu-item context-menu-danger" onclick="event.stopPropagation();deleteWishlistItem('${id}')">${t('mylist.removeFromWishlist')}</div>`;
   } else {
     const title = item.bangumiTitle || item.title || '';
     menu.innerHTML =
-      '<div class="context-menu-item" onclick="event.stopPropagation();navigator.clipboard.writeText(\'' + escAttr(title) + '\').then(function(){showToast(\'已复制\',\'success\')}).catch(function(){showToast(\'复制失败\',\'error\')});hideContextMenu()">' +
+      '<div class="context-menu-item" onclick="event.stopPropagation();navigator.clipboard.writeText(\'' + escAttr(title) + '\').then(function(){showToast(\'' + t('mylist.copied') + '\',\'success\')}).catch(function(){showToast(\'' + t('mylist.copyFailed') + '\',\'error\')});hideContextMenu()">' +
         '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>' +
-        '<span>复制标题</span>' +
+        '<span>' + t('mylist.copyTitle') + '</span>' +
       '</div>' +
       '<div class="context-menu-item" onclick="event.stopPropagation();hideContextMenu();var _bgm=(typeof window.getBangumiFrontendUrl === \'function\'?window.getBangumiFrontendUrl():\'https://bgm.tv\');(window.__TAURI__?.shell?.open||function(u){window.open(u,\'_blank\')})(_bgm+\'/subject/\'+id)">' +
         '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>' +
-        '<span>在 Bangumi 打开</span>' +
+        '<span>' + t('mylist.openInBgm') + '</span>' +
       '</div>' +
       '<div class="context-menu-divider"></div>' +
       '<div class="context-menu-item" onclick="event.stopPropagation();hideContextMenu();openStatusModal(null, \'' + id + '\')">' +
         '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' +
-        '<span>标记状态</span>' +
+        '<span>' + t('mylist.markStatus') + '</span>' +
       '</div>' +
       '<div class="context-menu-divider"></div>' +
       '<div class="context-menu-item context-menu-danger" onclick="event.stopPropagation();removeMyListItem(\'' + id + '\')">' +
         '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>' +
-        '<span>移除</span>' +
+        '<span>' + t('common.remove') + '</span>' +
       '</div>';
   }
 
@@ -582,24 +582,24 @@ function showMyListContextMenu(e, id) {
 async function setMyListItemStatus(id, status) {
   try {
     await API.put(`/api/mylist/${encodeURIComponent(id)}/status`, { status });
-    showToast('状态已更新', 'success');
+    showToast(t('mylist.statusUpdated'), 'success');
     hideContextMenu();
     loadMyList();
     if (typeof loadLibrary === 'function') loadLibrary();
   } catch (e) {
-    showToast('更新失败: ' + e.message, 'error');
+    showToast(t('mylist.updateFailed', { message: e.message }), 'error');
   }
 }
 
 async function deleteWishlistItem(id) {
   hideContextMenu();
-  if (!(await showConfirm('从愿望单移除？'))) return;
+  if (!(await showConfirm(t('mylist.confirmRemoveFromWishlist')))) return;
   try {
     await API.del(`/api/wishlist/${encodeURIComponent(id)}`);
-    showToast('已移除', 'info');
+    showToast(t('mylist.removed'), 'info');
     loadMyList();
   } catch (e) {
-    showToast('移除失败: ' + e.message, 'error');
+    showToast(t('mylist.removeFailed', { message: e.message }), 'error');
   }
 }
 
@@ -607,13 +607,13 @@ async function removeMyListItem(id) {
   hideContextMenu();
   const item = mylistData.find(i => i.id === id);
   const name = item ? (item.bangumiTitle || item.title || id) : id;
-  if (!(await showConfirm(`将「${name}」从列表中移除？<br><small class="text-content">动漫库中的条目不受影响</small>`))) return;
+  if (!(await showConfirm(t('mylist.confirmRemove', { name: name })))) return;
   try {
     await API.del(`/api/mylist/${encodeURIComponent(id)}`);
-    showToast('已移除', 'info');
+    showToast(t('mylist.removed'), 'info');
     loadMyList();
   } catch (e) {
-    showToast('移除失败: ' + e.message, 'error');
+    showToast(t('mylist.removeFailed', { message: e.message }), 'error');
   }
 }
 

@@ -26,7 +26,7 @@ function mmOpenModal() {
     onClose: function() {
       // 同步中关闭弹窗 → 确认对话框
       if (mmSyncInProgress) {
-        if (!confirm('匹配尚未完成，退出将中断正在进行的匹配。\n已匹配的条目数据不会丢失，未完成的条目可重新匹配。\n\n确定退出？')) {
+        if (!confirm(t('metamatch.confirmAbort'))) {
           // 用户取消关闭 → 重新显示弹窗
           modal.classList.add('show');
           document.body.style.overflow = 'hidden';
@@ -44,7 +44,7 @@ function mmOpenModal() {
       if (mmSSESource) { mmSSESource.close(); mmSSESource = null; }
       if (mmSyncResolve) { mmSyncResolve(); mmSyncResolve = null; }
       if (wasSyncing) {
-        showToast('匹配已中断，未完成的条目可重新匹配', 'warning');
+        showToast(t('metamatch.matchInterrupted'), 'warning');
       }
       if (mmNeedsRefresh && typeof loadLibrary === 'function') {
         mmNeedsRefresh = false;
@@ -84,13 +84,13 @@ async function mmLoadModalData() {
 
     const libData = await API.get('/api/library');
     if (!libData || libData.length === 0) {
-      mmShowEmpty('动漫库为空，请先导入动漫');
+      mmShowEmpty(t('metamatch.emptyLibraryImport'));
       return;
     }
 
     mmItems = libData.map(a => ({
       animeId: a.id,
-      title: a.title || a.folderName || a.bangumiTitle || '未知',
+      title: a.title || a.folderName || a.bangumiTitle || t('metamatch.unknown'),
       folderName: a.folderName || a.title || '',
       specialSuffix: a.specialSuffix || null,
       parsedSeason: a.matchedSeason || a.season || (a.specialSuffix ? null : 1),
@@ -121,8 +121,8 @@ async function mmLoadModalData() {
     mmUpdateBatchBar();
 } catch (e) {
       if (!window.location.origin.startsWith('http')) return;
-      showToast('加载动漫库失败: ' + e.message, 'error');
-      mmShowEmpty('加载动漫库失败: ' + e.message + ' · 请检查服务器是否运行');
+      showToast(t('metamatch.loadLibraryFailed', { error: e.message }), 'error');
+      mmShowEmpty(t('metamatch.loadLibraryFailedHint', { error: e.message }));
     }
 }
 
@@ -132,7 +132,7 @@ function mmShowEmpty(msg) {
   const panelContent = document.getElementById('mmPanelContent');
 
   if (list) { list.innerHTML = ''; list.style.display = 'none'; }
-  if (empty) { empty.style.display = 'flex'; const p = empty.querySelector('p'); if (p) p.textContent = msg || '没有需要匹配的条目'; }
+  if (empty) { empty.style.display = 'flex'; const p = empty.querySelector('p'); if (p) p.textContent = msg || t('metamatch.noPendingItems'); }
   if (panelContent) panelContent.style.display = 'none';
   const panel = document.getElementById('mmPanel');
   if (panel) panel.classList.remove('open');
@@ -196,9 +196,9 @@ function mmRenderList() {
       empty.style.display = 'flex';
       const p = empty.querySelector('p');
       if (p) {
-        p.textContent = mmItems.length === 0 ? '动漫库为空' :
-          (mmFilter === 'all' ? '没有条目' :
-            `没有 ${ { matched: '已匹配', failed: '失败', pending: '待处理' }[mmFilter] || '' } 的条目`);
+        p.textContent = mmItems.length === 0 ? t('metamatch.libraryEmpty') :
+          (mmFilter === 'all' ? t('metamatch.noItems') :
+            t('metamatch.noItemsForFilter', { filter: { matched: t('metamatch.statusMatched'), failed: t('metamatch.statusFailed'), pending: t('metamatch.statusPending') }[mmFilter] || '' }));
       }
     }
     return;
@@ -221,7 +221,7 @@ function mmRenderList() {
 
     const subParts = [];
     if (item.parsedSeason) subParts.push(`S${item.parsedSeason}`);
-    if (item.episodeCount) subParts.push(`${item.episodeCount}集`);
+    if (item.episodeCount) subParts.push(t('metamatch.episodeCount', { n: item.episodeCount }));
 
     // Season chain info — only show for S2+ or specials
     let seasonBadge = '';
@@ -230,7 +230,7 @@ function mmRenderList() {
       seasonBadge = `<span class="mm-row-season${seasonMismatch ? ' mm-row-season--mismatch' : ''}">S${item.matchedSeason}${seasonMismatch ? ' ⚠' : ''}</span>`;
     }
 
-    const badgeLabels = { matched: '已匹配', failed: '失败', matching: '匹配中', pending: '待处理' };
+    const badgeLabels = { matched: t('metamatch.statusMatched'), failed: t('metamatch.statusFailed'), matching: t('metamatch.statusMatching'), pending: t('metamatch.statusPending') };
 
     // Match preview on the row
     let matchPreview = '';
@@ -250,11 +250,11 @@ function mmRenderList() {
           ${metaLine}
         </div>`;
     } else if (item.status === 'failed') {
-      matchPreview = `<div class="mm-row-match mm-row-match--error">${escHtml(item.error || '匹配失败')}</div>`;
+      matchPreview = `<div class="mm-row-match mm-row-match--error">${escHtml(item.error || t('metamatch.matchFailed'))}</div>`;
     } else if (item.status === 'matching') {
-      matchPreview = `<div class="mm-row-match mm-row-match--pending">匹配中...</div>`;
+      matchPreview = `<div class="mm-row-match mm-row-match--pending">${t('metamatch.matchingDots')}</div>`;
     } else {
-      matchPreview = `<div class="mm-row-match mm-row-match--pending">待匹配</div>`;
+      matchPreview = `<div class="mm-row-match mm-row-match--pending">${t('metamatch.pendingMatch')}</div>`;
     }
 
     html += `
@@ -343,7 +343,7 @@ function mmUpdateUIImmediate() {
 
     const badge = row.querySelector('.mm-row-badge');
     if (badge) {
-      const labels = { matched: '已匹配', failed: '失败', matching: '匹配中', pending: '待处理' };
+      const labels = { matched: t('metamatch.statusMatched'), failed: t('metamatch.statusFailed'), matching: t('metamatch.statusMatching'), pending: t('metamatch.statusPending') };
       badge.className = `mm-row-badge mm-row-badge--${item.status}`;
       badge.textContent = labels[item.status];
     }
@@ -452,21 +452,21 @@ function mmUpdateMainAction() {
   const hasFailed = mmItems.some(i => i.status === 'failed');
 
   if (!hasPending && !hasFailed) {
-    btn.textContent = '全部已匹配';
+    btn.textContent = t('metamatch.allMatched');
     btn.className = 'btn';
     btn.classList.add('disabled');
     return;
   }
 
   if (hasSelection) {
-    btn.textContent = '同步选中 (' + mmSelectedIds.size + ')';
+    btn.textContent = t('metamatch.syncSelected', { n: mmSelectedIds.size });
     btn.className = 'btn btn-outline';
   } else if (hasFailed && !hasPending) {
     const cnt = mmItems.filter(i => i.status === 'failed').length;
-    btn.textContent = '重试失败 (' + cnt + ')';
+    btn.textContent = t('metamatch.retryFailed', { n: cnt });
     btn.className = 'btn btn-outline';
   } else {
-    btn.textContent = '自动匹配全部';
+    btn.textContent = t('metamatch.autoMatchAll');
     btn.className = 'btn btn-outline';
   }
 }
@@ -569,7 +569,7 @@ function mmRenderPanel(item) {
   content.style.display = 'flex';
 
   // Cover with status overlay
-  const coverAlt = escAttr(item.meta?.bangumiTitle || item.title || '作品封面');
+  const coverAlt = escAttr(item.meta?.bangumiTitle || item.title || t('metamatch.coverAlt'));
   let coverHtml = '';
   if (item.meta?.coverUrl || item.coverUrl) {
     const src = escAttr(item.meta?.coverUrl || item.coverUrl);
@@ -577,15 +577,15 @@ function mmRenderPanel(item) {
   } else {
     coverHtml = `<div class="mm-panel-cover-sm-fallback">${escHtml((item.title||'?')[0].toUpperCase())}</div>`;
   }
-  const statusLabels = { matched: '已匹配', failed: '失败', matching: '匹配中', pending: '待处理' };
+  const statusLabels = { matched: t('metamatch.statusMatched'), failed: t('metamatch.statusFailed'), matching: t('metamatch.statusMatching'), pending: t('metamatch.statusPending') };
   const statusOverlay = `<div class="mm-panel-cover-status mm-panel-cover-status--${item.status}"><div class="mm-panel-status-dot"></div>${statusLabels[item.status]}</div>`;
 
   // Season info
   let seasonInfo = '';
   if (item.parsedSeason || item.episodeCount) {
     const parts = [];
-    if (item.parsedSeason) parts.push(`第${item.parsedSeason}季`);
-    if (item.episodeCount) parts.push(`${item.episodeCount}集`);
+    if (item.parsedSeason) parts.push(t('metamatch.seasonN', { n: item.parsedSeason }));
+    if (item.episodeCount) parts.push(t('metamatch.episodeCount', { n: item.episodeCount }));
     seasonInfo = parts.join(' · ');
   }
   // Summary
@@ -595,7 +595,7 @@ function mmRenderPanel(item) {
     if (filtered) {
       summaryHtml = `
         <div>
-          <div class="mm-panel-label">简介</div>
+          <div class="mm-panel-label">${t('metamatch.summaryLabel')}</div>
           <div class="mm-panel-summary">
             <div class="mm-panel-summary-text">${escHtml(filtered)}</div>
           </div>
@@ -608,20 +608,20 @@ function mmRenderPanel(item) {
   if (item.status === 'matched') {
     const bgmId = item.meta?.bangumiId;
     const alId = item.anilistId;
-    const hasBanner = item.anilistBanner === '__none__' ? '— 该条目无横幅' : (item.anilistBanner ? '✅ 已获取' : '❌ 未获取');
+    const hasBanner = item.anilistBanner === '__none__' ? t('metamatch.noBanner') : (item.anilistBanner ? t('metamatch.bannerFetched') : t('metamatch.bannerNotFetched'));
     const parts = [];
     if (bgmId) {
       parts.push(`<span class="mm-panel-id-item">
         <span class="mm-panel-id-label">Bangumi</span>
         <code class="mm-panel-id-value">${escHtml(String(bgmId))}</code>
-        <a class="mm-panel-id-link" href="https://bgm.tv/subject/${bgmId}" target="_blank" rel="noopener">打开</a>
+        <a class="mm-panel-id-link" href="https://bgm.tv/subject/${bgmId}" target="_blank" rel="noopener">${t('metamatch.open')}</a>
       </span>`);
     }
     if (alId != null && alId !== -1) {
       parts.push(`<span class="mm-panel-id-item">
         <span class="mm-panel-id-label">AniList</span>
         <code class="mm-panel-id-value">${escHtml(String(alId))}</code>
-        <a class="mm-panel-id-link" href="https://anilist.co/anime/${alId}" target="_blank" rel="noopener">打开</a>
+        <a class="mm-panel-id-link" href="https://anilist.co/anime/${alId}" target="_blank" rel="noopener">${t('metamatch.open')}</a>
       </span>`);
     } else {
       parts.push(`<span class="mm-panel-id-item">
@@ -629,9 +629,9 @@ function mmRenderPanel(item) {
         <span class="mm-panel-id-value">—</span>
       </span>`);
     }
-    parts.push(`<span class="mm-panel-id-item"><span class="mm-panel-id-label">横幅</span><span class="mm-panel-id-value">${hasBanner}</span></span>`);
+    parts.push(`<span class="mm-panel-id-item"><span class="mm-panel-id-label">${t('metamatch.bannerLabel')}</span><span class="mm-panel-id-value">${hasBanner}</span></span>`);
     idInfoHtml = `<div class="mm-panel-section">
-      <div class="mm-panel-label">ID 绑定</div>
+      <div class="mm-panel-label">${t('metamatch.idBinding')}</div>
       <div class="mm-panel-ids">${parts.join('')}</div>
     </div>`;
   }
@@ -641,7 +641,7 @@ function mmRenderPanel(item) {
   if (item.status === 'failed' && item.error) {
     errorHtml = `
       <div class="mm-panel-error">
-        <div class="mm-panel-error-title">错误信息</div>
+        <div class="mm-panel-error-title">${t('metamatch.errorTitle')}</div>
         <div class="mm-panel-error-msg">${escHtml(item.error)}</div>
       </div>`;
   }
@@ -652,7 +652,7 @@ function mmRenderPanel(item) {
     const keywords = [item.title, item.folderName].filter(Boolean);
     keywordsHtml = `
       <div>
-        <div class="mm-panel-label">解析关键词</div>
+        <div class="mm-panel-label">${t('metamatch.parseKeywords')}</div>
         <div class="mm-panel-keywords">
           ${keywords.map(kw => `<span class="mm-panel-keyword">${escHtml(kw)}</span>`).join('')}
         </div>
@@ -664,16 +664,16 @@ function mmRenderPanel(item) {
   if (!mmSyncInProgress) {
     const defaultKeyword = (item.specialSuffix || item.title || item.folderName || '').replace(/[~～]/g, '').trim();
     const researchBtn = item.status === 'matched'
-      ? `<button class="btn mm-fix-research-btn" onclick="mmStartResearch('${item.animeId}')" title="用当前关键词重新匹配">
+      ? `<button class="btn mm-fix-research-btn" onclick="mmStartResearch('${item.animeId}')" title="${t('metamatch.researchTitle')}">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-          重新匹配</button>`
+           ${t('metamatch.researchAgain')}</button>`
       : '';
     fixHtml = `
       <div class="mm-fix-section">
-        <div class="mm-panel-label">修正匹配</div>
+        <div class="mm-panel-label">${t('metamatch.fixMatch')}</div>
         ${researchBtn ? `<div class="mm-fix-research">${researchBtn}</div>` : ''}
         <div class="mm-fix-search">
-          <input type="text" id="mmFixKeyword" placeholder="输入搜索词..." value="${escAttr(defaultKeyword)}" onkeydown="if(event.key==='Enter')mmSearchForFix('${item.animeId}')">
+          <input type="text" id="mmFixKeyword" placeholder="${t('metamatch.searchPlaceholder')}" value="${escAttr(defaultKeyword)}" onkeydown="if(event.key==='Enter')mmSearchForFix('${item.animeId}')">
           <button class="btn btn-primary mm-fix-search-btn" onclick="mmSearchForFix('${item.animeId}')">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
           </button>
@@ -712,26 +712,26 @@ async function mmSearchForFix(animeId) {
 
   const keyword = input.value.trim();
   if (!keyword) {
-    showToast('请输入搜索关键词', 'warning');
+    showToast(t('metamatch.enterKeyword'), 'warning');
     return;
   }
 
   resultsDiv.innerHTML = `<div class="p-3 text-center text-content-muted text-[0.8125rem]">
     <svg class="spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-    <span class="ml-1.5">搜索中...</span></div>`;
+    <span class="ml-1.5">${t('metamatch.searching')}</span></div>`;
 
   try {
     const result = await API.post('/api/bangumi/search', { keyword, sources: undefined });
     const results = result?.results || [];
 
     if (results.length === 0) {
-      resultsDiv.innerHTML = `<div class="p-3 text-center text-content-muted text-[0.8125rem]">未找到结果</div>`;
+      resultsDiv.innerHTML = `<div class="p-3 text-center text-content-muted text-[0.8125rem]">${t('metamatch.noResults')}</div>`;
       return;
     }
 
     mmFixResults = results;
-    const typeMap = { 1: '书籍', 2: 'TV', 3: '动画', 4: 'OVA', 5: 'Web', 6: '真人' };
-    resultsDiv.innerHTML = `<div class="mm-fix-result-count">找到 ${results.length} 条结果</div>` +
+    const typeMap = { 1: t('metamatch.typeBook'), 2: 'TV', 3: t('metamatch.typeAnime'), 4: 'OVA', 5: 'Web', 6: t('metamatch.typeLiveAction') };
+    resultsDiv.innerHTML = `<div class="mm-fix-result-count">${t('metamatch.resultsCount', { n: results.length })}</div>` +
       results.map((r, i) => {
       const title = r.name_cn || r.name || r.title || '—';
       const subtitle = r.name || '';
@@ -748,11 +748,11 @@ async function mmSearchForFix(animeId) {
             ${subtitle ? `<div class="search-result-subtitle" data-tooltip="${escAttr(subtitle)}">${escHtml(subtitle)}</div>` : ''}
             <div class="search-result-meta">${year}${rating ? ' · ★' + rating : ''}${typeLabel ? `<span class="result-type-badge">${escHtml(typeLabel)}</span>` : ''}</div>
           </div>
-          <button class="btn btn-primary search-result-btn">选择</button>
+          <button class="btn btn-primary search-result-btn">${t('metamatch.select')}</button>
         </div>`;
     }).join('');
   } catch (e) {
-    resultsDiv.innerHTML = `<div class="p-3 text-center text-error text-[0.8125rem]">搜索失败: ${escHtml(e.message)}</div>`;
+    resultsDiv.innerHTML = `<div class="p-3 text-center text-error text-[0.8125rem]">${t('metamatch.searchFailed', { error: escHtml(e.message) })}</div>`;
   }
 }
 
@@ -770,8 +770,8 @@ async function mmApplyFix(animeId, resultIndex) {
   mmUpdateMainAction();
   mmShowSyncLog();
 
-  const title = result.name_cn || result.name || result.title || '未知';
-  mmAddSyncLogEntry(animeId, title, 'fetching', '正在获取元数据…');
+  const title = result.name_cn || result.name || result.title || t('metamatch.unknown');
+  mmAddSyncLogEntry(animeId, title, 'fetching', t('metamatch.fetchingMetadata'));
   item.status = 'matching';
   mmUpdateUI();
 
@@ -804,14 +804,14 @@ async function mmApplyFix(animeId, resultIndex) {
       mmAddSyncLogEntry(animeId, null, 'matched', a.bangumiTitle || title);
     } else {
       item.status = 'failed';
-      item.error = '获取元数据返回空';
-      mmAddSyncLogEntry(animeId, null, 'failed', '获取元数据返回空');
+      item.error = t('metamatch.emptyFetchResult');
+      mmAddSyncLogEntry(animeId, null, 'failed', t('metamatch.emptyFetchResult'));
     }
   } catch (e) {
     item.status = 'failed';
     item.error = e.message;
     mmAddSyncLogEntry(animeId, null, 'failed', e.message);
-    showToast('应用匹配失败: ' + e.message, 'error');
+    showToast(t('metamatch.applyMatchFailed', { error: e.message }), 'error');
   }
 
   mmFixResults = [];
@@ -864,7 +864,7 @@ async function mmMatchItems(animeIds, options = {}) {
   }
 
   if (itemsToSync.length === 0) {
-    showToast('没有需要匹配的条目', 'info');
+    showToast(t('metamatch.noPendingItems'), 'info');
     return;
   }
 
@@ -883,7 +883,7 @@ async function mmMatchItems(animeIds, options = {}) {
     await mmSyncViaSSE(syncIds, options);
   } catch (e) {
     if (!mmSyncCancelled) {
-      showToast('同步失败: ' + e.message, 'error');
+      showToast(t('metamatch.syncFailed', { error: e.message }), 'error');
     }
     mmItems.forEach(i => {
       if (i.status === 'matching') i.status = 'pending';
@@ -896,7 +896,7 @@ async function mmMatchItems(animeIds, options = {}) {
       if (i.status === 'matching') i.status = 'pending';
     });
     mmSyncLog.forEach(e => {
-      if (e.status === 'searching' || e.status === 'fetching') { e.status = 'failed'; e.detail = '已取消'; }
+      if (e.status === 'searching' || e.status === 'fetching') { e.status = 'failed'; e.detail = t('metamatch.cancelled'); }
     });
     if (mmSyncLog.length > 0) mmRenderSyncLog();
   }
@@ -1006,11 +1006,11 @@ function mmRenderSyncSummary(matched, failed, total) {
   summary.style.display = 'block';
   summary.innerHTML =
     '<div class="mm-panel-synclog-summary-stats">' +
-      (matched > 0 ? '<div class="mm-panel-synclog-summary-stat mm-panel-synclog-summary-stat--matched"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>匹配 <span class="num">' + matched + '</span></div>' : '') +
-      (failed > 0 ? '<div class="mm-panel-synclog-summary-stat mm-panel-synclog-summary-stat--failed"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>失败 <span class="num">' + failed + '</span></div>' : '') +
-      '<div class="mm-panel-synclog-summary-stat mm-panel-synclog-summary-stat--total">总计 <span class="num">' + total + '</span></div>' +
+      (matched > 0 ? '<div class="mm-panel-synclog-summary-stat mm-panel-synclog-summary-stat--matched"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' + t('metamatch.matchedLabel') + ' <span class="num">' + matched + '</span></div>' : '') +
+      (failed > 0 ? '<div class="mm-panel-synclog-summary-stat mm-panel-synclog-summary-stat--failed"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' + t('metamatch.statusFailed') + ' <span class="num">' + failed + '</span></div>' : '') +
+      '<div class="mm-panel-synclog-summary-stat mm-panel-synclog-summary-stat--total">' + t('metamatch.totalLabel') + ' <span class="num">' + total + '</span></div>' +
     '</div>' +
-    (failed === 0 ? '<div class="mm-panel-synclog-summary-msg">所有条目均已成功匹配</div>' : '<div class="mm-panel-synclog-summary-msg">失败的条目可点击下方「仅重试失败项」重新匹配</div>');
+    (failed === 0 ? '<div class="mm-panel-synclog-summary-msg">' + t('metamatch.allMatchedMsg') + '</div>' : '<div class="mm-panel-synclog-summary-msg">' + t('metamatch.retryFailedHint') + '</div>');
 }
 
 async function mmSyncViaSSE(animeIds, options = {}) {
@@ -1026,7 +1026,7 @@ async function mmSyncViaSSE(animeIds, options = {}) {
       try {
         const data = JSON.parse(e.data);
         if (!simplified) {
-          mmAddSyncLogEntry(data.animeId, data.searchTerm, 'searching', '正在搜索匹配…');
+          mmAddSyncLogEntry(data.animeId, data.searchTerm, 'searching', t('metamatch.searchingMatch'));
         }
       } catch (_) {}
     });
@@ -1044,11 +1044,11 @@ async function mmSyncViaSSE(animeIds, options = {}) {
           item.coverUrl = data.meta?.coverUrl || null;
           item.error = null;
           if (data.matchedSeason != null) item.matchedSeason = data.matchedSeason;
-          mmAddSyncLogEntry(data.animeId, null, 'matched', (data.meta?.bangumiTitle || data.meta?.title || '匹配成功'));
+          mmAddSyncLogEntry(data.animeId, null, 'matched', (data.meta?.bangumiTitle || data.meta?.title || t('metamatch.matched')));
         } else {
           item.status = 'failed';
-          item.error = data.error || '未知错误';
-          mmAddSyncLogEntry(data.animeId, null, 'failed', data.error || '未知错误');
+          item.error = data.error || t('metamatch.unknownError');
+          mmAddSyncLogEntry(data.animeId, null, 'failed', data.error || t('metamatch.unknownError'));
         }
         mmUpdateUI();
       } catch (_) {}
@@ -1060,13 +1060,13 @@ async function mmSyncViaSSE(animeIds, options = {}) {
         const data = JSON.parse(e.data);
         // matchSource 映射为中文描述（anilist/season 来自服务端新增事件）
         const sourceLabels = {
-          'anilist': '正在通过 AniList 补充信息…',
-          'season': '正在推算作品季度…',
+          'anilist': t('metamatch.sourceAnilist'),
+          'season': t('metamatch.sourceSeason'),
         };
-        const detail = sourceLabels[data.matchSource] || `正在获取元数据（${data.matchSource || '?'}）`;
+        const detail = sourceLabels[data.matchSource] || t('metamatch.fetchingMetadataSource', { source: data.matchSource || '?' });
         if (simplified) {
           // 简化模式：直接添加一条 fetching 日志
-          mmAddSyncLogEntry(data.animeId, data.searchTerm || '匹配', 'fetching', detail);
+          mmAddSyncLogEntry(data.animeId, data.searchTerm || t('metamatch.matchedLabel'), 'fetching', detail);
         } else {
           // 完整模式：更新已有条目状态
           const existing = mmSyncLog.find(entry => entry.animeId === data.animeId);
@@ -1084,13 +1084,13 @@ async function mmSyncViaSSE(animeIds, options = {}) {
       try {
         const data = JSON.parse(e.data);
         // 在同步日志末尾添加一条收尾状态
-        const msg = data.message || '正在完成收尾工作…';
+        const msg = data.message || t('metamatch.finalizing');
         // 检查是否已有 finalizing 条目，避免重复
         const existing = mmSyncLog.find(entry => entry.animeId === '__finalizing__');
         if (existing) {
           existing.detail = msg;
         } else {
-          mmSyncLog.push({ animeId: '__finalizing__', searchTerm: '收尾', status: 'fetching', detail: msg });
+          mmSyncLog.push({ animeId: '__finalizing__', searchTerm: t('metamatch.finalizingShort'), status: 'fetching', detail: msg });
         }
         mmRenderSyncLog();
       } catch (_) {}
@@ -1112,7 +1112,7 @@ async function mmSyncViaSSE(animeIds, options = {}) {
         mmItems.forEach(i => {
           if (i.status === 'matching') {
             i.status = 'failed';
-            i.error = i.error || '连接断开，匹配中断';
+            i.error = i.error || t('metamatch.connectionLost');
             changed = true;
           }
         });
@@ -1120,7 +1120,7 @@ async function mmSyncViaSSE(animeIds, options = {}) {
         mmSyncLog.forEach(e => {
           if (e.status === 'searching' || e.status === 'fetching') {
             e.status = 'failed';
-            e.detail = '连接断开，匹配中断';
+            e.detail = t('metamatch.connectionLost');
           }
         });
         if (mmSyncLog.length > 0) mmRenderSyncLog();

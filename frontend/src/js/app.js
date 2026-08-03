@@ -42,8 +42,8 @@ function onGlobalMpvStatus(active, payload) {
     return;
   }
 
-  // 3. 其他页面 → 通用 toast + 记录 pending，回到该番详情页时补弹"标记看完"
-  showToast('播放已结束，进度已更新', 'success');
+// 3. 其他页面 → 通用 toast + 记录 pending，回到该番详情页时补弹"标记看完"
+   showToast(t('app.playbackEndedProgressUpdated'), 'success');
   if (endedAnimeId) window.pendingFinishAnimeId = endedAnimeId;
 }
 
@@ -321,7 +321,7 @@ async function openSettings() {
     openModal('settingsModal');
   } catch (e) {
     if (!window.location.origin.startsWith('http')) return;
-    showToast('加载设置失败: ' + e.message, 'error');
+    showToast(t('app.loadSettingsFailed', { error: e.message }), 'error');
   }
 }
 
@@ -336,14 +336,14 @@ async function refreshBangumiAuthStatus() {
   try {
     const state = await API.get('/api/bangumi/auth/status');
     if (state.authed) {
-      if (statusEl) { statusEl.textContent = '✓ 已绑定 ' + (state.username || ''); statusEl.style.color = '#22c55e'; }
+      if (statusEl) { statusEl.textContent = t('app.boundUser', { username: state.username || '' }); statusEl.style.color = '#22c55e'; }
       if (bindBtn) bindBtn.style.display = 'none';
       if (unbindBtn) unbindBtn.style.display = '';
       if (syncBtn) syncBtn.style.display = '';
       if (syncStatus) {
         if (state.lastSyncTime) {
           const t = new Date(state.lastSyncTime);
-          syncStatus.textContent = '上次同步: ' + t.toLocaleString('zh-CN');
+          syncStatus.textContent = t('app.lastSync', { time: t.toLocaleString('zh-CN') });
           syncStatus.style.display = '';
         } else {
           syncStatus.textContent = '';
@@ -351,12 +351,12 @@ async function refreshBangumiAuthStatus() {
         }
       }
     } else if (state.hasCredentials) {
-      if (statusEl) { statusEl.textContent = 'Client ID 已填入，可点击绑定'; statusEl.style.color = 'var(--text3)'; }
+      if (statusEl) { statusEl.textContent = t('app.clientIdEnteredCanBind'); statusEl.style.color = 'var(--text3)'; }
       if (bindBtn) bindBtn.style.display = '';
       if (unbindBtn) unbindBtn.style.display = 'none';
       if (syncBtn) syncBtn.style.display = 'none';
     } else {
-      if (statusEl) { statusEl.textContent = '填入 Client ID / Secret 后可绑定'; statusEl.style.color = 'var(--text3)'; }
+      if (statusEl) { statusEl.textContent = t('app.enterClientIdSecretToBind'); statusEl.style.color = 'var(--text3)'; }
       if (bindBtn) bindBtn.style.display = '';
       if (unbindBtn) unbindBtn.style.display = 'none';
       if (syncBtn) syncBtn.style.display = 'none';
@@ -369,27 +369,27 @@ async function bangumiSync() {
   const syncStatus = document.getElementById('bangumiSyncStatus');
   if (!syncBtn || !syncStatus) return;
   syncBtn.disabled = true;
-  syncBtn.textContent = '同步中…';
-  syncStatus.textContent = '正在同步 MyList…';
+  syncBtn.textContent = t('app.syncing');
+  syncStatus.textContent = t('app.syncingMyList');
   syncStatus.style.display = '';
   try {
     const result = await API.post('/api/bangumi/sync', {});
     if (result.errors && result.errors.length > 0) {
-      syncStatus.textContent = `同步完成: 创建 ${result.created}, 推送 ${result.pushed}, 错误 ${result.errors.length}`;
+      syncStatus.textContent = t('app.syncCompleteWithErrors', { created: result.created, pushed: result.pushed, errors: result.errors.length });
       syncStatus.style.color = '#f59e0b';
     } else {
-      syncStatus.textContent = `同步完成: 拉取 ${result.pulled} 条, 新增 ${result.created} 条, 推送 ${result.pushed} 条`;
+      syncStatus.textContent = t('app.syncComplete', { pulled: result.pulled, created: result.created, pushed: result.pushed });
       syncStatus.style.color = '#22c55e';
     }
     if (result.lastSyncTime) {
       refreshBangumiAuthStatus();
     }
   } catch (e) {
-    syncStatus.textContent = '同步失败: ' + e.message;
+    syncStatus.textContent = t('app.syncFailed', { error: e.message });
     syncStatus.style.color = '#ef4444';
   } finally {
     syncBtn.disabled = false;
-    syncBtn.textContent = '同步 MyList';
+    syncBtn.textContent = t('app.syncMyList');
   }
 }
 
@@ -397,7 +397,7 @@ async function bangumiBind() {
   const clientId = document.getElementById('bangumiClientId').value.trim();
   let clientSecret = document.getElementById('bangumiClientSecret').value.trim();
   if (!clientId) {
-    showToast('请先填入 Bangumi Client ID', 'warning');
+    showToast(t('app.enterBangumiClientId'), 'warning');
     return;
   }
   // 如果 secret 仍是占位符掩码，则沿用已保存的值
@@ -405,7 +405,7 @@ async function bangumiBind() {
     clientSecret = configCache?.bangumiClientSecret || '';
   }
   if (!clientSecret) {
-    showToast('请先填入 Bangumi Client Secret', 'warning');
+    showToast(t('app.enterBangumiClientSecret'), 'warning');
     return;
   }
   // Save OAuth creds first (saveSettings may not be called)
@@ -413,7 +413,7 @@ async function bangumiBind() {
   // Get OAuth URL and open browser
   const { url } = await API.get('/api/bangumi/auth/url');
   if (!url) {
-    showToast('无法生成授权链接', 'error');
+    showToast(t('app.cannotGenerateAuthUrl'), 'error');
     return;
   }
   // Tauri 中用 shell.open 打开系统默认浏览器，浏览器环境用 window.open
@@ -421,13 +421,13 @@ async function bangumiBind() {
     try {
       await window.__TAURI__.shell.open(url);
     } catch (e) {
-      showToast('打开浏览器失败: ' + e.message, 'error');
+      showToast(t('app.openBrowserFailed', { error: e.message }), 'error');
       return;
     }
   } else {
     window.open(url, '_blank');
   }
-  showToast('请在浏览器中完成 Bangumi 授权', 'info');
+  showToast(t('app.completeBangumiAuthInBrowser'), 'info');
   // 启动轮询检测授权完成
   startAuthPolling();
 }
@@ -445,14 +445,14 @@ function startAuthPolling() {
       if (state.authed) {
         clearInterval(authPollTimer);
         authPollTimer = null;
-        showToast('Bangumi 绑定成功！', 'success');
+        showToast(t('app.bangumiBindSuccess'), 'success');
         refreshBangumiAuthStatus();
       }
     } catch {}
     if (attempts >= maxAttempts) {
       clearInterval(authPollTimer);
       authPollTimer = null;
-      showToast('绑定超时，请检查 Bangumi 授权页面', 'warning');
+      showToast(t('app.bindTimeoutCheckAuthPage'), 'warning');
     }
   }, 2000);
 }
@@ -460,7 +460,7 @@ function startAuthPolling() {
 async function bangumiUnbind() {
   await API.post('/api/bangumi/auth/logout');
   refreshBangumiAuthStatus();
-  showToast('已解除 Bangumi 绑定', 'info');
+  showToast(t('app.bangumiUnbound'), 'info');
 }
 
 async function saveSettings() {
@@ -469,7 +469,7 @@ async function saveSettings() {
   const mpvPath = document.getElementById('settingsPlayerPath').value.trim();
 
   if (!mediaDir) {
-    document.getElementById('settingsError').textContent = '请输入媒体目录路径';
+    document.getElementById('settingsError').textContent = t('app.enterMediaDirPath');
     return;
   }
 
@@ -533,10 +533,10 @@ async function saveSettings() {
 
     closeModal('settingsModal');
 
-    showToast('设置已保存', 'success');
+    showToast(t('app.settingsSaved'), 'success');
     refreshDiscovery();
   } catch (e) {
-    document.getElementById('settingsError').textContent = '保存失败: ' + e.message;
+    document.getElementById('settingsError').textContent = t('app.saveFailed', { error: e.message });
   }
 }
 
@@ -557,12 +557,12 @@ async function refreshDbInfo() {
       ? (info.configSize / 1024).toFixed(1) + ' KB'
       : info.configSize + ' B';
     container.innerHTML = '<div class="db-info-grid">' +
-      '<div class="db-info-item db-info-item--full"><span class="db-info-label">数据库位置</span><span class="db-info-value db-info-path" data-tooltip="' + escAttr(info.dbPath) + '">' + escHtml(info.dbPath) + '</span></div>' +
-      '<div class="db-info-item"><span class="db-info-label">数据库大小</span><span class="db-info-value">' + dbSizeStr + '</span></div>' +
-      '<div class="db-info-item"><span class="db-info-label">动漫数量</span><span class="db-info-value">' + info.counts.anime + '</span></div>' +
-      '<div class="db-info-item"><span class="db-info-label">剧集数量</span><span class="db-info-value">' + info.counts.episodes + '</span></div>' +
-      '<div class="db-info-item"><span class="db-info-label">播放记录</span><span class="db-info-value">' + info.counts.playSessions + '</span></div>' +
-      '<div class="db-info-item"><span class="db-info-label">列表条目</span><span class="db-info-value">' + info.counts.myList + '</span></div>' +
+      '<div class="db-info-item db-info-item--full"><span class="db-info-label">' + t('app.dbLocation') + '</span><span class="db-info-value db-info-path" data-tooltip="' + escAttr(info.dbPath) + '">' + escHtml(info.dbPath) + '</span></div>' +
+      '<div class="db-info-item"><span class="db-info-label">' + t('app.dbSize') + '</span><span class="db-info-value">' + dbSizeStr + '</span></div>' +
+      '<div class="db-info-item"><span class="db-info-label">' + t('app.animeCount') + '</span><span class="db-info-value">' + info.counts.anime + '</span></div>' +
+      '<div class="db-info-item"><span class="db-info-label">' + t('app.episodeCount') + '</span><span class="db-info-value">' + info.counts.episodes + '</span></div>' +
+      '<div class="db-info-item"><span class="db-info-label">' + t('app.playSessionCount') + '</span><span class="db-info-value">' + info.counts.playSessions + '</span></div>' +
+      '<div class="db-info-item"><span class="db-info-label">' + t('app.myListCount') + '</span><span class="db-info-value">' + info.counts.myList + '</span></div>' +
     '</div>';
 
     // 渲染缓存信息
@@ -571,33 +571,33 @@ async function refreshDbInfo() {
         var cacheHtml = '<div class="db-info-grid">';
         for (var key in info.cache) {
           var c = info.cache[key];
-          var label = {thumbs:'视频缩略图', covers:'封面图片', banners:'横幅图片'}[key] || key;
+          var label = {thumbs:t('app.cacheVideoThumbs'), covers:t('app.cacheCovers'), banners:t('app.cacheBanners')}[key] || key;
           cacheHtml += '<div class="db-info-item">' +
             '<span class="db-info-label">' + label + '</span>' +
             '<span class="db-info-value">' + formatSize(c.size) + '</span>' +
-            '<span class="db-info-label" style="margin-top:1px">' + c.files + ' 个文件</span>' +
+            '<span class="db-info-label" style="margin-top:1px">' + t('app.cacheFilesCount', { count: c.files }) + '</span>' +
           '</div>';
         }
         cacheHtml += '</div>' +
           '<div class="db-action-row mt-2">' +
-            '<button class="btn btn-sm" onclick="dbClearCache(\'thumbs\')" data-tooltip="超过14天的缩略图系统会自动清理，一般无需手动操作">清除缩略图</button>' +
-            '<button class="btn btn-sm" onclick="dbClearCache(\'covers\')" data-tooltip="超过14天的缩放缓存系统会自动清理，原图保留">清除封面缓存</button>' +
-            '<button class="btn btn-sm" onclick="dbClearCache(\'banners\')" data-tooltip="横幅图片缓存，需要时自动重新下载">清除横幅缓存</button>' +
-            '<button class="btn btn-sm" onclick="dbClearCache(\'all\')" data-tooltip="清除所有缓存，系统会在需要时重新生成">清除全部缓存</button>' +
+            '<button class="btn btn-sm" onclick="dbClearCache(\'thumbs\')" data-tooltip="' + t('app.clearCacheTooltipThumbs') + '">' + t('app.clearCacheBtnThumbs') + '</button>' +
+            '<button class="btn btn-sm" onclick="dbClearCache(\'covers\')" data-tooltip="' + t('app.clearCacheTooltipCovers') + '">' + t('app.clearCacheBtnCovers') + '</button>' +
+            '<button class="btn btn-sm" onclick="dbClearCache(\'banners\')" data-tooltip="' + t('app.clearCacheTooltipBanners') + '">' + t('app.clearCacheBtnBanners') + '</button>' +
+            '<button class="btn btn-sm" onclick="dbClearCache(\'all\')" data-tooltip="' + t('app.clearCacheTooltipAll') + '">' + t('app.clearCacheBtnAll') + '</button>' +
           '</div>';
         cacheContainer.innerHTML = cacheHtml;
       } else {
-        cacheContainer.innerHTML = '<p class="form-hint">暂无数据（请重启服务器以使改动生效）</p>';
+        cacheContainer.innerHTML = '<p class="form-hint">' + t('app.noCacheData') + '</p>';
       }
     }
   } catch (e) {
-    container.innerHTML = '<p class="form-hint text-error">加载失败: ' + escHtml(e.message) + '</p>';
+    container.innerHTML = '<p class="form-hint text-error">' + t('app.dbInfoLoadFailed', { error: escHtml(e.message) }) + '</p>';
   }
 }
 
 async function dbClearCache(target) {
-  var label = {thumbs:'缩略图', covers:'封面缓存', banners:'横幅缓存', all:'全部缓存'}[target] || target;
-  var confirmed = await showConfirm('确定要清除' + label + '吗？\n\n缓存文件会在需要时重新生成。');
+  var label = {thumbs:t('app.cacheLabelThumbs'), covers:t('app.cacheLabelCovers'), banners:t('app.cacheLabelBanners'), all:t('app.cacheLabelAll')}[target] || target;
+  var confirmed = await showConfirm(t('app.confirmClearCache', { label: label }));
   if (!confirmed) return;
 
   try {
@@ -606,24 +606,24 @@ async function dbClearCache(target) {
       var parts = [];
       for (var key in res.results) {
         var r = res.results[key];
-        if (r.cleared > 0) parts.push(key + ': ' + formatSize(r.size) + ' (' + r.cleared + ' 个文件)');
+        if (r.cleared > 0) parts.push(key + ': ' + formatSize(r.size) + ' (' + t('app.cacheFilesCount', { count: r.cleared }) + ')');
       }
-      showToast('已清除 ' + label + (parts.length ? ' — ' + parts.join(' | ') : ''), 'success');
+      showToast(t('app.cacheCleared', { label: label, parts: parts.length ? parts.join(' | ') : '' }), 'success');
       refreshDbInfo();
     }
   } catch (e) {
-    showToast('清除失败: ' + e.message, 'error');
+    showToast(t('app.clearCacheFailed', { error: e.message }), 'error');
   }
 }
 
 function dbBackup() {
   const btn = document.getElementById('btnDbBackup');
   btn.disabled = true;
-  btn.textContent = '下载中...';
+  btn.textContent = t('app.downloadingBackup');
   // 直接用 fetch 获取二进制
   fetch('/api/db/backup')
     .then(res => {
-      if (!res.ok) throw new Error('备份失败');
+      if (!res.ok) throw new Error(t('app.dbBackupError'));
       return res.blob();
     })
     .then(blob => {
@@ -635,22 +635,22 @@ function dbBackup() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      showToast('数据库备份已下载', 'success');
+      showToast(t('app.backupDownloaded'), 'success');
     })
-    .catch(e => showToast('备份失败: ' + e.message, 'error'))
+    .catch(e => showToast(t('app.backupFailed', { error: e.message }), 'error'))
     .finally(() => {
       btn.disabled = false;
-      btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 8v5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V8"/><path d="M5 5l3-3 3 3"/><path d="M8 2v9"/></svg> 下载 DB 备份';
+      btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 8v5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V8"/><path d="M5 5l3-3 3 3"/><path d="M8 2v9"/></svg> ' + t('app.downloadDbBackup');
     });
 }
 
 async function dbBackupAll() {
   const btn = document.getElementById('btnDbBackupAll');
   btn.disabled = true;
-  btn.textContent = '打包中...';
+  btn.textContent = t('app.packingBackup');
   try {
     const res = await fetch('/api/db/backup/download-all', { method: 'POST' });
-    if (!res.ok) throw new Error('打包备份失败');
+    if (!res.ok) throw new Error(t('app.packBackupError'));
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -660,12 +660,12 @@ async function dbBackupAll() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    showToast('完整备份已下载', 'success');
+    showToast(t('app.fullBackupDownloaded'), 'success');
   } catch (e) {
-    showToast('备份失败: ' + e.message, 'error');
+    showToast(t('app.backupFailed', { error: e.message }), 'error');
   } finally {
     btn.disabled = false;
-    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 8v5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V8"/><path d="M5 5l3-3 3 3"/><path d="M8 2v9"/></svg> 完整备份（含配置）';
+    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 8v5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V8"/><path d="M5 5l3-3 3 3"/><path d="M8 2v9"/></svg> ' + t('app.fullBackupWithConfig');
   }
 }
 
@@ -673,14 +673,14 @@ async function dbRestore(input) {
   const file = input.files[0];
   if (!file) return;
 
-  const confirmed = await showConfirm('恢复备份将替换当前数据库。\n\n当前数据会自动备份到 backups/ 目录。\n确定要继续吗？');
+  const confirmed = await showConfirm(t('app.confirmRestoreBackup'));
   if (!confirmed) {
     input.value = '';
     return;
   }
 
   // Show loading state on the file input's sibling buttons
-  showToast('正在恢复数据库...', 'info');
+  showToast(t('app.restoringDatabase'), 'info');
 
   try {
     // 读取文件为 base64
@@ -697,86 +697,86 @@ async function dbRestore(input) {
 
     const res = await API.post('/api/db/restore', { file: base64 });
     if (res.ok) {
-      showToast('数据库恢复成功', 'success');
+      showToast(t('app.databaseRestored'), 'success');
       refreshDbInfo();
       if (typeof refreshLibrary === 'function') refreshLibrary();
     }
   } catch (e) {
-    showToast('恢复失败: ' + e.message, 'error');
+    showToast(t('app.restoreFailed', { error: e.message }), 'error');
   } finally {
     input.value = '';
   }
 }
 
 async function dbClearSessions() {
-  const confirmed = await showConfirm('确定要清除所有播放记录吗？\n此操作不可撤销。');
+  const confirmed = await showConfirm(t('app.confirmClearSessions'));
   if (!confirmed) return;
 
   const btn = document.getElementById('btnDbClearSessions');
   btn.disabled = true;
-  btn.textContent = '清除中...';
+  btn.textContent = t('app.clearingSessions');
   try {
     const res = await API.post('/api/db/clear-sessions', {});
     if (res.ok) {
-      showToast('播放记录已清除', 'success');
+      showToast(t('app.sessionsCleared'), 'success');
       refreshDbInfo();
     }
   } catch (e) {
-    showToast('清除失败: ' + e.message, 'error');
+    showToast(t('app.clearSessionsFailed', { error: e.message }), 'error');
   } finally {
     btn.disabled = false;
-    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4h14"/><path d="M3 4v9a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4"/><path d="M6 4V2h4v2"/></svg> 清除播放记录';
+    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4h14"/><path d="M3 4v9a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4"/><path d="M6 4V2h4v2"/></svg> ' + t('app.clearSessionsBtn');
   }
 }
 
 async function dbVacuum() {
-  const confirmed = await showConfirm('数据库优化（VACUUM）会压缩数据库文件大小，期间数据库操作可能暂时变慢。\n确定要继续吗？');
+  const confirmed = await showConfirm(t('app.confirmVacuum'));
   if (!confirmed) return;
 
   const btn = document.getElementById('btnDbVacuum');
   btn.disabled = true;
-  btn.textContent = '优化中...';
+  btn.textContent = t('app.vacuuming');
   try {
     const res = await API.post('/api/db/vacuum', {});
     if (res.ok) {
       const newSize = res.dbSize > 1048576
         ? (res.dbSize / 1048576).toFixed(1) + ' MB'
         : (res.dbSize / 1024).toFixed(1) + ' KB';
-      showToast('数据库优化完成，当前大小: ' + newSize, 'success');
+      showToast(t('app.vacuumComplete', { size: newSize }), 'success');
       refreshDbInfo();
     }
   } catch (e) {
-    showToast('优化失败: ' + e.message, 'error');
+    showToast(t('app.vacuumFailed', { error: e.message }), 'error');
   } finally {
     btn.disabled = false;
-    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="7"/><path d="M8 5v3"/><path d="M8 11h.01"/></svg> 优化数据库（VACUUM）';
+    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="7"/><path d="M8 5v3"/><path d="M8 11h.01"/></svg> ' + t('app.vacuumBtn');
   }
 }
 
 async function dbReset() {
-  const step1 = await showConfirm('⚠️ 危险操作\n\n确定要重置数据库吗？\n这将删除所有动漫数据、播放记录和列表。\n\n当前数据库会自动备份到 backups/ 目录。');
+  const step1 = await showConfirm(t('app.confirmResetDbStep1'));
   if (!step1) return;
 
-  const step2 = await showConfirm('再次确认：真的要重置吗？\n\n所有数据将被永久删除！');
+  const step2 = await showConfirm(t('app.confirmResetDbStep2'));
   if (!step2) return;
 
   const btn = document.getElementById('btnDbReset');
   btn.disabled = true;
-  btn.textContent = '重置中...';
+  btn.textContent = t('app.resettingDb');
   try {
     const res = await API.post('/api/db/reset', {});
     if (res.ok) {
-      showToast('数据库已重置', 'info');
+      showToast(t('app.databaseReset'), 'info');
       refreshDbInfo();
       // 刷新各个界面
       if (typeof refreshLibrary === 'function') refreshLibrary();
       if (typeof renderMyList === 'function') renderMyList();
     }
   } catch (e) {
-    showToast('重置失败: ' + e.message, 'error');
+    showToast(t('app.resetFailed', { error: e.message }), 'error');
   } finally {
     btn.disabled = false;
-    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l4 4"/><path d="M10 6l-4 4"/><circle cx="8" cy="8" r="7"/></svg> 重置数据库';
+    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l4 4"/><path d="M10 6l-4 4"/><circle cx="8" cy="8" r="7"/></svg> ' + t('app.resetDbBtn');
   }
 }
 
@@ -799,8 +799,8 @@ function showConfirm(message) {
       <div class="modal" style="max-width:380px;padding:var(--space-6) var(--space-8) var(--space-5)">
         <p style="margin:0 0 18px;line-height:1.7;font-size:15px;text-align:left" class="text-content">${message}</p>
         <div class="modal-actions flex items-center justify-between">
-          <button class="btn btn-ghost confirm-cancel min-w-[80px]">取消</button>
-          <button class="btn btn-danger confirm-ok min-w-[80px]">确认</button>
+          <button class="btn btn-ghost confirm-cancel min-w-[80px]">${t('common.cancel')}</button>
+          <button class="btn btn-danger confirm-ok min-w-[80px]">${t('common.confirm')}</button>
         </div>
       </div>
     `;
@@ -907,8 +907,8 @@ function showToast(msg, type, opts) {
     e.stopPropagation();
     const text = title + (desc ? '\n' + desc : '');
     navigator.clipboard.writeText(text)
-      .then(() => showToast('已复制', 'success', { duration: 1500 }))
-      .catch(() => showToast('复制失败', 'error'));
+      .then(() => showToast(t('app.copied'), 'success', { duration: 1500 }))
+      .catch(() => showToast(t('app.copyFailed'), 'error'));
   });
 
   startTimer();
@@ -970,8 +970,8 @@ function populatePlayerDropdown(players, currentMode, currentPath) {
   if (pathInput) pathInput.value = currentPath || '';
   if (pathHint) {
     pathHint.textContent = currentPath
-      ? `当前路径: ${currentPath}`
-      : '留空则自动搜索 PATH';
+      ? t('app.currentPath', { path: currentPath })
+      : t('app.autoSearchPath');
   }
 }
 
@@ -1011,20 +1011,20 @@ document.addEventListener('click', function (e) {
 
 async function browsePlayerExecutable() {
   const mode = document.getElementById('playerModeDropdown')?.dataset.playerMode || 'mpv';
-  const name = { mpv: 'mpv 播放器', vlc: 'VLC 播放器', mpchc: 'MPC-HC 播放器' }[mode] || mode + ' 播放器';
+  const name = { mpv: t('app.playerNameMpv'), vlc: t('app.playerNameVlc'), mpchc: t('app.playerNameMpchc') }[mode] || t('app.playerNameGeneric', { name: mode });
   try {
     const result = await openDialog({
       multiple: false,
-      title: '选择 ' + name,
-      filters: [{ name: '可执行文件', extensions: ['exe', 'com'] }]
+      title: t('app.selectPlayer', { name: name }),
+      filters: [{ name: t('app.executableFileFilter'), extensions: ['exe', 'com'] }]
     });
     if (result) {
       document.getElementById('settingsPlayerPath').value = result;
     } else if (!window.__TAURI__) {
-      showToast('浏览器模式下请在输入框中手动输入路径', 'info');
+      showToast(t('app.browserModeEnterPathManually'), 'info');
     }
   } catch (e) {
-    showToast('选择文件失败: ' + e.message, 'error');
+    showToast(t('app.selectFileFailed', { error: e.message }), 'error');
   }
 }
 
@@ -1033,15 +1033,15 @@ async function browseFolder(inputId) {
     const selected = await openDialog({
       directory: true,
       multiple: false,
-      title: '选择媒体目录'
+      title: t('app.selectMediaDir')
     });
     if (selected) {
       document.getElementById(inputId).value = selected;
     } else if (!window.__TAURI__) {
-      showToast('浏览器模式下请在输入框中手动输入路径', 'info');
+      showToast(t('app.browserModeEnterPathManually'), 'info');
     }
   } catch (e) {
-    showToast('选择目录失败: ' + e.message, 'error');
+    showToast(t('app.selectDirFailed', { error: e.message }), 'error');
   }
 }
 
@@ -1049,7 +1049,7 @@ async function browseFolder(inputId) {
 function openExternalUrl(url) {
   if (window.__TAURI__?.shell?.open) {
     window.__TAURI__.shell.open(url).catch(() => {
-      showToast('打开浏览器失败', 'error');
+      showToast(t('app.openBrowserFailedGeneric'), 'error');
     });
   } else {
     window.open(url, '_blank');
@@ -1117,15 +1117,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   const params = new URLSearchParams(window.location.search);
   const authResult = params.get('bangumi_auth');
   if (authResult === 'success') {
-    showToast('Bangumi 绑定成功！', 'success');
+    showToast(t('app.bangumiBindSuccessRedirect'), 'success');
     refreshBangumiAuthStatus();
     window.history.replaceState({}, '', window.location.pathname);
   } else if (authResult === 'denied') {
-    showToast('Bangumi 授权被拒绝', 'error');
+    showToast(t('app.bangumiAuthDenied'), 'error');
     window.history.replaceState({}, '', window.location.pathname);
   } else if (authResult === 'error') {
-    const errMsg = params.get('bangumi_auth_msg') || '请检查回调 URL 是否与 bgm.tv 注册的地址一致';
-    showToast('Bangumi 绑定失败: ' + errMsg, 'error');
+    const errMsg = params.get('bangumi_auth_msg') || t('app.authRedirectMsgError');
+    showToast(t('app.bangumiBindFailed', { error: errMsg }), 'error');
     window.history.replaceState({}, '', window.location.pathname);
   }
 });
@@ -1173,7 +1173,7 @@ function renderDashboardLayoutSettings() {
   if (!list) return;
   if (typeof getDashboardLayout !== 'function') return;
   var layout = getDashboardLayout();
-  var defs = { stats: '统计概览', continueWatch: '继续观看', localLibrary: '本地动漫' };
+  var defs = { stats: t('app.dashboardStats'), continueWatch: t('app.dashboardContinueWatch'), localLibrary: t('app.dashboardLocalLibrary') };
   list.innerHTML = layout.map(function(s, i) {
     var label = defs[s.id] || s.id;
     return '<div class="dashboard-layout-item" data-id="' + s.id + '">' +
@@ -1186,10 +1186,10 @@ function renderDashboardLayoutSettings() {
       '</label>' +
       '<span class="dashboard-layout-label">' + label + '</span>' +
       '<div class="dashboard-layout-arrows">' +
-        '<button class="btn btn-icon btn-xs" onclick="moveDashboardSection(\'' + s.id + '\', -1)" ' + (i === 0 ? 'disabled' : '') + ' data-tooltip="上移">' +
+        '<button class="btn btn-icon btn-xs" onclick="moveDashboardSection(\'' + s.id + '\', -1)" ' + (i === 0 ? 'disabled' : '') + ' data-tooltip="' + t('app.tooltipMoveUp') + '">' +
           '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>' +
         '</button>' +
-        '<button class="btn btn-icon btn-xs" onclick="moveDashboardSection(\'' + s.id + '\', 1)" ' + (i === layout.length - 1 ? 'disabled' : '') + ' data-tooltip="下移">' +
+        '<button class="btn btn-icon btn-xs" onclick="moveDashboardSection(\'' + s.id + '\', 1)" ' + (i === layout.length - 1 ? 'disabled' : '') + ' data-tooltip="' + t('app.tooltipMoveDown') + '">' +
           '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>' +
         '</button>' +
       '</div>' +

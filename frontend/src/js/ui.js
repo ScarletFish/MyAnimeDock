@@ -23,11 +23,11 @@ const path = {
 // ─── 共享常量 ───
 
 const STATUS_LABELS = {
-  watching: '进行中',
-  wish: '计划中',
-  completed: '已完成',
-  on_hold: '搁置',
-  dropped: '抛弃'
+  watching: t('common.watching'),
+  wish: t('common.wish'),
+  completed: t('common.completed'),
+  on_hold: t('common.on_hold'),
+  dropped: t('common.dropped')
 };
 
 // ─── 组件渲染 ───
@@ -78,7 +78,7 @@ function renderAnimeCard(anime, options = {}) {
 
   // More button
   const moreBtnHtml = showMoreBtn
-    ? ('<div class="card-more-btn" onclick="event.stopPropagation();openStatusModal(event, \'' + id + '\')" data-tooltip="设置状态">' +
+    ? ('<div class="card-more-btn" onclick="event.stopPropagation();openStatusModal(event, \'' + id + '\')" data-tooltip="' + t('ui.setStatusTooltip') + '">' +
         '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">' +
           '<circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/>' +
         '</svg></div>')
@@ -101,7 +101,7 @@ function renderAnimeCard(anime, options = {}) {
       '<div class="meta">' +
         (anime.rating ? '<span class="rating-badge">★ ' + anime.rating + '</span>' : '') +
         (anime.season && !isWish ? '<span class="season-badge">S' + anime.season + '</span>' : '') +
-        (isWish ? '<span class="wishlist-badge">愿望</span>' : '') +
+        (isWish ? '<span class="wishlist-badge">' + t('ui.wishlistBadge') + '</span>' : '') +
       '</div>' +
     '</div>' +
   '</div>';

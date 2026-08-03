@@ -6,9 +6,9 @@ let stickObserver = null;
 const discoveryFilterBar = createFilterBar({
   container: '.discovery-actions .filter-group',
   options: [
-    { key: 'all', label: '全部' },
-    { key: 'unimported', label: '未导入' },
-    { key: 'excluded', label: '已排除' }
+    { key: 'all', label: t('common.all') },
+    { key: 'unimported', label: t('discovery.unimported') },
+    { key: 'excluded', label: t('discovery.excluded') }
   ],
   initial: 'all',
   onChange: function() { loadDiscovery(); }
@@ -28,13 +28,13 @@ async function loadDiscovery() {
   stats.style.display = 'none';
   actions.style.display = 'none';
   scanBtn.style.display = '';
-  scanBtnText.textContent = '扫描目录';
+  scanBtnText.textContent = t('discovery.scanDir');
   scanBtn.disabled = false;
 
   try {
     const config = await API.get('/api/config');
     if (!config.dirValid) {
-      heroPath.textContent = '未配置媒体目录';
+      heroPath.textContent = t('discovery.noMediaDir');
       empty.style.display = 'flex';
       scanBtn.style.display = 'none';
       return;
@@ -48,8 +48,8 @@ async function loadDiscovery() {
     if (discoveryData.length === 0) {
       grid.innerHTML = '';
       empty.style.display = 'flex';
-      document.getElementById('discoveryEmptyText').textContent = '尚未扫描媒体目录';
-      document.getElementById('discoveryEmpty').querySelector('.empty-hint').textContent = '点击上方「扫描目录」开始';
+      document.getElementById('discoveryEmptyText').textContent = t('discovery.notScanned');
+      document.getElementById('discoveryEmpty').querySelector('.empty-hint').textContent = t('discovery.clickScanToStart');
       stats.style.display = 'none';
       actions.style.display = 'none';
       return;
@@ -59,7 +59,7 @@ async function loadDiscovery() {
   } catch (e) {
     // Tauri 初始加载时静默失败
     if (!window.location.origin.startsWith('http')) return;
-    showToast('加载失败: ' + e.message, 'error');
+    showToast(t('discovery.loadFailed', { message: e.message }), 'error');
   }
 }
 
@@ -75,7 +75,7 @@ async function startScan() {
   const actions = document.getElementById('discoveryActions');
 
   scanBtn.disabled = true;
-  scanBtnText.textContent = '扫描中...';
+  scanBtnText.textContent = t('discovery.scanning');
   grid.innerHTML = '';
   empty.style.display = 'none';
   stats.style.display = 'none';
@@ -97,20 +97,20 @@ async function startScan() {
         if (!line.startsWith('data: ')) continue;
         const msg = JSON.parse(line.slice(6));
         if (msg.type === 'progress') {
-          scanBtnText.textContent = `扫描 ${msg.current}/${msg.total}`;
+          scanBtnText.textContent = t('discovery.scanProgress', { current: msg.current, total: msg.total });
         } else if (msg.type === 'done') {
           loadDiscovery();
         } else if (msg.type === 'error') {
-          showToast('扫描失败: ' + msg.message, 'error');
+          showToast(t('discovery.scanFailed', { message: msg.message }), 'error');
         }
       }
     }
   } catch (e) {
-    showToast('扫描失败: ' + e.message, 'error');
+    showToast(t('discovery.scanFailed', { message: e.message }), 'error');
   }
 
   scanBtn.disabled = false;
-  scanBtnText.textContent = '重新扫描';
+  scanBtnText.textContent = t('discovery.rescan');
   isScanning = false;
 }
 
@@ -123,7 +123,7 @@ function renderDiscovery() {
   if (discoveryData.length === 0) {
     grid.innerHTML = '';
     empty.style.display = 'flex';
-    document.getElementById('discoveryEmptyText').textContent = '媒体目录中未发现动漫';
+    document.getElementById('discoveryEmptyText').textContent = t('discovery.noAnimeFound');
     stats.style.display = 'none';
     actions.style.display = 'none';
     return;
@@ -253,18 +253,18 @@ function renderCard(node, showLine) {
             <div class="discovery-card-title-row">
               <span class="discovery-card-title${node.alreadyImported ? ' discovery-card-title--imported' : ''}${excluded ? ' discovery-card-title--excluded' : ''}">${escHtml(node.parsedTitle)}${seasonText}</span>
               <div class="discovery-card-row-actions">
-                ${node.alreadyImported ? `<button class="discovery-card-action discovery-card-unlink" onclick="event.preventDefault();event.stopPropagation();unlinkSingle(this.closest('.discovery-card').dataset.path)" data-tooltip="取消导入">${unlinkSvg} 取消导入</button>` : ''}
-                ${!node.alreadyImported && !excluded ? `<button class="discovery-card-action discovery-card-exclude" onclick="event.preventDefault();event.stopPropagation();excludeSingle(this.closest('.discovery-card').dataset.path)" data-tooltip="排除扫描">${excludeSvg} 排除</button>` : ''}
-                ${excluded ? `<button class="discovery-card-action discovery-card-unexclude" onclick="event.preventDefault();event.stopPropagation();includeSingle(this.closest('.discovery-card').dataset.path)" data-tooltip="取消排除">${includeSvg} 取消排除</button>` : ''}
+                ${node.alreadyImported ? `<button class="discovery-card-action discovery-card-unlink" onclick="event.preventDefault();event.stopPropagation();unlinkSingle(this.closest('.discovery-card').dataset.path)" data-tooltip="${t('discovery.unlink')}">${unlinkSvg} ${t('discovery.unlink')}</button>` : ''}
+                ${!node.alreadyImported && !excluded ? `<button class="discovery-card-action discovery-card-exclude" onclick="event.preventDefault();event.stopPropagation();excludeSingle(this.closest('.discovery-card').dataset.path)" data-tooltip="${t('discovery.excludeScan')}">${excludeSvg} ${t('discovery.exclude')}</button>` : ''}
+                ${excluded ? `<button class="discovery-card-action discovery-card-unexclude" onclick="event.preventDefault();event.stopPropagation();includeSingle(this.closest('.discovery-card').dataset.path)" data-tooltip="${t('discovery.unexclude')}">${includeSvg} ${t('discovery.unexclude')}</button>` : ''}
               </div>
             </div>
-            <span class="discovery-card-meta">${node.videoCount} 集 · ${sizeMB} MB</span>
+            <span class="discovery-card-meta">${t('discovery.meta', { count: node.videoCount, size: sizeMB })}</span>
           </div>
           ${excluded
-            ? '<span class="discovery-badge discovery-badge--excluded">已排除</span>'
+            ? '<span class="discovery-badge discovery-badge--excluded">' + t('discovery.excluded') + '</span>'
             : node.alreadyImported
-              ? '<span class="discovery-badge discovery-badge--imported">已导入</span>'
-              : '<span class="discovery-badge discovery-badge--new">新</span>'}
+              ? '<span class="discovery-badge discovery-badge--imported">' + t('discovery.imported') + '</span>'
+              : '<span class="discovery-badge discovery-badge--new">' + t('discovery.new') + '</span>'}
         </label>
       </div>
       ${(showParentChain || hasVideos) ? `
@@ -344,7 +344,7 @@ function updateSelectAllLabel() {
   if (!btn) return;
   const cbs = document.querySelectorAll('.discovery-cb');
   const allChecked = cbs.length > 0 && Array.from(cbs).every(cb => cb.checked);
-  btn.textContent = allChecked ? '取消全选' : '全选';
+  btn.textContent = allChecked ? t('discovery.unselectAll') : t('discovery.selectAll');
 }
 
 function getCheckedPaths() {
@@ -367,17 +367,17 @@ async function importSelected() {
     specialSuffix: n.specialSuffix,
   }));
   if (items.length === 0) {
-    showToast('请先选择要导入的动漫', 'warning');
+    showToast(t('discovery.selectFirst'), 'warning');
     return;
   }
   try {
     const result = await API.post('/api/import', { items });
-    showToast(`已导入 ${result.imported.length} 部动漫`, 'success');
-    showToast('已自动添加到我的列表', 'silent');
+    showToast(t('discovery.importedCount', { count: result.imported.length }), 'success');
+    showToast(t('discovery.autoAddedToMylist'), 'silent');
     loadDiscovery();
     loadLibrary();
   } catch (e) {
-    showToast('导入失败: ' + e.message, 'error');
+    showToast(t('discovery.importFailed', { message: e.message }), 'error');
   }
 }
 
@@ -389,32 +389,32 @@ function refreshDiscovery() {
 async function unlinkSingle(path) {
   try {
     await API.post('/api/discovery/unlink', { path });
-    showToast('已取消导入', 'info');
+    showToast(t('discovery.unlinked'), 'info');
     checkedPaths.delete(path);
     loadDiscovery();
     loadLibrary();
   } catch (e) {
-    showToast('取消导入失败: ' + e.message, 'error');
+    showToast(t('discovery.unlinkFailed', { message: e.message }), 'error');
   }
 }
 
 async function excludeSingle(path) {
   try {
     await API.post('/api/discovery/exclude', { path });
-    showToast('已排除扫描', 'info');
+    showToast(t('discovery.excludedScan'), 'info');
     loadDiscovery();
   } catch (e) {
-    showToast('排除失败: ' + e.message, 'error');
+    showToast(t('discovery.excludeFailed', { message: e.message }), 'error');
   }
 }
 
 async function includeSingle(path) {
   try {
     await API.post('/api/discovery/include', { path });
-    showToast('已取消排除', 'info');
+    showToast(t('discovery.unexcluded'), 'info');
     loadDiscovery();
   } catch (e) {
-    showToast('取消排除失败: ' + e.message, 'error');
+    showToast(t('discovery.unexcludeFailed', { message: e.message }), 'error');
   }
 }
 

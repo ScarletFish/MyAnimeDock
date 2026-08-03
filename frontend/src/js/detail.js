@@ -134,10 +134,10 @@ window.handleDetailPlaybackEnded = function (endedAnimeId) {
     var _allDone = currentAnime.episodes && currentAnime.episodes.length > 0
       && currentAnime.episodes.every(function(e) { return e.watched; });
     if (_allDone && currentAnime.myListStatus === 'completed') {
-      showToast('播放已结束，已看完所有剧集', 'success');
+      showToast(t('detail.playEndedAllWatched'), 'success');
       return;
     }
-    showToast('播放已结束，进度已更新', 'success');
+    showToast(t('detail.playEndedUpdated'), 'success');
   });
   return true;
 };
@@ -186,7 +186,7 @@ async function showDetail(id, fromRect, fromSrc, sourceView = 'library') {
       }
     }
   } catch (e) {
-    showToast('加载详情失败: ' + e.message, 'error');
+    showToast(t('detail.loadFailed', { error: e.message }), 'error');
   }
 }
 
@@ -350,7 +350,7 @@ function renderDetail() {
   const leftParts = [];
   if (anime.rating) leftParts.push(`<span class="info-rating-num">★ ${anime.rating}</span>`);
   if (anime.ratingRank) leftParts.push(`<span class="info-rating-sub">#${anime.ratingRank}</span>`);
-  if (anime.ratingTotal) leftParts.push(`<span class="info-rating-sub">${anime.ratingTotal}人</span>`);
+  if (anime.ratingTotal) leftParts.push(`<span class="info-rating-sub">${t('detail.ratingPeople', { count: anime.ratingTotal })}</span>`);
 
   const rightParts = [];
   const s = anime.matchedSeason || anime.season;
@@ -514,23 +514,23 @@ function renderWishlistDetail(anime) {
   const archiveEl = document.getElementById('archiveDetail');
   archiveEl.innerHTML = `
     <div class="archive-magazine-essay">
-      <div class="archive-magazine-thoughts text-sm text-content leading-[1.7]">此条目来自愿望单，目前没有本地文件。</div>
+      <div class="archive-magazine-thoughts text-sm text-content leading-[1.7]">${t('detail.wishlistNoLocal')}</div>
     </div>
     <div class="archive-magazine-meta">
       ${anime.rating ? `
         <div class="archive-magazine-stat">
           <span class="archive-magazine-stat-value">★ ${anime.rating}</span>
-          <span class="archive-magazine-stat-label">评分</span>
+          <span class="archive-magazine-stat-label">${t('detail.ratingLabel')}</span>
         </div>` : ''}
       <div class="archive-magazine-stat">
-        <span class="archive-magazine-stat-value">愿望单</span>
-        <span class="archive-magazine-stat-label">来源</span>
+        <span class="archive-magazine-stat-value">${t('detail.wishlistLabel')}</span>
+        <span class="archive-magazine-stat-label">${t('detail.sourceLabel')}</span>
       </div>
     </div>
     <div class="wishlist-detail-actions mt-4">
       <a class="btn btn-primary" href="${(typeof window.getBangumiFrontendUrl === 'function' ? window.getBangumiFrontendUrl() : 'https://bgm.tv')}/subject/${anime.bangumiId}" target="_blank" rel="noopener">
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-        在 Bangumi 中打开
+        ${t('detail.openInBangumi')}
       </a>
     </div>
   `;
@@ -617,11 +617,11 @@ function showFinishConfirm(anime, ep) {
     var total = anime.episodes ? anime.episodes.length : '?';
     overlay.innerHTML =
       '<div class="modal" style="max-width:340px;padding:var(--space-6) var(--space-8) var(--space-5);text-align:center">' +
-        '<p class="text-content" style="margin:0 0 var(--space-1);font-weight:600;font-size:17px">第 ' + ep.number + ' / ' + total + ' 集</p>' +
-        '<p class="text-content" style="margin:0 0 var(--space-5);font-size:14px;color:var(--fg-muted)">是否标记为已看完？</p>' +
+        '<p class="text-content" style="margin:0 0 var(--space-1);font-weight:600;font-size:17px">' + t('detail.episodeXofY', { number: ep.number, total: total }) + '</p>' +
+        '<p class="text-content" style="margin:0 0 var(--space-5);font-size:14px;color:var(--fg-muted)">' + t('detail.markWatchedConfirm') + '</p>' +
         '<div class="modal-actions flex items-center justify-center" style="gap:var(--space-3);padding:0">' +
-          '<button class="btn btn-ghost confirm-cancel" style="flex:1;justify-content:center">取消</button>' +
-          '<button class="btn btn-primary confirm-ok" style="flex:1;justify-content:center">标记</button>' +
+          '<button class="btn btn-ghost confirm-cancel" style="flex:1;justify-content:center">' + t('detail.cancel') + '</button>' +
+          '<button class="btn btn-primary confirm-ok" style="flex:1;justify-content:center">' + t('detail.mark') + '</button>' +
         '</div>' +
       '</div>';
     document.body.appendChild(overlay);
@@ -683,7 +683,7 @@ function renderSummary(anime) {
       }
     }
   }
-  el.textContent = text || '暂无简介';
+  el.textContent = text || t('detail.noSummary');
 }
 
 // ─── Key staff roles to display (filtered) ───
@@ -766,7 +766,7 @@ function renderCharacters(anime) {
   if (!hasStaff) return;
 
   staffList.innerHTML = keyJobs.map(p => {
-    const role = escHtml(p.roleName || p.jobs[0] || '职员');
+    const role = escHtml(p.roleName || p.jobs[0] || t('detail.staffFallbackRole'));
     const name = escHtml(p.nameCn || p.name);
     return `<span class="detail-staff-role">${role}</span><span class="detail-staff-name">${name}</span>`;
   }).join('');
@@ -794,11 +794,11 @@ function renderPlayButton(anime) {
   // 全新→开始播放 / 有进度或有历史→继续播放 / 全部看完→重新播放
   var hasViewHistory = anime.episodes.some(function(e) { return e.watched || e.progress > 0; });
   if (allWatched) {
-    textEl.textContent = '重新播放';
+    textEl.textContent = t('detail.replay');
   } else if (targetEp.progress > 0 || hasViewHistory) {
-    textEl.textContent = '继续播放';
+    textEl.textContent = t('detail.continue');
   } else {
-    textEl.textContent = '开始播放';
+    textEl.textContent = t('detail.startPlay');
   }
 
   // Store target for onclick handler (avoids inline JS string escaping)
@@ -832,9 +832,9 @@ function playEpisodeFromCover() {
   async function playEpisode(filePath, position = 0) {
     try {
       await API.post('/api/play', { filePath, position });
-      showToast('正在播放...', 'info');
+      showToast(t('detail.playing'), 'info');
     } catch (e) {
-      showToast('播放失败: ' + e.message, 'error');
+      showToast(t('detail.playFailed', { error: e.message }), 'error');
     }
   }
 
@@ -872,9 +872,9 @@ async function checkAndShowFinishConfirm(anime) {
     AppState.set('currentAnime', currentAnime);
     renderDetail();
     scrollToNextUnwatched(currentAnime, ep.number);
-    showToast('已标记第 ' + ep.number + ' 集为已看完', 'success');
+    showToast(t('detail.markedWatched', { number: ep.number }), 'success');
   } catch (e) {
-    showToast('标记失败: ' + e.message, 'error');
+    showToast(t('detail.markFailed', { error: e.message }), 'error');
   }
 }
 
@@ -889,7 +889,7 @@ async function toggleWatched(animeId, epNumber, watched) {
       renderWatchStats(currentAnime);
     }
   } catch (e) {
-    showToast('操作失败: ' + e.message, 'error');
+    showToast(t('detail.actionFailed', { error: e.message }), 'error');
   }
 }
 
@@ -911,32 +911,32 @@ async function searchBangumiWithKeyword() {
   const resultsEl = document.getElementById('syncSearchResults');
   
   if (!keyword) {
-    showToast('请输入搜索关键词', 'warning');
+    showToast(t('detail.enterKeyword'), 'warning');
     return;
   }
   
-  resultsEl.innerHTML = '<p class="text-center p-4 text-content">搜索中...</p>';
+  resultsEl.innerHTML = '<p class="text-center p-4 text-content">' + t('detail.searching') + '</p>';
   
   try {
     const result = await API.post('/api/bangumi/search', { keyword });
     if (result.results && result.results.length > 0) {
       showSearchResults(result.results, currentAnime.id);
     } else {
-      resultsEl.innerHTML = '<p class="search-result-empty">未找到匹配结果</p>';
+      resultsEl.innerHTML = '<p class="search-result-empty">' + t('detail.noSearchResults') + '</p>';
     }
   } catch (e) {
-    showToast('搜索失败: ' + e.message, 'error');
-    resultsEl.innerHTML = '<p class="search-result-empty">搜索失败</p>';
+    showToast(t('detail.searchFailed', { error: e.message }), 'error');
+    resultsEl.innerHTML = '<p class="search-result-empty">' + t('detail.searchFailedEmpty') + '</p>';
   }
 }
 
 function showSearchResults(results, animeId) {
   const el = document.getElementById('syncSearchResults');
   if (!results || results.length === 0) {
-    el.innerHTML = '<p class="search-result-empty">未找到匹配结果</p>';
+    el.innerHTML = '<p class="search-result-empty">' + t('detail.noSearchResults') + '</p>';
     return;
   }
-  el.innerHTML = '<h4 class="m-0 mb-3 text-content">请选择匹配的条目：</h4>' +
+  el.innerHTML = '<h4 class="m-0 mb-3 text-content">' + t('detail.selectSubject') + '</h4>' +
     results.map(r => `
       <div class="search-result-item" onclick="attachBangumiSubject('${animeId}', ${r.id})">
         <img class="search-result-cover" src="${r.images?.small || r.images?.grid || ''}" alt=""
@@ -946,14 +946,14 @@ function showSearchResults(results, animeId) {
           <div class="search-result-subtitle">${escHtml(r.name)}</div>
           <div class="search-result-meta">${r.date || ''}${r.rating?.score ? ' · ★' + r.rating.score.toFixed(1) : ''}</div>
         </div>
-        <button class="btn btn-primary search-result-btn">选择</button>
+        <button class="btn btn-primary search-result-btn">${t('detail.select')}</button>
       </div>
     `).join('');
 }
 
 async function attachBangumiSubject(animeId, subjectId) {
   const resultsEl = document.getElementById('syncSearchResults');
-  resultsEl.innerHTML = '<p class="text-center p-4 text-content">正在获取元数据...</p>';
+  resultsEl.innerHTML = '<p class="text-center p-4 text-content">' + t('detail.fetchingMetadata') + '</p>';
   try {
     const result = await API.post('/api/bangumi/fetch', { animeId, subjectId });
     currentAnime = result.anime;
@@ -961,26 +961,26 @@ async function attachBangumiSubject(animeId, subjectId) {
     renderDetail();
     closeModal('syncModal');
     if (typeof loadLibrary === 'function') loadLibrary();
-    showToast('Bangumi 元数据获取成功', 'success');
+    showToast(t('detail.metadataSuccess'), 'success');
   } catch (e) {
-    showToast('获取失败: ' + e.message, 'error');
+    showToast(t('detail.fetchFailed', { error: e.message }), 'error');
     resultsEl.innerHTML = '';
   }
 }
 
 async function deleteAnime() {
   if (!currentAnime) return;
-  if (!(await showConfirm(`确定移出「${currentAnime.title}」？<br>仅从库中移除，不影响本地文件。`))) return;
+  if (!(await showConfirm(t('detail.deleteConfirm', { title: currentAnime.title })))) return;
 
   try {
     await API.del(`/api/anime/${encodeURIComponent(currentAnime.id)}`);
-    showToast('已删除', 'success');
+    showToast(t('detail.deleted'), 'success');
     goBack();
     loadLibrary();
     loadDiscovery();
     if (typeof loadMyList === 'function') loadMyList();
   } catch (e) {
-    showToast('删除失败: ' + e.message, 'error');
+    showToast(t('detail.deleteFailed', { error: e.message }), 'error');
   }
 }
 

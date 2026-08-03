@@ -21,25 +21,25 @@
     <div class="titlebar__detail-context hidden" id="titlebarDetailContext">
       <button class="titlebar__back" id="titlebarBack">
         <svg viewBox="0 0 16 16"><polyline points="10 4 6 8 10 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span>返回</span>
+        <span data-i18n="common.back">返回</span>
       </button>
     </div>
   </div>
   <div class="titlebar__search" id="titlebarSearch">
     <div class="titlebar__search-wrap">
       <svg class="titlebar__search-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="5"/><path d="m11 11 3 3"/></svg>
-      <input type="text" id="globalSearchInput" placeholder="搜索…" autocomplete="off" spellcheck="false">
+      <input type="text" id="globalSearchInput" placeholder="搜索…" autocomplete="off" spellcheck="false" data-i18n-attr="nav.searchPlaceholder:placeholder">
     </div>
     <div class="titlebar__search-results hidden" id="globalSearchResults"></div>
   </div>
   <div class="titlebar__controls">
-    <button class="titlebar__btn" id="titlebarMinimize" data-tooltip="最小化">
+    <button class="titlebar__btn" id="titlebarMinimize" data-tooltip="最小化" data-i18n-attr="nav.minimize:data-tooltip">
       <svg viewBox="0 0 14 14"><line x1="3" y1="7" x2="11" y2="7" stroke="currentColor" stroke-width="1.5"/></svg>
     </button>
-    <button class="titlebar__btn" id="titlebarMaximize" data-tooltip="最大化">
+    <button class="titlebar__btn" id="titlebarMaximize" data-tooltip="最大化" data-i18n-attr="nav.maximize:data-tooltip">
       <svg viewBox="0 0 14 14"><rect x="3" y="3" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
     </button>
-    <button class="titlebar__btn titlebar__btn--close" id="titlebarClose" data-tooltip="关闭">
+    <button class="titlebar__btn titlebar__btn--close" id="titlebarClose" data-tooltip="关闭" data-i18n-attr="common.close:data-tooltip">
       <svg viewBox="0 0 14 14"><line x1="4" y1="4" x2="10" y2="10" stroke="currentColor" stroke-width="1.5"/><line x1="10" y1="4" x2="4" y2="10" stroke="currentColor" stroke-width="1.5"/></svg>
     </button>
   </div>
@@ -49,7 +49,7 @@
 
 <!-- Sidebar -->
 <aside class="sidebar">
-  <div class="sidebar-brand" onclick="toggleThemeDock()" data-tip="主题与视觉设置" role="button" tabindex="0">
+  <div class="sidebar-brand" onclick="toggleThemeDock()" data-tip="主题与视觉设置" data-i18n-attr="nav.themeVisual:data-tip" role="button" tabindex="0">
     <div class="sidebar-brand-icon theme-indicator">
       <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="MyAnimeDock">
         <rect x="0" y="0" width="16" height="16" rx="3" fill="var(--accent)" stroke="var(--border)" stroke-width="0.5"/>
@@ -58,18 +58,18 @@
     </div>
   </div>
   <nav class="sidebar-nav">
-    <button class="nav-btn" id="btnDiscovery" data-tip="发现" onclick="showView('discovery')">
+    <button class="nav-btn" id="btnDiscovery" data-tip="发现" data-i18n-attr="nav.discovery:data-tip" onclick="showView('discovery')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="11" cy="11" r="8"></circle>
         <path d="m21 21-4.35-4.35"></path>
       </svg>
     </button>
-    <button class="nav-btn active" id="btnLibrary" data-tip="动漫库" onclick="showView('library')">
+    <button class="nav-btn active" id="btnLibrary" data-tip="动漫库" data-i18n-attr="nav.library:data-tip" onclick="showView('library')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path>
       </svg>
     </button>
-    <button class="nav-btn" id="btnMyList" data-tip="我的列表" onclick="showView('mylist')">
+    <button class="nav-btn" id="btnMyList" data-tip="我的列表" data-i18n-attr="nav.mylist:data-tip" onclick="showView('mylist')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <line x1="8" y1="6" x2="21" y2="6"></line>
         <line x1="8" y1="12" x2="21" y2="12"></line>
@@ -79,14 +79,14 @@
         <line x1="3" y1="18" x2="3.01" y2="18"></line>
       </svg>
     </button>
-    <button class="nav-btn" id="btnStats" data-tip="统计" onclick="showView('stats')">
+    <button class="nav-btn" id="btnStats" data-tip="统计" data-i18n-attr="nav.stats:data-tip" onclick="showView('stats')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
       </svg>
     </button>
   </nav>
   <div class="sidebar-bottom">
-    <button class="nav-btn" id="btnSettings" data-tip="设置" onclick="openSettings()">
+    <button class="nav-btn" id="btnSettings" data-tip="设置" data-i18n-attr="common.settings:data-tip" onclick="openSettings()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
         <circle cx="12" cy="12" r="3"></circle>
@@ -108,43 +108,43 @@
 <div class="theme-dock" id="themeDock">
   <div class="theme-dock-inner">
     <div class="theme-dock-section">
-      <span class="theme-dock-label">主题色系</span>
+      <span class="theme-dock-label" data-i18n="nav.themeColors">主题色系</span>
       <div class="theme-picker">
-        <button class="theme-option theme-option--default" data-theme="default" onclick="selectTheme(this, 'default')" data-tooltip="默认"></button>
-        <button class="theme-option theme-option--amber" data-theme="amber" onclick="selectTheme(this, 'amber')" data-tooltip="琥珀"></button>
-        <button class="theme-option theme-option--ocean" data-theme="ocean" onclick="selectTheme(this, 'ocean')" data-tooltip="海洋"></button>
-        <button class="theme-option theme-option--sakura" data-theme="sakura" onclick="selectTheme(this, 'sakura')" data-tooltip="樱花"></button>
-        <button class="theme-option theme-option--emerald" data-theme="emerald" onclick="selectTheme(this, 'emerald')" data-tooltip="翡翠"></button>
-        <button class="theme-option theme-option--violet" data-theme="violet" onclick="selectTheme(this, 'violet')" data-tooltip="紫罗兰"></button>
+        <button class="theme-option theme-option--default" data-theme="default" onclick="selectTheme(this, 'default')" data-tooltip="默认" data-i18n-attr="common.default:data-tooltip"></button>
+        <button class="theme-option theme-option--amber" data-theme="amber" onclick="selectTheme(this, 'amber')" data-tooltip="琥珀" data-i18n-attr="nav.amber:data-tooltip"></button>
+        <button class="theme-option theme-option--ocean" data-theme="ocean" onclick="selectTheme(this, 'ocean')" data-tooltip="海洋" data-i18n-attr="nav.ocean:data-tooltip"></button>
+        <button class="theme-option theme-option--sakura" data-theme="sakura" onclick="selectTheme(this, 'sakura')" data-tooltip="樱花" data-i18n-attr="nav.sakura:data-tooltip"></button>
+        <button class="theme-option theme-option--emerald" data-theme="emerald" onclick="selectTheme(this, 'emerald')" data-tooltip="翡翠" data-i18n-attr="nav.emerald:data-tooltip"></button>
+        <button class="theme-option theme-option--violet" data-theme="violet" onclick="selectTheme(this, 'violet')" data-tooltip="紫罗兰" data-i18n-attr="nav.violet:data-tooltip"></button>
       </div>
     </div>
     <div class="theme-dock-separator"></div>
     <div class="theme-dock-section">
       <div class="theme-mode-toggle mt-0">
-        <span class="theme-toggle-label theme-toggle-label--active" id="dockLabelDark">深色</span>
+        <span class="theme-toggle-label theme-toggle-label--active" id="dockLabelDark" data-i18n="common.dark">深色</span>
         <label class="toggle-switch">
           <input type="checkbox" id="dockThemeMode" onchange="handleDockThemeModeToggle(this)">
           <span class="toggle-slider"></span>
         </label>
-        <span class="theme-toggle-label theme-toggle-label--inactive" id="dockLabelLight">浅色</span>
+        <span class="theme-toggle-label theme-toggle-label--inactive" id="dockLabelLight" data-i18n="common.light">浅色</span>
       </div>
     </div>
     <div class="theme-dock-separator"></div>
     <div class="theme-dock-section theme-dock-section--zoom">
-      <span class="theme-dock-label">缩放</span>
+      <span class="theme-dock-label" data-i18n="nav.zoom">缩放</span>
       <input type="range" id="dockZoom" min="75" max="125" step="5" value="100" oninput="handleDockZoom(this)">
       <span class="theme-dock-zoom-value" id="dockZoomLabel">100%</span>
     </div>
     <div class="theme-dock-separator"></div>
     <div class="theme-dock-section">
-      <span class="theme-dock-label">减少动画</span>
+      <span class="theme-dock-label" data-i18n="nav.reduceMotion">减少动画</span>
       <label class="toggle-switch">
         <input type="checkbox" id="dockReduceMotion" onchange="handleReduceMotionToggle(this)">
         <span class="toggle-slider"></span>
       </label>
     </div>
   </div>
-  <button class="theme-dock-close" onclick="closeThemeDock()" data-tooltip="关闭">✕</button>
+  <button class="theme-dock-close" onclick="closeThemeDock()" data-tooltip="关闭" data-i18n-attr="common.close:data-tooltip">✕</button>
 </div>
 
 <!-- Main Content -->
@@ -154,19 +154,19 @@
   <section class="view hidden" id="discoveryView">
     <div class="view-header" id="discoveryHero">
       <div>
-        <h1>媒体目录</h1>
-        <p class="discovery-hero-path" id="discoveryPath">未配置媒体目录</p>
+        <h1 data-i18n="discovery.mediaDir">媒体目录</h1>
+        <p class="discovery-hero-path" id="discoveryPath" data-i18n="discovery.notConfigured">未配置媒体目录</p>
       </div>
       <div class="view-header-right">
         <div class="discovery-stats-pills" id="discoveryStats" style="display:none">
-          <span class="stat-pill"><span id="statAnime">0</span> 部动漫</span>
-          <span class="stat-pill"><span id="statImported">0</span> 已导入</span>
+          <span class="stat-pill"><span id="statAnime">0</span><span data-i18n="discovery.animeCountUnit">部动漫</span></span>
+          <span class="stat-pill"><span id="statImported">0</span><span data-i18n="discovery.importedCountUnit">已导入</span></span>
         </div>
         <button class="btn btn-outline discovery-scan-btn" id="discoveryScanBtn" onclick="startScan()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"></path>
           </svg>
-          <span id="scanBtnText">扫描目录</span>
+          <span id="scanBtnText" data-i18n="discovery.scan">扫描目录</span>
         </button>
       </div>
     </div>
@@ -176,22 +176,22 @@
       <div class="discovery-actions-left">
         <button class="btn btn-outline" id="selectAllBtn" onclick="selectAllCandidates()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8Z"/><path d="M15 3v4a2 2 0 0 0 2 2h4"/></svg>
-          全选
+          <span data-i18n="discovery.selectAll">全选</span>
         </button>
         <button class="btn btn-outline" onclick="importSelected()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
-          导入选中 (<span id="importCount">0</span>)
+          <span data-i18n="discovery.importSelected">导入选中</span> (<span id="importCount">0</span>)
         </button>
       </div>
       <div class="discovery-actions-right">
         <div class="filter-group">
-          <button class="filter-btn filter-btn--active" data-filter="all">全部</button>
-          <button class="filter-btn" data-filter="unimported">未导入</button>
-          <button class="filter-btn" data-filter="excluded">已排除</button>
+          <button class="filter-btn filter-btn--active" data-filter="all" data-i18n="common.all">全部</button>
+          <button class="filter-btn" data-filter="unimported" data-i18n="discovery.unimported">未导入</button>
+          <button class="filter-btn" data-filter="excluded" data-i18n="discovery.excluded">已排除</button>
         </div>
         <div class="filter-group">
-          <button class="filter-btn" onclick="expandAll()">展开全部</button>
-          <button class="filter-btn" onclick="collapseAll()">折叠全部</button>
+          <button class="filter-btn" onclick="expandAll()" data-i18n="discovery.expandAll">展开全部</button>
+          <button class="filter-btn" onclick="collapseAll()" data-i18n="discovery.collapseAll">折叠全部</button>
         </div>
       </div>
     </div>
@@ -202,19 +202,19 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
       </svg>
-      <p id="discoveryEmptyText">未找到媒体目录</p>
-      <p class="empty-hint">请先在设置中配置媒体目录路径</p>
+      <p id="discoveryEmptyText" data-i18n="discovery.notFound">未找到媒体目录</p>
+      <p class="empty-hint" data-i18n="discovery.configureHint">请先在设置中配置媒体目录路径</p>
     </div>
   </section>
 
   <!-- Library View -->
   <section class="view hidden" id="libraryView">
     <div class="view-header">
-      <h1>动漫库</h1>
+      <h1 data-i18n="library.title">动漫库</h1>
       <div class="view-header-right">
         <button class="btn btn-outline" onclick="mmOpenModal()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="mr-1"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-          批量匹配
+          <span data-i18n="library.batchMatch">批量匹配</span>
         </button>
       </div>
     </div>
@@ -224,15 +224,15 @@
   <!-- Stats View -->
   <section class="view hidden" id="statsView">
     <div class="view-header">
-      <h1>统计</h1>
+      <h1 data-i18n="stats.title">统计</h1>
     </div>
     <div class="stats-grid" id="statsGrid">
       <!-- Card 1: Word Cloud -->
       <div class="stats-card stats-card--wordcloud" id="statsWordCloudCard">
         <div class="stats-card-header">
-          <h2>分类词云</h2>
-          <span class="stats-card-subtitle">Bangumi 类型标签聚合</span>
-          <button class="stats-refresh-btn" onclick="loadStats()" data-tooltip="刷新词云">
+          <h2 data-i18n="stats.wordCloud">分类词云</h2>
+          <span class="stats-card-subtitle" data-i18n="stats.wordCloudSubtitle">Bangumi 类型标签聚合</span>
+          <button class="stats-refresh-btn" onclick="loadStats()" data-tooltip="刷新词云" data-i18n-attr="stats.refreshWordCloud:data-tooltip">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
           </button>
         </div>
@@ -240,12 +240,12 @@
           <canvas id="wordCloudCanvas" width="800" height="400"></canvas>
           <div class="stats-loading" id="statsLoading">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-            加载中…
+            <span data-i18n="common.loading">加载中…</span>
           </div>
           <div class="stats-empty" id="statsEmpty" style="display:none">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
-            <p>暂无标签数据</p>
-            <p class="empty-hint">导入动漫并获取元数据后，标签词云将在此展示</p>
+            <p data-i18n="stats.noTags">暂无标签数据</p>
+            <p class="empty-hint" data-i18n="stats.noTagsHint">导入动漫并获取元数据后，标签词云将在此展示</p>
           </div>
         </div>
       </div>
@@ -253,9 +253,9 @@
       <!-- Card 2: Watch Activity -->
       <div class="stats-card stats-card--activity" id="statsActivityCard">
         <div class="stats-card-header">
-          <h2>观看活跃度</h2>
-          <span class="stats-card-subtitle">最近 6 个月观看时长趋势</span>
-          <button class="stats-refresh-btn" onclick="loadActivityChart()" data-tooltip="刷新图表">
+          <h2 data-i18n="stats.activity">观看活跃度</h2>
+          <span class="stats-card-subtitle" data-i18n="stats.activitySubtitle">最近 6 个月观看时长趋势</span>
+          <button class="stats-refresh-btn" onclick="loadActivityChart()" data-tooltip="刷新图表" data-i18n-attr="stats.refreshChart:data-tooltip">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
           </button>
         </div>
@@ -263,12 +263,12 @@
           <div id="activityChartContainer"></div>
           <div class="stats-loading" id="activityLoading">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-            加载中…
+            <span data-i18n="common.loading">加载中…</span>
           </div>
           <div class="stats-empty" id="activityEmpty" style="display:none">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
-            <p>暂无播放记录</p>
-            <p class="empty-hint">使用 mpv 播放视频后，活跃度趋势将在此展示</p>
+            <p data-i18n="stats.noActivity">暂无播放记录</p>
+            <p class="empty-hint" data-i18n="stats.noActivityHint">使用 mpv 播放视频后，活跃度趋势将在此展示</p>
           </div>
         </div>
       </div>
@@ -276,9 +276,9 @@
       <!-- Card 3: Rating Distribution -->
       <div class="stats-card stats-card--rating" id="statsRatingCard">
         <div class="stats-card-header">
-          <h2>评分分布</h2>
-          <span class="stats-card-subtitle">Bangumi 评分偏好一览</span>
-          <button class="stats-refresh-btn" onclick="loadRatingChart()" data-tooltip="刷新图表">
+          <h2 data-i18n="stats.rating">评分分布</h2>
+          <span class="stats-card-subtitle" data-i18n="stats.ratingSubtitle">Bangumi 评分偏好一览</span>
+          <button class="stats-refresh-btn" onclick="loadRatingChart()" data-tooltip="刷新图表" data-i18n-attr="stats.refreshChart:data-tooltip">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
           </button>
         </div>
@@ -286,12 +286,12 @@
           <div id="ratingChartContainer"></div>
           <div class="stats-loading" id="ratingLoading">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-            加载中…
+            <span data-i18n="common.loading">加载中…</span>
           </div>
           <div class="stats-empty" id="ratingEmpty" style="display:none">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
-            <p>暂无评分数据</p>
-            <p class="empty-hint">导入动漫并获取元数据后，评分分布将在此展示</p>
+            <p data-i18n="stats.noRating">暂无评分数据</p>
+            <p class="empty-hint" data-i18n="stats.noRatingHint">导入动漫并获取元数据后，评分分布将在此展示</p>
           </div>
         </div>
       </div>
@@ -299,9 +299,9 @@
       <!-- Card 4: Season Distribution -->
       <div class="stats-card stats-card--season" id="statsSeasonCard">
         <div class="stats-card-header">
-          <h2>季度分布</h2>
-          <span class="stats-card-subtitle">所看番剧在哪个季度最突出</span>
-          <button class="stats-refresh-btn" onclick="loadSeasonChart()" data-tooltip="刷新图表">
+          <h2 data-i18n="stats.season">季度分布</h2>
+          <span class="stats-card-subtitle" data-i18n="stats.seasonSubtitle">所看番剧在哪个季度最突出</span>
+          <button class="stats-refresh-btn" onclick="loadSeasonChart()" data-tooltip="刷新图表" data-i18n-attr="stats.refreshChart:data-tooltip">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
           </button>
         </div>
@@ -309,12 +309,12 @@
           <div id="seasonChartContainer"></div>
           <div class="stats-loading" id="seasonChartLoading">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-            加载中…
+            <span data-i18n="common.loading">加载中…</span>
           </div>
           <div class="stats-empty" id="seasonChartEmpty" style="display:none">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
-            <p>暂无季度数据</p>
-            <p class="empty-hint">导入动漫并获取元数据后，季度分布将在此展示</p>
+            <p data-i18n="stats.noSeason">暂无季度数据</p>
+            <p class="empty-hint" data-i18n="stats.noSeasonHint">导入动漫并获取元数据后，季度分布将在此展示</p>
           </div>
         </div>
       </div>
@@ -325,7 +325,7 @@
   <section class="view hidden" id="mylistView">
     <div class="mylist-status-bar" id="mylistStatusBar"></div>
     <div class="view-header">
-      <h1>我的列表</h1>
+      <h1 data-i18n="mylist.title">我的列表</h1>
       <div class="mylist-sort-bar" id="mylistSortDropdown"></div>
     </div>
     <div id="mylistGrid" class="mylist-grid"></div>
@@ -336,7 +336,7 @@
         <rect x="3" y="14" width="7" height="7" rx="1"></rect>
         <rect x="14" y="14" width="7" height="7" rx="1"></rect>
       </svg>
-      <p>暂无内容</p>
+      <p data-i18n="common.empty">暂无内容</p>
     </div>
   </section>
 
@@ -356,9 +356,9 @@
         <div class="detail-banner-left">
           <div class="detail-cover-wrap" id="detailCover"></div>
           <div class="detail-actions">
-            <button class="btn btn-outline" id="btnPlayAnime" onclick="playEpisodeFromCover()"><span id="btnPlayText">播放</span></button>
-            <button class="btn btn-ghost" id="btnFetchBangumi" onclick="syncBangumiMetadata()">同步</button>
-            <button class="btn btn-danger" id="btnDeleteAnime" onclick="deleteAnime()">移除</button>
+            <button class="btn btn-outline" id="btnPlayAnime" onclick="playEpisodeFromCover()"><span id="btnPlayText" data-i18n="common.play">播放</span></button>
+            <button class="btn btn-ghost" id="btnFetchBangumi" onclick="syncBangumiMetadata()" data-i18n="common.sync">同步</button>
+            <button class="btn btn-danger" id="btnDeleteAnime" onclick="deleteAnime()" data-i18n="common.remove">移除</button>
           </div>
         </div>
         <div class="detail-banner-right">
@@ -372,7 +372,7 @@
       <div class="episode-list-section hscroll-section" id="episodeHeatmap">
         <div class="episode-list-header">
           <div class="episode-header-left">
-            <h3>剧集列表</h3>
+            <h3 data-i18n="detail.episodeList">剧集列表</h3>
             <span class="episode-count" id="episodeCount"></span>
           </div>
         </div>
@@ -381,7 +381,7 @@
 
       <div class="detail-characters" id="detailCharacters" style="display:none">
         <div class="detail-section-header">
-          <h3>角色·声优</h3>
+          <h3 data-i18n="detail.characters">角色·声优</h3>
         </div>
         <div class="detail-char-wrap" id="detailCharWrap">
           <div class="detail-char-grid" id="detailCharGrid"></div>
@@ -389,18 +389,18 @@
         </div>
       </div>
       <div class="watch-stats" id="watchStats" style="display:none">
-        <div class="ws-header"><h3>观看统计</h3></div>
+        <div class="ws-header"><h3 data-i18n="detail.watchStats">观看统计</h3></div>
         <div class="ws-body" id="watchStatsContent"></div>
       </div>
       <div id="detailRelations" class="detail-section hscroll-section" style="display:none">
         <div class="detail-section-header">
-          <span class="detail-section-title">关联作品</span>
+          <span class="detail-section-title" data-i18n="detail.related">关联作品</span>
         </div>
         <div class="hscroll" id="relationScroll" style="gap: calc(0.75rem * var(--scale)); padding: calc(0.25rem * var(--scale)) 0 calc(0.5rem * var(--scale)) 0"></div>
       </div>
       <div id="detailRecommendations" class="detail-section hscroll-section" style="display:none">
         <div class="detail-section-header">
-          <span class="detail-section-title">推荐</span>
+          <span class="detail-section-title" data-i18n="detail.recommendations">推荐</span>
         </div>
         <div class="hscroll" id="recommendationScroll" style="gap: calc(0.75rem * var(--scale)); padding: calc(0.25rem * var(--scale)) 0 calc(0.5rem * var(--scale)) 0"></div>
       </div>
@@ -412,20 +412,20 @@
 <div class="modal-overlay modal-overlay--metamatch" id="metaMatchModal">
   <div class="modal modal--metamatch">
     <div class="modal-m-topbar">
-      <h2>批量元数据匹配</h2>
+      <h2 data-i18n="metamatch.title">批量元数据匹配</h2>
       <div class="modal-m-badges">
-        <span class="stat-badge"><span class="num" id="mmStatTotal">0</span> 全部</span>
-        <span class="stat-badge pending"><span class="num" id="mmStatPending">0</span> 待处理</span>
-        <span class="stat-badge failed"><span class="num" id="mmStatFailed">0</span> 失败</span>
-        <span class="stat-badge matched"><span class="num" id="mmStatMatched">0</span> 已匹配</span>
-        <span class="stat-badge matching"><span class="num" id="mmStatMatching">0</span> 匹配中</span>
+        <span class="stat-badge"><span class="num" id="mmStatTotal">0</span><span data-i18n="common.all">全部</span></span>
+        <span class="stat-badge pending"><span class="num" id="mmStatPending">0</span><span data-i18n="metamatch.statusPending">待处理</span></span>
+        <span class="stat-badge failed"><span class="num" id="mmStatFailed">0</span><span data-i18n="common.failed">失败</span></span>
+        <span class="stat-badge matched"><span class="num" id="mmStatMatched">0</span><span data-i18n="metamatch.statusMatched">已匹配</span></span>
+        <span class="stat-badge matching"><span class="num" id="mmStatMatching">0</span><span data-i18n="metamatch.statusMatching">匹配中</span></span>
       </div>
-      <button class="modal-close-btn" onclick="closeModal('metaMatchModal')" aria-label="关闭">✕</button>
+      <button class="modal-close-btn" onclick="closeModal('metaMatchModal')" aria-label="关闭" data-i18n-attr="common.close:aria-label">✕</button>
     </div>
     <div class="modal-m-progress"><div class="fill" id="mmModalProgress" style="width:0%"></div></div>
     <div class="modal-m-filterbar">
-      <button class="btn btn-outline" id="mmMainActionBtn" onclick="mmMainAction()">自动匹配全部</button>
-      <span class="mm-shift-tip" id="mmShiftTip" style="display:none">Shift+点击 多选</span>
+      <button class="btn btn-outline" id="mmMainActionBtn" onclick="mmMainAction()" data-i18n="metamatch.autoMatchAll">自动匹配全部</button>
+      <span class="mm-shift-tip" id="mmShiftTip" style="display:none" data-i18n="metamatch.shiftMultiSelect">Shift+点击 多选</span>
       <div class="spacer"></div>
       <button class="mm-filter-dot mm-filter-dot--active" data-mmfilter="all" onclick="mmSetFilter('all')"><span class="dot dot-all"></span></button>
       <button class="mm-filter-dot" data-mmfilter="pending" onclick="mmSetFilter('pending')"><span class="dot dot-pending"></span></button>
@@ -433,17 +433,17 @@
       <button class="mm-filter-dot" data-mmfilter="matched" onclick="mmSetFilter('matched')"><span class="dot dot-matched"></span></button>
       <div class="mm-list-search">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        <input type="text" id="mmGridSearch" placeholder="搜索条目..." oninput="mmFilterGrid()">
+        <input type="text" id="mmGridSearch" placeholder="搜索条目..." oninput="mmFilterGrid()" data-i18n-attr="metamatch.searchEntry:placeholder">
       </div>
-      <button class="btn btn-sm btn-ghost" id="mmCancelBtn" onclick="mmCancelSync()" style="display:none">停止</button>
+      <button class="btn btn-sm btn-ghost" id="mmCancelBtn" onclick="mmCancelSync()" style="display:none" data-i18n="common.stop">停止</button>
     </div>
     <div class="modal-m-body">
       <div class="mm-left">
         <div class="mm-list" id="mmGrid"></div>
         <div class="mm-list-empty" id="mmEmpty" style="display:none">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <p>没有需要匹配的条目</p>
-          <p class="empty-hint">所有条目已有元数据，或动漫库为空</p>
+          <p data-i18n="metamatch.noPendingItems">没有需要匹配的条目</p>
+          <p class="empty-hint" data-i18n="metamatch.noMatchHint">所有条目已有元数据，或动漫库为空</p>
         </div>
       </div>
       <div class="mm-panel" id="mmPanel">
@@ -451,7 +451,7 @@
         <div class="mm-panel-synclog" id="mmPanelSyncLog" style="display:none">
           <div class="mm-panel-synclog-header">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-            同步日志
+            <span data-i18n="metamatch.syncLog">同步日志</span>
           </div>
           <div class="mm-panel-synclog-entries" id="mmSyncLogEntries"></div>
           <div class="mm-panel-synclog-summary" id="mmSyncLogSummary" style="display:none"></div>
@@ -469,49 +469,49 @@
       <div class="status-modal-overlay"></div>
       <div class="status-modal-glass"></div>
     </div>
-    <button class="status-modal-close" onclick="closeModal('statusModal')" aria-label="关闭">
+    <button class="status-modal-close" onclick="closeModal('statusModal')" aria-label="关闭" data-i18n-attr="common.close:aria-label">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
     <div class="status-modal-inner">
-      <h2 class="status-modal-heading" id="statusModalTitle">标记状态</h2>
+      <h2 class="status-modal-heading" id="statusModalTitle" data-i18n="mylist.markStatus">标记状态</h2>
       <div class="status-modal-body">
         <div class="field-row">
           <div class="field-cell">
-            <label class="field-label">状态</label>
+            <label class="field-label" data-i18n="common.status">状态</label>
             <div class="status-dd" id="statusDd">
               <button type="button" class="status-dd-trigger" id="statusDdTrigger" onclick="toggleStatusDropdown(event)">
-                <span class="status-dd-text" id="statusDdText">计划中</span>
+                <span class="status-dd-text" id="statusDdText" data-i18n="common.wish">计划中</span>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="status-dd-chevron"><polyline points="6 9 12 15 18 9"/></svg>
               </button>
               <div class="status-dd-menu" id="statusDdMenu">
-                <button type="button" class="status-dd-opt" data-value="watching" onclick="selectStatusOption(this)"><svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="9"/></svg><span>进行中</span><svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></button>
-                <button type="button" class="status-dd-opt" data-value="wish" onclick="selectStatusOption(this)"><svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg><span>计划中</span><svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></button>
-                <button type="button" class="status-dd-opt" data-value="completed" onclick="selectStatusOption(this)"><svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg><span>已完成</span><svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></button>
-                <button type="button" class="status-dd-opt" data-value="on_hold" onclick="selectStatusOption(this)"><svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg><span>搁置</span><svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></button>
-                <button type="button" class="status-dd-opt" data-value="dropped" onclick="selectStatusOption(this)"><svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg><span>抛弃</span><svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></button>
+                <button type="button" class="status-dd-opt" data-value="watching" onclick="selectStatusOption(this)"><svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="9"/></svg><span data-i18n="common.watching">进行中</span><svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></button>
+                <button type="button" class="status-dd-opt" data-value="wish" onclick="selectStatusOption(this)"><svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg><span data-i18n="common.wish">计划中</span><svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></button>
+                <button type="button" class="status-dd-opt" data-value="completed" onclick="selectStatusOption(this)"><svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="common.completed">已完成</span><svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></button>
+                <button type="button" class="status-dd-opt" data-value="on_hold" onclick="selectStatusOption(this)"><svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg><span data-i18n="common.on_hold">搁置</span><svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></button>
+                <button type="button" class="status-dd-opt" data-value="dropped" onclick="selectStatusOption(this)"><svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg><span data-i18n="common.dropped">抛弃</span><svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></button>
               </div>
             </div>
           </div>
           <div class="field-cell">
-            <label class="field-label">评分</label>
+            <label class="field-label" data-i18n="common.rating">评分</label>
             <div class="num-stepper" id="ratingStepper" data-min="0" data-max="10" data-step="0.5">
               <button type="button" class="num-stepper-btn" onclick="stepperChange(this, -0.5)">−</button>
-              <span class="num-stepper-val" id="ratingDisplay">—</span>
+              <span class="num-stepper-val" id="ratingDisplay" data-i18n="common.none">—</span>
               <button type="button" class="num-stepper-btn" onclick="stepperChange(this, 0.5)">+</button>
             </div>
           </div>
           <div class="field-cell">
-            <label class="field-label">进度 (集)</label>
+            <label class="field-label" data-i18n="mylist.progressEpisodes">进度 (集)</label>
             <div class="num-stepper" id="progressStepper" data-min="0" data-max="999" data-step="1">
               <button type="button" class="num-stepper-btn" onclick="stepperChange(this, -1)">−</button>
-              <span class="num-stepper-val" id="progressDisplay">—</span>
+              <span class="num-stepper-val" id="progressDisplay" data-i18n="common.none">—</span>
               <button type="button" class="num-stepper-btn" onclick="stepperChange(this, 1)">+</button>
             </div>
           </div>
         </div>
         <div class="field-row">
           <div class="field-cell">
-            <label class="field-label">开始日期</label>
+            <label class="field-label" data-i18n="common.startDate">开始日期</label>
             <div class="date-segments" data-date="startedAt">
               <input type="text" class="date-seg date-seg--y" maxlength="4" placeholder="YYYY" inputmode="numeric" oninput="segAutoTab(this)">
               <span class="date-sep">/</span>
@@ -521,7 +521,7 @@
             </div>
           </div>
           <div class="field-cell">
-            <label class="field-label">结束日期</label>
+            <label class="field-label" data-i18n="common.endDate">结束日期</label>
             <div class="date-segments" data-date="completedAt">
               <input type="text" class="date-seg date-seg--y" maxlength="4" placeholder="YYYY" inputmode="numeric" oninput="segAutoTab(this)">
               <span class="date-sep">/</span>
@@ -531,13 +531,13 @@
             </div>
           </div>
           <div class="field-cell">
-            <label class="field-label">笔记</label>
-            <input type="text" id="notesInput" class="notes-input" placeholder="简短记录..." maxlength="200">
+            <label class="field-label" data-i18n="common.notes">笔记</label>
+            <input type="text" id="notesInput" class="notes-input" placeholder="简短记录..." maxlength="200" data-i18n-attr="mylist.notesPlaceholder:placeholder">
           </div>
         </div>
       </div>
       <div class="status-modal-footer">
-        <button class="btn btn-primary" onclick="saveStatusModal()">保存</button>
+        <button class="btn btn-primary" onclick="saveStatusModal()" data-i18n="common.save">保存</button>
       </div>
     </div>
   </div>
@@ -546,12 +546,12 @@
 <!-- Sync Metadata Modal -->
 <div class="modal-overlay" id="syncModal">
   <div class="modal modal--large">
-    <h2>同步元数据</h2>
+    <h2 data-i18n="detail.syncMetadata">同步元数据</h2>
     <div class="form-group">
-      <label for="syncKeyword">搜索关键词</label>
+      <label for="syncKeyword" data-i18n="detail.searchKeyword">搜索关键词</label>
       <div class="flex gap-2">
-        <input type="text" id="syncKeyword" placeholder="输入搜索词..." class="flex-1 min-w-0">
-        <button class="btn btn-primary" onclick="searchBangumiWithKeyword()">搜索</button>
+        <input type="text" id="syncKeyword" placeholder="输入搜索词..." class="flex-1 min-w-0" data-i18n-attr="detail.searchPlaceholder:placeholder">
+        <button class="btn btn-primary" onclick="searchBangumiWithKeyword()" data-i18n="common.search">搜索</button>
       </div>
     </div>
     <div class="bangumi-search-results" id="syncSearchResults"></div>
@@ -564,35 +564,35 @@
   <div class="modal modal--settings">
     <div class="settings-header">
       <div class="settings-header-top">
-        <h2>设置</h2>
-        <button class="btn-icon visual-settings-btn" onclick="closeModal('settingsModal'); openVisualDock()" data-tooltip="主题与视觉设置" aria-label="主题与视觉设置">
+        <h2 data-i18n="common.settings">设置</h2>
+        <button class="btn-icon visual-settings-btn" onclick="closeModal('settingsModal'); openVisualDock()" data-tooltip="主题与视觉设置" data-i18n-attr="nav.themeVisual:data-tooltip,aria-label" aria-label="主题与视觉设置">
           <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="16" height="16" rx="3" fill="var(--accent)" stroke="var(--accent)" stroke-width="0.5"/><text x="8" y="13" font-family="Georgia,'Times New Roman',serif" font-weight="700" font-size="12" fill="var(--bg-elevated)" text-anchor="middle">D</text></svg>
-          <span>视觉</span>
+          <span data-i18n="settings.visual">视觉</span>
         </button>
       </div>
       <nav class="settings-tabs" role="tablist">
-        <button class="settings-tab active" data-tab="basic" role="tab" aria-selected="true" onclick="switchSettingsTab(this, 'basic')">基本</button>
-        <button class="settings-tab" data-tab="playback" role="tab" aria-selected="false" onclick="switchSettingsTab(this, 'playback')">播放</button>
-        <button class="settings-tab" data-tab="scraper" role="tab" aria-selected="false" onclick="switchSettingsTab(this, 'scraper')">刮削</button>
-        <button class="settings-tab" data-tab="dashboard" role="tab" aria-selected="false" onclick="switchSettingsTab(this, 'dashboard')">动漫库</button>
-        <button class="settings-tab" data-tab="personalize" role="tab" aria-selected="false" onclick="switchSettingsTab(this, 'personalize')">个性化</button>
-        <button class="settings-tab" data-tab="database" role="tab" aria-selected="false" onclick="switchSettingsTab(this, 'database')">数据库</button>
+        <button class="settings-tab active" data-tab="basic" role="tab" aria-selected="true" onclick="switchSettingsTab(this, 'basic')" data-i18n="settings.tabBasic">基本</button>
+        <button class="settings-tab" data-tab="playback" role="tab" aria-selected="false" onclick="switchSettingsTab(this, 'playback')" data-i18n="settings.tabPlayback">播放</button>
+        <button class="settings-tab" data-tab="scraper" role="tab" aria-selected="false" onclick="switchSettingsTab(this, 'scraper')" data-i18n="settings.tabScraper">刮削</button>
+        <button class="settings-tab" data-tab="dashboard" role="tab" aria-selected="false" onclick="switchSettingsTab(this, 'dashboard')" data-i18n="settings.tabDashboard">动漫库</button>
+        <button class="settings-tab" data-tab="personalize" role="tab" aria-selected="false" onclick="switchSettingsTab(this, 'personalize')" data-i18n="settings.tabPersonalize">个性化</button>
+        <button class="settings-tab" data-tab="database" role="tab" aria-selected="false" onclick="switchSettingsTab(this, 'database')" data-i18n="settings.tabDatabase">数据库</button>
       </nav>
     </div>
     <div class="settings-panels">
       <div class="settings-panel active" id="tab-basic">
         <div class="form-group">
-          <label for="settingsMediaDir">媒体目录路径</label>
+          <label for="settingsMediaDir" data-i18n="settings.mediaDir">媒体目录路径</label>
           <div class="input-with-btn">
             <input type="text" id="settingsMediaDir" placeholder="E:/Anime">
-            <button class="btn btn-sm" onclick="browseFolder('settingsMediaDir')">浏览</button>
+            <button class="btn btn-sm" onclick="browseFolder('settingsMediaDir')" data-i18n="common.browse">浏览</button>
           </div>
         </div>
       </div>
       <!-- Tab: 播放 -->
       <div class="settings-panel" id="tab-playback">
         <div class="form-group">
-          <label>播放器</label>
+          <label data-i18n="settings.player">播放器</label>
           <div class="input-with-btn">
             <div class="player-dd" id="playerModeDropdown">
               <button type="button" class="player-dd-trigger" id="playerDdTrigger" onclick="togglePlayerDropdown(event)">
@@ -603,21 +603,21 @@
                 <!-- populated by JS -->
               </div>
             </div>
-            <input type="text" id="settingsPlayerPath" placeholder="路径，留空自动搜索 PATH">
-            <button class="btn btn-sm" onclick="browsePlayerExecutable()">浏览</button>
+            <input type="text" id="settingsPlayerPath" placeholder="路径，留空自动搜索 PATH" data-i18n-attr="settings.playerPathPlaceholder:placeholder">
+            <button class="btn btn-sm" onclick="browsePlayerExecutable()" data-i18n="common.browse">浏览</button>
           </div>
           <p class="form-hint" id="playerPathHint"></p>
         </div>
         <div class="form-group">
-          <label>自动标记前序集数</label>
-          <p class="form-hint mt-0">播放下一集时自动将前序集标记为已观看</p>
+          <label data-i18n="settings.autoMark">自动标记前序集数</label>
+          <p class="form-hint mt-0" data-i18n="settings.autoMarkHint">播放下一集时自动将前序集标记为已观看</p>
           <div class="dashboard-layout-list" style="margin-top:0.75rem">
             <div class="dashboard-layout-item" style="cursor:default">
               <label class="toggle-switch" style="margin:0">
                 <input type="checkbox" id="settingsAutoMark">
                 <span class="toggle-slider"></span>
               </label>
-              <span class="dashboard-layout-label">启用自动标记</span>
+              <span class="dashboard-layout-label" data-i18n="settings.enableAutoMark">启用自动标记</span>
             </div>
           </div>
         </div>
@@ -626,28 +626,28 @@
       <!-- Tab: 刮削 -->
       <div class="settings-panel" id="tab-scraper">
         <div class="form-group">
-          <label for="bangumiUrl">Bangumi API 地址</label>
+          <label for="bangumiUrl" data-i18n="settings.bangumiApi">Bangumi API 地址</label>
           <input type="text" id="bangumiUrl" placeholder="https://api.bangumi.lol" value="https://api.bangumi.lol">
-          <p class="form-hint">默认 api.bangumi.lol，官方源 api.bgm.tv</p>
+          <p class="form-hint" data-i18n="settings.bangumiHint">默认 api.bangumi.lol，官方源 api.bgm.tv</p>
         </div>
         <div class="form-group">
-          <label>AniList 双源匹配</label>
+          <label data-i18n="settings.anilist">AniList 双源匹配</label>
           <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:var(--space-2)">
             <label class="toggle-switch" style="margin:0">
               <input type="checkbox" id="anilistEnabled">
               <span class="toggle-slider"></span>
             </label>
-            <span class="dashboard-layout-label">启用 AniList</span>
+            <span class="dashboard-layout-label" data-i18n="settings.enableAnilist">启用 AniList</span>
           </div>
-          <blockquote class="form-hint" style="border-inline-start: 2px solid var(--border); padding-inline-start: var(--space-3); margin: 0; font-style: normal;">罗马音标题<br>横幅图</blockquote>
+          <blockquote class="form-hint" style="border-inline-start: 2px solid var(--border); padding-inline-start: var(--space-3); margin: 0; font-style: normal;"><span data-i18n="settings.anilistRomanji">罗马音标题</span><br><span data-i18n="settings.anilistBanner">横幅图</span></blockquote>
         </div>
       </div>
 
       <!-- Tab: 动漫库 -->
       <div class="settings-panel" id="tab-dashboard">
         <div class="form-group">
-          <label>动漫库模块</label>
-          <p class="form-hint mt-0">勾选要在首页显示的模块，拖拽或点击箭头调整顺序</p>
+          <label data-i18n="settings.libraryModules">动漫库模块</label>
+          <p class="form-hint mt-0" data-i18n="settings.libraryModulesHint">勾选要在首页显示的模块，拖拽或点击箭头调整顺序</p>
           <div class="dashboard-layout-list" id="dashboardLayoutList"></div>
         </div>
       </div>
@@ -655,53 +655,53 @@
       <!-- Tab: 个性化 -->
       <div class="settings-panel" id="tab-personalize">
         <div class="form-group">
-          <label>卡片常显标题</label>
-          <p class="form-hint mt-0">是否在卡片底部始终显示标题文字</p>
+          <label data-i18n="settings.cardTitle">卡片常显标题</label>
+          <p class="form-hint mt-0" data-i18n="settings.cardTitleHint">是否在卡片底部始终显示标题文字</p>
           <div class="dashboard-layout-list" style="margin-top:0.75rem">
             <div class="dashboard-layout-item" style="cursor:default">
               <label class="toggle-switch" style="margin:0">
                 <input type="checkbox" id="settingsCardTitleLibrary">
                 <span class="toggle-slider"></span>
               </label>
-              <span class="dashboard-layout-label">动漫库</span>
+              <span class="dashboard-layout-label" data-i18n="library.title">动漫库</span>
             </div>
             <div class="dashboard-layout-item" style="cursor:default">
               <label class="toggle-switch" style="margin:0">
                 <input type="checkbox" id="settingsCardTitleMylist">
                 <span class="toggle-slider"></span>
               </label>
-              <span class="dashboard-layout-label">我的列表</span>
+              <span class="dashboard-layout-label" data-i18n="mylist.title">我的列表</span>
             </div>
           </div>
         </div>
         <div class="form-group">
-          <label>详情页标题背景</label>
-          <p class="form-hint mt-0">浅色模式下在标题文字后添加半透明白色背景，提升深色场景下的可读性</p>
+          <label data-i18n="settings.detailTitleBg">详情页标题背景</label>
+          <p class="form-hint mt-0" data-i18n="settings.detailTitleBgHint">浅色模式下在标题文字后添加半透明白色背景，提升深色场景下的可读性</p>
           <div class="dashboard-layout-list" style="margin-top:0.75rem">
             <div class="dashboard-layout-item" style="cursor:default">
               <label class="toggle-switch" style="margin:0">
                 <input type="checkbox" id="settingsDetailTitleBg">
                 <span class="toggle-slider"></span>
               </label>
-              <span class="dashboard-layout-label">标题背景</span>
+              <span class="dashboard-layout-label" data-i18n="settings.titleBackground">标题背景</span>
             </div>
           </div>
         </div>
         <div class="form-group">
-          <label>进度确认</label>
-          <p class="form-hint mt-0">观看进度超过90%未标记时</p>
+          <label data-i18n="settings.progressConfirm">进度确认</label>
+          <p class="form-hint mt-0" data-i18n="settings.progressConfirmHint">观看进度超过90%未标记时</p>
           <div class="seg-radio-group" style="margin-top:0.75rem">
             <label class="seg-radio-item">
               <input type="radio" name="settingsFinishConfirmMode" value="prompt" checked>
-              <span>弹窗确认</span>
+              <span data-i18n="settings.confirmPrompt">弹窗确认</span>
             </label>
             <label class="seg-radio-item">
               <input type="radio" name="settingsFinishConfirmMode" value="auto">
-              <span>自动标记</span>
+              <span data-i18n="settings.autoMarkOption">自动标记</span>
             </label>
             <label class="seg-radio-item">
               <input type="radio" name="settingsFinishConfirmMode" value="off">
-              <span>不处理</span>
+              <span data-i18n="settings.doNothing">不处理</span>
             </label>
           </div>
         </div>
@@ -710,69 +710,69 @@
       <!-- Tab: 数据库 -->
       <div class="settings-panel" id="tab-database">
         <div class="form-group">
-          <label>数据库概览</label>
+          <label data-i18n="settings.dbOverview">数据库概览</label>
           <div id="dbInfoContainer">
-            <p class="form-hint">加载中...</p>
+            <p class="form-hint" data-i18n="common.loading">加载中...</p>
           </div>
         </div>
 
         <div class="form-group">
-          <label>备份与恢复</label>
+          <label data-i18n="settings.backupRestore">备份与恢复</label>
           <div class="db-action-row">
             <button class="btn btn-sm" onclick="dbBackup()" id="btnDbBackup">
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 8v5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V8"/><path d="M5 5l3-3 3 3"/><path d="M8 2v9"/></svg>
-              下载 DB 备份
+              <span data-i18n="settings.downloadDbBackup">下载 DB 备份</span>
             </button>
             <button class="btn btn-sm" onclick="dbBackupAll()" id="btnDbBackupAll">
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 8v5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V8"/><path d="M5 5l3-3 3 3"/><path d="M8 2v9"/></svg>
-              完整备份（含配置）
+              <span data-i18n="settings.fullBackup">完整备份（含配置）</span>
             </button>
             <button class="btn btn-sm" onclick="document.getElementById('restoreFileInput').click()">
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8v5a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V8"/><path d="M5 11l3 3 3-3"/><path d="M8 14V2"/></svg>
-              恢复备份
+              <span data-i18n="settings.restoreBackup">恢复备份</span>
             </button>
             <input type="file" id="restoreFileInput" accept=".db" style="display:none" onchange="dbRestore(this)">
           </div>
         </div>
 
         <div class="form-group">
-          <label>缓存管理</label>
-          <p class="form-hint">系统会自动清理超过 14 天的缓存</p>
+          <label data-i18n="settings.cacheManagement">缓存管理</label>
+          <p class="form-hint" data-i18n="settings.cacheHint">系统会自动清理超过 14 天的缓存</p>
           <div id="dbCacheContainer">
-            <p class="form-hint">加载中...</p>
+            <p class="form-hint" data-i18n="common.loading">加载中...</p>
           </div>
         </div>
 
         <div class="form-group">
-          <label>维护操作</label>
+          <label data-i18n="settings.maintenance">维护操作</label>
           <div class="db-action-row">
             <button class="btn btn-sm" onclick="dbClearSessions()" id="btnDbClearSessions">
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4h14"/><path d="M3 4v9a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4"/><path d="M6 4V2h4v2"/></svg>
-              清除播放记录
+              <span data-i18n="settings.clearSessions">清除播放记录</span>
             </button>
-            <button class="btn btn-sm" onclick="dbVacuum()" id="btnDbVacuum" data-tooltip="压缩数据库文件大小，回收已删除数据的磁盘空间">
+            <button class="btn btn-sm" onclick="dbVacuum()" id="btnDbVacuum" data-tooltip="压缩数据库文件大小，回收已删除数据的磁盘空间" data-i18n-attr="settings.vacuumTooltip:data-tooltip">
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="7"/><path d="M8 5v3"/><path d="M8 11h.01"/></svg>
-              优化数据库（VACUUM）
+              <span data-i18n="settings.vacuum">优化数据库（VACUUM）</span>
             </button>
           </div>
         </div>
 
         <div class="form-group">
-          <label class="db-danger-label">危险操作</label>
+          <label class="db-danger-label" data-i18n="settings.danger">危险操作</label>
           <div class="db-action-row">
             <button class="btn btn-sm btn-danger" onclick="dbReset()" id="btnDbReset">
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l4 4"/><path d="M10 6l-4 4"/><circle cx="8" cy="8" r="7"/></svg>
-              重置数据库
+              <span data-i18n="settings.resetDb">重置数据库</span>
             </button>
           </div>
-          <p class="form-hint db-danger-hint">重置会清空所有动漫数据、播放记录和列表。操作前会自动备份当前数据库。</p>
+          <p class="form-hint db-danger-hint" data-i18n="settings.resetDbHint">重置会清空所有动漫数据、播放记录和列表。操作前会自动备份当前数据库。</p>
         </div>
       </div>
     </div>
     <div id="settingsError" class="error-msg"></div>
     <div class="modal-actions">
-      <button class="btn" onclick="closeModal('settingsModal')">取消</button>
-      <button class="btn btn-primary" onclick="saveSettings()">保存</button>
+      <button class="btn" onclick="closeModal('settingsModal')" data-i18n="common.cancel">取消</button>
+      <button class="btn btn-primary" onclick="saveSettings()" data-i18n="common.save">保存</button>
     </div>
   </div>
 </div>
@@ -783,7 +783,7 @@
 
 <!-- Context Menu -->
 <div class="context-menu" id="contextMenu">
-  <div class="context-menu-item context-menu-danger" id="ctxDelete">移除</div>
+  <div class="context-menu-item context-menu-danger" id="ctxDelete" data-i18n="common.remove">移除</div>
 </div>
 
 <!-- Toast -->
@@ -800,32 +800,32 @@
         <path d="M16 30L20 28M28 28L32 30" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
         <path d="M14 12V8H34V12" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
       </svg>
-      <h1 class="onboarding__title">欢迎使用 MyAnimeDock</h1>
-      <p class="onboarding__desc">自托管动漫媒体库管理器。智能扫描文件夹、自动匹配 Bangumi 元数据、mpv 直接播放并追踪进度。</p>
+      <h1 class="onboarding__title" data-i18n="onboarding.welcome">欢迎使用 MyAnimeDock</h1>
+      <p class="onboarding__desc" data-i18n="onboarding.desc">自托管动漫媒体库管理器。智能扫描文件夹、自动匹配 Bangumi 元数据、mpv 直接播放并追踪进度。</p>
     </div>
     <div class="onboarding__body">
       <div class="onb-field" id="onbDirGroup">
-        <label class="onb-field__label">媒体目录</label>
+        <label class="onb-field__label" data-i18n="onboarding.mediaDir">媒体目录</label>
         <div class="onb-field__row">
-          <input type="text" class="onb-field__input" id="onbMediaDir" placeholder="选择动漫文件夹..." autocomplete="off" spellcheck="false">
-          <button class="onb-field__browse" id="onbBrowseDir">浏览</button>
+          <input type="text" class="onb-field__input" id="onbMediaDir" placeholder="选择动漫文件夹..." autocomplete="off" spellcheck="false" data-i18n-attr="onboarding.mediaDirPlaceholder:placeholder">
+          <button class="onb-field__browse" id="onbBrowseDir" data-i18n="common.browse">浏览</button>
         </div>
         <div class="onb-field__foot">
-          <a href="#" class="onb-field__skip" id="onbSkipDir">暂时跳过</a>
+          <a href="#" class="onb-field__skip" id="onbSkipDir" data-i18n="onboarding.skipForNow">暂时跳过</a>
         </div>
       </div>
       <div class="onb-field" id="onbMpvGroup">
-        <label class="onb-field__label">mpv 播放器<span class="onb-field__optional">（可选）</span></label>
+        <label class="onb-field__label"><span data-i18n="onboarding.mpvPlayer">mpv 播放器</span><span class="onb-field__optional" data-i18n="common.optional">（可选）</span></label>
         <div class="onb-field__row">
-          <input type="text" class="onb-field__input" id="onbMpvPath" placeholder="留空使用系统 PATH 中的 mpv" autocomplete="off" spellcheck="false">
-          <button class="onb-field__browse" id="onbBrowseMpv">浏览</button>
+          <input type="text" class="onb-field__input" id="onbMpvPath" placeholder="留空使用系统 PATH 中的 mpv" autocomplete="off" spellcheck="false" data-i18n-attr="onboarding.mpvPlaceholder:placeholder">
+          <button class="onb-field__browse" id="onbBrowseMpv" data-i18n="common.browse">浏览</button>
         </div>
         <div class="onb-field__foot">
-          <a href="#" class="onb-field__skip" id="onbSkipMpv">暂时跳过</a>
+          <a href="#" class="onb-field__skip" id="onbSkipMpv" data-i18n="onboarding.skipForNow">暂时跳过</a>
         </div>
       </div>
       <div class="onb-error hidden" id="onbError"></div>
-      <button class="onb-submit" id="onbStart">开始使用</button>
+      <button class="onb-submit" id="onbStart" data-i18n="onboarding.start">开始使用</button>
     </div>
   </div>
 </div>
@@ -833,17 +833,17 @@
 <!-- Keyboard shortcuts help -->
 <div id="kbdHelpOverlay" class="kbd-help-overlay hidden">
   <div class="kbd-help__card">
-    <h2 class="kbd-help__title">键盘快捷键</h2>
+    <h2 class="kbd-help__title" data-i18n="kbd.title">键盘快捷键</h2>
     <div class="kbd-help__grid">
-      <div class="kbd-help__row"><kbd>1</kbd><span>发现</span></div>
-      <div class="kbd-help__row"><kbd>2</kbd><span>动漫库</span></div>
-      <div class="kbd-help__row"><kbd>3</kbd><span>我的列表</span></div>
-      <div class="kbd-help__row"><kbd>4</kbd><span>统计</span></div>
-      <div class="kbd-help__row"><kbd>/</kbd><span>搜索</span></div>
-      <div class="kbd-help__row"><kbd>?</kbd><span>快捷键帮助</span></div>
-      <div class="kbd-help__row"><kbd>Esc</kbd><span>关闭弹窗 / 返回</span></div>
+      <div class="kbd-help__row"><kbd>1</kbd><span data-i18n="kbd.discovery">发现</span></div>
+      <div class="kbd-help__row"><kbd>2</kbd><span data-i18n="kbd.library">动漫库</span></div>
+      <div class="kbd-help__row"><kbd>3</kbd><span data-i18n="kbd.mylist">我的列表</span></div>
+      <div class="kbd-help__row"><kbd>4</kbd><span data-i18n="kbd.stats">统计</span></div>
+      <div class="kbd-help__row"><kbd>/</kbd><span data-i18n="common.search">搜索</span></div>
+      <div class="kbd-help__row"><kbd>?</kbd><span data-i18n="kbd.help">快捷键帮助</span></div>
+      <div class="kbd-help__row"><kbd>Esc</kbd><span data-i18n="kbd.closeBack">关闭弹窗 / 返回</span></div>
     </div>
-    <p class="kbd-help__hint">点击任意位置关闭</p>
+    <p class="kbd-help__hint" data-i18n="kbd.clickToClose">点击任意位置关闭</p>
   </div>
 </div>
 
@@ -853,8 +853,11 @@
 <script src="/vendor/gsap/gsap.min.js"></script>
 <script src="/vendor/gsap/Flip.min.js"></script>
 <script src="/vendor/gsap/ScrollTrigger.min.js"></script>
+<script src="/vendor/i18next/i18next.min.js"></script>
 
 <!-- Scripts loaded in dependency order (globals, not ESM) -->
+<script src="/src/js/i18n-zh.js"></script>
+<script src="/src/js/i18n.js"></script>
 <script src="/src/js/state.js"></script>
 <script src="/src/js/debug.js"></script>
 <script src="/src/js/ui.js"></script>

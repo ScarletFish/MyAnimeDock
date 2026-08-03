@@ -8,15 +8,15 @@
 
   // ─── Settings search map ───
   var SETTINGS_MAP = [
-    { label: '媒体目录路径', tab: 'basic', keywords: '媒体目录 媒体文件夹 目录路径 存储 根目录' },
-    { label: 'mpv 播放器路径', tab: 'playback', keywords: 'mpv 播放器 可执行文件 路径' },
-    { label: '自动标记已观看', tab: 'playback', keywords: '自动标记 已观看 播放 进度 前序' },
-    { label: 'Bangumi API 地址', tab: 'scraper', keywords: 'bangumi api 刮削 元数据 地址 镜像' },
-    { label: 'AniList 集成', tab: 'scraper', keywords: 'anilist 罗马音 标题搜索 可选' },
-    { label: '动漫库模块布局', tab: 'dashboard', keywords: '模块 统计 继续观看 本地动漫 布局 排序' },
+    { label: t('search.mediaDirPath'), tab: 'basic', keywords: '媒体目录 媒体文件夹 目录路径 存储 根目录' },
+    { label: t('search.mpvPlayerPath'), tab: 'playback', keywords: 'mpv 播放器 可执行文件 路径' },
+    { label: t('search.autoMarkWatched'), tab: 'playback', keywords: '自动标记 已观看 播放 进度 前序' },
+    { label: t('search.bangumiApiUrl'), tab: 'scraper', keywords: 'bangumi api 刮削 元数据 地址 镜像' },
+    { label: t('search.anilistIntegration'), tab: 'scraper', keywords: 'anilist 罗马音 标题搜索 可选' },
+    { label: t('search.libraryModuleLayout'), tab: 'dashboard', keywords: '模块 统计 继续观看 本地动漫 布局 排序' },
   ];
 
-  var TAB_NAMES = { basic: '基本', playback: '播放', scraper: '刮削', dashboard: '动漫库' };
+  var TAB_NAMES = { basic: t('search.tab.basic'), playback: t('search.tab.playback'), scraper: t('search.tab.scraper'), dashboard: t('search.tab.dashboard') };
 
   // ─── Filter logic ───
   function filterByQuery(query) {
@@ -50,7 +50,7 @@
     var settingsResults = [];
     for (var tabKey in TAB_NAMES) {
       if (TAB_NAMES[tabKey].toLowerCase().indexOf(q) !== -1) {
-        settingsResults.push({ type: 'settings', tab: tabKey, label: TAB_NAMES[tabKey], sublabel: '设置页' });
+        settingsResults.push({ type: 'settings', tab: tabKey, label: TAB_NAMES[tabKey], sublabel: t('search.settingsPage') });
         break;
       }
     }
@@ -69,7 +69,7 @@
   // ─── Render dropdown ───
   function renderDropdown(filtered) {
     if (!filtered.anime.length && !filtered.settings.length) {
-      results.innerHTML = '<div class="titlebar__search-empty">无匹配结果</div>';
+      results.innerHTML = '<div class="titlebar__search-empty">' + t('search.noResults') + '</div>';
       results.classList.remove('hidden');
       return;
     }
@@ -77,7 +77,7 @@
     var html = '';
 
     if (filtered.anime.length) {
-      html += '<div class="titlebar__search-group">动漫</div>';
+      html += '<div class="titlebar__search-group">' + t('search.group.anime') + '</div>';
       for (var i = 0; i < filtered.anime.length; i++) {
         var r = filtered.anime[i];
         html += '<div class="titlebar__search-item" data-type="anime" data-id="' + r.id + '">' +
@@ -90,7 +90,7 @@
     }
 
     if (filtered.settings.length) {
-      html += '<div class="titlebar__search-group">设置</div>';
+      html += '<div class="titlebar__search-group">' + t('common.settings') + '</div>';
       for (var j = 0; j < filtered.settings.length; j++) {
         var s = filtered.settings[j];
         html += '<div class="titlebar__search-item" data-type="settings" data-tab="' + s.tab + '">' +

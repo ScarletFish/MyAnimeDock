@@ -163,7 +163,7 @@ async function loadAnimeData(id) {
     }
     return true;
   } catch (e) {
-    showToast('加载详情失败: ' + e.message, 'error');
+    showToast(t('detail.loadFailed', { error: e.message }), 'error');
     isSliding = false;
     const navOverlay = document.getElementById('detailNavOverlay');
     if (navOverlay) navOverlay.style.pointerEvents = '';

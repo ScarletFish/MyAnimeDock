@@ -42,7 +42,7 @@
       btnMax.innerHTML = maxed
         ? '<svg viewBox="0 0 14 14"><rect x="4.5" y="5.5" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M2 2.5h7.5v1H3v6.5H2V2.5z" fill="currentColor"/></svg>'
         : '<svg viewBox="0 0 14 14"><rect x="3" y="3" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>';
-      btnMax.title = maxed ? '\u8FD8\u539F' : '\u6700\u5927\u5316';
+      btnMax.title = maxed ? t('nav.restore') : t('nav.maximize');
     }
   }
 

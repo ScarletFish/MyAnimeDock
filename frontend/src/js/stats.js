@@ -290,7 +290,7 @@ function renderActivityChart(container, months) {
     .attr('fill', 'transparent')
     .on('mousemove', (evt, d) => {
       const hours = (d.minutes / 60).toFixed(1);
-      showTooltip(evt, `<b>${d.label}</b><br>${hours} 小时`);
+      showTooltip(evt, `<b>${d.label}</b><br>${t('stats.hours', { hours })}`);
     })
     .on('mouseleave', hideTooltip);
 
@@ -410,7 +410,7 @@ function renderRatingChart(container, labels, bins, total) {
     .attr('fill', 'transparent')
     .on('mousemove', (evt, d) => {
       const pct = ((d.count / total) * 100).toFixed(1);
-      showTooltip(evt, `<b>${d.label}</b><br>${d.count} 部 (${pct}%)`);
+      showTooltip(evt, `<b>${d.label}</b><br>${t('stats.titleCount', { count: d.count, pct })}`);
     })
     .on('mouseleave', hideTooltip);
 
@@ -450,10 +450,10 @@ function loadSeasonChart() {
     loadingEl.style.display = 'none';
     const seasons = data.seasons || {};
     const entries = [
-      { key: 'spring', label: '春', color: '#4ade80' },
-      { key: 'summer', label: '夏', color: '#facc15' },
-      { key: 'autumn', label: '秋', color: '#f97316' },
-      { key: 'winter', label: '冬', color: '#60a5fa' }
+      { key: 'spring', label: t('stats.spring'), color: '#4ade80' },
+      { key: 'summer', label: t('stats.summer'), color: '#facc15' },
+      { key: 'autumn', label: t('stats.autumn'), color: '#f97316' },
+      { key: 'winter', label: t('stats.winter'), color: '#60a5fa' }
     ];
     const items = entries.map(e => ({ ...e, count: seasons[e.key] || 0 }));
     const total = items.reduce((s, v) => s + v.count, 0) + (seasons.unknown || 0);
@@ -534,7 +534,7 @@ function renderSeasonBars(container, items, unknownCount) {
     .on('mousemove', (evt, d) => {
       const total = items.reduce((s, v) => s + v.count, 0) + unknownCount;
       const pct = total > 0 ? ((d.count / total) * 100).toFixed(1) : '0';
-      showTooltip(evt, `<b>${d.label}季</b><br>${d.count} 部 (${pct}%)`);
+      showTooltip(evt, `<b>${t('stats.seasonLabel', { name: d.label })}</b><br>${t('stats.titleCount', { count: d.count, pct })}`);
     })
     .on('mouseleave', hideTooltip);
 
@@ -545,7 +545,7 @@ function renderSeasonBars(container, items, unknownCount) {
       .attr('y', height + 18)
       .attr('fill', tc.muted)
       .attr('font-size', '0.75rem')
-      .text(`另有 ${unknownCount} 部未知季度`);
+      .text(t('stats.unknownSeason', { count: unknownCount }));
   }
 }
 

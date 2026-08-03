@@ -35,8 +35,8 @@ function renderEpisodeHeatmap(anime, animate) {
   const dotsContainer = document.getElementById('episodeDots');
 
   if (!anime.episodes || anime.episodes.length === 0) {
-    grid.innerHTML = '<p class="text-content-muted p-4 text-center">暂无剧集信息</p>';
-    header.textContent = '剧集列表';
+    grid.innerHTML = '<p class="text-content-muted p-4 text-center">' + t('detail.noEpisodeInfo') + '</p>';
+    header.textContent = t('detail.episodeList');
     if (countEl) countEl.textContent = '';
     if (dotsContainer) dotsContainer.innerHTML = '';
     return;
@@ -44,11 +44,11 @@ function renderEpisodeHeatmap(anime, animate) {
 
   const localCount = anime.episodes.length;
   const totalCount = anime.totalEpisodes || anime.eps;
-  header.textContent = '剧集列表';
-  if (countEl) countEl.textContent = totalCount ? `${localCount} / ${totalCount}集` : `${localCount} 集`;
+  header.textContent = t('detail.episodeList');
+  if (countEl) countEl.textContent = totalCount ? t('detail.episodeCountTotal', { localCount, totalCount }) : t('detail.episodeCountLocal', { localCount });
 
   grid.innerHTML = anime.episodes.map((ep, idx) => {
-    const title = ep.fileName || `第${ep.number}集`;
+    const title = ep.fileName || t('detail.episodeNumber', { number: ep.number });
     const thumbUrl = `/api/thumbnail?path=${encodeURIComponent(ep.filePath)}&time=mid`;
     const epNum = String(ep.number).padStart(2, '0');
 
@@ -151,7 +151,7 @@ function renderWatchStats(anime) {
   const container = document.getElementById('watchStatsContent');
   if (!module || !container) return;
 
-  container.innerHTML = '<div class="stats-loading">加载中...</div>';
+  container.innerHTML = '<div class="stats-loading">' + t('detail.loading') + '</div>';
   module.style.display = '';
 
   const watchedEp = (anime.episodes || []).filter(e => e.watched).length;
@@ -397,15 +397,15 @@ function renderWsChart(container, weeks, version) {
     .attr('fill', 'transparent')
     .on('mousemove', (evt, d) => {
       const tip = wsTooltip();
-      tip.innerHTML = `<b>${(d.start.getMonth() + 1)}/${d.start.getDate()}</b><br>${d.minutes} 分钟`;
+      tip.innerHTML = `<b>${(d.start.getMonth() + 1)}/${d.start.getDate()}</b><br>${t('detail.minutes', { minutes: d.minutes })}`;
       tip.style.display = 'block';
       const pad = 12;
       let l = evt.clientX + pad;
-      let t = evt.clientY - tip.offsetHeight - pad;
+      let ty = evt.clientY - tip.offsetHeight - pad;
       if (l + tip.offsetWidth > window.innerWidth - pad) l = evt.clientX - tip.offsetWidth - pad;
-      if (t < pad) t = evt.clientY + pad;
+      if (ty < pad) ty = evt.clientY + pad;
       tip.style.left = l + 'px';
-      tip.style.top = t + 'px';
+      tip.style.top = ty + 'px';
     })
     .on('mouseleave', () => { if (_wsTooltip) _wsTooltip.style.display = 'none'; });
 

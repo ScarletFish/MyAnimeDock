@@ -32,7 +32,7 @@ async function onSubmitOnboarding() {
   const btn = document.getElementById('onbStart');
   if (!btn) return;
   btn.disabled = true;
-  btn.textContent = '配置中…';
+  btn.textContent = t('onboarding.configuring');
 
   const mediaDir = document.getElementById('onbMediaDir')?.value.trim();
   const mpvPath = document.getElementById('onbMpvPath')?.value.trim();
@@ -59,11 +59,11 @@ async function onSubmitOnboarding() {
     showView('discovery');
   } catch (e) {
     if (errEl) {
-      errEl.textContent = e.message || '保存配置失败';
+      errEl.textContent = e.message || t('onboarding.saveConfigFailed');
       errEl.classList.remove('hidden');
     }
     btn.disabled = false;
-    btn.textContent = '开始使用';
+    btn.textContent = t('onboarding.startUsing');
   }
 }
 
@@ -72,16 +72,16 @@ async function browseOnbFolder(inputId) {
     const selected = await openDialog({
       directory: true,
       multiple: false,
-      title: '选择媒体目录'
+      title: t('onboarding.selectMediaDir')
     });
     if (selected) {
       document.getElementById(inputId).value = selected;
       document.getElementById(inputId).focus();
     } else if (!window.__TAURI__) {
-      showToast('浏览器模式下请在输入框中手动输入路径', 'info');
+      showToast(t('onboarding.browserManualPath'), 'info');
     }
   } catch (e) {
-    showToast('选择目录失败: ' + e.message, 'error');
+    showToast(t('onboarding.selectDirFailed') + ': ' + e.message, 'error');
   }
 }
 
@@ -89,16 +89,16 @@ async function browseOnbFile(inputId) {
   try {
     const selected = await openDialog({
       multiple: false,
-      title: '选择 mpv 可执行文件',
-      filters: [{ name: '可执行文件', extensions: ['exe', 'com'] }]
+      title: t('onboarding.selectMpvFile'),
+      filters: [{ name: t('onboarding.executableFile'), extensions: ['exe', 'com'] }]
     });
     if (selected) {
       document.getElementById(inputId).value = selected;
       document.getElementById(inputId).focus();
     } else if (!window.__TAURI__) {
-      showToast('浏览器模式下请在输入框中手动输入路径', 'info');
+      showToast(t('onboarding.browserManualPath'), 'info');
     }
   } catch (e) {
-    showToast('选择文件失败: ' + e.message, 'error');
+    showToast(t('onboarding.selectFileFailed') + ': ' + e.message, 'error');
   }
 }

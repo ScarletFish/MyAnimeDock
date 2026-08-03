@@ -4,7 +4,10 @@ const fs = require('fs');
 const { spawn } = require('child_process');
 const logger = require('../logger').child('[UTILS]');
 let ffmpegPath = (() => {
-  try { return require('ffmpeg-static') || 'ffmpeg'; } catch { return 'ffmpeg'; }
+  if (process.env.FFMPEG_BIN) return process.env.FFMPEG_BIN;
+  const upx = path.join(__dirname, '..', '..', 'scripts', 'ffmpeg-upx.exe');
+  if (fs.existsSync(upx)) return upx;
+  return 'ffmpeg';
 })();
 
 // --- MIME ---

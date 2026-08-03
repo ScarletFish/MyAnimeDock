@@ -15,7 +15,7 @@ function _probeDuration(videoPath, cb) {
   if (cached !== undefined) { cb(cached); return; }
   const ffmpegPath = getFfmpegPath();
   if (!ffmpegPath) { cb(null); return; }
-  // Use ffmpeg itself (not ffprobe — ffmpeg-static ships only ffmpeg)
+  // Use ffmpeg itself (not ffprobe — only ffmpeg binary is bundled)
   const ff = spawn(ffmpegPath, ['-i', videoPath]);
   let stderr = '';
   let done = false;

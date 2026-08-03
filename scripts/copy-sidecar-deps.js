@@ -60,23 +60,14 @@ for (const dep of ['bindings', 'file-uri-to-path']) {
   }
 }
 
-// ---- ffmpeg-static binary — 优先用预压缩版本（scripts/ffmpeg-upx.exe）----
-const ffmpegStaticSrc = path.join(serverModules, 'ffmpeg-static', 'ffmpeg.exe');
+// ---- ffmpeg 二进制 — 固定从仓库 git 追踪的预压缩版（scripts/ffmpeg-upx.exe）复制 ----
 const ffmpegUpxSrc = path.join(ROOT, 'scripts', 'ffmpeg-upx.exe');
 const ffmpegDest = path.join(MODULES_TARGET, 'ffmpeg.exe');
-let ffmpegSrc = null;
 if (fs.existsSync(ffmpegUpxSrc)) {
-  ffmpegSrc = ffmpegUpxSrc;
-  console.log(`  [COPY] ffmpeg-upx.exe (pre-compressed)`);
-} else if (fs.existsSync(ffmpegStaticSrc)) {
-  ffmpegSrc = ffmpegStaticSrc;
-  console.log(`  [COPY] ffmpeg.exe (uncompressed — run scripts/upx --best once to create ffmpeg-upx.exe)`);
-}
-if (ffmpegSrc) {
-  fs.copyFileSync(ffmpegSrc, ffmpegDest);
-  console.log(`  [COPY] → sidecar-modules/ffmpeg.exe (${(fs.statSync(ffmpegDest).size / 1024 / 1024).toFixed(1)} MB)`);
+  fs.copyFileSync(ffmpegUpxSrc, ffmpegDest);
+  console.log(`  [COPY] ffmpeg-upx.exe → sidecar-modules/ffmpeg.exe (${(fs.statSync(ffmpegDest).size / 1024 / 1024).toFixed(1)} MB)`);
 } else {
-  console.log('  [SKIP] ffmpeg binary not found');
+  console.log('  [SKIP] ffmpeg-upx.exe not found');
 }
 
 console.log('[DONE] Sidecar dependencies copied to src-tauri/sidecar-modules/');

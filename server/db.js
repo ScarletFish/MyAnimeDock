@@ -72,7 +72,7 @@ if (process.pkg) {
   }
 
   if (nodeModulesDir) {
-    // ffmpeg 二进制路径（ffmpeg-static 检查 FFMPEG_BIN 环境变量）
+    // ffmpeg 二进制路径（utils.js 优先读取 FFMPEG_BIN 环境变量）
     const ffmpegBin = path.join(nodeModulesDir, 'ffmpeg.exe');
     if (fs.existsSync(ffmpegBin)) {
       process.env.FFMPEG_BIN = ffmpegBin;

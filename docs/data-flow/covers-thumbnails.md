@@ -55,11 +55,13 @@ GET /api/thumbnail?path=VIDEO_PATH&time=60
 
 ### ffmpeg Path Resolution
 ```
-lib/utils.js: const ffmpegPath = require('ffmpeg-static') || 'ffmpeg';
-  → Dev: resolves to server/node_modules/ffmpeg-static/ffmpeg.exe
-  → pkg: db.js sets process.env.FFMPEG_BIN → sidecar-modules/ffmpeg.exe
-         (ffmpeg-static reads FFMPEG_BIN env var first)
+lib/utils.js: 解析顺序 FFMPEG_BIN 环境变量 → scripts/ffmpeg-upx.exe → 'ffmpeg'
+  → Dev: server/lib/utils.js 解析 scripts/ffmpeg-upx.exe
+         （Windows，git 追踪，UPX 压缩 25.4MB）
+  → pkg: db.js 设置 process.env.FFMPEG_BIN → sidecar-modules/ffmpeg.exe
+         （scripts/copy-sidecar-deps.js 从 scripts/ffmpeg-upx.exe 复制）
   → Fallback: 'ffmpeg' (system PATH)
+  → 不再依赖 npm 包 ffmpeg-static
 ```
 
 ## Thumbnail Queue (`thumbnail-queue.js`)

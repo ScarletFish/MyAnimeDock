@@ -79,7 +79,7 @@
 ### 阶段 3：构建链清理（痛点归零）
 1. 删：`scripts/fix-prisma-client-import-meta.js`、`build:prisma` 的 esbuild 步骤、`server/generated/prisma/` 目录
 2. 依赖清理：根 `package.json` 删 `prisma`/`@prisma/client`/`esbuild`；`server/package.json` 删 `@prisma/adapter-better-sqlite3`/`@prisma/client`
-3. `scripts/copy-sidecar-deps.js`：删 @prisma 复制段（保留 better-sqlite3 + bindings + file-uri-to-path + ffmpeg）
+3. `scripts/copy-sidecar-deps.js`：删 @prisma 复制段（保留 better-sqlite3 + bindings + file-uri-to-path；ffmpeg 固定从 `scripts/ffmpeg-upx.exe` 复制，不再引用 ffmpeg-static npm 包）
 4. `postinstall` 简化为 `npm ci --production`
 5. 删 `prisma/schema.prisma` + `prisma/migrations/`（`prisma/` 目录名保留作为 DB 存放处）
 6. CLI 脚本：`prisma:generate`/`prisma:migrate` 换成 `db:migrate`（调 ensureSchema）；README/AGENTS.md 命令表同步更新
@@ -91,7 +91,7 @@
 3. dev 模式启动验证 DB 读写 + 数据形状（先备份 DB，用副本验证）
 
 ### 阶段 5：验证与收尾
-1. `npm run build:server` → exe；`scripts/copy-sidecar-deps.js` 输出确认（仅 better-sqlite3 + ffmpeg）
+1. `npm run build:server` → exe；`scripts/copy-sidecar-deps.js` 输出确认（仅 better-sqlite3 + ffmpeg，ffmpeg 来自 `scripts/ffmpeg-upx.exe`）
 2. exe 冒烟测试：启动、`/api/stats`、`/api/library` 返回真实数据（21 anime）、时间戳正确
 3. `npm run dev:tauri` 冒烟（库加载、播放、同步）
 4. （可选）`npm run build` MSI/NSIS 验证资源进包

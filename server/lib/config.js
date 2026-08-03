@@ -1,3 +1,4 @@
+// @ts-nocheck
 // server/lib/config.js — 路径、配置管理
 const path = require('path');
 const fs = require('fs');

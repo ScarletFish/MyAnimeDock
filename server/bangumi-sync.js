@@ -1,3 +1,4 @@
+// @ts-nocheck
 // server/bangumi-sync.js — Bangumi 同步编排层
 // 能力：从 Bangumi 拉取收藏（→ Wishlist）、推送终态（看过/抛弃 + 评分）
 // 推送：状态（全部类型）+ 已看集数 + 评分，不包含感想

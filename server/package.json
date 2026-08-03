@@ -2,20 +2,18 @@
   "name": "anime-manager-server",
   "version": "1.0.0",
   "description": "MyAnimeDock backend server",
-  "main": "server.js",
-  "bin": "server.js",
+  "main": "dist/server.js",
+  "bin": "dist/server.js",
   "scripts": {
-    "start": "node server.js",
-    "build": "pkg . --target node18-win-x64 --output ../src-tauri/resources/server.exe",
-    "test": "node --test __tests__/*.test.js",
-    "test:routes": "node --test __tests__/routes/*.test.js"
+    "start": "node dist/server.js",
+    "build": "pkg . --target node22-win-x64 --output ../src-tauri/resources/server.exe",
+    "test": "tsc && node --test __tests__/*.test.js",
+    "test:routes": "tsc && node --test __tests__/routes/*.test.js"
   },
   "pkg": {
     "assets": [],
     "scripts": [
-      "scanner.js",
-      "mpv-controller.js",
-      "scrapers/**/*.js"
+      "dist/**/*.js"
     ],
     "targets": [
       "node22-win-x64"

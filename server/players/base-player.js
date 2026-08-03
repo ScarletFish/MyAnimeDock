@@ -1,3 +1,4 @@
+// @ts-nocheck
 // server/players/base-player.js — 播放器策略接口文档
 //
 // 这不是强制基类。Node.js 用 duck typing，策略只需实现约定的方法。

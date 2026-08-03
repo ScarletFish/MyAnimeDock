@@ -1,3 +1,4 @@
+// @ts-nocheck
 // server/players/registry.js — 播放器策略注册与调度
 //
 // 职责：

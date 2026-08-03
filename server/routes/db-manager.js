@@ -1,3 +1,4 @@
+// @ts-nocheck
 // server/routes/db-manager.js — 数据库管理：信息、备份、恢复、清除、重置、优化
 const path = require('path');
 const fs = require('fs');

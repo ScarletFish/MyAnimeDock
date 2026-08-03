@@ -1,3 +1,4 @@
+// @ts-nocheck
 // server/routes/mylist.js — MyList、Wishlist 路由
 const { jsonResp, readBody } = require('../lib/utils');
 

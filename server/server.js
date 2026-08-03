@@ -1,3 +1,4 @@
+// @ts-nocheck
 // server.js — HTTP server + REST API 入口（精简版，路由已拆分到 routes/）
 const http = require('http');
 const fs = require('fs');

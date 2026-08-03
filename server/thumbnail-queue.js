@@ -1,3 +1,4 @@
+// @ts-nocheck
 // server/thumbnail-queue.js — 后台缩略图生成队列
 // 空闲时自动排队生成，mpv 播放时暂停，按需惰性生成兜底
 const { spawn } = require('child_process');

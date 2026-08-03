@@ -1,3 +1,4 @@
+// @ts-nocheck
 // server/routes/playback.js — 播放、进度、缩略图、mpv 状态
 const path = require('path');
 const fs = require('fs');

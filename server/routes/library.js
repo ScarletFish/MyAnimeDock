@@ -1,3 +1,4 @@
+// @ts-nocheck
 // server/routes/library.js — 资料库、详情、批量元数据同步
 const path = require('path');
 const fs = require('fs');

@@ -1,3 +1,4 @@
+// @ts-nocheck
 // server/db.js — SQLite 数据层封装（单存储，better-sqlite3 原生 SQL）
 // SQLite 是 library / playSessions 唯一持久化目标
 // scannedTree 和 config 由 server.js 独立管理 JSON 文件

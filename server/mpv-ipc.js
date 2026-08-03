@@ -1,3 +1,4 @@
+// @ts-nocheck
 // server/mpv-ipc.js — 纯 IPC 通信层
 // mpv JSON IPC 协议封装：连接、发送命令、接收事件
 // 不涉及 spawn、生命周期、业务逻辑

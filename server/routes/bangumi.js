@@ -1,3 +1,4 @@
+// @ts-nocheck
 // server/routes/bangumi.js — Bangumi 搜索、同步、OAuth 路由
 const path = require('path');
 const { jsonResp, readBody } = require('../lib/utils');

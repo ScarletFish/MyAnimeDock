@@ -6,8 +6,10 @@
   "scripts": {
     "dev": "concurrently -n server,frontend -c cyan,magenta \"set BASE_PORT=3457 && npm run dev:server:watch\" \"npm run dev:frontend\"",
     "dev:tauri": "concurrently -n frontend,server,tauri -c cyan,magenta,green \"npm run dev:frontend\" \"set BASE_PORT=3457 && npm run dev:server:watch\" \"tauri dev\"",
-    "dev:server": "set NODE_OPTIONS=--no-deprecation && node server/server.js",
-    "dev:server:watch": "set NODE_OPTIONS=--no-deprecation && nodemon -w server --ignore server/anime-data.json --ignore server/config.json --ignore server/scanned-tree.json --ignore server/prisma/ --ignore server/covers/ --ignore server/thumbs/ server/server.js",
+    "dev:server": "set NODE_OPTIONS=--no-deprecation && npm run build:ts && node server/server.js",
+    "dev:server:watch": "set NODE_OPTIONS=--no-deprecation && concurrently -k \"cd server && tsc -w\" \"nodemon -w server/dist --ignore server/dist/anime-data.json --ignore server/dist/config.json --ignore server/dist/scanned-tree.json --ignore server/dist/prisma/ --ignore server/dist/covers/ --ignore server/dist/thumbs/ server/dist/server.js\"",
+    "typecheck": "cd server && tsc --noEmit",
+    "build:ts": "cd server && tsc",
     "dev:frontend": "cd frontend && npx vite",
     "build:frontend": "cd frontend && npx vite build",
     "check:frontend": "node scripts/check-frontend.js",
@@ -15,23 +17,24 @@
     "build": "npm run build:frontend && npm run build:server && tauri build --bundles msi nsis",
     "build:msi": "npm run build:frontend && npm run build:server && tauri build --bundles msi",
     "build:nsis": "npm run build:frontend && npm run build:server && tauri build --bundles nsis",
-    "build:server": "cd server && pkg . --target node22-win-x64 --output ../src-tauri/server-x86_64-pc-windows-msvc.exe && node ../scripts/copy-sidecar-deps.js",
+    "build:server": "cd server && tsc && pkg dist/server.js --target node22-win-x64 --output ../src-tauri/server-x86_64-pc-windows-msvc.exe && node ../scripts/copy-sidecar-deps.js",
     "check:rust": "cd src-tauri && cargo check 2>&1",
     "build:exe": "cd src-tauri && cargo build --release 2>&1",
     "dev:prod": "npm run build:server && powershell -Command \"$p=Start-Process -NoNewWindow -PassThru node -ArgumentList 'server/server.js'; Start-Sleep 3; try { npx tauri dev } finally { $p | Stop-Process -Force -ErrorAction SilentlyContinue }\"",
-    "db:migrate": "cd server && node -e \"require('./db').ensureSchema()\"",
+    "db:migrate": "cd server && npm run build:ts && node -e \"require('./db').ensureSchema()\"",
     "postinstall": "cd server && npm ci --production"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
-  "dependencies": {},
   "devDependencies": {
     "@tauri-apps/cli": "^2.11.2",
+    "@types/node": "^26.1.2",
     "@yao-pkg/pkg": "^6.22.0",
     "concurrently": "^8.2.2",
     "d3": "^7.9.0",
-    "nodemon": "^3.1.14"
+    "nodemon": "^3.1.14",
+    "typescript": "^7.0.2"
   }
 }

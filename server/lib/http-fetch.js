@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Shared HTTP utilities for scrapers.
  * Extracted from bangumi.js + anilist.js to eliminate code duplication.

@@ -1,3 +1,4 @@
+// @ts-nocheck
 // server/routes/relations.js — 关联作品 + 推荐 (on-demand)
 const { jsonResp } = require('../lib/utils');
 const { registry } = require('../scrapers');

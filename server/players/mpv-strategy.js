@@ -1,3 +1,4 @@
+// @ts-nocheck
 // server/players/mpv-strategy.js — mpv 播放器策略
 //
 // 职责：spawn mpv 进程 + 通过 JSON IPC 追踪播放进度

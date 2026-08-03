@@ -1,3 +1,4 @@
+// @ts-nocheck
 // server/lib/utils.js — 工具函数
 const path = require('path');
 const fs = require('fs');

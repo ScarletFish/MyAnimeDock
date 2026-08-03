@@ -1,3 +1,4 @@
+// @ts-nocheck
 const BangumiScraper = require('./bangumi');
 const AniListScraper = require('./anilist');
 const logger = require('../logger').child('[SCRAPER]');

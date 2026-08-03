@@ -1,3 +1,4 @@
+// @ts-nocheck
 // server/routes/discovery.js — 浏览、扫描、导入、元数据匹配
 const path = require('path');
 const fs = require('fs');

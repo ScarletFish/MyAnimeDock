@@ -1,3 +1,4 @@
+// @ts-nocheck
 // server/scrapers/bangumi-personal.js — Bangumi 个人 API（OAuth + Bangumi 收藏管理）
 // 能力：OAuth 认证、拉取收藏列表（→ Wishlist）、推送终态（看过/抛弃 + 评分）
 // 推送：状态（全部类型）+ 已看集数 + 评分，不包含感想

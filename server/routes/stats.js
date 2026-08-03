@@ -1,3 +1,4 @@
+// @ts-nocheck
 // server/routes/stats.js — 统计面板、观看活动、会话数据
 const { jsonResp } = require('../lib/utils');
 

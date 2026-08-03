@@ -1,3 +1,4 @@
+// @ts-nocheck
 // server/routes/config.js — 配置、健康检查、通知路由
 const path = require('path');
 const fs = require('fs');

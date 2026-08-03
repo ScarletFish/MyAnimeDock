@@ -92,10 +92,11 @@
 ### 自动检查
 
 ```bash
-npm run check:css    # 扫描 views/ + layouts/ 的 token 合规性
+npm run check:frontend   # 一键：node --check 全部 JS + check:css --strict + build:frontend
+npm run check:css        # 仅扫描 views/ + layouts/ 的 token 合规性（check:frontend 已包含）
 ```
 
-> ⚠️ 每次新增/修改 CSS 后必须跑 `npm run check:css`，确认无违规后才算完成。
+> ⚠️ 每次新增/修改前端 JS/CSS 后必须跑 `npm run check:frontend`（内含全部检查并重建 dist/），确认通过后才算完成。
 
 ---
 
@@ -107,7 +108,7 @@ GSAP 作为唯一动画库。
 ### 构建方式
 
 Vite 在 **复制模式**（`build.rollupOptions.input` 只处理入口，JS 非 module 不打包）下工作：
-`index.html` 里 19 个 `<script>` 标签被 Vite 按原样复制到 `dist/`，不做 tree-shaking 或 scope 隔离。
+`index.html` 里 22 个 `<script>` 标签被 Vite 按原样复制到 `dist/`，不做 tree-shaking 或 scope 隔离。
 这样避免了 100+ 全局函数跨模块调用的 ESM 迁移风险。
 
 ```
@@ -118,14 +119,73 @@ npm run build:frontend   # 输出到 frontend/dist/
 ### 加载顺序（严格依赖）
 
 ```
-state.js → debug.js → ui.js → api.js → components.js
-    → discovery.js → library.js → detail-stats.js
-    → detail-nav.js → detail.js → mylist.js → metamatch.js
-    → stats.js → titlebar.js → app.js → search.js
+i18n-zh.js → i18n.js → state.js → debug.js → ui.js → api.js → components.js
+    → utils.js → discovery.js → library.js → detail-pagination.js
+    → detail-stats.js → detail-nav.js → detail.js → mylist.js
+    → metamatch.js → stats.js → titlebar.js → app.js → search.js
     → onboarding.js → keyboard.js
 ```
 
-`frontend/index.html` 中 `<script>` 标签顺序必须与此一致。打破依赖可能导致 `undefined` 引用。
+`frontend/index.html` 中 `<script>` 标签顺序必须与此一致（与 `vite.config.js` 的 `JS_FILES` 对应）。打破依赖可能导致 `undefined` 引用。
+**`i18n-zh.js` / `i18n.js` 必须在最前**——所有使用 `t()` 的脚本都依赖它们先执行。
+
+## i18n 文案规范（必读）
+
+项目已引入 **i18next**（固定 `zh-CN`，当前不切语言）集中管理所有用户可见文案。
+**所有前端字符串必须走 i18n，禁止在 JS/HTML 里硬编码中文文案。**
+
+### 涉及文件
+
+| 文件 | 作用 |
+|------|------|
+| `frontend/src/js/i18n-zh.js` | **唯一文案字典**（`window.I18N_ZH`）。新增/修改文案只改这里 |
+| `frontend/src/js/i18n.js` | 初始化 i18next，暴露全局 `t()`，绑定 `[data-i18n]` / `[data-i18n-attr]` |
+| `frontend/public/vendor/i18next/i18next.min.js` | i18next UMD 库（全局 `i18next`） |
+
+### 三种写法
+
+**① JS 动态文本** — 用 `t('ns.key', { var: value })`：
+
+```js
+// ✅ 正确
+showToast(t('discovery.importedCount', { count: result.imported.length }), 'success');
+el.textContent = t('detail.episodeCountTotal', { localCount: 5, totalCount: 12 });
+
+// ❌ 错误 — 硬编码
+showToast('成功导入 ' + result.imported.length + ' 个条目', 'success');
+```
+
+**② 静态 HTML 文本节点** — 用 `data-i18n="ns.key"`：
+
+```html
+<span data-i18n="common.back">返回</span>
+<h1 data-i18n="library.title">动漫库</h1>
+```
+
+**③ HTML 属性（tooltip/title/placeholder/aria-label）** — 用 `data-i18n-attr`，格式 `ns.key:attr1,attr2`：
+
+```html
+<button data-tooltip="最小化" data-i18n-attr="nav.minimize:data-tooltip"></button>
+<input placeholder="搜索…" data-i18n-attr="nav.searchPlaceholder:placeholder">
+```
+
+> 属性缺省列表：`data-tooltip, title, aria-label, placeholder`。`i18n.js` 在 `DOMContentLoaded` 时统一替换，动态插入的节点需要手动调 `t()`。
+
+### key 组织
+
+- 命名空间按模块划分：`common / nav / kbd / settings / app / ui / library / mylist / discovery / search / onboarding / detail / stats / metamatch`
+- 格式：`模块.含义`（全小写下划线，如 `discovery.importedCount`）
+- 插值用 `{{var}}` 语法：`'detail.episodeCountTotal': '{{localCount}} / {{totalCount}}集'`
+
+### 修改文案流程
+
+1. 只改 `frontend/src/js/i18n-zh.js` 里对应 key 的值（或新增 key 并替换硬编码处）
+2. `npm run check:frontend`（一键：语法检查 + CSS 合规 + 重建 dist/）
+
+### 注意
+
+- **动漫元数据（简介 `summary`、标题等来自 Bangumi API 的数据）不是 UI 文案，不走 i18n**，改 i18n 映射不会影响它们
+- i18next 默认转义已关闭（`interpolation.escapeValue: false`），因为项目已有 `escHtml()`/`escAttr()`。**翻译值若含用户/外部数据仍须自行转义**
 
 ## 核心模式
 
@@ -229,7 +289,7 @@ padding: var(--space-4);
 
 ### GSAP
 
-GSAP 已注册全局 `gsap.registerPlugin(Flip)`，引用自 `public/vendor/gsap/`。
+GSAP 已注册全局 `gsap.registerPlugin(Flip)`，引用自 `frontend/public/vendor/gsap/`。
 
 ```js
 // 封面切换动画
@@ -276,7 +336,7 @@ grid-template-columns: repeat(auto-fill, minmax(size, 1fr));
 
 ## 调试系统
 
-`public/js/debug.js` — 前端诊断，F12 启用：
+`frontend/src/js/debug.js` — 前端诊断，F12 启用：
 
 ```js
 __debug.toggle()              // 启用/关闭（localStorage 持久化）
@@ -300,7 +360,7 @@ document.getElementById('view-library').innerHTML = renderFullLibrary(items);
 
 ## 设计 Token 参考
 
-所有 UI 代码必须使用 CSS 自定义属性（定义在 `public/styles.css:4-76`），**不许写死值**。
+所有 UI 代码必须使用 CSS 自定义属性（定义在 `frontend/src/css/tokens.css`），**不许写死值**。
 
 ### 颜色
 
@@ -396,13 +456,14 @@ document.getElementById('view-library').innerHTML = renderFullLibrary(items);
 - [ ] 用工厂函数（`createDropdown` / `createFilterBar`）还是自己写？
   - 有现有工厂 → 用工厂。没有 → 自己写，考虑是否可以抽象成新的工厂
 - [ ] 外部输入是否 escHtml/escAttr？
+- [ ] 所有文案是否走 i18n？（JS 用 `t('ns.key')`，HTML 用 `data-i18n` / `data-i18n-attr`，禁止硬编码中文）
 - [ ] 缩放是否用 `--scale` calc？
 - [ ] DOM 操作前是否检查元素存在？
 - [ ] 局部刷新还是重建？—— 重建仅当视图结构变化时（新增/删除区块），否则局部刷新
 - [ ] 是否有动画？是否用 GSAP？
 - [ ] 响应式：1000px 以下不崩、1920px 以上不太空？
   - 确认 `min-width` / `max-width` / `auto-fill` 行为合理
-- [ ] 颜色/间距/圆角/阴影/字号是否完全使用 `var(--xxx)` token？—— 跑 `npm run check:css` 验证
+- [ ] 颜色/间距/圆角/阴影/字号是否完全使用 `var(--xxx)` token？—— 跑 `npm run check:frontend` 验证
 
 ---
 

@@ -118,6 +118,22 @@ MyAnimeDock 功能开发/修 bug 的标准流程。**禁止跳过阶段直接写
 
 **只属于"提醒"不算 Escalation**（比如"这是 dev 模式，生产构建不同"）——那直接说就行，不需要停。
 
+### 路径 D：微调快路径
+
+适用于**纯文案/样式微调**：≤20 行、不涉及逻辑变更、不改数据模型。例如：
+- 改 `frontend/src/js/i18n-zh.js` 里的文案值
+- 静态 HTML 的 `data-i18n` / `data-i18n-attr` 文本
+- 已有 CSS 的 token 值微调（不改结构）
+
+**豁免**：阶段 2 需求确认表、阶段 5 code-reviewer、report.md 总结。
+
+**必须做**：
+- [ ] 改动范围一句话说清（改哪个文件哪个值 → 改成什么）
+- [ ] 验证：`npm run check:frontend`（node --check + check:css + build:frontend 一键）
+- [ ] 报告：一句话（改了什么 + 验证结果）
+
+> ⚠️ 判定标准是"无逻辑变更"。只要动了 JS 逻辑、加了新 key、改了路由/数据 → 回到 6 阶段主流程或路径 A/B。
+
 ## 阶段 0：方向判断
 
 **入口条件**：接到一个需求/bug/想法。
@@ -129,6 +145,7 @@ MyAnimeDock 功能开发/修 bug 的标准流程。**禁止跳过阶段直接写
 | 功能需求（明确或模糊） | **6 阶段主流程，阶段 2 需求确认必走** |
 | Bug 报告 | **路径 A：Bug 修复** |
 | "怎么实现 X"/"哪个方案好" | **路径 B：设计讨论** |
+| 纯文案/样式微调（≤20 行、无逻辑变更） | **路径 D：微调快路径** |
 | 需要人工操作/配置 | **路径 C：Escalation** |
 
 ### Checklist
@@ -233,7 +250,7 @@ MyAnimeDock 功能开发/修 bug 的标准流程。**禁止跳过阶段直接写
   - ② 没有组件，有无 token 可用？→ 用 `var(--xxx)` 组合
   - ③ 都不够且有必要抽象？→ 放对文件，不新建 .css 文件
   - 所有间距/颜色/圆角/字号必须用 `var(--xxx)` token，**禁止写死值**
-- [ ] CSS 合规自动检查：`cd frontend && npm run check:css`，确认无违规
+- [ ] CSS 合规自动检查：`npm run check:frontend`（内含 check:css --strict），确认无违规
 - [ ] 多文件改动 → 分 lane 并行交给 @fixer
 - [ ] 数据相关改动 → 写细粒度 save（只改实际修改的表，不调全量 saveData）
 - [ ] 外部输入 → 用 escHtml/escAttr 防护 XSS
@@ -244,7 +261,7 @@ MyAnimeDock 功能开发/修 bug 的标准流程。**禁止跳过阶段直接写
 > 1. 路由层：`routes/mylist.js` 新增 `/api/mylist/batch-watch`
 > 2. DB 层：`db.js` 新增 `batchUpdateEpisodesWatched()` 批量写 SQLite
 > 3. 前端：`mylist.js` 加按钮 + API 调用
-> 4. 前端改 → CSS 遵循"先找后写"三步协议，完成后跑 `npm run check:css`
+> 4. 前端改 → CSS 遵循"先找后写"三步协议，完成后跑 `npm run check:frontend`
 
 ---
 
@@ -259,7 +276,7 @@ MyAnimeDock 功能开发/修 bug 的标准流程。**禁止跳过阶段直接写
 - [ ] 新增持久化功能 → 测试必须覆盖"修改 → loadData() 重载 → 验证"路径
 - [ ] 新增 scanner 类型 → 按 scanner.test.js 模式（纯函数 + 文件系统集成）
 - [ ] 如果改动完全不涉及数据层（纯 UI 文案/样式），可以不跑测试
-- [ ] 凡有 CSS 新增/修改 → `cd frontend && npm run check:css`，确认 token 合规无违规
+- [ ] 凡有 CSS 新增/修改 → `npm run check:frontend`（内含 check:css --strict），确认 token 合规无违规
 - [ ] 测试全绿后进入阶段 5
 
 ### 运行策略

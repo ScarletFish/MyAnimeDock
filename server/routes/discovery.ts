@@ -4,7 +4,7 @@ import fs from 'fs';
 import { jsonResp, readBody } from '../lib/utils';
 import { saveScannedTree, DATA_DIR } from '../lib/config';
 import { syncAnilist } from '../scrapers';
-import type { ServerState } from '../types';
+import type { ServerState, ScanNode } from '../types';
 
 type State = ServerState;
 
@@ -17,11 +17,11 @@ async function handleBrowse(req: any, res: any, state: State) {
     const params = new URL(req.url, 'http://localhost').searchParams;
     const showExcluded = params.get('showExcluded') === 'true';
     try {
-      let tree: any[] = JSON.parse(JSON.stringify(data.scannedTree || []));
+      let tree: ScanNode[] = JSON.parse(JSON.stringify(data.scannedTree || [])) as ScanNode[];
       // Migrate old tree format
-      if (tree.some((n: any) => n.type === 'branch')) {
-        const flatten = (nodes: any[]): any[] => {
-          const result: any[] = [];
+      if (tree.some((n) => n.type === 'branch')) {
+        const flatten = (nodes: ScanNode[]): ScanNode[] => {
+          const result: ScanNode[] = [];
           for (const n of nodes) {
             if (n.type === 'leaf') result.push(n);
             else if (n.type === 'branch' && n.children) result.push(...flatten(n.children));
@@ -69,16 +69,16 @@ async function handleBrowse(req: any, res: any, state: State) {
       const total = dirs.length;
       const tree = [];
       const libraryPaths = new Set(data.library.map(a => a.folderPath));
-      const existingNodes = new Map((data.scannedTree || []).map(n => [n.path, n]));
+      const existingNodes = new Map<string, ScanNode>((data.scannedTree || []).map(n => [n.path, n] as [string, ScanNode]));
       for (let i = 0; i < dirs.length; i++) {
         const entry = dirs[i];
         send({ type: 'progress', current: i + 1, total, folder: entry.name });
         const node = await scanTopDir(config.mediaDir, entry.name);
         if (node) {
-          (function flatten(n: any) {
+          (function flatten(n: ScanNode) {
             if (n.type === 'leaf') {
               n.alreadyImported = libraryPaths.has(n.path);
-              const existing: any = existingNodes.get(n.path);
+              const existing = existingNodes.get(n.path);
               if (existing) {
                 n.excluded = existing.excluded || false;
                 n.bangumiMatched = existing.bangumiMatched || false;
@@ -126,7 +126,7 @@ async function handleBrowse(req: any, res: any, state: State) {
         if (!folderPath || !folderName) continue;
         const videos = await findVideos(folderPath);
         const episodeFiles = videos.filter((v: any) => !isExtraVideo(v.name));
-        const scannedNode: any = data.scannedTree.find(n => n.path === folderPath);
+        const scannedNode = data.scannedTree.find(n => n.path === folderPath);
         const existing = data.library.find(a => a.folderPath === folderPath);
         if (existing) {
           if (existing.downloaded !== false) continue;
@@ -211,7 +211,7 @@ async function handleBrowse(req: any, res: any, state: State) {
         const myIdx = data.myList.findIndex(m => m.animeId === removed.id);
         if (myIdx !== -1) data.myList.splice(myIdx, 1);
       }
-      const scannedNode: any = data.scannedTree && data.scannedTree.find(n => n.path === folderPath);
+      const scannedNode = data.scannedTree && data.scannedTree.find(n => n.path === folderPath);
       if (scannedNode) {
         scannedNode.alreadyImported = false;
         scannedNode.bangumiMatched = false;
@@ -240,7 +240,7 @@ async function handleBrowse(req: any, res: any, state: State) {
       const body = await readBody(req);
       const { path: folderPath } = JSON.parse(body);
       if (!folderPath) { jsonResp(res, 400, { error: 'path is required' }); return; }
-      const node: any = data.scannedTree.find(n => n.path === folderPath);
+      const node = data.scannedTree.find(n => n.path === folderPath);
       if (!node) { jsonResp(res, 404, { error: 'Node not found in scanned tree' }); return; }
       node.excluded = true;
       await saveScannedTree(data.scannedTree);
@@ -256,7 +256,7 @@ async function handleBrowse(req: any, res: any, state: State) {
       const body = await readBody(req);
       const { path: folderPath } = JSON.parse(body);
       if (!folderPath) { jsonResp(res, 400, { error: 'path is required' }); return; }
-      const node: any = data.scannedTree.find(n => n.path === folderPath);
+      const node = data.scannedTree.find(n => n.path === folderPath);
       if (!node) { jsonResp(res, 404, { error: 'Node not found in scanned tree' }); return; }
       node.excluded = false;
       await saveScannedTree(data.scannedTree);

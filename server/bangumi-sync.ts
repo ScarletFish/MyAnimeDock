@@ -6,14 +6,15 @@ import { Logger } from './logger';
 const logger: Logger = require('./logger').child('[BGM-SYNC]');
 import BangumiPersonal = require('./scrapers/bangumi-personal');
 const { BGM_TYPE_TO_STATUS, STATUS_TO_BGM_TYPE } = BangumiPersonal.STATUS_MAP;
+import type { AppData, MyListItem } from './types';
 
 class BangumiSync {
   /** BangumiPersonal 实例 */
-  api: any;
+  api: InstanceType<typeof BangumiPersonal>;
   /** 上次同步时间戳 */
   lastSyncTime: string | null;
 
-  constructor(personalApi: any) {
+  constructor(personalApi: InstanceType<typeof BangumiPersonal>) {
     this.api = personalApi;
     this.lastSyncTime = null;
   }
@@ -35,7 +36,7 @@ class BangumiSync {
    * @param {boolean} [opts.dryRun] - 仅返回 diff，不实际写入
    * @returns {Promise<{ pulled: number, pushed: number, created: number, wishlistAdded: number, errors: string[], lastSyncTime: string }>}
    */
-  async syncMyList(data: any, opts: { dryRun?: boolean } = {}) {
+  async syncMyList(data: AppData, opts: { dryRun?: boolean } = {}) {
     const result: {
       pulled: number;
       pushed: number;
@@ -73,7 +74,7 @@ class BangumiSync {
       // 建立 bangumiId → local MyList 索引
       const myListByBgmId = new Map();
       for (const m of (data.myList || [])) {
-        const anime = (data.library || []).find((a: any) => a.id === m.animeId);
+        const anime = (data.library || []).find((a) => a.id === m.animeId);
         if (anime && anime.bangumiId) {
           myListByBgmId.set(String(anime.bangumiId), m);
         }
@@ -91,7 +92,7 @@ class BangumiSync {
         if (!anime) {
           // 本地没有这个番的文件 → 存入 MyList (wish 状态)
           const subject = remote.subject || {};
-          const existingIdx = data.myList.findIndex((m: any) => !m.animeId && String(m.bangumiId) === bgmId);
+          const existingIdx = data.myList.findIndex((m) => !m.animeId && String(m.bangumiId) === bgmId);
           const wishEntry = {
             bangumiId: parseInt(bgmId),
             title: subject.name_cn || subject.name || `Subject #${bgmId}`,
@@ -104,7 +105,7 @@ class BangumiSync {
           if (existingIdx >= 0) {
             Object.assign(data.myList[existingIdx], wishEntry);
           } else {
-            data.myList.push(wishEntry);
+            data.myList.push(wishEntry as MyListItem);
             result.wishlistAdded = (result.wishlistAdded || 0) + 1;
           }
           logger.info(`MyList 同步：从 Bangumi 创建 Wishlist ${wishEntry.title}`);
@@ -121,7 +122,7 @@ class BangumiSync {
             rating: remote.rate || null,
             thoughts: '',
             notes: '',
-          });
+          } as MyListItem);
           result.created++;
           logger.info(`MyList 同步：从 Bangumi 创建 ${anime.title} → ${localStatus}`);
         }
@@ -136,25 +137,25 @@ class BangumiSync {
       }
 
       for (const localItem of (data.myList || [])) {
-        const anime = (data.library || []).find((a: any) => a.id === localItem.animeId);
+        const anime = (data.library || []).find((a) => a.id === localItem.animeId);
         if (!anime || !anime.bangumiId) continue;
 
         const bgmId = String(anime.bangumiId);
         const remote = remoteByBgmId.get(bgmId);
 
         const remoteType = remote?.type;
-        const localType = STATUS_TO_BGM_TYPE[localItem.status];
+        const localType = STATUS_TO_BGM_TYPE[localItem.status ?? ''];
         const remoteRate = remote?.rate || 0;
         const localRate = localItem.rating || 0;
         const remoteEp = remote?.ep_status || 0;
-        const watchedCount = (anime.episodes || []).filter((e: any) => e.watched).length;
+        const watchedCount = (anime.episodes || []).filter((e) => e.watched).length;
         const differs = localType !== remoteType || localRate !== remoteRate || watchedCount !== remoteEp;
 
         if (!differs) continue;
 
         if (!opts.dryRun) {
           try {
-            await this.api.pushCollectionStatus(bgmId, { ...localItem, episodeProgress: watchedCount });
+            await this.api.pushCollectionStatus(bgmId, { ...localItem, status: localItem.status ?? undefined, rating: localItem.rating ?? undefined, episodeProgress: watchedCount });
             result.pushed++;
             logger.info(`MyList 同步：推送 ${anime.title} → type=${localType} rating=${localRate} ep=${watchedCount}`);
           } catch (e: any) {
@@ -181,18 +182,18 @@ class BangumiSync {
    * 推送单条 MyList 状态到 Bangumi（轻量，不触发全量同步）
    * 由 server.js 在状态/评分改变时调用，推送状态 + 已看集数 + 评分
    */
-  async pushStatusChange(animeId: any, data: any) {
+  async pushStatusChange(animeId: any, data: AppData) {
     if (!this.api.isAuthed()) return;
-    const anime = (data.library || []).find((a: any) => a.id === animeId);
+    const anime = (data.library || []).find((a) => a.id === animeId);
     if (!anime || !anime.bangumiId) return;
 
-    const localItem = (data.myList || []).find((m: any) => m.animeId === animeId);
+    const localItem = (data.myList || []).find((m) => m.animeId === animeId);
     if (!localItem) return;
 
     // 计算本地已看集数
-    const watchedCount = (anime.episodes || []).filter((e: any) => e.watched).length;
+    const watchedCount = (anime.episodes || []).filter((e) => e.watched).length;
     const bgmId = String(anime.bangumiId);
-    const payload = { ...localItem, episodeProgress: watchedCount };
+    const payload = { ...localItem, status: localItem.status ?? undefined, rating: localItem.rating ?? undefined, episodeProgress: watchedCount };
 
     try {
       await this.api.pushCollectionStatus(bgmId, payload);
@@ -201,7 +202,7 @@ class BangumiSync {
       if (e.message.includes('404')) {
         // 收藏不存在 → 先创建再同步
         try {
-          const type = STATUS_TO_BGM_TYPE[localItem.status] || 3;
+          const type = STATUS_TO_BGM_TYPE[localItem.status ?? ''] || 3;
           await this.api.createCollection(bgmId, { type });
           await this.api.pushCollectionStatus(bgmId, payload);
           logger.info(`Bangumi 创建+同步: ${anime.title}`);

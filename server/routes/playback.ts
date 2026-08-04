@@ -164,7 +164,7 @@ async function handlePlay(req: any, res: any, state: State) {
             if (active.anime) {
               const myEntry = (data.myList || []).find(m => m.animeId === active.anime.id);
               const allWatched = active.anime.episodes && active.anime.episodes.length > 0
-                && active.anime.episodes.every((e: any) => e.watched);
+                && active.anime.episodes.every(e => e.watched);
               if (allWatched && myEntry) {
                 myEntry.status = 'completed';
                 myEntry.completedAt = new Date().toISOString();
@@ -228,18 +228,15 @@ async function handleProgress(req: any, res: any, state: State) {
 
 function handleMpvStatus(req: any, res: any, state: State) {
   const { activePlays } = state;
-  if (activePlays.size > 0) {
-    const first = activePlays.values().next().value;
-    jsonResp(res, 200, {
-      active: true,
-      animeId: first.anime.id,
-      episodeNumber: first.episode.number,
-      progress: first.episode.progress,
-      duration: first.episode.duration,
-    });
-  } else {
-    jsonResp(res, 200, { active: false });
-  }
+  const first = activePlays.size > 0 ? activePlays.values().next().value : undefined;
+  if (!first) { jsonResp(res, 200, { active: false }); return; }
+  jsonResp(res, 200, {
+    active: true,
+    animeId: first.anime.id,
+    episodeNumber: first.episode.number,
+    progress: first.episode.progress,
+    duration: first.episode.duration,
+  });
 }
 
 function handleThumbnail(req: any, res: any, state: State) {

@@ -148,7 +148,7 @@ export function handleDeleteAnime(req: any, res: any, state: ServerState) {
     const myIdx = data.myList.findIndex((m: any) => m.animeId === id);
     if (myIdx !== -1) data.myList.splice(myIdx, 1);
   }
-  const scannedNode: any = data.scannedTree && data.scannedTree.find((n: any) => n.path === removed.folderPath);
+  const scannedNode = data.scannedTree && data.scannedTree.find(n => n.path === removed.folderPath);
   if (scannedNode) {
     scannedNode.alreadyImported = false;
     scannedNode.bangumiMatched = false;

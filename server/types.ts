@@ -108,6 +108,14 @@ export interface LeafNode {
   totalSize: number;
   videos: { name: string; size: number; isExtra: boolean }[];
   parentChain: string[];
+  // 运行时由 routes（discovery/library）注入的可选字段
+  alreadyImported?: boolean;
+  excluded?: boolean;
+  bangumiMatched?: boolean;
+  bangumiTitleJp?: string | null;
+  bangumiTitleEn?: string | null;
+  metadataSource?: string | null;
+  [key: string]: any;
 }
 
 export interface BranchNode {
@@ -115,6 +123,14 @@ export interface BranchNode {
   path: string;
   type: 'branch';
   children: ScanNode[];
+  // 运行时由 routes 注入的可选字段（与 LeafNode 保持一致，便于联合类型属性访问）
+  alreadyImported?: boolean;
+  excluded?: boolean;
+  bangumiMatched?: boolean;
+  bangumiTitleJp?: string | null;
+  bangumiTitleEn?: string | null;
+  metadataSource?: string | null;
+  [key: string]: any;
 }
 
 export type ScanNode = LeafNode | BranchNode;
@@ -129,6 +145,14 @@ export interface AppData {
   scannedTree: ScanNode[];
 }
 
+// ─── ActivePlay（activePlays Map 的值）───
+// 对齐 routes/playback.ts 中 activePlays.set(filePath, { sessionId, episode, anime })
+export interface ActivePlay {
+  sessionId: string;
+  episode: AnimeEpisode;
+  anime: Anime;
+}
+
 // ─── ServerState（makeState() 返回值，注入每个 route handler）───
 // 对齐 server.ts makeState()；db 用 typeof import('./db') 避免与 db.ts 手写签名漂移
 export interface ServerState {
@@ -136,7 +160,7 @@ export interface ServerState {
   config: ConfigShape;
   db: typeof import('./db');
   logger: Logger;
-  activePlays: Map<string, any>;
+  activePlays: Map<string, ActivePlay>;
   cancelledSyncSessions: Map<string, boolean>;
   thumbnailQueue: any;
   bangumiPersonal: any;

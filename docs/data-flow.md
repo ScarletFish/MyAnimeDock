@@ -12,7 +12,7 @@
 | Play Session 追踪 | `docs/data-flow/play-sessions.md` | 改播放, progress, stats 图表 |
 | Cover + Thumbnail 服务 | `docs/data-flow/covers-thumbnails.md` | 改 cover 服务, ffmpeg 缩略图, thumbnail queue |
 | MyList 状态 + Bangumi 同步 | `docs/data-flow/mylist-sync.md` | 改 mylist, status, bangumi-sync |
-| Save 函数分类 (db.js) | `docs/data-flow/save-taxonomy.md` | 改 db.js save/load, 了解持久化架构 |
+| Save 函数分类 (db.ts) | `docs/data-flow/save-taxonomy.md` | 改 db.ts save/load, 了解持久化架构 |
 | HTTP 完整调用链 | `docs/data-flow/http-call-chain.md` | 理解请求→响应通用路径 |
 | 跨领域陷阱 | `docs/data-flow/gotchas.md` | 交叉陷阱速查 |
 
@@ -26,7 +26,7 @@
 │    • Hides window until server ready (visible:false → show())     │
 │    • In production: navigates to http://localhost:3456 after ready│
 │                                                                   │
-│  Sidecar: server/server.js → lib/ + routes/ (Node.js, pkg-bundled)│
+│  Sidecar: server/server.ts → lib/ + routes/ (Node.js, pkg-bundled)│
 │    • HTTP server @ :3456                                          │
 │    • Routes: config, discovery, library, playback, mylist, stats, │
 │      bangumi — each exports handler(req, res, state)              │

@@ -13,7 +13,7 @@
 | `db.saveAll(data)` | all tables in parallel | Composite fallback for multi-table saves |
 | `saveScannedTree(tree)` | `scanned-tree.json` (sync) | Scan, exclude, unlink, metadata |
 
-> `saveScannedTree()` 定义在 `lib/config.js`，不是 `db.js`。其余函数均定义在 `db.js`。
+> `saveScannedTree()` 定义在 `lib/config.ts`，不是 `db.ts`。其余函数均定义在 `db.ts`。
 
 **saveLibrary uniqueness checks**: Before upserting each anime, `saveLibrary` checks:
 - `bangumiId` uniqueness — if another anime already owns the same `bangumiId`, skip the current entry
@@ -44,7 +44,7 @@ async loadData() {
   ├─ Read all PlaySession from SQLite
   ├─ Read ScannedTree from SQLite (JSON stringified in single row)
   ├─ Convert SQLite rows → legacy JSON format
-  └─ Return → server.js assigns to global `data`
+  └─ Return → server.ts assigns to global `data`
 }
 ```
 

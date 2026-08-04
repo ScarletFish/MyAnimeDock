@@ -4,7 +4,7 @@
 
 ```
 POST /api/import
-  → routes/discovery.js:handleImport()
+  → routes/discovery.ts:handleImport()
   → Body: { items: [{ path, name, parsedTitle, parsedSeason, specialSuffix, ... }] }
   → For each item:
       ├─ Generate animeId = `${parsedTitle}${parsedSeason ? '-Season '+parsedSeason : ''}`
@@ -25,13 +25,13 @@ POST /api/import
 
 ```
 POST /api/bangumi/fetch (for library items — already imported)
-  → routes/bangumi.js:handleBangumiFetch()
+  → routes/bangumi.ts:handleBangumiFetch()
   → coverDir = path.join(DATA_DIR, 'covers')
   → If no subjectId: matchSeason() auto-detect, or return search results
   → registry.fetchMetadata(source, title, coverDir, subjectId, config)
-      ├─ ScraperRegistry (scrapers/index.js)
-      │   ├─ bangumi.js:
-      │   │   ├─ fetchWithTimeout(url) using node-fetch polyfill (node-fetch.js)
+      ├─ ScraperRegistry (scrapers/index.ts)
+      │   ├─ bangumi.ts:
+      │   │   ├─ fetchWithTimeout(url) using node-fetch polyfill (node-fetch.ts)
       │   │   │   (pkg compatible: http/https native modules, not global fetch)
       │   │   ├─ getSubjectDetail(subjectId) → detail JSON from api.bgm.tv
       │   │   └─ downloadCover(imageUrl, coverDir, subjectId):
@@ -52,15 +52,15 @@ POST /api/bangumi/fetch (for library items — already imported)
 
 | 触发方式 | 端点/位置 | 调用方式 | 函数 | 备注 |
 |---------|-----------|---------|------|------|
-| 发现页手动导入 | `POST /api/import` → `discovery.js` | 元数据落盘后 `.then()` | `syncAnilist` | [bgmN] 跳过搜索,直接取元数据 |
-| 详情页 banner 懒加载 | `GET /api/anime/:id` → `library.js` | 响应后异步 | `syncAnilistDetail` | 仅 `anilistId` 存在且缺 banner 时触发 |
-| 详情页刷元数据 | `POST /api/bangumi/fetch` → `bangumi.js` | `await` | `syncAnilist` | 重置 `-1` 重新搜索 |
-| AniList 批量回填 | `POST /api/library/sync-anilist-backfill` → `library.js` | `parallelMap`,每 5 部落盘 | `syncAnilist` | 传参 `result` |
-| SSE 流式同步 | `GET /api/library/sync/stream` → `library.js` | `parallelMap` | 流内内联 AniList 搜索取 ID+banner + `batchGetDetails`(流末) | [bgmN] 跳过 matchSeason，ID 直取 |
+| 发现页手动导入 | `POST /api/import` → `discovery.ts` | 元数据落盘后 `.then()` | `syncAnilist` | [bgmN] 跳过搜索,直接取元数据 |
+| 详情页 banner 懒加载 | `GET /api/anime/:id` → `library.ts` | 响应后异步 | `syncAnilistDetail` | 仅 `anilistId` 存在且缺 banner 时触发 |
+| 详情页刷元数据 | `POST /api/bangumi/fetch` → `bangumi.ts` | `await` | `syncAnilist` | 重置 `-1` 重新搜索 |
+| AniList 批量回填 | `POST /api/library/sync-anilist-backfill` → `library.ts` | `parallelMap`,每 5 部落盘 | `syncAnilist` | 传参 `result` |
+| SSE 流式同步 | `GET /api/library/sync/stream` → `library.ts` | `parallelMap` | 流内内联 AniList 搜索取 ID+banner + `batchGetDetails`(流末) | [bgmN] 跳过 matchSeason，ID 直取 |
 
 ### 搜索优化策略
 
-> **清横幅缓存行为**：`POST /api/db/clear-cache`（`db-manager.js handleDbClearCache`）清 `banners` 目标时，会同步把 DB 中 `anilistBanner` 为**本地路径**（非 http / 非 `__none__` / 非 null）的引用置 null 并落盘（`saveLibrary`）。这样本地路径才不会卡死上表懒加载条件——置 null 后打开详情页即触发 `syncAnilistDetail` 重新下载。远程 URL / `__none__` / 已有 null 的引用不动。
+> **清横幅缓存行为**：`POST /api/db/clear-cache`（`db-manager.ts handleDbClearCache`）清 `banners` 目标时，会同步把 DB 中 `anilistBanner` 为**本地路径**（非 http / 非 `__none__` / 非 null）的引用置 null 并落盘（`saveLibrary`）。这样本地路径才不会卡死上表懒加载条件——置 null 后打开详情页即触发 `syncAnilistDetail` 重新下载。远程 URL / `__none__` / 已有 null 的引用不动。
 
 1. **搜索词分级**：两档优先搜索（romaji / 日文名 → 英文 / 中文 / 文件夹名），前者命中即停
 2. **搜索结果预取 banner**：流内内联 AniList 搜索从 SEARCH 结果直接提取 `bannerImage` + `title_english`，对 ~80%+ 条目免去后续 DETAIL_QUERY

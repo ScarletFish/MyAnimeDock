@@ -26,9 +26,9 @@ cd server && node --test --watch          # 监听模式
 
 | 范围 | 命令 | 耗时 | 场景 |
 |------|------|------|------|
-| 匹配逻辑 | `node --test __tests__/scrapers.test.js` | ~135ms | 改 scrapers/index.js、anilist.js |
-| scanner | `node --test __tests__/scanner.test.js` | 秒级 | 改 scanner.js |
-| 数据持久化 | `node --test __tests__/db.test.js` | 秒级 | 改 db.js |
+| 匹配逻辑 | `node --test __tests__/scrapers.test.js` | ~135ms | 改 scrapers/index.ts、anilist.ts |
+| scanner | `node --test __tests__/scanner.test.js` | 秒级 | 改 scanner.ts |
+| 数据持久化 | `node --test __tests__/db.test.js` | 秒级 | 改 db.ts |
 | 播放路径 | `node --test __tests__/playback-encoding.test.js` | 秒级 | 改播放相关 |
 | 全量 | `cd server && npm test` | ~30s | 大改后/不确定影响范围时 |
 
@@ -59,7 +59,7 @@ describe('bug: xxx', () => {
 测试必须覆盖"修改 → `loadData()` 重载 → 验证"路径，只测内存状态不够：
 
 ```js
-// db.js 测试模式
+// db.ts 测试模式
 const db = require('../db'); // in-memory SQLite
 // 修改
 db.saveLibrary(newLibrary);
@@ -94,7 +94,7 @@ assert.deepStrictEqual(parseFolderName('[bgm5] Title (2024)'), {
 | `discovery.test.js` | 23 | 5/6 | state mock + require.cache mock for scanner; 跳过 SSE |
 | `library.test.js` | 9 | 3/5 | state mock; 跳过 SSE/AniList |
 | `bangumi.test.js` | 18 | 8/9 | require.cache mock for scrapers + scanner |
-| `playback.test.js` | 16 | 4/4 | require.cache mock for mpv-controller + ffmpeg error path |
+| `playback.test.js` | 16 | 4/4 | require.cache mock for mpv-ipc + ffmpeg error path |
 | **合计** | **125** | **42/49** | **86% handler 覆盖** |
 
 ### Mock-http 模式

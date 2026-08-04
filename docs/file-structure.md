@@ -29,38 +29,40 @@ MyAnimeDocker/
 
 ```
 server/
-├── server.js                  # HTTP 入口：注册路由 + 中间件
-├── db.js                      # better-sqlite3 原生 SQL 封装（ensureSchema + MigrationLog 版本化迁移器）
-├── scanner.js                 # 媒体目录扫描 + 文件夹名解析
-├── mpv-controller.js          # mpv IPC 播放进度追踪
-├── thumbnail-queue.js         # ffmpeg 缩略图生成队列
-├── logger.js                  # 结构化日志 [TAG]
-├── bangumi-sync.js            # Pull→Merge→Push Bangumi 同步引擎
+├── server.ts                  # HTTP 入口：注册路由 + 中间件
+├── db.ts                      # better-sqlite3 原生 SQL 封装（ensureSchema + MigrationLog 版本化迁移器）
+├── scanner.ts                 # 媒体目录扫描 + 文件夹名解析
+├── mpv-ipc.ts                 # mpv IPC 播放进度追踪
+├── thumbnail-queue.ts         # ffmpeg 缩略图生成队列
+├── logger.ts                  # 结构化日志 [TAG]
+├── bangumi-sync.ts            # Pull→Merge→Push Bangumi 同步引擎
+├── types.ts                   # 共享类型（AppData/ServerState/Anime/MyListItem/ScanNode 等）
+├── tsconfig.json              # TypeScript 配置（编译到 dist/）
 ├── config.json                # 运行时配置（gitignore）
 ├── config.example.json        # 配置模板
 │
 ├── routes/                    # 路由处理模块（9 个）
-│   ├── bangumi.js             #   Bangumi 同步路由
-│   ├── config.js              #   配置读写
-│   ├── db-manager.js          #   数据备份/恢复/导出
-│   ├── discovery.js           #   媒体目录浏览
-│   ├── library.js             #   库/元数据管理
-│   ├── mylist.js              #   我的列表/状态
-│   ├── playback.js            #   播放控制
-│   ├── relations.js           #   关联条目
-│   └── stats.js               #   统计图表
+│   ├── bangumi.ts             #   Bangumi 同步路由
+│   ├── config.ts              #   配置读写
+│   ├── db-manager.ts          #   数据备份/恢复/导出
+│   ├── discovery.ts           #   媒体目录浏览
+│   ├── library.ts             #   库/元数据管理
+│   ├── mylist.ts              #   我的列表/状态
+│   ├── playback.ts            #   播放控制
+│   ├── relations.ts           #   关联条目
+│   └── stats.ts               #   统计图表
 │
 ├── scrapers/                  # 元数据抓取器
-│   ├── index.js               #   抓取器入口/路由
-│   ├── bangumi.js             #   Bangumi API 抓取
-│   ├── bangumi-personal.js    #   Bangumi 个人收藏抓取
-│   ├── anilist.js             #   AniList API 抓取（补充源）
-│   └── node-fetch.js          #   fetch polyfill
+│   ├── index.ts               #   抓取器入口/路由
+│   ├── bangumi.ts             #   Bangumi API 抓取
+│   ├── bangumi-personal.ts    #   Bangumi 个人收藏抓取
+│   ├── anilist.ts             #   AniList API 抓取（补充源）
+│   └── node-fetch.ts          #   fetch polyfill
 │
 ├── lib/                       # 共享工具库
-│   ├── http-fetch.js          #   统一 HTTP 请求层（超时/重试）
-│   ├── config.js              #   配置加载
-│   └── utils.js               #   通用工具（escHtml/escAttr 等）
+│   ├── http-fetch.ts          #   统一 HTTP 请求层（超时/重试）
+│   ├── config.ts              #   配置加载
+│   └── utils.ts               #   通用工具（escHtml/escAttr 等）
 │
 ├── __tests__/                 # 测试
 │   ├── scrapers.test.js       #   抓取器测试
@@ -86,6 +88,8 @@ server/
 ├── backups/                   # 备份目录
 └── node_modules/
 ```
+
+> **后端源码为 TypeScript（`.ts`）**：`npm run build:ts`（tsc）把 `server/` 下的 `.ts` 编译到 `server/dist/`。运行 / 测试 / 打包均吃 `dist/` 产物；测试为 CJS `.test.js`，`require('../dist/xxx.js')`。`dist/` 与 `lib/paths.js` 等少数存量 `.js` 保持原样。
 
 ---
 
@@ -205,7 +209,7 @@ prisma/
 └── anime.db                   # SQLite 数据库（better-sqlite3 读写，DATA_DIR 指向此文件）
 ```
 
-> schema 与迁移不由此目录管理：表结构真源在 `server/db.js`（INIT_SQL + `ensureSchema()` 版本化迁移器，写 MigrationLog 表）。`npm run db:migrate` 触发迁移。
+> schema 与迁移不由此目录管理：表结构真源在 `server/db.ts`（INIT_SQL + `ensureSchema()` 版本化迁移器，写 MigrationLog 表）。`npm run db:migrate` 触发迁移。
 
 ---
 
@@ -225,7 +229,7 @@ docs/
 │   ├── play-sessions.md       #   播放会话追踪
 │   ├── covers-thumbnails.md   #   Cover + Thumbnail 服务
 │   ├── mylist-sync.md         #   MyList + Bangumi 同步
-│   ├── save-taxonomy.md       #   db.js save 函数分类
+│   ├── save-taxonomy.md       #   db.ts save 函数分类
 │   ├── http-call-chain.md     #   HTTP 完整调用链
 │   └── gotchas.md             #   跨领域陷阱
 │
@@ -243,10 +247,10 @@ docs/
 
 | 要找什么 | 路径 |
 |---------|------|
-| HTTP 入口 | `server/server.js` |
-| 路由模块 | `server/routes/*.js` (9 个) |
-| DB 操作 | `server/db.js` |
-| 元数据抓取 | `server/scrapers/*.js` (5 个) |
+| HTTP 入口 | `server/server.ts` |
+| 路由模块 | `server/routes/*.ts` (9 个) |
+| DB 操作 | `server/db.ts` |
+| 元数据抓取 | `server/scrapers/*.ts` (5 个) |
 | 前端 JS | `frontend/src/js/*.js` → Vite build → `frontend/dist/assets/app.js` |
 | 前端 CSS | `frontend/src/css/` |
 | HTML 入口 | `frontend/index.html` |
@@ -259,7 +263,7 @@ docs/
 | 前端检查脚本 | `scripts/check-frontend.js`（`npm run check:frontend` 一键检查+构建） |
 | Rust 入口 | `src-tauri/src/main.rs` |
 | Tauri 配置 | `src-tauri/tauri.conf.json` |
-| DB schema 与迁移 | `server/db.js`（`ensureSchema` + MigrationLog，`npm run db:migrate`） |
+| DB schema 与迁移 | `server/db.ts`（`ensureSchema` + MigrationLog，`npm run db:migrate`） |
 | 后端测试 | `server/__tests__/` |
 | 路由测试 | `server/__tests__/routes/*.test.js` (8 个) |
 | 配置文件 | `server/config.json` |

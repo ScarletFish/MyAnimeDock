@@ -7,7 +7,7 @@
 ### 看完判定（Finish Confirm）
 `frontend/src/js/detail.js:572,611,849` — `findPendingFinishConfirm` / `showFinishConfirm` / `checkAndShowFinishConfirm`
 
-**后端不再自动标记 watched**（`server/mpv-controller.js` 不再设 `WATCHED_RATIO`，`/api/play` 的 `final` 回调不再写 `ep.watched`）。
+**后端不再自动标记 watched**（`server/mpv-ipc.ts` 不再设 `WATCHED_RATIO`，`/api/play` 的 `final` 回调不再写 `ep.watched`）。
 
 看完处理由设置项"进度确认"决定，三态互斥（`localStorage['myAnimDock_finishConfirm']`，默认 `prompt`；存量 `on` 自动迁移为 `prompt`）：
 
@@ -47,12 +47,12 @@ mpv 关闭 → SSE `mpv-status: {active: false}` → app.js 全局监听 onGloba
 - 确认后 `progress=0`，`findContinueEpisode` / `findTargetEpisode` 会跳过该集，自然落到下一集
 
 ### 自动标记前序集
-`server/routes/playback.js:102-113`
+`server/routes/playback.ts:102-113`
 
 当 `config.autoMarkWatched === true`（默认开启）且 `targetEp.number >= 2` 时，播放第 N 集前，自动将 **第 1 ~ N-1 集** 中未 watched 的标记为 watched。这是批量 SQLite 写入（`db.updateEpisodesWatched`），非逐集操作。
 
 ### 自动完成（Auto-Complete）
-`server/routes/playback.js:154-176`
+`server/routes/playback.ts:154-176`
 
 在 `final` 回调中（用户关闭 mpv 后），先检查当前动画的全部 episode 是否都已 watched：
 - **全部看完**：如果该动画已有 myList 条目，设 `status = 'completed'` + `completedAt = now`，落盘
@@ -81,7 +81,7 @@ mpv 关闭 → SSE `mpv-status: {active: false}` → app.js 全局监听 onGloba
 
 ```
 POST /api/play
-  → routes/playback.js:handlePlay()
+  → routes/playback.ts:handlePlay()
   → Body: { filePath, position }  // position = ep.progress, in seconds
   → Validate filePath exists (fs.existsSync)
   → Convert position to seconds:
@@ -175,7 +175,7 @@ lastPlayedEp 已完全看完（watched && progress=0）→ 滚到第一个未观
 
 ```
 POST /api/progress
-  → routes/playback.js:handleProgress()
+  → routes/playback.ts:handleProgress()
   → Body: { animeId, episodeNumber, progress, duration, watched }
   → Update ep.progress/duration/watched in memory
   → db.updateEpisodeProgress(animeId, epNumber, { progress, duration, watched })
@@ -188,7 +188,7 @@ POST /api/progress
 
 ```
 GET /api/stats/watch-activity
-  → routes/stats.js:handleStatsWatchActivity()
+  → routes/stats.ts:handleStatsWatchActivity()
   → Build last 6 months labels using LOCAL year-month
     (avoid toISOString() — UTC conversion shifts month in UTC+8 timezone)
   → For each playSession with endTime:
@@ -204,7 +204,7 @@ GET /api/stats/watch-activity
 
 ```
 GET /api/anime/:id/sessions
-  → routes/stats.js:handleAnimeSessions()
+  → routes/stats.ts:handleAnimeSessions()
   → Filter: playSessions where animeId matches && endTime truthy
     (只统计已完成的 session，正在播放的不计入)
   → Aggregate by LOCAL date key (YYYY-MM-DD):
@@ -251,7 +251,7 @@ GET /api/anime/:id/sessions
 ## 隐式实现细节
 
 ### `ep.progress` 的单位
-`server/routes/playback.js:139`
+`server/routes/playback.ts:139`
 
 `ep.progress` 统一以**秒**为单位：
 
@@ -263,10 +263,10 @@ GET /api/anime/:id/sessions
 注意：
 - `ep.progress > 0` 判断的是**是否有过播放进度**，不区分"正在看"还是"看完重温"
 - toggle watched ON **不修改** `ep.progress`，保留 mpv 最后写入的秒数
-- 播放续播时有兜底（`playback.js:96-98`）：如果 `0 < position < 1` 则按比例换算秒，否则直接当秒用
+- 播放续播时有兜底（`playback.ts:96-98`）：如果 `0 < position < 1` 则按比例换算秒，否则直接当秒用
 
 ### Session 二次绑定验证
-`server/routes/playback.js:133,137`
+`server/routes/playback.ts:133,137`
 
 `final` 回调（mpv 进程关闭时触发）中有两层 sessionId 校验避免异步污染：
 
@@ -278,18 +278,18 @@ GET /api/anime/:id/sessions
 典型场景：用户快速切换播放不同文件，旧 mpv 进程的 `final` 回调到达时不应修改新 session 的数据。
 
 ### 单例 mpv 进程
-`server/mpv-controller.js:186-192`
+`server/mpv-ipc.ts:186-192`
 
 `startMpv()` 的包装函数 `start()` 先 `stopCurrent()` 再创建新进程。任意时刻最多一个 mpv 窗口。
 `stopCurrent()` 通过 `process.kill()` 关闭旧进程，旧进程的 `close` 事件会触发 `final:true` 回调并落盘。
 
 ### `--keep-open=yes`
-`server/mpv-controller.js:34`
+`server/mpv-ipc.ts:34`
 
 mpv 播完不会自动关闭，用户必须手动关窗口。`final: true` 事件只在窗口关闭时触发。
 
 ### 错误退出时的双路径回调
-`server/mpv-controller.js:145-169`
+`server/mpv-ipc.ts:145-169`
 
 mpv 异常退出（`code !== 0`）时**两条路径都会执行**：
 
@@ -301,7 +301,7 @@ mpv 异常退出（`code !== 0`）时**两条路径都会执行**：
 `onError` 的清理和 `final` 回调的数据落盘不会冲突——`onError` 删 session 记录，`final` 写 episode 进度。
 
 ### Crash 判定门限
-`server/mpv-controller.js:150-153`
+`server/mpv-ipc.ts:150-153`
 
 ```
 code !== 0 && lived < 3000ms  →  算 crash，报告给前端
@@ -311,7 +311,7 @@ code !== 0 && lived >= 3000ms → 正常退出（用户 kill），不报错
 3 秒阈值区分"启动闪退"和"用户主动关闭"。长寿命进程非 0 退出（如 `SIGTERM`）不会触发前端错误提示。
 
 ### IPC 重试退避
-`server/mpv-controller.js:61-128`
+`server/mpv-ipc.ts:61-128`
 
 ```
 每次重试: delay = min(1000 × 1.5^(n-1), 10000) ms
@@ -322,14 +322,14 @@ code !== 0 && lived >= 3000ms → 正常退出（用户 kill），不报错
 首次连接延迟 500ms（line 130）。连接成功后 `ipcRetries` 重置为 0。
 
 ### 窗口置顶策略
-`server/mpv-controller.js:35,76-85`
+`server/mpv-ipc.ts:35,76-85`
 
 - 启动参数 `--ontop` 确保 mpv 窗口在所有窗口之上
 - 2 秒后通过 IPC 发 `set ontop no` 解除置顶
 - 避免 mpv 永久挡在其他窗口前面
 
 ### 进度获取机制
-`server/mpv-controller.js:95-104`
+`server/mpv-ipc.ts:95-104`
 
 进度不是轮询的。`currentPos` 由 mpv IPC 实时推送 `time-pos` property-change 事件更新（事件驱动，非固定间隔）：
 

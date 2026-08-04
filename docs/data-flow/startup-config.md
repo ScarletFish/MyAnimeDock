@@ -3,7 +3,7 @@
 ## 启动初始化
 
 ```
-server.js ⇒ init()
+server.ts ⇒ init()
   │
   ├─ 1. Load config.json → global `config` object
   │     (includes mediaDir, playerMode, mpvPath, theme, uiScale, scrapers config)
@@ -22,7 +22,7 @@ server.js ⇒ init()
   ├─ 5. Validate localCover paths
   │     (if file missing → clear field → frontend shows gray placeholder)
   │
-  ├─ 6. Initialize mpv-controller (activePlays Map)
+  ├─ 6. Initialize mpv-ipc (activePlays Map)
   │
   ├─ 7. Start HTTP server (http.createServer, listen :3456)
   │
@@ -61,16 +61,16 @@ main.rs setup()
 
 ### Read: `GET /api/config`
 ```
-server.js: route dispatch (routeTable)
-  → match: GET /api/config → routes/config.js:handleGetConfig()
+server.ts: route dispatch (routeTable)
+  → match: GET /api/config → routes/config.ts:handleGetConfig()
   → jsonResp(res, 200, { ...config, dirValid })
     dirValid = fs.existsSync(config.mediaDir)
 ```
 
 ### Write: `POST /api/config`
 ```
-server.js: route dispatch (routeTable)
-  → match: POST /api/config → routes/config.js:handlePostConfig()
+server.ts: route dispatch (routeTable)
+  → match: POST /api/config → routes/config.ts:handlePostConfig()
   → Read body (JSON)
   → Merge: config = { ...config, ...body }
   → Save: fs.writeFileSync(configPath, JSON.stringify(config, null, 2))
@@ -101,8 +101,8 @@ server.js: route dispatch (routeTable)
 | File | Location (dev) | Location (MSI/pkg) | Purpose |
 |------|---------------|-------------------|---------|
 | `anime.db` | `prisma/anime.db` | `%APPDATA%/MyAnimeDock/anime.db` | SQLite — primary store for library, playSessions |
-| `config.json` | `server/config.json` | `%APPDATA%/MyAnimeDock/config.json` | Settings (JSON only, managed by lib/config.js) |
-| `scanned-tree.json` | `server/scanned-tree.json` | `%APPDATA%/MyAnimeDock/scanned-tree.json` | Scan result tree (JSON only, managed by lib/config.js) |
+| `config.json` | `server/config.json` | `%APPDATA%/MyAnimeDock/config.json` | Settings (JSON only, managed by lib/config.ts) |
+| `scanned-tree.json` | `server/scanned-tree.json` | `%APPDATA%/MyAnimeDock/scanned-tree.json` | Scan result tree (JSON only, managed by lib/config.ts) |
 | `covers/*.jpg` | `server/covers/` | `%APPDATA%/MyAnimeDock/covers/` | Downloaded cover images |
 | `banners/*.jpg` | `server/banners/` | `%APPDATA%/MyAnimeDock/banners/` | AniList banner images |
 | `thumbs/*.jpg` | `server/thumbs/` | `%APPDATA%/MyAnimeDock/thumbs/` | Video thumbnails (ffmpeg) |

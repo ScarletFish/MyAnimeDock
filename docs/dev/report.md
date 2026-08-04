@@ -20,7 +20,7 @@
 
 | 文件 | 改动类型 | 说明 |
 |------|----------|------|
-| `server/routes/xxx.js` | 新增/修改/删除 | [简要说明] |
+| `server/routes/xxx.ts` | 新增/修改/删除 | [简要说明] |
 | `frontend/src/js/xxx.js` | 修改 | [简要说明] |
 
 ### 测试结果
@@ -59,7 +59,7 @@ git diff --stat HEAD
 每行一个文件，只说"做了什么"：
 
 ```
-| `server/db.js` | 修改 | 新增 batchUpdateEpisodesWatched() 批量标记观看 |
+| `server/db.ts` | 修改 | 新增 batchUpdateEpisodesWatched() 批量标记观看 |
 ```
 
 ### 测试结果截取

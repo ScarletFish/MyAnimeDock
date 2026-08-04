@@ -5,8 +5,8 @@
 ### Dev mode (`server/covers/`):
 ```
 GET /covers/12345.jpg?w=400&q=75
-  → server.js: handleCoverImage() (inline)
-  → lib/utils.js:serveImage(coverPath, req.url, res)
+  → server.ts: handleCoverImage() (inline)
+  → lib/utils.ts:serveImage(coverPath, req.url, res)
       ├─ If no ?w param: readFile + serve raw
       ├─ If ?w param present:
       │   ├─ Check cache: covers/.resized/thumb_W_Q_NAME
@@ -38,7 +38,7 @@ User must re-fetch metadata to download covers to AppData
 
 ```
 GET /api/thumbnail?path=VIDEO_PATH&time=60
-  → routes/playback.js:handleThumbnail()
+  → routes/playback.ts:handleThumbnail()
   → Validate videoPath exists
   → hash = MD5(videoPath + time)
   → thumbPath = DATA_DIR/thumbs/${hash}.jpg
@@ -55,24 +55,24 @@ GET /api/thumbnail?path=VIDEO_PATH&time=60
 
 ### ffmpeg Path Resolution
 ```
-lib/utils.js: 解析顺序 FFMPEG_BIN 环境变量 → scripts/ffmpeg-upx.exe → 'ffmpeg'
-  → Dev: server/lib/utils.js 解析 scripts/ffmpeg-upx.exe
+lib/utils.ts: 解析顺序 FFMPEG_BIN 环境变量 → scripts/ffmpeg-upx.exe → 'ffmpeg'
+  → Dev: server/lib/utils.ts 解析 scripts/ffmpeg-upx.exe
          （Windows，git 追踪，UPX 压缩 25.4MB）
-  → pkg: db.js 设置 process.env.FFMPEG_BIN → sidecar-modules/ffmpeg.exe
+  → pkg: db.ts 设置 process.env.FFMPEG_BIN → sidecar-modules/ffmpeg.exe
          （scripts/copy-sidecar-deps.js 从 scripts/ffmpeg-upx.exe 复制）
   → Fallback: 'ffmpeg' (system PATH)
   → 不再依赖 npm 包 ffmpeg-static
 ```
 
-## Thumbnail Queue (`thumbnail-queue.js`)
+## Thumbnail Queue (`thumbnail-queue.ts`)
 
 ### 触发路径
 
 | 触发点 | 文件位置 | 方式 | 优先级 |
 |--------|---------|------|--------|
-| Discovery 导入 | `discovery.js` handleImport | 响应后异步 | FIFO（队尾） |
-| MetaMatch 同步 | `library.js` handleLibrarySyncStream | stream `done` 后 | FIFO（队尾） |
-| 详情页加载 | `library.js` handleGetAnimeDetail | 响应后异步 | **插队**（队首） |
+| Discovery 导入 | `discovery.ts` handleImport | 响应后异步 | FIFO（队尾） |
+| MetaMatch 同步 | `library.ts` handleLibrarySyncStream | stream `done` 后 | FIFO（队尾） |
+| 详情页加载 | `library.ts` handleGetAnimeDetail | 响应后异步 | **插队**（队首） |
 
 ### 队列行为
 
@@ -86,7 +86,7 @@ lib/utils.js: 解析顺序 FFMPEG_BIN 环境变量 → scripts/ffmpeg-upx.exe �
 ### 模块
 
 ```
-server/thumbnail-queue.js
+server/thumbnail-queue.ts
   └─ ThumbnailQueue class
       ├─ enqueue(anime, prepend=false) → 加入队列（去重：已缓存跳过）
       ├─ clear() → 清空队列

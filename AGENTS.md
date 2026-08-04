@@ -27,7 +27,8 @@ Vanilla JS SPA + Node.js HTTP server + Tauri v2 desktop shell. 自托管动漫�
 ## Commands
 
 ```bash
-npm run dev:server:watch   # 开发后端 (nodemon)
+npm run typecheck          # 后端 TS 类型检查 (tsc --noEmit)，strict 全绿才允许提交
+npm run dev:server:watch   # 开发后端 (tsc -w + nodemon watch dist)
 npm run dev:frontend       # 开发前端 (Vite HMR)
 npm run dev:tauri          # 全开 (server + Vite + Tauri 窗口)
 npm run dev                # server + Vite (无 Tauri)
@@ -36,8 +37,8 @@ npm run build:frontend     # 仅构建前端到 dist/（check:frontend 已包含
 npm run check:css          # 仅扫描 views/ + layouts/ 的 CSS token 合规
 npm run build              # MSI/NSIS 安装包
 npm run check:rust         # Rust 类型检查 (~20s)
-npm run db:migrate         # DB 迁移（db.js ensureSchema）
-cd server && npm test      # 测试
+npm run db:migrate         # DB 迁移（db.ts ensureSchema）
+cd server && npm test      # 测试（先自动跑 tsc）
 ```
 
 ## Gotchas
@@ -56,6 +57,9 @@ cd server && npm test      # 测试
 - **CSS 子文件结构**: 勿改 `styles.css`（仅入口）；视图样式放 `views/*.css`，小组件用 `@utility` 放 `patterns.css`，主题特有放 `layouts/` 和 `components/`
 - **Grid 列公式**: 在 `library.js` 的 `GRID_CARD_MIN`/`GRID_CARD_MAX`，不通过 CSS utility 控制
 - **mpv-status**: 不轮询 — `EventSource` 监听 `/api/events/mpv-status`，DB 落盘仅 `final` 事件
+- **后端 TS 纪律**: 后端源码是 `.ts`（strict 模式），**禁止新增 `any`**；改后端后跑 `npm run typecheck`（必须 0 错误）+ `cd server && npm test`。编译产物在 `server/dist/`，运行/测试/打包都吃 dist，改完源码不 build 则 dist 是旧的"改了没生效"
+- **类型定义集中地**: 跨文件共享类型放 `server/types.ts`（AppData/ServerState/Anime/MyListItem/ScanNode 等），禁止散落在各路由文件里各自定义
+- **lib/paths.js 故意留 JS**: 路径单点计算（findServerRoot 按 name=anime-manager-server），不转 TS；其余后端文件全部 .ts
 
 ## 验证层级
 
@@ -63,7 +67,7 @@ cd server && npm test      # 测试
 |------|------|------|------|
 | 0 | ~20s | `npm run check:rust` | Rust 类型 |
 | 1 | 秒级 | `npm run check:frontend` | 前端 JS/CSS 改动 |
-| 2 | ~10s | `npm run dev:server:watch` | 后端 JS 改动 |
+| 2 | 秒级+~10s | `npm run typecheck` + `npm run dev:server:watch` | 后端 TS 改动 |
 | 3 | ~1min | + `npm run dev:tauri` | Rust 改动 |
 | 4 | ~5min | `npm run build` | 打包 |
 

@@ -5,7 +5,7 @@
 ### Get MyList（含 firstPlayedAt）
 ```
 GET /api/mylist
-  → routes/mylist.js:handleGetMyList()
+  → routes/mylist.ts:handleGetMyList()
   → 对每个有本地文件的条目，附加 firstPlayedAt = 该动画最早一条 PlaySession.startTime
   → 用途：状态弹窗打开时，若 startedAt 为空，用 firstPlayedAt 的本地日期预填"开始日期"，
     避免用户回忆（frontend/src/js/mylist.js:localDateStr — 注意本地日期转换，勿 substring(0,10)）
@@ -15,7 +15,7 @@ GET /api/mylist
 ### Status Change（手动）
 ```
 PUT /api/mylist/:id/status
-  → routes/mylist.js:handleUpdateMyListStatus()
+  → routes/mylist.ts:handleUpdateMyListStatus()
   → Body: { status: 'watching'|'wish'|'completed'|'on_hold'|'dropped' }
   → Find MyList entry by animeId
   → Update status + updatedAt
@@ -44,7 +44,7 @@ DELETE /api/anime/:id
 ### Full Sync (Pull → Merge → Push)
 ```
 POST /api/bangumi/sync
-  → routes/bangumi.js:handleBangumiSync()
+  → routes/bangumi.ts:handleBangumiSync()
   → Body: { dryRun?: boolean }
   → bangumiSync.syncMyList(data, { dryRun })
       ├─ Pull: fetch user's Bangumi collection (anime + episodes)

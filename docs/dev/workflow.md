@@ -259,7 +259,7 @@ MyAnimeDock 功能开发/修 bug 的标准流程。**禁止跳过阶段直接写
 **示例**：
 > 修改批量标记观看功能
 > 1. 路由层：`routes/mylist.js` 新增 `/api/mylist/batch-watch`
-> 2. DB 层：`db.js` 新增 `batchUpdateEpisodesWatched()` 批量写 SQLite
+> 2. DB 层：`db.ts` 新增 `batchUpdateEpisodesWatched()` 批量写 SQLite
 > 3. 前端：`mylist.js` 加按钮 + API 调用
 > 4. 前端改 → CSS 遵循"先找后写"三步协议，完成后跑 `npm run check:frontend`
 
@@ -271,7 +271,7 @@ MyAnimeDock 功能开发/修 bug 的标准流程。**禁止跳过阶段直接写
 
 ### Checklist
 
-- [ ] 数据相关改动 → `cd server && npm test`（或窄范围 `node --test __tests__/xx.test.js`）
+- [ ] 数据相关改动 → `npm run typecheck`（strict 0 错误）+ `cd server && npm test`（或窄范围 `node --test __tests__/xx.test.js`）
 - [ ] 修 bug → 先写复现测试再改代码
 - [ ] 新增持久化功能 → 测试必须覆盖"修改 → loadData() 重载 → 验证"路径
 - [ ] 新增 scanner 类型 → 按 scanner.test.js 模式（纯函数 + 文件系统集成）
@@ -306,10 +306,10 @@ MyAnimeDock 功能开发/修 bug 的标准流程。**禁止跳过阶段直接写
 
   | 改了什么 | 需要检查的文档 |
   |----------|---------------|
-  | `server/routes/*.js`（新增/改路由） | `docs/data-flow.md` 枢纽表 + `docs/data-flow/` 对应子文件 |
-  | `server/lib/db.js`（持久化逻辑） | `docs/data-flow/save-taxonomy.md` |
-  | `server/scrapers/*.js`（爬虫/匹配） | `docs/data-flow/import-metadata.md` + `docs/code-explorer.md` |
-  | `server/scanner.js`（扫描逻辑） | `docs/data-flow/scan-discovery.md` + `docs/code-explorer.md` |
+  | `server/routes/*.ts`（新增/改路由） | `docs/data-flow.md` 枢纽表 + `docs/data-flow/` 对应子文件 |
+  | `server/db.ts`（持久化逻辑） | `docs/data-flow/save-taxonomy.md` |
+  | `server/scrapers/*.ts`（爬虫/匹配） | `docs/data-flow/import-metadata.md` + `docs/code-explorer.md` |
+  | `server/scanner.ts`（扫描逻辑） | `docs/data-flow/scan-discovery.md` + `docs/code-explorer.md` |
   | `frontend/src/js/*.js`（前端逻辑） | `docs/dev/frontend.md`（组件表/检查清单） |
   | `frontend/src/css/*.css`（样式） | `docs/dev/frontend.md` 必读章节、token/组件表 |
   | 新的边缘条件/隐式逻辑 | `docs/data-flow/gotchas.md` |

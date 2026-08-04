@@ -81,7 +81,7 @@ after(() => {
 
 ### 3. 数据库集成测试（SQLite）
 
-**适用场景**：`db.js` 的数据持久化操作。
+**适用场景**：`db.ts` 的数据持久化操作。
 
 **模式**：
 - 使用 `__tests__/fixtures/db/__test-source.db` 作为测试 DB

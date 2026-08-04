@@ -4,7 +4,7 @@
 
 ```
 GET /api/browse?showExcluded
-  → routes/discovery.js:handleBrowse()
+  → routes/discovery.ts:handleBrowse()
   → scanner.scanMediaDirFlat(config.mediaDir)
       ├─ Recursively walk mediaDir
       ├─ For each folder containing video files (.mkv/.mp4/.avi/.mov):
@@ -28,7 +28,7 @@ GET /api/browse?showExcluded
 
 ```
 GET /api/scan
-  → routes/discovery.js:handleScan()
+  → routes/discovery.ts:handleScan()
   → Sets res.headers: Content-Type: text/event-stream, Cache-Control: no-cache
   → scanner.scanMediaDirFlat() with progress callback:
       write `data: ${JSON.stringify({ type: 'progress'|'done', ... })}\n\n`

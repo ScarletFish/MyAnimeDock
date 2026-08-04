@@ -1,10 +1,10 @@
-// @ts-nocheck
-// server/lib/utils.js — 工具函数
-const path = require('path');
-const fs = require('fs');
-const { PROJECT_ROOT } = require('./paths');
-const { spawn } = require('child_process');
-const logger = require('../logger').child('[UTILS]');
+// server/lib/utils.ts — 工具函数
+import path from 'path';
+import fs from 'fs';
+import { PROJECT_ROOT } from './paths';
+import { spawn } from 'child_process';
+import { Logger } from '../logger';
+const logger: Logger = require('../logger');
 let ffmpegPath = (() => {
   if (process.env.FFMPEG_BIN) return process.env.FFMPEG_BIN;
   const upx = path.join(PROJECT_ROOT, 'scripts', 'ffmpeg-upx.exe');
@@ -13,7 +13,7 @@ let ffmpegPath = (() => {
 })();
 
 // --- MIME ---
-const mime = {
+const mime: Record<string, string> = {
   '.html': 'text/html',
   '.json': 'application/json',
   '.jpg': 'image/jpeg',
@@ -35,10 +35,10 @@ const mime = {
   '.ttf': 'font/ttf',
 };
 
-function setFfmpegPath(p) {
+function setFfmpegPath(p: string | undefined): void {
   if (p) ffmpegPath = p;
 }
-function getFfmpegPath() {
+function getFfmpegPath(): string {
   return ffmpegPath;
 }
 
@@ -48,7 +48,7 @@ const COVER_PRE_SIZES = [
   { w: 540, q: 80 },
 ];
 
-function preGenerateCovers(coverPath) {
+function preGenerateCovers(coverPath: string): void {
   if (!coverPath || !ffmpegPath || !fs.existsSync(ffmpegPath) || !fs.existsSync(coverPath)) return;
   const cacheDir = path.join(path.dirname(coverPath), '.resized');
   if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
@@ -79,7 +79,7 @@ function preGenerateCovers(coverPath) {
 }
 
 // --- Image serving (with ffmpeg resize when ?w= param present) ---
-function serveImage(filePath, url, res) {
+function serveImage(filePath: string, url: string, res: any): void {
   const params = new URL(url, 'http://localhost').searchParams;
   const w = parseInt(params.get('w'));
   const q = parseInt(params.get('q')) || 75;
@@ -141,7 +141,7 @@ function serveImage(filePath, url, res) {
   serveRaw(filePath, res);
 }
 
-function serveRaw(filePath, res) {
+function serveRaw(filePath: string, res: any): void {
   fs.readFile(filePath, (e, d) => {
     if (e) { res.writeHead(404); res.end('Not found'); return; }
     res.writeHead(200, {
@@ -153,23 +153,23 @@ function serveRaw(filePath, res) {
 }
 
 // --- JSON body parser ---
-function readBody(req) {
+function readBody(req: any): Promise<string> {
   return new Promise((resolve, reject) => {
-    const chunks = [];
-    req.on('data', c => chunks.push(c));
+    const chunks: Buffer[] = [];
+    req.on('data', (c: Buffer) => chunks.push(c));
     req.on('end', () => resolve(Buffer.concat(chunks).toString()));
     req.on('error', reject);
   });
 }
 
 // --- API helpers ---
-function jsonResp(res, code, obj) {
+function jsonResp(res: any, code: number, obj: unknown): void {
   res.writeHead(code, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' });
   res.end(JSON.stringify(obj));
 }
 
 // --- 启动时清理超过 14 天的视频缩略图和封面缩放缓存 ---
-async function cleanupOldCache(dataDir) {
+async function cleanupOldCache(dataDir: string): Promise<number> {
   const dirs = [
     path.join(dataDir, 'thumbs'),
     path.join(dataDir, 'covers', '.resized'),
@@ -198,11 +198,11 @@ async function cleanupOldCache(dataDir) {
 }
 
 // --- TTL Cache (in-memory) ---
-function createTimedCache(ttlMs) {
-  let data = null, ts = 0;
+function createTimedCache<T>(ttlMs: number): { get(): T | null; set(v: T): void; clear(): void } {
+  let data: T | null = null, ts = 0;
   return {
     get() { return (Date.now() - ts < ttlMs) ? data : null; },
-    set(v) { data = v; ts = Date.now(); },
+    set(v: T) { data = v; ts = Date.now(); },
     clear() { data = null; ts = 0; },
   };
 }
@@ -210,8 +210,8 @@ function createTimedCache(ttlMs) {
 // --- Persistent TTL Cache (disk-backed, survives restart) ---
 // Saves cache to filePath as JSON. On load, checks mtime against TTL.
 // If file is stale or corrupted, starts fresh.
-function createPersistentCache(ttlMs, filePath) {
-  let data = null;
+function createPersistentCache<T>(ttlMs: number, filePath?: string): { get(): T | null; set(v: T): void; clear(): void } {
+  let data: T | null = null;
 
   // Try loading from disk
   if (filePath) {
@@ -233,7 +233,7 @@ function createPersistentCache(ttlMs, filePath) {
 
   return {
     get() { return data; },
-    set(v) {
+    set(v: T) {
       data = v;
       if (filePath) {
         try {
@@ -241,7 +241,7 @@ function createPersistentCache(ttlMs, filePath) {
           if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
           fs.writeFileSync(filePath, JSON.stringify(v), 'utf-8');
         } catch (e) {
-          logger.warn('Cache write failed: ' + e.message);
+          logger.warn('Cache write failed: ' + (e as Error).message);
         }
       }
     },
@@ -254,7 +254,7 @@ function createPersistentCache(ttlMs, filePath) {
   };
 }
 
-module.exports = {
+export {
   mime,
   COVER_PRE_SIZES,
   setFfmpegPath, getFfmpegPath,

@@ -1,12 +1,11 @@
-// @ts-nocheck
-// server/lib/config.js — 路径、配置管理
-const path = require('path');
-const fs = require('fs');
-const { SERVER_ROOT, PROJECT_ROOT } = require('./paths');
+// server/lib/config.ts — 路径、配置管理
+import * as path from 'path';
+import * as fs from 'fs';
+import { SERVER_ROOT, PROJECT_ROOT } from './paths';
 
 // ── 引导日志（写入 %TEMP%，崩溃也不丢）──
 const BOOT_LOG = path.join(process.env.TEMP || process.env.TMP || '.', 'myanimedock-bootstrap.log');
-const bootLog = (msg) => { try { fs.appendFileSync(BOOT_LOG, `[${new Date().toISOString()}] ${msg}\n`); } catch (e) {} };
+const bootLog = (msg: string): void => { try { fs.appendFileSync(BOOT_LOG, `[${new Date().toISOString()}] ${msg}\n`); } catch (e) {} };
 
 // ── 用户数据目录 ──
 // pkg 模式：%APPDATA%/MyAnimeDock（可写），开发模式：本模块上级 server/
@@ -15,14 +14,25 @@ const DATA_DIR = process.pkg
   : SERVER_ROOT;
 const ASSET_DIR = process.pkg
   ? path.dirname(process.execPath)  // pkg: exe 同级，Tauri 把 resources 放根目录
-  : PROJECT_ROOT; // 开发模式：config.js 在 server/lib/
+  : PROJECT_ROOT; // 开发模式：config.ts 在 server/lib/
 const CONFIG_PATH = path.join(DATA_DIR, 'config.json');
 const SCANNED_TREE_PATH = path.join(DATA_DIR, 'scanned-tree.json');
 const PORT = 3456;
 const MAX_PLAY_SESSIONS = 5000;
 
 // --- Default config ---
-const DEFAULT_CONFIG = {
+export interface ConfigShape {
+  mediaDir: string;
+  playerMode: string;
+  mpvPath: string;
+  theme: string;
+  themeMode: string;
+  autoMarkWatched: boolean;
+  uiScale: number;
+  apiSources: { type: string; url: string; key: string }[];
+}
+
+const DEFAULT_CONFIG: ConfigShape = {
   mediaDir: '',
   playerMode: 'mpv',
   mpvPath: 'mpv',
@@ -36,7 +46,7 @@ const DEFAULT_CONFIG = {
   ],
 };
 
-function loadConfig() {
+function loadConfig(): ConfigShape {
   try {
     const raw = fs.readFileSync(CONFIG_PATH, 'utf-8');
     const cfg = JSON.parse(raw);
@@ -60,11 +70,11 @@ function loadConfig() {
   }
 }
 
-function saveConfig(cfg) {
+function saveConfig(cfg: ConfigShape): void {
   fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2), 'utf-8');
 }
 
-function loadScannedTree() {
+function loadScannedTree(): unknown[] {
   try {
     const raw = fs.readFileSync(SCANNED_TREE_PATH, 'utf-8');
     const arr = JSON.parse(raw);
@@ -74,7 +84,7 @@ function loadScannedTree() {
   }
 }
 
-async function saveScannedTree(tree) {
+async function saveScannedTree(tree: unknown[]): Promise<void> {
   try {
     await fs.promises.writeFile(SCANNED_TREE_PATH, JSON.stringify(tree, null, 2), 'utf-8');
   } catch (e) {
@@ -82,7 +92,7 @@ async function saveScannedTree(tree) {
   }
 }
 
-module.exports = {
+export {
   BOOT_LOG, bootLog,
   DATA_DIR, ASSET_DIR, CONFIG_PATH, SCANNED_TREE_PATH,
   PORT, MAX_PLAY_SESSIONS,

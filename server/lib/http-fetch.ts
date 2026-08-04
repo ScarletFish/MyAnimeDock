@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Shared HTTP utilities for scrapers.
  * Extracted from bangumi.js + anilist.js to eliminate code duplication.
@@ -8,14 +7,16 @@
  * - spawn timeout buffer (> curl --max-time)
  * - Shared curl fallback state across scrapers
  */
-const fs = require('fs');
-const path = require('path');
-const { spawn } = require('child_process');
-const { nodeFetch } = require('../scrapers/node-fetch');
-const logger = require('../logger').child('[HTTP]');
+import * as fs from 'fs';
+import * as path from 'path';
+import { spawn } from 'child_process';
+import { nodeFetch } from '../scrapers/node-fetch';
+import { Logger } from '../logger';
 
-const DEFAULT_TIMEOUT = 5000;
-const USER_AGENT = 'anime-manager (https://github.com/ScarletFish/Gallery)';
+const logger: Logger = require('../logger').child('[HTTP]');
+
+export const DEFAULT_TIMEOUT = 5000;
+export const USER_AGENT = 'anime-manager (https://github.com/ScarletFish/Gallery)';
 
 // Shared curl fallback state (one set for all scrapers)
 let useCurlFallback = false;
@@ -25,18 +26,14 @@ const CURL_COOLDOWN = 60000;
 /**
  * Spawn a child process and return { stdout, stderr } as strings.
  * Uses spawn (async) — does NOT block the event loop.
- * @param {string} cmd
- * @param {string[]} args
- * @param {number} [timeout] - Safety net kill timeout (ms)
- * @returns {Promise<{stdout: string, stderr: string}>}
  */
-function spawnAsync(cmd, args, timeout) {
+function spawnAsync(cmd: string, args: string[], timeout?: number): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
-    const child = spawn(cmd, args, { encoding: 'utf-8', timeout });
+    const child = spawn(cmd, args, { encoding: 'utf-8', timeout } as any);
     let stdout = '';
     let stderr = '';
-    child.stdout.on('data', d => { stdout += d; });
-    child.stderr.on('data', d => { stderr += d; });
+    child.stdout!.on('data', d => { stdout += d; });
+    child.stderr!.on('data', d => { stderr += d; });
     child.on('error', err => reject(new Error(`${cmd} 启动失败: ${err.message}`)));
     child.on('close', (code, signal) => {
       if (signal) {
@@ -54,7 +51,7 @@ function spawnAsync(cmd, args, timeout) {
  * Async curl JSON request via spawn (non-blocking).
  * spawn timeout = curl --max-time + 2s buffer.
  */
-async function curlFetch(method, url, body) {
+async function curlFetch(method: string, url: string, body?: string): Promise<unknown> {
   const CURL_MAX_TIME = 8;
   const args = ['-s', '--max-time', String(CURL_MAX_TIME), '-X', method];
   if (body) args.push('-H', 'Content-Type: application/json', '-d', body);
@@ -62,28 +59,27 @@ async function curlFetch(method, url, body) {
   const { stdout, stderr } = await spawnAsync('curl', args, (CURL_MAX_TIME + 2) * 1000);
   if (stderr) logger.error('curl stderr:', stderr);
   if (!stdout || !stdout.trim()) throw new Error('curl 返回空响应');
-  return JSON.parse(stdout);
+  return JSON.parse(stdout) as any;
 }
 
 /**
  * Async curl binary download via spawn (non-blocking).
  * spawn timeout = maxTimeSec + 2s buffer.
- * @returns {Promise<Buffer>}
  */
-async function curlDownload(url, maxTimeSec = 5) {
+async function curlDownload(url: string, maxTimeSec = 5): Promise<Buffer> {
   const args = ['-s', '--max-time', String(maxTimeSec), url];
   const { stdout } = await spawnAsync('curl', args, (maxTimeSec + 2) * 1000);
-  return stdout;
+  return stdout as unknown as Buffer;
 }
 
 /**
  * fetch with AbortController timeout.
  */
-async function fetchWithTimeout(url, options = {}, timeout = DEFAULT_TIMEOUT) {
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeout: number = DEFAULT_TIMEOUT): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
   try {
-    const fetcher = typeof fetch === 'function' ? fetch : nodeFetch;
+    const fetcher: any = typeof fetch === 'function' ? fetch : nodeFetch;
     return await fetcher(url, { ...options, signal: controller.signal });
   } catch (e) {
     if (e.name === 'AbortError') throw new Error('请求超时');
@@ -98,8 +94,8 @@ async function fetchWithTimeout(url, options = {}, timeout = DEFAULT_TIMEOUT) {
  * Check if error message indicates a network-level failure
  * that should trigger curl fallback.
  */
-function isNetworkError(e) {
-  const msg = e && e.message ? e.message : '';
+function isNetworkError(e: unknown): boolean {
+  const msg = e && (e as any).message ? (e as any).message : '';
   return !!(msg.includes('fetch failed') || msg.includes('ECONNREFUSED') ||
             msg.includes('ENOTFOUND') || msg.includes('请求超时'));
 }
@@ -107,7 +103,7 @@ function isNetworkError(e) {
 /**
  * Check if response text indicates Cloudflare/proxy interference.
  */
-function isCloudflareInterference(status, text) {
+function isCloudflareInterference(status: number, text: string): boolean {
   return text.includes('illegal base64 data') ||
     text.includes("can't decode request body") ||
     (status === 403 && text.includes('<html'));
@@ -116,7 +112,7 @@ function isCloudflareInterference(status, text) {
 /**
  * Activate curl fallback mode for CURL_COOLDOWN ms.
  */
-function activateCurlFallback() {
+function activateCurlFallback(): void {
   useCurlFallback = true;
   curlFallbackUntil = Date.now() + CURL_COOLDOWN;
   logger.info(`Activated curl fallback for ${CURL_COOLDOWN / 1000}s`);
@@ -126,7 +122,7 @@ function activateCurlFallback() {
  * Check if curl fallback is currently active.
  * Resets the flag if cooldown has expired.
  */
-function isCurlFallbackActive() {
+function isCurlFallbackActive(): boolean {
   if (useCurlFallback && Date.now() > curlFallbackUntil) {
     useCurlFallback = false;
     logger.info('Curl fallback cooldown expired, reset to fetch');
@@ -136,15 +132,13 @@ function isCurlFallbackActive() {
 
 /**
  * Download an image file with curl fallback support.
- * @param {string} imageUrl
- * @param {string} destDir
- * @param {string} filename
- * @param {object} [options]
- * @param {number} [options.timeout=5000]
- * @param {function} [options.onSaved] - callback(filepath) after successful save
- * @returns {Promise<string|null>} filepath or null if no imageUrl
  */
-async function downloadImage(imageUrl, destDir, filename, options = {}) {
+async function downloadImage(
+  imageUrl: string,
+  destDir: string,
+  filename: string,
+  options: { timeout?: number; onSaved?: (filepath: string) => void } = {},
+): Promise<string | null> {
   if (!imageUrl) return null;
   const { timeout = DEFAULT_TIMEOUT, onSaved } = options;
 
@@ -166,7 +160,7 @@ async function downloadImage(imageUrl, destDir, filename, options = {}) {
   return filepath;
 }
 
-module.exports = {
+export {
   curlFetch,
   curlDownload,
   fetchWithTimeout,
@@ -175,6 +169,4 @@ module.exports = {
   isCloudflareInterference,
   isCurlFallbackActive,
   activateCurlFallback,
-  DEFAULT_TIMEOUT,
-  USER_AGENT,
 };

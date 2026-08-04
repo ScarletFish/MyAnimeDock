@@ -1,26 +1,28 @@
-// @ts-nocheck
-// server.js — HTTP server + REST API 入口（精简版，路由已拆分到 routes/）
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
-const { spawn } = require('child_process');
+// server.ts — HTTP server + REST API 入口（精简版，路由已拆分到 routes/）
+import * as http from 'http';
+import * as fs from 'fs';
+import * as path from 'path';
+import { spawn } from 'child_process';
+import pinyinModule from 'pinyin';
 
-const logger = require('./logger').child('[SERVER]');
-const BangumiPersonal = require('./scrapers/bangumi-personal');
-const BangumiSync = require('./bangumi-sync');
+import { Logger } from './logger';
+const logger: Logger = require('./logger').child('[SERVER]');
 
-const {
+import BangumiPersonal = require('./scrapers/bangumi-personal');
+import BangumiSync = require('./bangumi-sync');
+
+import {
   bootLog, DATA_DIR, ASSET_DIR, CONFIG_PATH, SCANNED_TREE_PATH,
   PORT, MAX_PLAY_SESSIONS, DEFAULT_CONFIG,
   loadConfig, saveConfig, loadScannedTree, saveScannedTree,
-} = require('./lib/config');
-const {
+} from './lib/config';
+import {
   mime, setFfmpegPath, serveImage, serveRaw, readBody, jsonResp, cleanupOldCache,
-} = require('./lib/utils');
-const ThumbnailQueue = require('./thumbnail-queue');
+} from './lib/utils';
+import ThumbnailQueue = require('./thumbnail-queue');
 
 // ── 播放器策略注册（加载即自注册到 registry）──
-require('./players/mpv-strategy');
+import './players/mpv-strategy';
 
 // ── 引导日志 ──
 bootLog('=== BOOT: server.js init ===');
@@ -42,7 +44,7 @@ try {
       bootLog(`  check ${p}: ${fs.existsSync(p)}`);
     }
   }
-} catch (e) {
+} catch (e: any) {
   bootLog(`ASSET_DIR scan error: ${e.message}`);
 }
 
@@ -52,24 +54,24 @@ if (process.pkg) {
     if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
     const logFile = path.join(DATA_DIR, 'server.log');
     const logStream = fs.createWriteStream(logFile, { flags: 'a' });
-    const log = (msg) => logStream.write(`[${new Date().toISOString()}] ${msg}\n`);
-    console.log = (...args) => log(args.map(a => typeof a === 'string' ? a : JSON.stringify(a)).join(' '));
-    console.error = (...args) => log('ERROR: ' + args.map(a => typeof a === 'string' ? a : JSON.stringify(a)).join(' '));
+    const log = (msg: string) => logStream.write(`[${new Date().toISOString()}] ${msg}\n`);
+    console.log = (...args: any[]) => log(args.map(a => typeof a === 'string' ? a : JSON.stringify(a)).join(' '));
+    console.error = (...args: any[]) => log('ERROR: ' + args.map(a => typeof a === 'string' ? a : JSON.stringify(a)).join(' '));
     console.log('=== MyAnimeDock Sidecar started ===');
     bootLog('Log redirect OK');
-  } catch (e) {
+  } catch (e: any) {
     bootLog('Log redirect FAILED: ' + (e?.message || e));
   }
 }
 
 // ── 业务模块加载 ──
 bootLog('Loading db...');
-let db;
+let db: any;
 try {
-  db = require('./db');
+  db = require('./db') as any;
   if (process.env.FFMPEG_BIN) setFfmpegPath(process.env.FFMPEG_BIN);
   bootLog('db loaded OK');
-} catch (e) {
+} catch (e: any) {
   bootLog('db FAILED: ' + (e?.message || e));
   bootLog('STACK: ' + (e?.stack || ''));
   throw e;
@@ -77,33 +79,32 @@ try {
 bootLog('Loading scanner...');
 const { scanMediaDirFlat, extractBgmId, isExtraVideo, parseFolderName } = require('./scanner');
 bootLog('Loading pinyin...');
-const pinyinModule = require('pinyin');
-const pinyinFn = pinyinModule.pinyin || pinyinModule.default || pinyinModule;
+const pinyinFn: any = (pinyinModule as any).pinyin || (pinyinModule as any).default || pinyinModule;
 bootLog('All modules loaded OK');
 
 // ── 全局错误处理 ──
-process.on('unhandledRejection', (reason, promise) => {
+process.on('unhandledRejection', (reason: any, promise: any) => {
   logger.warn('Unhandled Rejection:', reason?.message || reason);
 });
-process.on('uncaughtException', (err) => {
+process.on('uncaughtException', (err: any) => {
   logger.error('Uncaught Exception:', err?.message || err);
 });
 
 // ── 运行时状态 ──
-let pendingNotifications = [];
+let pendingNotifications: any[] = [];
 const activePlays = new Map();
 const cancelledSyncSessions = new Map();
 const thumbnailQueue = new ThumbnailQueue(activePlays);
 const sseClients = new Set(); // SSE 连接池，用于推送 mpv-status 等事件
-let config = loadConfig();
-let data;
-let startupTime;
+let config: any = loadConfig();
+let data: any;
+let startupTime: any;
 
 // ── Bangumi 个人 API（OAuth + 终态推送）──
-const bgmApiUrl = (config.apiSources || []).find(s => s.type === 'bangumi')?.url || 'https://api.bgm.tv';
-const bangumiPersonal = new BangumiPersonal({ apiBase: bgmApiUrl });
+const bgmApiUrl = (config.apiSources || []).find((s: any) => s.type === 'bangumi')?.url || 'https://api.bgm.tv';
+const bangumiPersonal: any = new BangumiPersonal({ apiBase: bgmApiUrl });
 bangumiPersonal.loadFromConfig(config);
-bangumiPersonal.onTokenChange = (payload) => {
+bangumiPersonal.onTokenChange = (payload: any) => {
   if (payload) {
     Object.assign(config, payload);
   } else {
@@ -115,7 +116,7 @@ bangumiPersonal.onTokenChange = (payload) => {
 const bangumiSync = new BangumiSync(bangumiPersonal);
 
 // ── 数据持久化函数 ──
-async function saveData(data) {
+async function saveData(data: any) {
   await Promise.all([
     db.saveAll(data),
     data.scannedTree !== undefined ? saveScannedTree(data.scannedTree) : Promise.resolve(),
@@ -123,7 +124,7 @@ async function saveData(data) {
 }
 
 // ── 路由 handler 导入 ──
-const H = Object.assign(
+const H: any = Object.assign(
   {},
   require('./routes/config'),
   require('./routes/discovery'),
@@ -137,7 +138,7 @@ const H = Object.assign(
 );
 
 // ── 内联 handler（关闭、封面、静态文件、CORS）──
-function handleQuit(req, res, state) {
+function handleQuit(req: any, res: any, state: any) {
   const { db, logger } = state;
   jsonResp(res, 200, { ok: true, shutdown: true });
   logger.info('Shutdown requested via web UI.');
@@ -145,20 +146,20 @@ function handleQuit(req, res, state) {
   setTimeout(() => process.exit(0), 1500);
 }
 
-function handleCoverImage(req, res, _state) {
+function handleCoverImage(req: any, res: any, _state: any) {
   const urlPath = new URL(req.url, 'http://localhost').pathname;
   const coverPath = path.join(DATA_DIR, decodeURIComponent(urlPath));
   serveImage(coverPath, req.url, res);
 }
 
-function handleBannerImage(req, res, _state) {
+function handleBannerImage(req: any, res: any, _state: any) {
   const urlPath = new URL(req.url, 'http://localhost').pathname;
   const bannerPath = path.join(DATA_DIR, decodeURIComponent(urlPath));
   serveImage(bannerPath, req.url, res);
 }
 
 // ── SSE: mpv-status 事件推送 ──
-function handleMpvStatusSSE(req, res, _state) {
+function handleMpvStatusSSE(req: any, res: any, _state: any) {
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
@@ -188,11 +189,11 @@ function buildMpvStatusPayload() {
 function broadcastMpvStatus() {
   const data = JSON.stringify(buildMpvStatusPayload());
   for (const client of sseClients) {
-    client.write(`data: ${data}\n\n`);
+    (client as any).write(`data: ${data}\n\n`);
   }
 }
 
-function handleCorsPreflight(req, res) {
+function handleCorsPreflight(req: any, res: any) {
   res.writeHead(204, {
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
     'Access-Control-Allow-Origin': '*',
@@ -200,13 +201,13 @@ function handleCorsPreflight(req, res) {
   res.end();
 }
 
-function handleStaticFiles(req, res, _state) {
+function handleStaticFiles(req: any, res: any, _state: any) {
   const urlPath = new URL(req.url, 'http://localhost').pathname;
   let filePath = path.join(ASSET_DIR, 'frontend', 'dist', decodeURIComponent(urlPath));
   if (fs.existsSync(filePath) && fs.statSync(filePath).isDirectory()) {
     filePath = path.join(filePath, 'index.html');
   }
-  fs.readFile(filePath, (e, d) => {
+  fs.readFile(filePath, (e: any, d: any) => {
     if (e) {
       bootLog(`STATIC 404: ${filePath} (ASSET_DIR=${ASSET_DIR}, url=${req.url})`);
       res.writeHead(404); res.end('Not found'); return;
@@ -296,7 +297,7 @@ const routeTable = [
 ];
 
 // ── HTTP 服务器 ──
-let server;
+let server: any;
 
 function makeState() {
   return {
@@ -307,7 +308,7 @@ function makeState() {
   };
 }
 
-server = http.createServer((req, res) => {
+server = http.createServer((req: any, res: any) => {
   const urlPath = new URL(req.url, 'http://localhost').pathname;
 
   for (const route of routeTable) {
@@ -336,7 +337,7 @@ server = http.createServer((req, res) => {
 
 
 
-async function validateCovers(data) {
+async function validateCovers(data: any) {
   const coverDir = path.join(DATA_DIR, 'covers');
   for (const item of data.library) {
     if (item.localCover) {
@@ -378,7 +379,7 @@ async function init() {
         await saveScannedTree(scannedTree);
         logger.info(`Migrated scannedTree from anime-data.json (${scannedTree.length} nodes)`);
       }
-    } catch (e) {
+    } catch (e: any) {
       logger.warn('ScannedTree migration skipped:', e.message);
     }
   }
@@ -405,16 +406,16 @@ async function init() {
   // BASE_PORT can be overridden via env (e.g. Vite dev on 3456 → backend on 3457)
   const PORT_RANGE = 5;
   const BASE_PORT = parseInt(process.env.BASE_PORT, 10) || 3456;
-  let actualPort = null;
+  let actualPort: any = null;
   for (let i = 0; i < PORT_RANGE; i++) {
     const candidate = BASE_PORT + i;
     try {
-      await new Promise((resolve, reject) => {
+      await new Promise<void>((resolve, reject) => {
         const s = server.listen(candidate, () => { actualPort = candidate; resolve(); });
-        s.on('error', (e) => { if (e.code === 'EADDRINUSE') reject(e); else reject(e); });
+        s.on('error', (e: any) => { if (e.code === 'EADDRINUSE') reject(e); else reject(e); });
       });
       break;
-    } catch (e) {
+    } catch (e: any) {
       if (e.code === 'EADDRINUSE' && i < PORT_RANGE - 1) {
         logger.warn(`Port ${candidate} in use, trying ${candidate + 1}...`);
       } else {
@@ -428,7 +429,7 @@ async function init() {
 
   // Write actual port for Rust sidecar consumption
   const portFile = path.join(DATA_DIR, '.port');
-  try { fs.writeFileSync(portFile, String(actualPort), 'utf-8'); } catch (e) {
+  try { fs.writeFileSync(portFile, String(actualPort), 'utf-8'); } catch (e: any) {
     logger.error(`Failed to write .port file: ${e.message}`);
   }
   console.log(`PORT=${actualPort}`);  // stdout for sidecar stdout capture
@@ -447,4 +448,4 @@ init().catch(e => {
   process.exit(1);
 });
 
-module.exports = { server, app: server };
+export { server, server as app };

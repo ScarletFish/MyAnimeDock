@@ -1,16 +1,20 @@
-// @ts-nocheck
-// server/bangumi-sync.js — Bangumi 同步编排层
+// server/bangumi-sync.ts — Bangumi 同步编排层
 // 能力：从 Bangumi 拉取收藏（→ Wishlist）、推送终态（看过/抛弃 + 评分）
 // 推送：状态（全部类型）+ 已看集数 + 评分，不包含感想
 
-const logger = require('./logger').child('[BGM-SYNC]');
-const { BGM_TYPE_TO_STATUS, STATUS_TO_BGM_TYPE } = require('./scrapers/bangumi-personal');
+import { Logger } from './logger';
+const logger: Logger = require('./logger').child('[BGM-SYNC]');
+import BangumiPersonal = require('./scrapers/bangumi-personal');
+const { BGM_TYPE_TO_STATUS, STATUS_TO_BGM_TYPE } = BangumiPersonal.STATUS_MAP;
 
 class BangumiSync {
+  /** BangumiPersonal 实例 */
+  api: any;
+  /** 上次同步时间戳 */
+  lastSyncTime: string | null;
+
   constructor(personalApi) {
-    /** BangumiPersonal 实例 */
     this.api = personalApi;
-    /** 上次同步时间戳 */
     this.lastSyncTime = null;
   }
 
@@ -31,7 +35,7 @@ class BangumiSync {
    * @param {boolean} [opts.dryRun] - 仅返回 diff，不实际写入
    * @returns {Promise<{ pulled: number, pushed: number, created: number, wishlistAdded: number, errors: string[], lastSyncTime: string }>}
    */
-  async syncMyList(data, opts = {}) {
+  async syncMyList(data, opts: { dryRun?: boolean } = {}) {
     const result = { pulled: 0, pushed: 0, created: 0, wishlistAdded: 0, errors: [], lastSyncTime: null };
 
     if (!this.api.isAuthed()) {
@@ -204,4 +208,5 @@ class BangumiSync {
   }
 }
 
-module.exports = BangumiSync;
+// 保持 CJS 导出形状：module.exports = 类（server.js 直接 new）
+export = BangumiSync;

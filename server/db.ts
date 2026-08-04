@@ -1,17 +1,17 @@
-// @ts-nocheck
-// server/db.js — SQLite 数据层封装（单存储，better-sqlite3 原生 SQL）
+// server/db.ts — SQLite 数据层封装（单存储，better-sqlite3 原生 SQL）
 // SQLite 是 library / playSessions 唯一持久化目标
 // scannedTree 和 config 由 server.js 独立管理 JSON 文件
 // 提供 loadData() / saveAll() / shutdown()
 
-const path = require('path');
-const fs = require('fs');
-const { PROJECT_ROOT } = require('./lib/paths');
+import path from 'path';
+import fs from 'fs';
+import { PROJECT_ROOT } from './lib/paths';
+import { Logger } from './logger';
 
 // better-sqlite3 是原生模块：dev 模式直接 require；pkg 快照无法内嵌 .node，
 // 必须从 exe 旁的 sidecar-modules 运行时加载（动态 require + NODE_PATH，
 // 使 better-sqlite3 内部的 bindings/file-uri-to-path 也能解析）。
-let Database;
+let Database: any;
 if (process.pkg) {
   const sidecarDir = path.join(path.dirname(process.execPath), 'sidecar-modules');
   process.env.NODE_PATH = sidecarDir + path.delimiter + (process.env.NODE_PATH || '');
@@ -20,7 +20,7 @@ if (process.pkg) {
 } else {
   Database = require('better-sqlite3');
 }
-const logger = require('./logger').child('[DB]');
+const logger: Logger = require('./logger').child('[DB]');
 
 // 数据目录：pkg 模式在 %APPDATA%/MyAnimeDock（可写），开发模式在项目根
 const DATA_DIR = process.pkg
@@ -52,7 +52,7 @@ const DB_FILE = process.pkg
 //     PRISMA_QUERY_ENGINE_LIBRARY / NODE_PATH / Module._initPaths hack 已随
 //     Prisma 弃用而删除；FFMPEG_BIN 逻辑保留。
 
-let nodeModulesDir = null;
+let nodeModulesDir: string | null = null;
 
 if (process.pkg) {
   const exeDir = path.dirname(process.execPath);
@@ -119,9 +119,9 @@ const INIT_SQL = [
 ];
 
 // ─── 单例数据库连接 ───
-let db = null;
+let db: any = null;
 
-function getDb() {
+function getDb(): any {
   if (!db) {
     db = new Database(DB_PATH);
     db.pragma('journal_mode = WAL');
@@ -137,14 +137,14 @@ function getDb() {
 // 幂等且已被测试覆盖，不在此表登记。此表仅登记需显式数据/结构变更的版本。
 // 每个版本 `up(db)` 内自行完成变更；MigrationLog 记录已应用版本，重复启动天然跳过。
 // 注意：`up` 中禁用 VACUUM（better-sqlite3 不允许在事务内 VACUUM；此处也不包事务）。
-const MIGRATIONS = [
+const MIGRATIONS: any[] = [
   {
     version: 'v2_merge_wishlist',
     description: 'Merge Wishlist into MyList — nullable animeId + bangumiId fields',
-    up(d) {
+    up(d: any) {
       // 检查旧表是否仍有 NOT NULL 约束
       const colInfo = d.prepare(`SELECT name, "notnull" FROM pragma_table_info('MyList')`).all();
-      const animeIdCol = colInfo.find(c => c.name === 'animeId');
+      const animeIdCol = colInfo.find((c: any) => c.name === 'animeId');
       if (animeIdCol && animeIdCol.notnull === 1) {
         logger.info('[Migration v2] Merging Wishlist into MyList — recreating table...');
         d.exec(`PRAGMA foreign_keys=OFF`);
@@ -215,7 +215,7 @@ const MIGRATIONS = [
 function runMigrations() {
   const d = getDb();
   const applied = new Set(
-    d.prepare(`SELECT version FROM MigrationLog`).all().map(r => r.version)
+    d.prepare(`SELECT version FROM MigrationLog`).all().map((r: any) => r.version)
   );
   for (const mig of MIGRATIONS) {
     if (applied.has(mig.version)) continue;
@@ -248,7 +248,7 @@ async function ensureSchema() {
 
     // 1. 获取已有表名
     const existingTables = d.prepare(`SELECT name FROM sqlite_master WHERE type='table'`).all();
-    const tableNames = new Set(existingTables.map(r => r.name));
+    const tableNames = new Set(existingTables.map((r: any) => r.name));
 
     if (tableNames.size === 0) {
       // 全新数据库 — 全量建表
@@ -287,7 +287,7 @@ async function ensureSchema() {
 
       // 获取已有列名
       const colInfo = d.prepare(`SELECT name FROM pragma_table_info('${table.name}')`).all();
-      const existingCols = new Set(colInfo.map(c => c.name.toLowerCase()));
+      const existingCols = new Set(colInfo.map((c: any) => c.name.toLowerCase()));
 
       for (const col of table.columns) {
         if (existingCols.has(col.name.toLowerCase())) continue;
@@ -304,7 +304,7 @@ async function ensureSchema() {
     await runMigrations();
 
     logger.info('Database schema verified/updated.');
-  } catch (e) {
+  } catch (e: any) {
     logger.warn('Schema init skipped:', e.message);
   }
 }
@@ -318,13 +318,13 @@ async function shutdown() {
 
 // ─── Legacy format converters ───
 
-function animeToLegacy(a) {
+function animeToLegacy(a: any) {
   // Restore extra fields from metadata JSON (characters, persons, tags, etc.)
-  let metadataExtra = {};
+  let metadataExtra: any = {};
   if (a.metadata) {
     try {
       metadataExtra = JSON.parse(a.metadata);
-    } catch (e) {
+    } catch (e: any) {
       logger.warn('Failed to parse anime metadata JSON:', e.message);
     }
   }
@@ -355,7 +355,7 @@ function animeToLegacy(a) {
     // Spread persisted extras (characters, persons, tags, date, platform,
     // ratingRank, ratingTotal, infobox, collection, eps, totalEpisodes, specialSuffix)
     ...metadataExtra,
-    episodes: (a.episodes || []).map(e => ({
+    episodes: (a.episodes || []).map((e: any) => ({
       number: e.number,
       filePath: e.filePath,
       fileName: e.fileName,
@@ -367,7 +367,7 @@ function animeToLegacy(a) {
   };
 }
 
-function myListToLegacy(m) {
+function myListToLegacy(m: any) {
   return {
     id: m.id,
     animeId: m.animeId,
@@ -388,7 +388,7 @@ function myListToLegacy(m) {
   };
 }
 
-function sessionToLegacy(s) {
+function sessionToLegacy(s: any) {
   return {
     animeId: s.animeId,
     episodeNumber: s.episodeNumber,
@@ -405,14 +405,14 @@ function sessionToLegacy(s) {
 
 const MYLIST_COLS = ['id', 'animeId', 'bangumiId', 'title', 'bangumiTitle', 'coverUrl', 'summary', 'status', 'rating', 'thoughts', 'notes', 'startedAt', 'completedAt', 'progress', 'createdAt', 'updatedAt'];
 
-function genId() {
+function genId(): string {
   // 模拟 Prisma cuid 的本地生成（无外部依赖）：时间戳 + 随机片段
   return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}${Math.random().toString(36).slice(2, 6)}`;
 }
 
-function insertMyListRow(d, data) {
+function insertMyListRow(d: any, data: any) {
   const now = Date.now();
-  const params = {};
+  const params: any = {};
   for (const c of MYLIST_COLS) {
     params[c] = (data[c] !== undefined) ? data[c] : null;
   }
@@ -424,13 +424,13 @@ function insertMyListRow(d, data) {
   d.prepare(`INSERT INTO MyList (${colList}) VALUES (${valList})`).run(params);
 }
 
-function updateMyListRow(d, id, data) {
+function updateMyListRow(d: any, id: any, data: any) {
   const params = { ...data, id, updatedAt: Date.now() };
   const setList = Object.keys(data).map(c => `"${c}" = @${c}`).join(', ');
   d.prepare(`UPDATE MyList SET ${setList}, "updatedAt" = @updatedAt WHERE "id" = @id`).run(params);
 }
 
-function upsertMyListByAnimeId(d, animeId, data) {
+function upsertMyListByAnimeId(d: any, animeId: any, data: any) {
   const now = Date.now();
   const existing = d.prepare(`SELECT id FROM MyList WHERE animeId = ?`).get(animeId);
   if (existing) {
@@ -444,7 +444,7 @@ function upsertMyListByAnimeId(d, animeId, data) {
 
 // 从 SQLite 加载全部数据，返回传统 JSON 格式。
 // 若 SQLite 不可用（首次运行/DB 不存在）返回 null，调用者应回退到 JSON 文件。
-async function loadData() {
+async function loadData(): Promise<any> {
   try {
     ensureSchema();
     const d = getDb();
@@ -456,7 +456,7 @@ async function loadData() {
     const scannedRow = d.prepare(`SELECT * FROM ScannedTree WHERE id = 'current'`).get();
 
     // include episodes → 二次查询按 animeId 分组，episodes 已按 number 升序
-    const epByAnime = new Map();
+    const epByAnime: any = new Map();
     for (const e of episodeRows) {
       if (!epByAnime.has(e.animeId)) epByAnime.set(e.animeId, []);
       epByAnime.get(e.animeId).push(e);
@@ -464,12 +464,12 @@ async function loadData() {
 
     return {
       discovered: [],
-      library: animeRows.map(a => animeToLegacy({ ...a, episodes: epByAnime.get(a.id) || [] })),
+      library: animeRows.map((a: any) => animeToLegacy({ ...a, episodes: epByAnime.get(a.id) || [] })),
       myList: myListRows.map(myListToLegacy),
       playSessions: playSessionRows.map(sessionToLegacy),
       scannedTree: scannedRow ? JSON.parse(scannedRow.data) : [],
     };
-  } catch (e) {
+  } catch (e: any) {
     logger.error('Failed to load from SQLite:', e.message);
     return null;
   }
@@ -479,7 +479,7 @@ async function loadData() {
 
 // ─── Save (SQLite 批量全同步，library/playSessions) ───
 // scannedTree 由 server.js 独立写入 JSON 文件
-async function saveAll(data) {
+async function saveAll(data: any) {
   if (!data) return;
   await Promise.all([
     saveLibrary(data),
@@ -488,9 +488,9 @@ async function saveAll(data) {
   ]);
 }
 
-function upsertAnime(d, id, data) {
-  const params = { id };
-  const cols = [];
+function upsertAnime(d: any, id: any, data: any) {
+  const params: any = { id };
+  const cols: any[] = [];
   for (const c of Object.keys(data)) {
     if (data[c] !== undefined) { cols.push(c); params[c] = data[c]; }
   }
@@ -501,15 +501,15 @@ function upsertAnime(d, id, data) {
   d.prepare(`INSERT INTO Anime (${colList}) VALUES (${valList}) ON CONFLICT("id") DO UPDATE SET ${updList}`).run(params);
 }
 
-async function saveLibrary(data, changedIds = null) {
+async function saveLibrary(data: any, changedIds: any = null) {
   if (!data) return;
   try {
     const d = getDb();
-    const txn = d.transaction((dataInner, changedIdsInner) => {
+    const txn = d.transaction((dataInner: any, changedIdsInner: any) => {
       const existingIds = new Set(
-        d.prepare(`SELECT id FROM Anime`).all().map(a => a.id)
+        d.prepare(`SELECT id FROM Anime`).all().map((a: any) => a.id)
       );
-      const currentIds = new Set(dataInner.library.map(a => a.id));
+      const currentIds = new Set(dataInner.library.map((a: any) => a.id));
 
       for (const id of existingIds) {
         if (!currentIds.has(id)) {
@@ -520,7 +520,7 @@ async function saveLibrary(data, changedIds = null) {
 
       // If changedIds provided, only upsert those items (still handle deletions above)
       const toProcess = changedIdsInner
-        ? dataInner.library.filter(a => changedIdsInner.has(a.id))
+        ? dataInner.library.filter((a: any) => changedIdsInner.has(a.id))
         : dataInner.library;
 
       const insEpisode = d.prepare(
@@ -541,7 +541,7 @@ async function saveLibrary(data, changedIds = null) {
           'ratingRank', 'ratingTotal', 'infobox', 'collection',
           'eps', 'totalEpisodes', 'specialSuffix',
         ];
-        const extraFields = {};
+        const extraFields: any = {};
         for (const key of EXTRA_FIELDS) {
           if (a[key] !== undefined) extraFields[key] = a[key];
         }
@@ -549,7 +549,7 @@ async function saveLibrary(data, changedIds = null) {
           ? JSON.stringify(extraFields)
           : a.metadata || null; // preserve existing metadata if no new extras
 
-        const animeData = {
+        const animeData: any = {
           folderPath: a.folderPath,
           folderName: a.folderName,
           title: a.title,
@@ -616,7 +616,7 @@ async function saveLibrary(data, changedIds = null) {
     txn(data, changedIds);
     const savedCount = changedIds ? changedIds.size : data.library.length;
     logger.info(`Synced library: ${savedCount} anime${changedIds ? ` (incremental, ${data.library.length} total)` : ''}`);
-  } catch (e) {
+  } catch (e: any) {
     logger.error('SQLite library save error:', e.message);
     throw e;
   }
@@ -624,18 +624,18 @@ async function saveLibrary(data, changedIds = null) {
 
 // ─── MyList (统一表：library 条目 + wish 条目) ───
 // animeId 有值 = 本地有文件的条目，bangumiId 有值 = 来自 Bangumi 的 wish 条目
-async function saveMyList(data) {
+async function saveMyList(data: any) {
   if (!data) return;
   try {
     const d = getDb();
-    const txn = d.transaction((dataInner) => {
+    const txn = d.transaction((dataInner: any) => {
       const existing = d.prepare(`SELECT id, animeId, bangumiId, status FROM MyList`).all();
-      const existingByAnimeId = new Map(existing.filter(x => x.animeId).map(x => [x.animeId, x]));
-      const existingByBgmId = new Map(existing.filter(x => x.bangumiId && !x.animeId).map(x => [String(x.bangumiId), x]));
-      const existingById = new Map(existing.map(x => [x.id, x]));
+      const existingByAnimeId: Map<any, any> = new Map(existing.filter((x: any) => x.animeId).map((x: any) => [x.animeId, x]));
+      const existingByBgmId: Map<any, any> = new Map(existing.filter((x: any) => x.bangumiId && !x.animeId).map((x: any) => [String(x.bangumiId), x]));
+      const existingById: Map<any, any> = new Map(existing.map((x: any) => [x.id, x]));
 
-      const incomingAnimeIds = new Set((dataInner.myList || []).filter(x => x.animeId).map(x => x.animeId));
-      const incomingBgmIds = new Set((dataInner.myList || []).filter(x => !x.animeId && x.bangumiId).map(x => String(x.bangumiId)));
+      const incomingAnimeIds = new Set((dataInner.myList || []).filter((x: any) => x.animeId).map((x: any) => x.animeId));
+      const incomingBgmIds = new Set((dataInner.myList || []).filter((x: any) => !x.animeId && x.bangumiId).map((x: any) => String(x.bangumiId)));
 
       const delStmt = d.prepare(`DELETE FROM MyList WHERE id = ?`);
 
@@ -663,7 +663,7 @@ async function saveMyList(data) {
             : item.bangumiId ? existingByBgmId.get(String(item.bangumiId)) : null;
           resolvedStatus = existingRecord ? existingRecord.status : 'wish';
         }
-        const commonData = {
+        const commonData: any = {
           status: resolvedStatus,
           rating: item.rating ?? null,
           thoughts: item.thoughts || '',
@@ -699,32 +699,32 @@ async function saveMyList(data) {
 
     txn(data);
     logger.info(`Synced MyList: ${(data.myList || []).length} items`);
-  } catch (e) {
+  } catch (e: any) {
     logger.error('SQLite myList save error:', e.message);
     throw e;
   }
 }
 
 // ─── 精细化更新：单条 MyList 状态（仅限 library 条目） ───
-async function updateMyItemStatus(animeId, status) {
+async function updateMyItemStatus(animeId: any, status: any) {
   try {
     const d = getDb();
     upsertMyListByAnimeId(d, animeId, { status });
     logger.info(`Updated MyList status: ${animeId} → ${status}`);
-  } catch (e) {
+  } catch (e: any) {
     logger.error('MyList status update error:', e.message);
   }
 }
 
-async function savePlaySessions(data) {
+async function savePlaySessions(data: any) {
   if (!data) return;
   try {
     const d = getDb();
-    const txn = d.transaction((dataInner) => {
+    const txn = d.transaction((dataInner: any) => {
       // Query valid anime IDs from DB (not data.library) to avoid deleting
       // sessions for existing anime when memory state is stale
       const validRows = d.prepare(`SELECT id FROM Anime`).all();
-      const validIds = new Set(validRows.map(a => a.id));
+      const validIds = new Set(validRows.map((a: any) => a.id));
       if (validIds.size > 0) {
         // 守卫空数组：validIds 非空才拼 NOT IN
         const ids = Array.from(validIds);
@@ -734,7 +734,7 @@ async function savePlaySessions(data) {
         d.prepare(`DELETE FROM PlaySession`).run();
       }
 
-      const validSessions = (dataInner.playSessions || []).filter(s => validIds.has(s.animeId));
+      const validSessions = (dataInner.playSessions || []).filter((s: any) => validIds.has(s.animeId));
       const upsertStmt = d.prepare(
         `INSERT INTO PlaySession (id, animeId, episodeNumber, sessionId, startTime, endTime, duration, clockTime, progressStart) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT("sessionId") DO UPDATE SET endTime = excluded.endTime, duration = excluded.duration, clockTime = excluded.clockTime`
       );
@@ -754,7 +754,7 @@ async function savePlaySessions(data) {
     });
 
     txn(data);
-  } catch (e) {
+  } catch (e: any) {
     logger.error('SQLite playSessions save error:', e.message);
     throw e;
   }
@@ -762,10 +762,10 @@ async function savePlaySessions(data) {
 
 // ─── 精细化更新：mpv 每 10s 进度 ───
 
-async function updateEpisodeProgress(animeId, epNumber, fields) {
+async function updateEpisodeProgress(animeId: any, epNumber: any, fields: any): Promise<boolean> {
   try {
     const d = getDb();
-    const data = {};
+    const data: any = {};
     if (fields.progress !== undefined) data.progress = fields.progress;
     if (fields.duration !== undefined) data.duration = fields.duration;
     if (fields.watched !== undefined) data.watched = fields.watched ? 1 : 0;
@@ -774,17 +774,17 @@ async function updateEpisodeProgress(animeId, epNumber, fields) {
     d.prepare(`UPDATE Episode SET ${setList} WHERE "animeId" = @animeId AND "number" = @number`)
       .run({ ...data, animeId, number: epNumber });
     return true;
-  } catch (e) {
+  } catch (e: any) {
     logger.error('Episode progress update error:', e.message);
     return false;
   }
 }
 
-async function updatePlaySession(sessionId, fields) {
+async function updatePlaySession(sessionId: any, fields: any): Promise<boolean> {
   try {
     if (!sessionId) return true;
     const d = getDb();
-    const data = {};
+    const data: any = {};
     if (fields.endTime !== undefined) data.endTime = new Date(fields.endTime).getTime();
     if (fields.duration !== undefined) data.duration = fields.duration;
     if (fields.clockTime !== undefined) data.clockTime = fields.clockTime;
@@ -793,18 +793,18 @@ async function updatePlaySession(sessionId, fields) {
     d.prepare(`UPDATE PlaySession SET ${setList} WHERE "sessionId" = @sessionId`)
       .run({ ...data, sessionId });
     return true;
-  } catch (e) {
+  } catch (e: any) {
     logger.error('PlaySession update error:', e.message);
     return false;
   }
 }
 
-async function updateAnime(id, fields) {
+async function updateAnime(id: any, fields: any): Promise<boolean> {
   try {
     if (!id || !fields || Object.keys(fields).length === 0) return true;
     const d = getDb();
     // 动态 SET 过滤 undefined（Prisma 忽略 undefined，原生层必须自己过滤）
-    const data = {};
+    const data: any = {};
     for (const k of Object.keys(fields)) {
       if (fields[k] !== undefined) data[k] = fields[k];
     }
@@ -812,41 +812,41 @@ async function updateAnime(id, fields) {
     const setList = Object.keys(data).map(c => `"${c}" = @${c}`).join(', ');
     d.prepare(`UPDATE Anime SET ${setList} WHERE "id" = @id`).run({ ...data, id });
     return true;
-  } catch (e) {
+  } catch (e: any) {
     logger.error('Anime update error:', e.message);
     return false;
   }
 }
 
-async function deletePlaySession(sessionId) {
+async function deletePlaySession(sessionId: any): Promise<boolean> {
   try {
     if (!sessionId) return true;
     const d = getDb();
     d.prepare(`DELETE FROM PlaySession WHERE sessionId = ?`).run(sessionId);
     return true;
-  } catch (e) {
+  } catch (e: any) {
     logger.error('PlaySession delete error:', e.message);
     return false;
   }
 }
 
-async function updateEpisodesWatched(animeId, episodeNumbers) {
+async function updateEpisodesWatched(animeId: any, episodeNumbers: any[]): Promise<boolean> {
   try {
     if (!episodeNumbers.length) return true;
     const d = getDb();
     const ph = episodeNumbers.map(() => '?').join(',');
     d.prepare(`UPDATE Episode SET watched = 1 WHERE "animeId" = ? AND "number" IN (${ph})`).run(animeId, ...episodeNumbers);
     return true;
-  } catch (e) {
+  } catch (e: any) {
     logger.error('Episodes watched batch update error:', e.message);
     return false;
   }
 }
 
-async function updateMyListItem(animeId, fields) {
+async function updateMyListItem(animeId: any, fields: any): Promise<boolean> {
   try {
     const d = getDb();
-    const data = {};
+    const data: any = {};
     if (fields.status !== undefined) data.status = fields.status;
     if (fields.rating !== undefined) data.rating = fields.rating;
     if (fields.thoughts !== undefined) data.thoughts = fields.thoughts;
@@ -858,7 +858,7 @@ async function updateMyListItem(animeId, fields) {
     upsertMyListByAnimeId(d, animeId, data);
     logger.info(`Updated MyList item: ${animeId}`);
     return true;
-  } catch (e) {
+  } catch (e: any) {
     logger.error('MyList item update error:', e.message);
     return false;
   }
@@ -891,4 +891,22 @@ async function reset() {
   d.prepare(`DELETE FROM MyList`).run();
 }
 
-module.exports = { loadData, saveAll, saveLibrary, saveMyList, updateMyItemStatus, updateMyListItem, savePlaySessions, updateEpisodeProgress, updateEpisodesWatched, updatePlaySession, updateAnime, deletePlaySession, shutdown, ensureSchema, clearSessions, vacuum, reset };
+export {
+  loadData,
+  saveAll,
+  saveLibrary,
+  saveMyList,
+  updateMyItemStatus,
+  updateMyListItem,
+  savePlaySessions,
+  updateEpisodeProgress,
+  updateEpisodesWatched,
+  updatePlaySession,
+  updateAnime,
+  deletePlaySession,
+  shutdown,
+  ensureSchema,
+  clearSessions,
+  vacuum,
+  reset,
+};

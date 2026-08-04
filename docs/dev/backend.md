@@ -120,18 +120,18 @@ db.loadData() → 读 SQLite 初始化
 ### better-sqlite3 注意事项
 
 - `server/db.ts` 用 better-sqlite3 原生 SQL，单例 `Database`（PRAGMA `foreign_keys=ON` / WAL / busy_timeout）
-- schema 变更：改 `db.ts` 的 INIT_SQL + 迁移，`npm run db:migrate` 触发 `ensureSchema()` 版本化迁移（写 MigrationLog 表，v2_merge_wishlist 已在案）
+- schema 变更：改 `db.ts` 的 INIT_SQL + 迁移，`npm run db:migrate` 触发 `ensureSchema()` 版本化迁移（写 MigrationLog 表，v2_merge_wishlist、v3_uuid_anime_ids 已在案）
 - **布尔陷阱**：SQLite 布尔存 0/1，读回后需 `!!` 强转（downloaded/watched），否则透传给前端会挂 `if (a.downloaded)` 和 `watched === true` 断言
 - **undefined 字段陷阱**：动态 SET 前必须过滤 `undefined` 键，否则 `SET x = undefined` 直接报错（ORM 会忽略 undefined，原生 SQL 层不会）
-- 连接串固定 `file:./anime.db`
+- DB 路径：dev=`<项目根>/data/anime.db`，pkg=`%APPDATA%/MyAnimeDock/anime.db`（见 `db.ts` DB_PATH）
 
 ## Scanner 约定
 
 - `parseFolderName(name)` — 纯函数，从文件夹名提取 `{ title, year, season, bangumiId, anilistId, label }`
-- `extractBgmId(name)` — 提取 `[bgmN]` 格式的数字 ID，`String(bangumiId)` 为主键
+- `extractBgmId(name)` — 提取 `[bgmN]` 格式的数字 ID，用作 `bangumiId`（内容身份，唯一索引）
 - `findVideos(dir)` — 递归查找视频文件（mp4/mkv/avi/mov/wmv）
 - `scanMediaDirFlat(dir)` — 扫描返回扁平 leaf 数组（含 `parentChain`）
-- 手动导入项使用 `parsedTitle + Season` 作 ID
+- 手动导入项主键同样为 UUID（`crypto.randomUUID()`）
 
 ### isExtraVideo 判断
 

@@ -39,11 +39,11 @@
 
 ## 关键约束
 
-- `bangumiId` 为主键（`String`），手动导入用 `parsedTitle + Season`
+- Anime 主键统一 UUID（`crypto.randomUUID()`）；`bangumiId` 为内容身份（唯一索引），手动导入不再用 `parsedTitle + Season`
 - 细粒度写入：每个 API 只写实际修改的表，不调全量 `saveData()`
 - AniList 是 Bangumi 的补充源，仅罗马音 + seasonChain + banner
 - SSE-only MetaMatch（`/api/library/sync/stream`），无 batch fallback
 - 播放器只支持 mpv（`--input-ipc-server` IPC 管道）
-- DATA_DIR: dev=`server/`, pkg=`%APPDATA%/MyAnimeDock`
+- DATA_DIR: dev=`server/`（config/scanned-tree 等）、DB 在 `<项目根>/data/anime.db`；pkg=`%APPDATA%/MyAnimeDock`
 
 > 详见各子文件及 `docs/dev/backend.md` 后端开发规范。

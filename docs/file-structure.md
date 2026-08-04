@@ -15,7 +15,7 @@ MyAnimeDocker/
 ├── server/                    # === 后端 (Node.js HTTP) ===
 ├── frontend/                  # === 前端源码 (Vite 构建) ===
 ├── src-tauri/                 # === Tauri v2 桌面壳 (Rust) ===
-├── prisma/                    # === DB 文件存放（better-sqlite3 读写）===
+├── data/                      # === DB 文件存放（better-sqlite3 读写）===
 ├── docs/                      # === 项目文档 ===
 ├── scripts/                   # === 构建/打包脚本 ===
 ├── .agents/                   # Agent skill 文件
@@ -202,11 +202,11 @@ src-tauri/
 
 ---
 
-## prisma/ — DB 文件存放
+## data/ — DB 文件存放
 
 ```
-prisma/
-└── anime.db                   # SQLite 数据库（better-sqlite3 读写，DATA_DIR 指向此文件）
+data/
+└── anime.db                   # SQLite 数据库（better-sqlite3 读写；dev 模式：<项目根>/data/anime.db）
 ```
 
 > schema 与迁移不由此目录管理：表结构真源在 `server/db.ts`（INIT_SQL + `ensureSchema()` 版本化迁移器，写 MigrationLog 表）。`npm run db:migrate` 触发迁移。

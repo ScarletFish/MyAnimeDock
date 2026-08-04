@@ -927,7 +927,7 @@ describe('DB Integration Tests', () => {
       assert.equal(typeof a.importedAt, 'string');
 
       // 内部：直接查底层行，importedAt 必须是整数 ms（Date.now()/getTime 路径）
-      const raw = require('better-sqlite3')(require('path').join(__dirname, '..', '..', 'prisma', 'anime.db'))
+       const raw = require('better-sqlite3')(require('path').join(__dirname, '..', '..', 'data', 'anime.db'))
         .prepare(`SELECT importedAt FROM Anime WHERE id = ?`).get(id);
       assert.equal(raw.importedAt, fixedMs, 'stored value must be integer ms');
       assert.equal(Number.isInteger(raw.importedAt), true, 'stored value must be integer');
@@ -1062,8 +1062,8 @@ describe('DB Integration Tests', () => {
     });
 
     it('PRAGMA foreign_keys is ON on the live connection', () => {
-      const raw = require('better-sqlite3')(require('path').join(__dirname, '..', '..', 'prisma', 'anime.db'));
-      const fk = raw.prepare('PRAGMA foreign_keys').get();
+       const raw = require('better-sqlite3')(require('path').join(__dirname, '..', '..', 'data', 'anime.db'));
+       const fk = raw.prepare('PRAGMA foreign_keys').get();
       // PRAGMA 每连接独立；此校验只反映新建连接默认值，真实依赖 db.js 内 pragma。
       // 关键断言走下方行为测试。
       assert.ok(true, 'foreign_keys pragma checked per-connection');
@@ -1084,8 +1084,8 @@ describe('DB Integration Tests', () => {
       assert.equal(reloaded.library.find(a => a.id === id), undefined, 'anime removed');
       // 级联：episodes / myList / playSessions 应随 anime 一并删除
       const remainingEpisodes = reloaded.library.reduce((n, a) => n + a.episodes.length, 0);
-      const epCount = require('better-sqlite3')(require('path').join(__dirname, '..', '..', 'prisma', 'anime.db'))
-        .prepare(`SELECT COUNT(*) AS c FROM Episode WHERE animeId = ?`).get(id).c;
+       const epCount = require('better-sqlite3')(require('path').join(__dirname, '..', '..', 'data', 'anime.db'))
+         .prepare(`SELECT COUNT(*) AS c FROM Episode WHERE animeId = ?`).get(id).c;
       assert.equal(epCount, 0, 'episodes cascaded');
       assert.equal(reloaded.myList.find(m => m.animeId === id), undefined, 'myList cascaded');
       assert.equal(reloaded.playSessions.find(s => s.sessionId === sessionId), undefined, 'playSession cascaded');
@@ -1146,8 +1146,8 @@ describe('DB Integration Tests', () => {
     // 这些操作对真实 dev DB 有破坏性。为避免跑测试时毁掉真实数据，
     // 每个破坏性用例在运行前 snapshot 全量数据，运行验证后 restore 回去。
     // FK 顺序：先 library（含 episodes）→ myList → playSessions。
-    const rawDb = () => require('better-sqlite3')(require('path').join(__dirname, '..', '..', 'prisma', 'anime.db'));
-    const snapshot = async () => {
+     const rawDb = () => require('better-sqlite3')(require('path').join(__dirname, '..', '..', 'data', 'anime.db'));
+     const snapshot = async () => {
       const d = await db.loadData();
       return d === null ? null : {
         library: JSON.parse(JSON.stringify(d.library)),
@@ -1230,6 +1230,73 @@ describe('DB Integration Tests', () => {
       assert.ok(countAnime + countEp + countSess + countMy >= 0, 'baseline recorded');
 
       await restore(snap);
+    });
+  });
+
+  // 7. v3 迁移：Anime 主键统一 UUID，folderPath 唯一索引已移除
+  describe('migration: v3 uuid anime ids', () => {
+   const rawDb = () => require('better-sqlite3')(require('path').join(__dirname, '..', '..', 'data', 'anime.db'));
+
+   it('folderPath unique index no longer exists', async () => {
+      const raw = rawDb();
+      const indexes = raw.prepare(`PRAGMA index_list('Anime')`).all();
+      assert.equal(indexes.some(i => i.name === 'Anime_folderPath_key'), false, 'Anime_folderPath_key must be dropped');
+    });
+
+    it('saves two anime sharing the same folderPath (no unique index conflict)', async () => {
+      const data = await db.loadData();
+      if (data === null) return;
+      const sharedPath = '/test/path/v3-shared-folder';
+
+      const a1 = {
+        id: 'v3-uuid-a1',
+        folderPath: sharedPath, folderName: 'Shared A',
+        title: 'Shared A', importedAt: new Date().toISOString(),
+        downloaded: true, bangumiId: 77777201, bangumiTitle: 'A', episodes: [],
+      };
+      const a2 = {
+        id: 'v3-uuid-a2',
+        folderPath: sharedPath, folderName: 'Shared B',
+        title: 'Shared B', importedAt: new Date().toISOString(),
+        downloaded: true, bangumiId: 77777202, bangumiTitle: 'B', episodes: [],
+      };
+      data.library.push(a1, a2);
+      await db.saveLibrary(data);
+
+      const reloaded = await db.loadData();
+      assert.ok(reloaded.library.find(x => x.id === 'v3-uuid-a1'), 'first anime saved');
+      assert.ok(reloaded.library.find(x => x.id === 'v3-uuid-a2'), 'second anime with same folderPath saved');
+
+      reloaded.library = reloaded.library.filter(x => x.id !== 'v3-uuid-a1' && x.id !== 'v3-uuid-a2');
+      await db.saveLibrary(reloaded);
+    });
+
+    it('stores UUID-format anime ids and `${id}-${number}` episode ids round-trip', async () => {
+      const data = await db.loadData();
+      if (data === null) return;
+      const uuid = '123e4567-e89b-12d3-a456-426614174000';
+
+      data.library.push({
+        id: uuid,
+        folderPath: '/test/path/v3-uuid-ep', folderName: 'UuidEp',
+        title: 'UuidEp', importedAt: new Date().toISOString(),
+        downloaded: true, bangumiId: 77777203, bangumiTitle: 'UUID',
+        episodes: [{ number: 2, filePath: '/test/path/v3-uuid-ep/ep02.mkv', fileName: 'ep02.mkv', fileSize: 100, watched: false, progress: 0 }],
+      });
+      await db.saveLibrary(data);
+
+      const reloaded = await db.loadData();
+      const a = reloaded.library.find(x => x.id === uuid);
+      assert.ok(a, 'UUID anime saved');
+      assert.equal(a.episodes.length, 1);
+      assert.equal(a.episodes[0].number, 2);
+
+      const raw = rawDb();
+      const epRow = raw.prepare(`SELECT id FROM Episode WHERE animeId = ?`).get(uuid);
+      assert.equal(epRow.id, `${uuid}-2`, 'episode id follows `${animeId}-${number}` convention');
+
+      reloaded.library = reloaded.library.filter(x => x.id !== uuid);
+      await db.saveLibrary(reloaded);
     });
   });
 });

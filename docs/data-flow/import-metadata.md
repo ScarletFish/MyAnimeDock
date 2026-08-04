@@ -7,7 +7,7 @@ POST /api/import
   → routes/discovery.ts:handleImport()
   → Body: { items: [{ path, name, parsedTitle, parsedSeason, specialSuffix, ... }] }
   → For each item:
-      ├─ Generate animeId = `${parsedTitle}${parsedSeason ? '-Season '+parsedSeason : ''}`
+      ├─ Generate animeId = crypto.randomUUID()
       ├─ Build anime + episodes in data.library[]:
       │   { id, title, folderName, folderPath, season, specialSuffix,
       │     episodes: [{ animeId, episodeNumber, filePath, fileName, fileSize }] }

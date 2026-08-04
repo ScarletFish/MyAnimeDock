@@ -18,6 +18,9 @@ GET /api/browse?showExcluded
   → saveScannedTree(scannedTree) → scanned-tree.json
   → jsonResp with merged result
 
+  NOTE: alreadyImported 匹配优先级 = bangumiId（内容身份）→ folderPath 兜底
+    （手动条目无 bangumiId，仅走 folderPath；见 routes/discovery.ts handleBrowse/handleScan）
+
   NOTE: Also runs migrations on existing data:
     • parsedSeason === 1 → null
     • Remove S\d+ from parsedTitle

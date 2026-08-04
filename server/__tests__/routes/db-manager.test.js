@@ -142,7 +142,7 @@ describe('db-manager route handlers', () => {
     it('returns 200 for valid SQLite restore (fs monkey-patched to avoid real DB write)', async () => {
       // Compute DB_FILE path matching db-manager.js logic (dev mode = non-pkg)
       const APP_ROOT = path.resolve(__dirname, '..', '..', '..');
-      const DB_FILE = path.join(APP_ROOT, 'prisma', 'anime.db');
+       const DB_FILE = path.join(APP_ROOT, 'data', 'anime.db');
       const backupDir = path.join(DATA_DIR, 'backups');
 
       // Create a minimal buffer with valid SQLite header

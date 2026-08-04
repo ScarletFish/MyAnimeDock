@@ -1,6 +1,7 @@
 // server/routes/discovery.ts — 浏览、扫描、导入、元数据匹配
 import path from 'path';
 import fs from 'fs';
+import crypto from 'crypto';
 import { jsonResp, readBody } from '../lib/utils';
 import { saveScannedTree, DATA_DIR } from '../lib/config';
 import { syncAnilist } from '../scrapers';
@@ -35,10 +36,12 @@ async function handleBrowse(req: any, res: any, state: State) {
       for (const n of tree) {
         if (n.type === 'leaf' && n.parsedSeason === 1) n.parsedSeason = null;
       }
+      const libraryBgmIds = new Set(data.library.filter(a => a.bangumiId).map(a => a.bangumiId));
       const libraryPaths = new Set(data.library.map(a => a.folderPath));
       for (const n of tree) {
         if (n.type === 'leaf') {
-          n.alreadyImported = libraryPaths.has(n.path);
+          // 匹配优先级：bangumiId（内容身份）→ folderPath 兜底（手动条目无 bangumiId）
+          n.alreadyImported = (n.bangumiId != null && libraryBgmIds.has(n.bangumiId)) || libraryPaths.has(n.path);
           if (n.excluded === undefined) n.excluded = false;
           if (n.bangumiMatched === undefined) n.bangumiMatched = false;
         }
@@ -68,6 +71,7 @@ async function handleBrowse(req: any, res: any, state: State) {
       const dirs = entries.filter(e => e.isDirectory() && e.name !== 'covers');
       const total = dirs.length;
       const tree = [];
+      const libraryBgmIds = new Set(data.library.filter(a => a.bangumiId).map(a => a.bangumiId));
       const libraryPaths = new Set(data.library.map(a => a.folderPath));
       const existingNodes = new Map<string, ScanNode>((data.scannedTree || []).map(n => [n.path, n] as [string, ScanNode]));
       for (let i = 0; i < dirs.length; i++) {
@@ -77,7 +81,8 @@ async function handleBrowse(req: any, res: any, state: State) {
         if (node) {
           (function flatten(n: ScanNode) {
             if (n.type === 'leaf') {
-              n.alreadyImported = libraryPaths.has(n.path);
+              // 匹配优先级：bangumiId（内容身份）→ folderPath 兜底（手动条目无 bangumiId）
+              n.alreadyImported = (n.bangumiId != null && libraryBgmIds.has(n.bangumiId)) || libraryPaths.has(n.path);
               const existing = existingNodes.get(n.path);
               if (existing) {
                 n.excluded = existing.excluded || false;
@@ -127,11 +132,16 @@ async function handleBrowse(req: any, res: any, state: State) {
         const videos = await findVideos(folderPath);
         const episodeFiles = videos.filter((v: any) => !isExtraVideo(v.name));
         const scannedNode = data.scannedTree.find(n => n.path === folderPath);
-        const existing = data.library.find(a => a.folderPath === folderPath);
+        // 匹配优先级：bangumiId（内容身份）→ folderPath 兜底（手动条目无 bangumiId）
+        const existing = scannedNode?.bangumiId
+          ? (data.library.find(a => a.bangumiId === scannedNode.bangumiId) || data.library.find(a => a.folderPath === folderPath))
+          : data.library.find(a => a.folderPath === folderPath);
         if (existing) {
           if (existing.downloaded !== false) continue;
           existing.downloaded = true;
           existing.importedAt = new Date().toISOString();
+          existing.folderPath = folderPath;
+          existing.folderName = folderName;
           existing.episodes = episodeFiles.map((v: any, i: any) => ({
             number: i + 1, filePath: v.path, fileName: v.name, fileSize: v.size,
             duration: null, watched: false, progress: 0,
@@ -141,7 +151,7 @@ async function handleBrowse(req: any, res: any, state: State) {
           continue;
         }
         const anime: any = {
-          id: parsedTitle + (parsedSeason ? `-Season ${parsedSeason}` : ''),
+          id: crypto.randomUUID(),
           folderPath, folderName, title: parsedTitle,
           season: parsedSeason || null, specialSuffix: specialSuffix || null,
           importedAt: new Date().toISOString(), downloaded: true,

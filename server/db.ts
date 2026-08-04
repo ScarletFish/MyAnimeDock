@@ -5,6 +5,7 @@
 
 import path from 'path';
 import fs from 'fs';
+import crypto from 'crypto';
 import { PROJECT_ROOT } from './lib/paths';
 import { Logger } from './logger';
 import type { AppData } from './types';
@@ -34,15 +35,15 @@ if (!fs.existsSync(DATA_DIR)) {
   logger.info(`Created data directory: ${DATA_DIR}`);
 }
 
-// 开发模式：DB 在 prisma/anime.db（迁移已有）
+// 开发模式：DB 在 data/anime.db（迁移已有）
 // 生产模式：DB 在 %APPDATA%/MyAnimeDock/anime.db（可写）
 const DB_PATH = process.pkg
   ? path.join(DATA_DIR, 'anime.db')
-  : path.join(DATA_DIR, 'prisma', 'anime.db');
-// 用于文件存在性检查（pkg 模式下 DB 直接在 DATA_DIR，dev 模式在 prisma/ 子目录）
+  : path.join(DATA_DIR, 'data', 'anime.db');
+// 用于文件存在性检查（pkg 模式下 DB 直接在 DATA_DIR，dev 模式在 data/ 子目录）
 const DB_FILE = process.pkg
   ? path.join(DATA_DIR, 'anime.db')
-  : path.join(DATA_DIR, 'prisma', 'anime.db');
+  : path.join(DATA_DIR, 'data', 'anime.db');
 
 // ─── pkg 模式：原生模块路径修复 ───
 // pkg 无法打包 .node 原生模块，需要从外部 node_modules/ 加载。
@@ -91,7 +92,6 @@ if (process.pkg) {
 // 但不会创建表。以下 SQL 在首次启动时自建制表（CREATE TABLE IF NOT EXISTS）。
 const INIT_SQL = [
   `CREATE TABLE IF NOT EXISTS "Anime" ("id" TEXT NOT NULL PRIMARY KEY, "folderPath" TEXT NOT NULL, "folderName" TEXT NOT NULL, "title" TEXT NOT NULL, "season" INTEGER, "importedAt" DATETIME NOT NULL DEFAULT (unixepoch() * 1000), "downloaded" BOOLEAN NOT NULL DEFAULT true, "bangumiId" INTEGER, "bangumiTitle" TEXT, "bangumiTitleJp" TEXT, "summary" TEXT, "coverUrl" TEXT, "localCover" TEXT, "rating" REAL, "source" TEXT, "pinyinTitle" TEXT, "matchedSeason" INTEGER, "metadata" TEXT, "anilistId" INTEGER, "anilistBanner" TEXT, "anilistCover" TEXT, "anilistTitleEn" TEXT)`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS "Anime_folderPath_key" ON "Anime"("folderPath")`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "Anime_bangumiId_key" ON "Anime"("bangumiId")`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "Anime_anilistId_key" ON "Anime"("anilistId")`,
   `CREATE INDEX IF NOT EXISTS "Anime_bangumiId_idx" ON "Anime"("bangumiId")`,
@@ -207,6 +207,48 @@ const MIGRATIONS: any[] = [
         // 表已使用新 schema，但可能仍有遗留 Wishlist 表
         d.exec(`DROP TABLE IF EXISTS "Wishlist"`);
       }
+    },
+  },
+  {
+    version: 'v3_uuid_anime_ids',
+    description: 'Unify Anime primary keys to UUID; drop folderPath unique index',
+    up(d: any) {
+      // 读取所有现有 Anime 行，建立 oldId → newUuid 映射
+      const rows = d.prepare(`SELECT id FROM Anime`).all();
+      const idMap = new Map<string, string>();
+      for (const r of rows) {
+        idMap.set(r.id, crypto.randomUUID());
+      }
+      if (idMap.size === 0) {
+        // 空库：仅清理遗留索引
+        d.exec(`DROP INDEX IF EXISTS "Anime_folderPath_key"`);
+        logger.info('[Migration v3] No anime rows, removed folderPath unique index');
+        return;
+      }
+      logger.info(`[Migration v3] Converting ${idMap.size} anime ids to UUID...`);
+      d.exec(`PRAGMA foreign_keys=OFF`);
+
+      // 1. 重写子表外键引用：Episode / PlaySession / MyList 的 animeId
+      for (const [oldId, newId] of idMap) {
+        d.prepare(`UPDATE "Episode" SET "animeId" = ? WHERE "animeId" = ?`).run(newId, oldId);
+        d.prepare(`UPDATE "PlaySession" SET "animeId" = ? WHERE "animeId" = ?`).run(newId, oldId);
+        d.prepare(`UPDATE "MyList" SET "animeId" = ? WHERE "animeId" = ?`).run(newId, oldId);
+        // MyList.id 在库条目中 == animeId（insertMyListRow 用 id: animeId），一并改写
+        d.prepare(`UPDATE "MyList" SET "id" = ? WHERE "id" = ? AND "animeId" = ?`).run(newId, oldId, oldId);
+        // Episode.id 格式为 `${animeId}-${number}`，同步改写为新 UUID 前缀
+        d.prepare(`UPDATE "Episode" SET "id" = ? || '-' || "number" WHERE "animeId" = ?`).run(newId, newId);
+      }
+
+      // 2. 重写 Anime 主键本身
+      for (const [oldId, newId] of idMap) {
+        d.prepare(`UPDATE "Anime" SET "id" = ? WHERE "id" = ?`).run(newId, oldId);
+      }
+
+      // 3. 移除 folderPath 唯一索引（解耦关键）
+      d.exec(`DROP INDEX IF EXISTS "Anime_folderPath_key"`);
+
+      d.exec(`PRAGMA foreign_keys=ON`);
+      logger.info('[Migration v3] Anime ids converted to UUID, folderPath unique index dropped');
     },
   },
 ];

@@ -223,7 +223,7 @@ describe('Playback Path — 服务端 fs.existsSync 验证', () => {
   
   before(() => {
     // 查找 anime.db 确认它存在
-    const dbPath = path.join(__dirname, '..', 'prisma', 'anime.db');
+     const dbPath = path.join(__dirname, '..', 'data', 'anime.db');
     if (fs.existsSync(dbPath)) {
       testFiles.push({ label: 'anime.db', path: dbPath });
     }

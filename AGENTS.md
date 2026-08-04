@@ -40,7 +40,7 @@ cd server && npm test      # 测试（先自动跑 tsc）
 ## Gotchas
 
 - **DATA_DIR**: dev=`server/`, pkg=`%APPDATA%/MyAnimeDock`
-- **动漫 ID**: `String(bangumiId)` 主键；手动导入 `parsedTitle + Season`
+- **动漫 ID**: 主键统一 UUID（`crypto.randomUUID()`）；`bangumiId` 为内容身份（唯一索引），匹配优先级 bangumiId → folderPath
 - **播放器**: 仅 mpv（`--input-ipc-server` IPC）
 - **自动标记前集**必须 `db.updateEpisodesWatched()` 落盘
 - **window.close() 无效**: 需 Rust `window.close()` 或 `__TAURI__` IPC

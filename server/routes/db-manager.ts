@@ -9,14 +9,14 @@ import { DATA_DIR, CONFIG_PATH, SCANNED_TREE_PATH } from '../lib/config';
 type State = any;
 
 // 推导 DB 文件路径（与 db.js 的 DATA_DIR 计算逻辑保持一致）
-// db.js: __dirname=server/ → path.join(__dirname,'..')=项目根目录 → DB=项目根目录/prisma/anime.db
+// db.js: __dirname=server/ → path.join(__dirname,'..')=项目根目录 → DB=项目根目录/data/anime.db
 // 本文件: __dirname=server/routes/ → path.join(__dirname,'..','..')=项目根目录
 const APP_ROOT = process.pkg
   ? (process.env.APPDATA || process.env.HOME || '.')
   : PROJECT_ROOT;
 const DB_FILE = process.pkg
   ? path.join(APP_ROOT, 'MyAnimeDock', 'anime.db')
-  : path.join(APP_ROOT, 'prisma', 'anime.db');
+  : path.join(APP_ROOT, 'data', 'anime.db');
 
 // 缓存目录
 const CACHE_DIRS: Record<string, string> = {

@@ -1,12 +1,16 @@
-// @ts-nocheck
-const fs = require('fs');
-const path = require('path');
-const logger = require('../logger').child('[BANGUMI]');
-const { curlFetch, fetchWithTimeout, downloadImage, isNetworkError, isCloudflareInterference, isCurlFallbackActive, activateCurlFallback, USER_AGENT } = require('../lib/http-fetch');
-const { createTimedCache, createPersistentCache } = require('../lib/utils');
-const { DATA_DIR } = require('../lib/config');
+import * as fs from 'fs';
+import * as path from 'path';
+import { Logger } from '../logger';
+import { curlFetch, fetchWithTimeout, downloadImage, isNetworkError, isCloudflareInterference, isCurlFallbackActive, activateCurlFallback, USER_AGENT } from '../lib/http-fetch';
+import { createTimedCache, createPersistentCache } from '../lib/utils';
+import { DATA_DIR } from '../lib/config';
+
+const logger: Logger = require('../logger').child('[BANGUMI]');
 
 class BangumiScraper {
+  name: string;
+  apiBase: string;
+
   constructor() {
     this.name = 'bangumi';
     this.apiBase = 'https://api.bangumi.lol';
@@ -15,19 +19,19 @@ class BangumiScraper {
   /**
    * Check if config has at least one bangumi source
    */
-enabled(config) {
+enabled(config: any): boolean {
     if (config?.apiSources) {
       return !!config.apiSources.find(s => s.type === 'bangumi');
     }
     return config?.scrapers?.bangumi?.enabled !== false;
   }
 
-  setSource(source) {
+  setSource(source: any): this {
     if (source?.url) this.apiBase = source.url.replace(/\/+$/, '');
     return this;
   }
 
-  async tryFetch(url, options = {}) {
+  async tryFetch(url: string, options: any = {}): Promise<{ json: () => Promise<any> }> {
     if (!isCurlFallbackActive()) {
       try {
         const res = await fetchWithTimeout(url, options);
@@ -50,7 +54,7 @@ enabled(config) {
     return { json: () => curlFetch(method, url, body) };
   }
 
-async search(keyword, source) {
+async search(keyword: string, source: any): Promise<any[]> {
     if (source) this.setSource(source);
     const url = `${this.apiBase}/v0/search/subjects`;
     const res = await this.tryFetch(url, {
@@ -62,13 +66,13 @@ async search(keyword, source) {
     return (data.data || []).filter(r => r.type === 2);
   }
 
-  async getSubjectDetail(id) {
+  async getSubjectDetail(id: any): Promise<any> {
     const url = `${this.apiBase}/v0/subjects/${id}`;
     const res = await this.tryFetch(url, { headers: { 'User-Agent': USER_AGENT } });
     return res.json();
   }
 
-  async downloadCover(imageUrl, coverDir, subjectId) {
+  async downloadCover(imageUrl: string, coverDir: string, subjectId: any): Promise<string | null> {
     if (!imageUrl) return null;
     const urlPath = new URL(imageUrl).pathname;
     const ext = path.extname(urlPath) || '.jpg';
@@ -91,7 +95,7 @@ async search(keyword, source) {
    * - If no kana detected → Chinese/English only, keep as-is.
    * - If Chinese lines followed by Japanese lines → truncate at first kana line.
    */
-  static truncateSummary(summary) {
+  static truncateSummary(summary: string): string {
     if (!summary) return summary;
     const lines = summary.split('\n').filter(l => l.trim());
     if (lines.length <= 1) return summary;
@@ -101,7 +105,7 @@ async search(keyword, source) {
     return lines.slice(0, firstJpIdx).join('\n');
   }
 
-  async fetchMetadata(title, coverDir, subjectId, preDetail) {
+  async fetchMetadata(title: any, coverDir: string, subjectId: any, preDetail: any): Promise<any> {
     let detail = preDetail;
     if (!detail) {
       detail = await this.getSubjectDetail(subjectId);
@@ -183,13 +187,13 @@ async search(keyword, source) {
     };
   }
 
-  async getCharacters(subjectId) {
+  async getCharacters(subjectId: any): Promise<any[]> {
     const url = `${this.apiBase}/v0/subjects/${subjectId}/characters`;
     const res = await this.tryFetch(url, { headers: { 'User-Agent': USER_AGENT } });
     return res.json();
   }
 
-  async getPersons(subjectId) {
+  async getPersons(subjectId: any): Promise<any[]> {
     const url = `${this.apiBase}/v0/subjects/${subjectId}/persons`;
     const res = await this.tryFetch(url, { headers: { 'User-Agent': USER_AGENT } });
     return res.json();
@@ -199,12 +203,12 @@ async search(keyword, source) {
    * Get subject relations (sequels, prequels, spin-offs, etc.)
    * Used for building season chains for multi-season anime.
    */
-  async getSubjectRelations(subjectId) {
+  async getSubjectRelations(subjectId: any): Promise<any[]> {
     const url = `${this.apiBase}/v0/subjects/${subjectId}/subjects`;
     const res = await this.tryFetch(url, { headers: { 'User-Agent': USER_AGENT } });
     return res.json(); // [{id, type, name, name_cn, relation, ...}]
   }
 }
 
-module.exports = BangumiScraper;
-module.exports.truncateSummary = BangumiScraper.truncateSummary.bind(BangumiScraper);
+(BangumiScraper as any).truncateSummary = BangumiScraper.truncateSummary.bind(BangumiScraper);
+export = BangumiScraper;

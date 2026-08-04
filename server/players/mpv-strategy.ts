@@ -1,20 +1,23 @@
-// @ts-nocheck
-// server/players/mpv-strategy.js — mpv 播放器策略
+// server/players/mpv-strategy.ts — mpv 播放器策略
 //
 // 职责：spawn mpv 进程 + 通过 JSON IPC 追踪播放进度
-// 通信层委派给 mpv-ipc.js，本模块只关心 mpv 特有的生命周期
+// 通信层委派给 mpv-ipc.ts，本模块只关心 mpv 特有的生命周期
 
-const { spawn } = require('child_process');
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
-const { MpvIpcConnection } = require('../mpv-ipc');
-const { BasePlayerStrategy } = require('./base-player');
-const logger = require('../logger').child('[MPV]');
+import { spawn, execSync } from 'child_process';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
+import { MpvIpcConnection } from '../mpv-ipc';
+import { BasePlayerStrategy } from './base-player';
+import { Logger } from '../logger';
+
+const logger: Logger = require('../logger').child('[MPV]');
 
 class MpvPlayerStrategy extends BasePlayerStrategy {
-    static get type() { return 'mpv'; }
-    static get displayName() { return 'MPV'; }
+    static get type(): string { return 'mpv'; }
+    static get displayName(): string { return 'MPV'; }
+
+    private _session: any = null; // 当前播放会话状态
 
     constructor() {
         super();
@@ -28,7 +31,7 @@ class MpvPlayerStrategy extends BasePlayerStrategy {
      * @param {string} execPath - 配置中的路径或 'mpv'
      * @returns {boolean}
      */
-    static checkAvailable(execPath) {
+    static checkAvailable(execPath: string): boolean {
         const isWin = process.platform === 'win32';
         let mpvPath = execPath || 'mpv';
         // Windows: resolve 'mpv'/'mpv.com' → 'mpv.exe'
@@ -42,7 +45,7 @@ class MpvPlayerStrategy extends BasePlayerStrategy {
         // 搜索 PATH
         const cmd = isWin ? 'where' : 'command -v';
         try {
-            require('child_process').execSync(`${cmd} ${mpvPath}`, { stdio: 'ignore' });
+            execSync(`${cmd} ${mpvPath}`, { stdio: 'ignore' });
             return true;
         } catch {
             return false;
@@ -61,7 +64,7 @@ class MpvPlayerStrategy extends BasePlayerStrategy {
      * @param {string} sessionId - 会话 ID
      * @returns {{ stop: function }}
      */
-    start(mpvPath, filePath, position, callbacks, sessionId) {
+    start(mpvPath: string, filePath: any, position: number, callbacks: any, sessionId?: string): { stop: () => void } {
         // 停止前一会话
         this.stop();
 
@@ -90,15 +93,15 @@ class MpvPlayerStrategy extends BasePlayerStrategy {
         let currentDuration = 0;
         let isPaused = false;
         const spawnTime = Date.now();
-        let mpvProcess = null;
-        let ipc = null;
+        let mpvProcess: any = null;
+        let ipc: any = null;
         let running = true;
 
         // ── Spawn ──
         logger.info(`Spawning: ${resolvedMpv} ${args.join(' ')}`);
         try {
             mpvProcess = spawn(resolvedMpv, args, { stdio: ['pipe', 'ignore', 'ignore'] });
-        } catch (e) {
+        } catch (e: any) {
             logger.error('mpv spawn threw:', e.message);
             if (callbacks.onError) callbacks.onError(`mpv 启动异常: ${e.message}`);
             return { stop: () => {} };
@@ -108,7 +111,7 @@ class MpvPlayerStrategy extends BasePlayerStrategy {
         // ── IPC ──
         ipc = new MpvIpcConnection(pipePath);
 
-        ipc.onEvent((msg) => {
+        ipc.onEvent((msg: any) => {
             if (!running) return;
             if (msg.event === 'property-change') {
                 if (msg.name === 'time-pos' && typeof msg.data === 'number') {
@@ -144,19 +147,19 @@ class MpvPlayerStrategy extends BasePlayerStrategy {
                             ipc.send({ command: ['set', 'ontop', 'no'] });
                             logger.info('ontop disabled after initial show');
                         }
-                    } catch (e) {
+                    } catch (e: any) {
                         logger.warn('ontop disable failed:', e.message);
                     }
                 }, 2000);
             })
-            .catch((err) => {
+            .catch((err: any) => {
                 if (!running) return;
                 logger.error('IPC connection failed:', err.message);
                 if (callbacks.onError) callbacks.onError('无法连接到 mpv 播放器进程');
             });
 
         // ── 进程事件 ──
-        mpvProcess.on('close', (code) => {
+        mpvProcess.on('close', (code: number) => {
             if (!running) return;
             const lived = Date.now() - spawnTime;
             logger.info(`mpv closed: code=${code} lived=${lived}ms`);
@@ -180,7 +183,7 @@ class MpvPlayerStrategy extends BasePlayerStrategy {
             mpvProcess = null;
         });
 
-        mpvProcess.on('error', (err) => {
+        mpvProcess.on('error', (err: any) => {
             if (!running) return;
             logger.error('mpv error:', err);
             if (callbacks.onError) callbacks.onError(String(err));
@@ -209,7 +212,7 @@ class MpvPlayerStrategy extends BasePlayerStrategy {
 
     // ── 实例：停止 ──────────────────────────────────────────────────────────
 
-    stop() {
+    stop(): void {
         if (this._session) {
             this._session.stop();
             this._session = null;
@@ -221,4 +224,4 @@ class MpvPlayerStrategy extends BasePlayerStrategy {
 const registry = require('./registry');
 registry.register(MpvPlayerStrategy);
 
-module.exports = { MpvPlayerStrategy };
+export = { MpvPlayerStrategy };

@@ -1,9 +1,9 @@
-// @ts-nocheck
-const fs = require('fs');
-const path = require('path');
-const logger = require('../logger').child('[ANILIST]');
+import * as fs from 'fs';
+import * as path from 'path';
+import { Logger } from '../logger';
+import { curlFetch, fetchWithTimeout, downloadImage, isNetworkError, isCurlFallbackActive, activateCurlFallback, DEFAULT_TIMEOUT, USER_AGENT } from '../lib/http-fetch';
 
-const { curlFetch, fetchWithTimeout, downloadImage, isNetworkError, isCurlFallbackActive, activateCurlFallback, DEFAULT_TIMEOUT, USER_AGENT } = require('../lib/http-fetch');
+const logger: Logger = require('../logger').child('[ANILIST]');
 
 const ANILIST_API = 'https://graphql.anilist.co';
 const ANILIST_IMAGE_BASE = 'https://s4.anilist.co/file';
@@ -142,34 +142,39 @@ query ($id: Int!, $perPage: Int) {
 }`;
 
 class AniListScraper {
+  name: string;
+  apiBase: string;
+  _pendingSearches?: Map<string, Promise<any>>;
+  _registry?: any;
+
   constructor() {
     this.name = 'anilist';
     this.apiBase = ANILIST_API;
   }
 
-  enabled(config) {
+  enabled(config: any): boolean {
     if (!config?.apiSources) return true; // No config → enabled by default
     const src = config.apiSources.find(s => s.type === 'anilist');
     if (!src) return true; // Not listed → enabled by default (AniList is free)
     return src.enabled !== false; // Explicitly disabled only if enabled:false
   }
 
-  setSource(source) {
+  setSource(source: any): this {
     if (source?.url) this.apiBase = source.url;
     return this;
   }
 
-  async tryFetch(url, options = {}) {
+  async tryFetch(url: string, options: any = {}) {
     if (!isCurlFallbackActive()) {
       try {
         const res = await fetchWithTimeout(url, options);
         if (res.ok) return res;
         const text = await res.text();
         if (res.status === 429) {
-          const err = new Error(`AniList API error (429): ${text.substring(0, 200)}`);
+          const err: any = new Error(`AniList API error (429): ${text.substring(0, 200)}`);
           err.status = 429;
-          err.retryAfter = res.headers.get('Retry-After') ? parseInt(res.headers.get('Retry-After')) : null;
-          err.rateLimitReset = res.headers.get('X-RateLimit-Reset') ? parseInt(res.headers.get('X-RateLimit-Reset')) : null;
+          err.retryAfter = res.headers.get('Retry-After') ? parseInt(res.headers.get('Retry-After') as string) : null;
+          err.rateLimitReset = res.headers.get('X-RateLimit-Reset') ? parseInt(res.headers.get('X-RateLimit-Reset') as string) : null;
           throw err;
         }
         if (text.includes('fetch failed') || text.includes('ECONNREFUSED')) {
@@ -177,7 +182,7 @@ class AniListScraper {
         } else {
           throw new Error(`AniList API error (${res.status}): ${text.substring(0, 200)}`);
         }
-      } catch (e) {
+      } catch (e: any) {
         if (e.status === 429) throw e; // Let graphqlRequest handle rate limits
         if (isNetworkError(e)) {
           activateCurlFallback();
@@ -191,7 +196,7 @@ class AniListScraper {
     return { json: () => curlFetch('POST', url, body) };
   }
 
-  async graphqlRequest(query, variables = {}) {
+  async graphqlRequest(query: string, variables: any = {}) {
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       await rateLimitWait();
       const body = JSON.stringify({ query, variables });
@@ -206,7 +211,7 @@ class AniListScraper {
           throw new Error(`GraphQL error: ${data.errors[0]?.message}`);
         }
         return data.data;
-      } catch (e) {
+      } catch (e: any) {
         if (attempt >= MAX_RETRIES) throw e;
 
         // 结构化 429（含 Retry-After / X-RateLimit-Reset 头）
@@ -235,7 +240,7 @@ class AniListScraper {
     }
   }
 
-  async search(keyword, source) {
+  async search(keyword: string, source: any) {
     if (source) this.setSource(source);
 
     // 请求去重：相同 keyword 的进行中请求共享 Promise（parallelMap 并发时重用）
@@ -262,7 +267,7 @@ class AniListScraper {
           search: keyword,
           type: 'ANIME',
         });
-        const results = (data?.Page?.media || []).map(m => ({
+        const results = (data?.Page?.media || []).map((m: any) => ({
           id: m.id,
           bannerImage: m.bannerImage || null,
           name: m.title.romaji || m.title.english,
@@ -278,7 +283,7 @@ class AniListScraper {
           format: m.format,
           season: m.season,
           seasonYear: m.seasonYear,
-          relations: (m.relations?.edges || []).map(e => ({
+          relations: (m.relations?.edges || []).map((e: any) => ({
             relationType: e.relationType,
             id: e.node.id,
             title: e.node.title.romaji,
@@ -289,7 +294,7 @@ class AniListScraper {
           source: 'anilist',
         }));
         logger.debug(`anilist.search: API 返回 ${results.length} 条, top="${results[0]?.name || '无'}"`);
-        results.forEach((r, i) => {
+        results.forEach((r: any, i: number) => {
           logger.debug(`  result[${i}]: id=${r.id} name="${r.name}" format=${r.format} ${r.seasonYear||'?'} ${r.season||'?'}`);
         });
         // 写入搜索缓存，后续相同关键词直接命中
@@ -297,11 +302,11 @@ class AniListScraper {
           this._registry._searchCache.set(keyword, { results, timestamp: Date.now() });
         }
         return results;
-      } catch (e) {
+      } catch (e: any) {
         logger.error('search failed:', e.message);
         return [];
       } finally {
-        this._pendingSearches.delete(dedupKey);
+        this._pendingSearches!.delete(dedupKey);
       }
     })();
 
@@ -309,26 +314,26 @@ class AniListScraper {
     return promise;
   }
 
-  async getDetail(id) {
+  async getDetail(id: number) {
     const data = await this.graphqlRequest(DETAIL_QUERY, { id });
     return data?.Media || null;
   }
 
-  async getRecommendations(id, perPage = 12) {
+  async getRecommendations(id: number, perPage = 12) {
     const data = await this.graphqlRequest(RECOMMENDATION_QUERY, { id, perPage });
-    return (data?.Media?.recommendations?.nodes || []).map(n => ({
+    return (data?.Media?.recommendations?.nodes || []).map((n: any) => ({
       rating: n.rating,
       ...n.mediaRecommendation,
     }));
   }
 
-  async batchGetDetails(ids) {
+  async batchGetDetails(ids: number[]) {
     if (ids.length === 0) return [];
     const data = await this.graphqlRequest(BATCH_DETAIL_QUERY, { ids });
     return data?.Page?.media || [];
   }
 
-  async downloadCover(imageUrl, coverDir, subjectId) {
+  async downloadCover(imageUrl: string, coverDir: string, subjectId: number) {
     if (!imageUrl) return null;
     const ext = path.extname(new URL(imageUrl).pathname) || '.jpg';
     const filename = `anilist-${subjectId}${ext}`;
@@ -341,13 +346,13 @@ class AniListScraper {
     });
   }
 
-  async downloadBanner(imageUrl, bannerDir, subjectId) {
+  async downloadBanner(imageUrl: string, bannerDir: string, subjectId: number) {
     if (!imageUrl) return null;
     const filename = `al-${subjectId}.jpg`;
     return downloadImage(imageUrl, bannerDir, filename, { timeout: DEFAULT_TIMEOUT });
   }
 
-  async fetchMetadata(title, coverDir, subjectId) {
+  async fetchMetadata(title: string, coverDir: string, subjectId: number) {
     const detail = await this.getDetail(subjectId);
     if (!detail) return null;
 
@@ -355,7 +360,7 @@ class AniListScraper {
     if (detail.coverImage?.large) {
       try {
         localCover = await this.downloadCover(detail.coverImage.large, coverDir, subjectId);
-      } catch (e) {
+      } catch (e: any) {
         logger.error('Cover download failed:', e.message);
       }
     }
@@ -374,7 +379,7 @@ class AniListScraper {
       rating: detail.meanScore ? Number((detail.meanScore / 10).toFixed(1)) : null,
       episodes: detail.episodes,
       genres: detail.genres || [],
-      relations: (detail.relations?.edges || []).map(e => ({
+      relations: (detail.relations?.edges || []).map((e: any) => ({
         relationType: e.relationType,
         id: e.node.id,
         title: e.node.title.romaji,
@@ -384,4 +389,4 @@ class AniListScraper {
   }
 }
 
-module.exports = AniListScraper;
+export = AniListScraper;

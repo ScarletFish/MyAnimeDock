@@ -1,12 +1,30 @@
-// @ts-nocheck
-const BangumiScraper = require('./bangumi');
-const AniListScraper = require('./anilist');
-const logger = require('../logger').child('[SCRAPER]');
+import BangumiScraper from './bangumi';
+import AniListScraper from './anilist';
+import { Logger } from '../logger';
+
+const logger: Logger = require('../logger').child('[SCRAPER]');
+
+export interface ScraperConfig {
+  apiSources?: Array<{ type: string; url?: string; enabled?: boolean; key?: string }>;
+  scrapers?: any;
+}
+
+export interface Scraper {
+  name: string;
+  search: (keyword: string, source: any) => Promise<any[]>;
+  fetchMetadata: (title: any, coverDir: string, subjectId: any, preDetail?: any) => Promise<any>;
+  downloadCover: (imageUrl: string, coverDir: string, subjectId: any) => Promise<string | null>;
+  getSubjectDetail?: (id: any) => Promise<any>;
+  downloadBanner?: (imageUrl: string, bannerDir: string, subjectId: any) => Promise<any>;
+  enabled?: (config: ScraperConfig) => boolean;
+  setSource?: (source: any) => void;
+  _registry?: ScraperRegistry;
+}
 
 /**
  * Process items in parallel with concurrency limit
  */
-async function parallelMap(items, fn, concurrency = 3) {
+export async function parallelMap(items: any[], fn: (item: any, index: number) => Promise<any>, concurrency = 3): Promise<any[]> {
   const results = new Array(items.length);
   let index = 0;
   async function worker() {
@@ -22,7 +40,7 @@ async function parallelMap(items, fn, concurrency = 3) {
 /**
  * Normalize title for comparison: remove punctuation, whitespace, case-insensitive
  */
-function normalizeTitle(title) {
+export function normalizeTitle(title: string): string {
   if (!title) return '';
   return title
     .replace(/[？?！!。.、,，～~··・（ ）【】「」『』《》：；!@#$%^&*()_\-+=\[\]{}|\\;:'",.<>?/`~]/g, '')
@@ -31,7 +49,7 @@ function normalizeTitle(title) {
 }
 
 /** Convert katakana to hiragana for AniList search normalization */
-function toHiragana(s) {
+export function toHiragana(s: string): string {
   if (!s) return s;
   return s.replace(/[\u30A1-\u30F6]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60));
 }
@@ -40,15 +58,15 @@ function toHiragana(s) {
  * Sorensen-Dice coefficient for fuzzy string comparison
  * Returns 0-1, where 1 is identical
  */
-function sorensenDice(a, b) {
+export function sorensenDice(a: string, b: string): number {
   if (!a || !b) return 0;
   a = normalizeTitle(a);
   b = normalizeTitle(b);
   if (a === b) return 1;
   if (a.length < 2 || b.length < 2) return 0;
 
-  const getBigrams = s => {
-    const bigrams = new Set();
+  const getBigrams = (s: string): Set<string> => {
+    const bigrams = new Set<string>();
     for (let i = 0; i < s.length - 1; i++) bigrams.add(s.slice(i, i + 2));
     return bigrams;
   };
@@ -62,7 +80,7 @@ function sorensenDice(a, b) {
 /**
  * Detect special type from folder title
  */
-function detectSpecialType(title) {
+export function detectSpecialType(title: string): string | null {
   if (!title) return null;
   if (/剧场版|Movie|劇場版/.test(title)) return 'movie';
   if (/OVA|OAD|Special|特典/.test(title)) return 'ova';
@@ -74,7 +92,7 @@ function detectSpecialType(title) {
  * Extract base title (without ~...~ suffix) and special suffix
  * Returns { baseTitle, specialSuffix }
  */
-function extractBaseAndSuffix(title) {
+export function extractBaseAndSuffix(title: string): { baseTitle: string; specialSuffix: string | null } {
   if (!title) return { baseTitle: title, specialSuffix: null };
   const match = title.match(/^(.+?)\s*([~～].*?[~～])\s*$/);
   if (match) {
@@ -86,7 +104,7 @@ function extractBaseAndSuffix(title) {
 /**
  * Check if title is primarily romaji (Latin characters)
  */
-function isPrimarilyRomaji(title) {
+export function isPrimarilyRomaji(title: string): boolean {
   if (!title) return false;
   const latinChars = (title.match(/[a-zA-Z]/g) || []).length;
   const totalChars = title.replace(/\s/g, '').length;
@@ -96,7 +114,7 @@ function isPrimarilyRomaji(title) {
 /**
  * Build search terms from folder parsed data (multiple variations)
  */
-function buildSearchTerms(folderParsed, keyword) {
+export function buildSearchTerms(folderParsed: any, keyword: string): string[] {
   const terms = [];
   const base = (folderParsed.cleanTitle || folderParsed.cjkTitle || keyword).replace(/[~～]/g, '').trim();
   const season = folderParsed.season;
@@ -135,7 +153,7 @@ const _bangumiSearchCache = new Map();
 const _bangumiCacheTTL = 5 * 60 * 1000;
 let _bangumiSearchFailLogged = false;
 
-async function searchBangumi(bangumi, keyword, config) {
+export async function searchBangumi(bangumi: any, keyword: string, config: ScraperConfig): Promise<any[]> {
   const source = config.apiSources?.find(s => s.type === 'bangumi');
   if (!source) {
     logger.debug(`searchBangumi: "${keyword}" → 跳过（无 bangumi apiSources）`);
@@ -155,7 +173,7 @@ async function searchBangumi(bangumi, keyword, config) {
     _bangumiSearchCache.set(keyword, { results: filtered, ts: Date.now() });
     _bangumiSearchFailLogged = false;
     return filtered;
-  } catch (e) {
+  } catch (e: any) {
     if (!_bangumiSearchFailLogged) {
       logger.error('Bangumi search failed:', e.message);
       _bangumiSearchFailLogged = true;
@@ -167,7 +185,7 @@ async function searchBangumi(bangumi, keyword, config) {
 /**
  * Search via AniList → get Japanese title → search Bangumi
  */
-async function searchViaAniList(registry, bangumi, searchTerm, config) {
+export async function searchViaAniList(registry: ScraperRegistry, bangumi: any, searchTerm: string, config: ScraperConfig): Promise<{ bangumiResults: any[]; anilistId: any }> {
   const anilist = registry.get('anilist');
   if (!anilist || !anilist.enabled(config)) {
     logger.debug(`searchViaAniList: "${searchTerm}" → AniList 不可用，直搜 Bangumi`);
@@ -199,7 +217,7 @@ async function searchViaAniList(registry, bangumi, searchTerm, config) {
     }
 
     return { bangumiResults: [], anilistId: null };
-  } catch (e) {
+  } catch (e: any) {
     logger.error('AniList search failed, fallback to Bangumi:', e.message);
     const errorResults = await searchBangumi(bangumi, searchTerm, config);
     return { bangumiResults: errorResults, anilistId: null };
@@ -210,7 +228,7 @@ async function searchViaAniList(registry, bangumi, searchTerm, config) {
  * Pick best match from search results using Sorensen-Dice
  * 根据搜索词脚本选择匹配字段：拉丁词对 name（罗马音），东亚词对 name_cn（本地名）
  */
-function pickBestBySimilarity(cleanTitle, results) {
+export function pickBestBySimilarity(cleanTitle: string, results: any[]): { item: any; score: number } {
   const useName = isPrimarilyRomaji(cleanTitle);
   return results.reduce((best, r) => {
     const matchTitle = useName ? (r.name || r.name_cn || '') : (r.name_cn || r.name || '');
@@ -224,7 +242,7 @@ function pickBestBySimilarity(cleanTitle, results) {
  * Bangumi search ignores "第3期" markers, so we use AniList's season metadata to
  * locate the correct entry, then use its exact native title for Bangumi lookup.
  */
-async function searchBangumiBySeason(registry, bangumi, baseTitle, season, config) {
+export async function searchBangumiBySeason(registry: ScraperRegistry, bangumi: any, baseTitle: string, season: number, config: ScraperConfig): Promise<{ bangumiResults: any[]; anilistId: any }> {
   const anilist = registry.get('anilist');
   if (!anilist || !anilist.enabled(config)) {
     logger.debug(`searchBangumiBySeason: "${baseTitle}" S${season} → AniList 不可用`);
@@ -251,7 +269,7 @@ async function searchBangumiBySeason(registry, bangumi, baseTitle, season, confi
     }
 
     // Sort by season-year + season-order (not POPULARITY_DESC from AniList)
-    const SEASON_ORDER = { WINTER: 1, SPRING: 2, SUMMER: 3, FALL: 4 };
+    const SEASON_ORDER: Record<string, number> = { WINTER: 1, SPRING: 2, SUMMER: 3, FALL: 4 };
     const sorted = [...alResults].sort((a, b) => {
       const ya = a.seasonYear || 9999, yb = b.seasonYear || 9999;
       if (ya !== yb) return ya - yb;
@@ -262,7 +280,7 @@ async function searchBangumiBySeason(registry, bangumi, baseTitle, season, confi
     let candidates = sorted.filter(r => r.format === 'TV');
     if (candidates.length === 0) candidates = sorted;
     logger.debug(`searchBangumiBySeason: "${baseTitle}" S${season} → 排序后 TV=${sorted.filter(r=>r.format==='TV').length} 条, candidates=${candidates.length} 条`);
-    candidates.forEach((c, i) => {
+    candidates.forEach((c: any, i: number) => {
       logger.debug(`  candidates[${i}]: id=${c.id} name="${c.name}" ${c.seasonYear||'?'} ${c.season||'?'} format=${c.format}`);
     });
 
@@ -281,7 +299,7 @@ async function searchBangumiBySeason(registry, bangumi, baseTitle, season, confi
     logger.info(`Season lookup: "${baseTitle}" S${season} → "${nativeTitle}" (${target.seasonYear || '?'} ${target.season || '?'}, ${target.format})`);
     const bgResults = await searchBangumi(bangumi, nativeTitle, config);
     return { bangumiResults: bgResults, anilistId: target.id };
-  } catch (e) {
+  } catch (e: any) {
     logger.error('Season-specific AniList lookup failed:', e.message);
     return { bangumiResults: [], anilistId: null };
   }
@@ -292,7 +310,7 @@ async function searchBangumiBySeason(registry, bangumi, baseTitle, season, confi
  * sort entries chronologically, and find this entry's season number.
  * Returns 1-indexed season number or null.
  */
-async function findSeasonByAnilistId(registry, baseTitle, anilistId, config) {
+export async function findSeasonByAnilistId(registry: ScraperRegistry, baseTitle: string, anilistId: any, config: ScraperConfig): Promise<number | null> {
   const anilist = registry.get('anilist');
   if (!anilist || !anilist.enabled(config) || !baseTitle || !anilistId) return null;
   try {
@@ -300,7 +318,7 @@ async function findSeasonByAnilistId(registry, baseTitle, anilistId, config) {
     const alResults = await anilist.search(baseTitle, source);
     if (alResults.length === 0) return null;
 
-    const SEASON_ORDER = { WINTER: 1, SPRING: 2, SUMMER: 3, FALL: 4 };
+    const SEASON_ORDER: Record<string, number> = { WINTER: 1, SPRING: 2, SUMMER: 3, FALL: 4 };
     const sorted = [...alResults].sort((a, b) => {
       const ya = a.seasonYear || 9999, yb = b.seasonYear || 9999;
       if (ya !== yb) return ya - yb;
@@ -316,7 +334,7 @@ async function findSeasonByAnilistId(registry, baseTitle, anilistId, config) {
     const season = idx + 1;
     logger.info(`findSeasonByAnilistId: "${baseTitle}" anilistId=${anilistId} → S${season} (${candidates.length} candidates)`);
     return season;
-  } catch (e) {
+  } catch (e: any) {
     logger.warn(`findSeasonByAnilistId: "${baseTitle}" anilistId=${anilistId} → ${e.message}`);
     return null;
   }
@@ -326,7 +344,7 @@ async function findSeasonByAnilistId(registry, baseTitle, anilistId, config) {
  * Main entry: single-phase matching
  * Search by title → pick best → get detail
  */
-async function matchSeason(registry, keyword, folderParsed, videoCount, config) {
+export async function matchSeason(registry: ScraperRegistry, keyword: string, folderParsed: any, videoCount: any, config: ScraperConfig): Promise<any> {
   const bangumi = registry.get('bangumi');
   if (!bangumi) {
     logger.error('matchSeason: bangumi scraper not found in registry');
@@ -412,7 +430,12 @@ async function matchSeason(registry, keyword, folderParsed, videoCount, config) 
   };
 }
 
-class ScraperRegistry {
+export class ScraperRegistry {
+  scrapers: Scraper[];
+  defaultOrder: string[];
+  _searchCache: Map<string, any>;
+  _cacheTTL: number;
+
   constructor() {
     this.scrapers = [];
     this.defaultOrder = ['bangumi', 'anilist'];
@@ -420,7 +443,7 @@ class ScraperRegistry {
     this._cacheTTL = 5 * 60 * 1000; // 5 minutes
   }
 
-  register(scraper) {
+  register(scraper: Scraper) {
     if (!scraper.name || !scraper.search || !scraper.fetchMetadata || !scraper.downloadCover) {
       throw new Error('Scraper must implement: name, search, fetchMetadata, downloadCover');
     }
@@ -433,18 +456,18 @@ class ScraperRegistry {
     });
   }
 
-  get(name) {
+  get(name: string): Scraper | undefined {
     return this.scrapers.find(s => s.name === name);
   }
 
-  getAll() {
+  getAll(): Scraper[] {
     return [...this.scrapers];
   }
 
   /**
    * Get list of active sources from config.apiSources
    */
-  getSources(config) {
+  getSources(config: ScraperConfig): any[] {
     if (!config) return [];
     if (config.apiSources && Array.isArray(config.apiSources)) {
       return [...config.apiSources];
@@ -461,13 +484,13 @@ class ScraperRegistry {
     return sources;
   }
 
-  getEnabled(config) {
+  getEnabled(config: ScraperConfig): Scraper[] {
     const sources = this.getSources(config);
     const available = new Set(sources.map(s => s.type));
     return this.scrapers.filter(s => available.has(s.name));
   }
 
-  async searchAll(keyword, config) {
+  async searchAll(keyword: string, config: ScraperConfig): Promise<any[]> {
     // Check cache
     const cached = this._searchCache.get(keyword);
     if (cached && Date.now() - cached.timestamp < this._cacheTTL) {
@@ -483,7 +506,7 @@ class ScraperRegistry {
       try {
         const res = await scraper.search(keyword, source);
         results.push(...res.map(r => ({ ...r, source: scraper.name, _sourceUrl: source.url })));
-      } catch (e) {
+      } catch (e: any) {
         logger.error(source.type, '@', source.url, 'search failed:', e.message);
       }
     }
@@ -505,7 +528,7 @@ class ScraperRegistry {
   /**
    * Find the first matching source for a scraper type and fetch metadata
    */
-  async fetchMetadata(scraperName, title, coverDir, subjectId, config, preDetail) {
+  async fetchMetadata(scraperName: string, title: any, coverDir: string, subjectId: any, config: ScraperConfig, preDetail: any): Promise<any> {
     const scraper = this.get(scraperName);
     if (!scraper) throw new Error(`Scraper not found: ${scraperName}`);
 
@@ -518,7 +541,7 @@ class ScraperRegistry {
   }
 }
 
-const registry = new ScraperRegistry();
+export const registry = new ScraperRegistry();
 registry.register(new BangumiScraper());
 registry.register(new AniListScraper());
 
@@ -527,7 +550,7 @@ registry.register(new AniListScraper());
  * Bangumi infobox entries have `key` + `value`, where aliases look like:
  *   { key: "别名", value: [{ v: "容易对付的恶魔大人" }, { v: "Kanan-sama wa Akumade Choroi" }] }
  */
-function extractRomajiTitle(infobox) {
+export function extractRomajiTitle(infobox: any[]): string | null {
   if (!Array.isArray(infobox)) return null;
   const aliasEntry = infobox.find(e => e.key === '别名');
   if (!aliasEntry) return null;
@@ -539,14 +562,12 @@ function extractRomajiTitle(infobox) {
   return null;
 }
 
-
-
 /**
  * Fetch AniList metadata + download banner for an anime that already has anilistId.
  * Heavy — calls fetchMetadata + downloadBanner. Modifies anime in place.
  * Returns { anilistId, localBanner, anilistTitleEn } or null.
  */
-async function syncAnilistDetail(anime, config, bannerDir, coverDir) {
+export async function syncAnilistDetail(anime: any, config: ScraperConfig, bannerDir: string, coverDir: string): Promise<any> {
   if (!anime || !anime.anilistId || anime.anilistId === -1) return null;
 
   const anilist = registry.get('anilist');
@@ -557,7 +578,7 @@ async function syncAnilistDetail(anime, config, bannerDir, coverDir) {
   let meta;
   try {
     meta = await anilist.fetchMetadata(anime.title || '', coverDir, anilistId);
-  } catch (e) {
+  } catch (e: any) {
     logger.error(`syncAnilistDetail: fetchMetadata failed for id=${anilistId}: ${e.message}`);
     return null;
   }
@@ -586,7 +607,7 @@ async function syncAnilistDetail(anime, config, bannerDir, coverDir) {
  * 修改 anime.anilistId / .anilistBanner / .anilistTitleEn。
  * 返回 { anilistId, localBanner, anilistTitleEn } 或 null。
  */
-async function syncAnilist(anime, config, bannerDir, coverDir) {
+export async function syncAnilist(anime: any, config: ScraperConfig, bannerDir: string, coverDir: string): Promise<any> {
   if (!anime) return null;
   if (anime.anilistId === -1) return null;
 
@@ -645,26 +666,4 @@ async function syncAnilist(anime, config, bannerDir, coverDir) {
   return syncAnilistDetail(anime, config, bannerDir, coverDir);
 }
 
-module.exports = {
-  registry,
-  ScraperRegistry,
-  matchSeason,
-  findSeasonByAnilistId,
-  searchViaAniList,
-  searchBangumi,
-  searchBangumiBySeason,
-  pickBestBySimilarity,
-  buildSearchTerms,
-
-  sorensenDice,
-  normalizeTitle,
-  detectSpecialType,
-  extractBaseAndSuffix,
-  parallelMap,
-  syncAnilistDetail,
-  syncAnilist,
-  extractRomajiTitle,
-  toHiragana,
-  isPrimarilyRomaji,
-  truncateSummary: BangumiScraper.truncateSummary,
-};
+export const truncateSummary = BangumiScraper.truncateSummary;

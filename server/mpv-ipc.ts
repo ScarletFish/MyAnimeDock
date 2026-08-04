@@ -1,10 +1,13 @@
-// @ts-nocheck
-// server/mpv-ipc.js — 纯 IPC 通信层
+// server/mpv-ipc.ts — 纯 IPC 通信层
 // mpv JSON IPC 协议封装：连接、发送命令、接收事件
 // 不涉及 spawn、生命周期、业务逻辑
 
-const net = require('net');
-const logger = require('./logger').child('[IPC]');
+import * as net from 'net';
+import * as path from 'path';
+import * as os from 'os';
+import { Logger } from './logger';
+
+const logger: Logger = require('./logger').child('[IPC]');
 
 // ── MpvIpcConnection ────────────────────────────────────────────────────────
 // 管理一条到 mpv --input-ipc-server 的 TCP/Named Pipe 连接
@@ -18,10 +21,23 @@ const logger = require('./logger').child('[IPC]');
 const MAX_RETRIES = 7;
 
 class MpvIpcConnection {
+    private pipePath: string;
+    private _client: any = null;
+    private _buffer: string = '';
+    private _eventHandler: ((msg: any) => void) | null = null;
+    private _onCloseHandler: (() => void) | null = null;
+    private _requestId: number = 0;
+    private _pending: Map<number, { resolve: any; reject: any; timer: any }> = new Map();
+    private _connected: boolean = false;
+    private _destroyed: boolean = false;
+    private _retries: number = 0;
+    private _connectTimer: any = null;
+    private _log: Logger;
+
     /**
      * @param {string} pipePath - Named pipe 或 Unix socket 路径
      */
-    constructor(pipePath) {
+    constructor(pipePath: string) {
         this.pipePath = pipePath;
         this._client = null;
         this._buffer = '';
@@ -33,7 +49,8 @@ class MpvIpcConnection {
         this._destroyed = false;
         this._retries = 0;
         this._connectTimer = null;
-        this._log = logger.child({ pipe: pipePath });
+        // Logger.child 签名仅接受 string，但这里传对象 tag（原 .js 行为），用 as any 保持逻辑
+        this._log = (logger as any).child({ pipe: pipePath });
     }
 
     // ── 连接 ────────────────────────────────────────────────────────────────
@@ -42,13 +59,13 @@ class MpvIpcConnection {
      * 建立连接（重试逻辑内置）
      * @returns {Promise<void>}
      */
-    connect() {
+    connect(): Promise<void> {
         return new Promise((resolve, reject) => {
             this._doConnect(resolve, reject);
         });
     }
 
-    _doConnect(resolve, reject) {
+    _doConnect(resolve: () => void, reject: (reason?: any) => void): void {
         if (this._destroyed) {
             reject(new Error('Connection was destroyed'));
             return;
@@ -61,7 +78,7 @@ class MpvIpcConnection {
             resolve();
         });
 
-        this._client.on('data', (data) => {
+        this._client.on('data', (data: any) => {
             this._buffer += data.toString('utf-8');
             const lines = this._buffer.split('\n');
             this._buffer = lines.pop();
@@ -75,7 +92,7 @@ class MpvIpcConnection {
             }
         });
 
-        this._client.on('error', (err) => {
+        this._client.on('error', (err: any) => {
             this._log.warn('IPC socket error:', err.message);
             this._cleanupClient();
             if (!this._connected && !this._destroyed) {
@@ -105,7 +122,7 @@ class MpvIpcConnection {
      * 即发即忘发送 JSON 命令（对应旧 ipcWrite）
      * @param {object} obj - { command: [...], ... }
      */
-    send(obj) {
+    send(obj: any): void {
         if (!this._client || !this._connected) {
             this._log.warn('send skipped, not connected');
             return;
@@ -124,12 +141,12 @@ class MpvIpcConnection {
      * @param {number} [timeout=5000] - 超时毫秒
      * @returns {Promise<any>} 响应 data
      */
-    call(cmd, ...args) {
+    call(cmd: string, ...args: any[]): Promise<any> {
         const timeout = typeof args[args.length - 1] === 'number' ? args.pop() : 5000;
         return this._callWithId(cmd, args, timeout);
     }
 
-    _callWithId(cmd, args, timeout) {
+    _callWithId(cmd: string, args: any[], timeout: number): Promise<any> {
         return new Promise((resolve, reject) => {
             if (!this._client || !this._connected) {
                 reject(new Error('IPC not connected'));
@@ -159,7 +176,7 @@ class MpvIpcConnection {
     /**
      * 快捷：observe_property（即发即忘）
      */
-    observeProperty(id, name) {
+    observeProperty(id: number, name: string): void {
         this.send({ command: ['observe_property', id, name] });
     }
 
@@ -169,7 +186,7 @@ class MpvIpcConnection {
      * 注册事件回调（所有非 request_id 响应的消息）
      * @param {function} handler - (msg) => void
      */
-    onEvent(handler) {
+    onEvent(handler: (msg: any) => void): void {
         this._eventHandler = handler;
     }
 
@@ -177,7 +194,7 @@ class MpvIpcConnection {
      * 注册连接关闭回调
      * @param {function} handler
      */
-    onClose(handler) {
+    onClose(handler: () => void): void {
         this._onCloseHandler = handler;
     }
 
@@ -186,14 +203,14 @@ class MpvIpcConnection {
     /**
      * 是否已连接
      */
-    isConnected() {
+    isConnected(): boolean {
         return this._connected && this._client !== null;
     }
 
     /**
      * 关闭连接
      */
-    close() {
+    close(): void {
         this._destroyed = true;
         if (this._connectTimer) {
             clearTimeout(this._connectTimer);
@@ -210,7 +227,7 @@ class MpvIpcConnection {
 
     // ── 内部 ────────────────────────────────────────────────────────────────
 
-    _dispatch(msg) {
+    _dispatch(msg: any): void {
         // request_id 匹配 → 响应 pending call
         if (msg.request_id !== undefined && this._pending.has(msg.request_id)) {
             const { resolve, timer } = this._pending.get(msg.request_id);
@@ -227,7 +244,7 @@ class MpvIpcConnection {
         }
     }
 
-    _cleanupClient() {
+    _cleanupClient(): void {
         if (this._client) {
             try { this._client.destroy(); } catch (_) {}
             this._client = null;
@@ -244,7 +261,7 @@ class MpvIpcConnection {
  * @param {number} [counter]   - 可选的计数器，防冲突
  * @returns {{ pipeName: string, pipePath: string }}
  */
-function generatePipePath(sessionId, counter) {
+function generatePipePath(sessionId: number, counter: number): { pipeName: string, pipePath: string } {
     const isWin = process.platform === 'win32';
     const pid = process.pid;
     const ts = Date.now();
@@ -252,8 +269,8 @@ function generatePipePath(sessionId, counter) {
     const pipeName = `myanimedock-mpv-${pid}-${ts}-${seq}${sessionId ? '-' + sessionId : ''}`;
     const pipePath = isWin
         ? `\\\\.\\pipe\\${pipeName}`
-        : require('path').join(require('os').tmpdir(), pipeName);
+        : path.join(os.tmpdir(), pipeName);
     return { pipeName, pipePath };
 }
 
-module.exports = { MpvIpcConnection, generatePipePath };
+export = { MpvIpcConnection, generatePipePath };

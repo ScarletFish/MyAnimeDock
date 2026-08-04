@@ -1,19 +1,19 @@
-// @ts-nocheck
-// server/thumbnail-queue.js — 后台缩略图生成队列
+// server/thumbnail-queue.ts — 后台缩略图生成队列
 // 空闲时自动排队生成，mpv 播放时暂停，按需惰性生成兜底
-const { spawn } = require('child_process');
-const crypto = require('crypto');
-const fs = require('fs');
-const path = require('path');
-const { getFfmpegPath } = require('./lib/utils');
-const { DATA_DIR } = require('./lib/config');
-const logger = require('./logger').child('[THUMBQ]');
+import { spawn } from 'child_process';
+import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
+import { getFfmpegPath } from './lib/utils';
+import { DATA_DIR } from './lib/config';
+import { Logger } from './logger';
+const logger: Logger = require('./logger').child('[THUMBQ]');
 
 /** Thumbnail cache hash seed — change to invalidate all cached thumbnails */
 const THUMB_HASH_SEED = 'v1';
 
 /** Remove a 0-byte thumbnail file so it gets regenerated next time */
-function _cleanupZeroByte(thumbPath) {
+function _cleanupZeroByte(thumbPath: string): void {
   try {
     if (fs.existsSync(thumbPath) && fs.statSync(thumbPath).size === 0) {
       logger.warn(`Thumbnail is 0 bytes, deleting: ${thumbPath}`);
@@ -22,26 +22,35 @@ function _cleanupZeroByte(thumbPath) {
   } catch { /* best-effort cleanup */ }
 }
 
+interface ThumbItem {
+  filePath: string;
+  duration: number | null;
+  animeId?: string;
+  episodeNumber?: number;
+}
+
 class ThumbnailQueue {
+  _queue: ThumbItem[] = [];
+  _processing = false;
+  _activePlays: Map<unknown, unknown>;
+  _drainTimer: NodeJS.Timeout | null = null;
+  _concurrency = 3;
+
   /**
-   * @param {Map} activePlays — server.js 的 activePlays Map，用于空闲检测
+   * @param activePlays — server.js 的 activePlays Map，用于空闲检测
    */
-  constructor(activePlays) {
-    this._queue = [];
-    this._processing = false;
+  constructor(activePlays: Map<unknown, unknown>) {
     this._activePlays = activePlays;
-    this._drainTimer = null;
-    this._concurrency = 3;
   }
 
   /**
    * 把动画的所有 episode 加入缩略图队列
-   * @param {Object} anime - anime 对象（含 episodes 数组）
-   * @param {boolean} prepend - 是否插队（详情页查看时插到最前）
+   * @param anime - anime 对象（含 episodes 数组）
+   * @param prepend - 是否插队（详情页查看时插到最前）
    */
-  enqueue(anime, prepend = false) {
+  enqueue(anime: any, prepend = false): void {
     if (!anime?.episodes) return;
-    const items = [];
+    const items: ThumbItem[] = [];
     for (const ep of anime.episodes) {
       if (!ep.filePath || !fs.existsSync(ep.filePath)) continue;
       // 已缓存则跳过
@@ -69,7 +78,7 @@ class ThumbnailQueue {
   /**
    * 清空队列
    */
-  clear() {
+  clear(): void {
     this._queue = [];
     if (this._drainTimer) {
       clearTimeout(this._drainTimer);
@@ -78,28 +87,28 @@ class ThumbnailQueue {
   }
 
   /** 队列长度 */
-  get length() {
+  get length(): number {
     return this._queue.length;
   }
 
   /** 是否正在处理 */
-  get busy() {
+  get busy(): boolean {
     return this._processing;
   }
 
   // ── 内部 ──
 
-  _thumbHash(filePath) {
+  _thumbHash(filePath: string): string {
     return crypto.createHash('md5').update(filePath + THUMB_HASH_SEED).digest('hex');
   }
 
-  _scheduleDrain() {
+  _scheduleDrain(): void {
     if (this._processing || this._drainTimer) return;
     // 小延迟让同一批 enqueue 调用合并
     this._drainTimer = setTimeout(() => this._drain(), 200);
   }
 
-  async _drain() {
+  async _drain(): Promise<void> {
     this._drainTimer = null;
     if (this._processing) return;
     this._processing = true;
@@ -121,7 +130,7 @@ class ThumbnailQueue {
     logger.info('Thumbnail queue drained');
   }
 
-  _generate({ filePath, duration }) {
+  _generate({ filePath, duration }: ThumbItem): Promise<void> {
     const ffmpegPath = getFfmpegPath();
     if (!ffmpegPath) return Promise.resolve();
 
@@ -175,4 +184,4 @@ class ThumbnailQueue {
   }
 }
 
-module.exports = ThumbnailQueue;
+export = ThumbnailQueue;

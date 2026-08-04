@@ -1,13 +1,12 @@
-// @ts-nocheck
-const http = require('http');
-const https = require('https');
-const { URL } = require('url');
+import * as http from 'http';
+import * as https from 'https';
+import { URL } from 'url';
 
 /**
  * Node.js native fetch fallback for pkg mode where global fetch() is not available.
  * Implements enough of the Response interface for the scrapers to work.
  */
-function nodeFetch(urlStr, options = {}, timeoutMs = 15000) {
+function nodeFetch(urlStr: string, options: any = {}, timeoutMs: number = 15000): Promise<any> {
   return new Promise((resolve, reject) => {
     const urlObj = new URL(urlStr);
     const isHttps = urlObj.protocol === 'https:';
@@ -57,4 +56,4 @@ function nodeFetch(urlStr, options = {}, timeoutMs = 15000) {
   });
 }
 
-module.exports = { nodeFetch };
+export { nodeFetch };

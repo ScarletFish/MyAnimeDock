@@ -1,16 +1,15 @@
-// @ts-nocheck
-const fs = require('fs');
-const path = require('path');
-const { Parser } = require('anitomy');
+import fs from 'fs';
+import path from 'path';
+import { Parser } from 'anitomy';
 
 const VIDEO_EXTS = new Set(['.mkv', '.mp4', '.avi', '.mov', '.webm']);
-const anitomy = new Parser();
+const anitomy: any = new Parser();
 
 // Non-episode video patterns: NCOP, NCED, PV, CM, Menu, Preview, Trailer
 // Note: NCOP1/NCED2 etc. now match because `\d*` moves the word boundary past digits
 const EXTRA_VIDEO_RE = /\b(NCOP\d*|NCED\d*|PV\s*\d*|CM[ \d]*|Menu\d*|Preview|Trailer)\b/i;
 
-function isExtraVideo(fileName) {
+export function isExtraVideo(fileName: string): boolean {
   return EXTRA_VIDEO_RE.test(fileName.replace(/\[[^\]]*\]/g, ' '));
 }
 
@@ -18,18 +17,24 @@ function isExtraVideo(fileName) {
 // when the same regex instance is reused across multiple calls.
 const CJK_RE = /[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]/;
 
-function hasLatinLetters(str) {
+function hasLatinLetters(str: string): boolean {
   return (str || '').replace(/[^a-zA-Z]/g, '').length >= 3;
 }
 
 // ── File operations (async) ─────────────────────────────────────
 
+interface VideoFile {
+  path: string;
+  name: string;
+  size: number;
+}
+
 /**
  * Find all video files recursively in a directory.
  * Now async — does not block the event loop.
  */
-async function findVideos(dir) {
-  const results = [];
+async function findVideos(dir: string): Promise<VideoFile[]> {
+  const results: VideoFile[] = [];
   try {
     const entries = await fs.promises.readdir(dir, { withFileTypes: true });
     for (const entry of entries) {
@@ -41,7 +46,7 @@ async function findVideos(dir) {
         results.push({ path: full, name: entry.name, size: stat.size });
       }
     }
-  } catch (e) {
+  } catch (e: any) {
     // Skip unreadable dirs but log for debugging
     console.error(`[Scanner] findVideos: cannot read ${dir}: ${e.message}`);
   }
@@ -51,11 +56,11 @@ async function findVideos(dir) {
 /**
  * Check if a directory has video files directly (not in sub-directories).
  */
-async function hasDirectVideos(dir) {
+export async function hasDirectVideos(dir: string): Promise<boolean> {
   try {
     const entries = await fs.promises.readdir(dir, { withFileTypes: true });
     return entries.some(e => !e.isDirectory() && VIDEO_EXTS.has(path.extname(e.name).toLowerCase()));
-  } catch (e) {
+  } catch (e: any) {
     console.error(`[Scanner] hasDirectVideos: cannot read ${dir}: ${e.message}`);
     return false;
   }
@@ -63,11 +68,30 @@ async function hasDirectVideos(dir) {
 
 // ── Folder name parsing ─────────────────────────────────────────
 
+interface ParsedFolder {
+  title: string | null;
+  cjkTitle: string | null;
+  cleanTitle: string | null;
+  season: number | null;
+  year: number | null;
+  animeTitle: string | undefined;
+  episode: number | null;
+  seasonRaw: number | null;
+  resolution: any;
+  source: any;
+  videoCodec: any;
+  audioCodec: any;
+  releaseGroup: any;
+  _raw: any;
+  specialSuffix?: string | null;
+  bangumiId?: number | null;
+}
+
 /**
  * Parse folder name to extract structured anime info using anitomy.
  * Returns rich metadata for precise Bangumi matching.
  */
-function parseFolderName(name) {
+export function parseFolderName(name: string): ParsedFolder {
   // Strip trailing slash and clean up
   name = name.replace(/\/+$/, '').trim();
   // Strip leading and all trailing bracket groups
@@ -75,22 +99,22 @@ function parseFolderName(name) {
 
   // ── Phase 1: anitomy parsing + CJK detection ──
   // 1. Try anitomy on original name first (handles [Group] brackets natively)
-  let parsed = {};
-  try { parsed = anitomy.parse(name); } catch (e) {}
+  let parsed: any = {};
+  try { parsed = anitomy.parse(name); } catch (e: any) {}
 
   // 2. If no title found, retry with brackets stripped
   if (!parsed.title) {
-    try { parsed = anitomy.parse(base); } catch (e) {}
+    try { parsed = anitomy.parse(base); } catch (e: any) {}
   }
 
   // 3. Extract CJK title from original name (Bangumi prefers Japanese/Chinese)
-  let cjkTitle = null;
+  let cjkTitle: string | null = null;
   const cjkOnly = base.replace(/[^\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]/g, '')
     .replace(/第\d*期/g, '').replace(/Season\d*/gi, '').replace(/S\d+/gi, '').trim();
   if (cjkOnly) cjkTitle = cjkOnly;
 
   // 4. If anitomy title has both CJK and Latin, use CJK part (Latin is usually truncated/wrong)
-  let anitomyTitle = parsed.title?.trim() || base;
+  let anitomyTitle: string = parsed.title?.trim() || base;
   if (cjkTitle && anitomyTitle && /[\u4e00-\u9fff]/.test(anitomyTitle) && /[a-zA-Z]/.test(anitomyTitle)) {
     anitomyTitle = cjkTitle;
   }
@@ -107,7 +131,7 @@ function parseFolderName(name) {
 
   // ── Phase 2: Build structured result object ──
   // 5. Extract all useful fields from anitomy result
-  const result = {
+  const result: ParsedFolder = {
     title: anitomyTitle,
     cjkTitle,
     cleanTitle: null,
@@ -194,7 +218,7 @@ function parseFolderName(name) {
 /**
  * Check if a title is just a season/volume marker without anime name.
  */
-function isSeasonOnly(title) {
+function isSeasonOnly(title: string): boolean {
   return /^(?:Season\s*\d+|S\d+|第\d+季)$/i.test(title.trim());
 }
 
@@ -202,7 +226,7 @@ function isSeasonOnly(title) {
  * Propagate bangumiId from ancestor folder names (parentName first, then chain).
  * Used when the leaf folder itself has no [bgmN] identifier.
  */
-function propagateBgmIdFromChain(parentName, chain) {
+function propagateBgmIdFromChain(parentName: string | null, chain: string[] | null): number | null {
   const candidates = [parentName, ...(chain || [])].filter(Boolean);
   for (const c of candidates) {
     const id = extractBgmId(c);
@@ -215,7 +239,7 @@ function propagateBgmIdFromChain(parentName, chain) {
  * Fallback to first video filename for title/season when the folder
  * name doesn't resolve to a valid title.
  */
-function fallbackToVideoTitle(parsed, videos) {
+function fallbackToVideoTitle(parsed: ParsedFolder, videos: VideoFile[]): ParsedFolder {
   if (!parsed.title || (!hasLatinLetters(parsed.title) && !CJK_RE.test(parsed.title))) {
     const vp = parseFolderName(videos[0].name);
     if (vp.title) {
@@ -227,12 +251,37 @@ function fallbackToVideoTitle(parsed, videos) {
   return parsed;
 }
 
+interface LeafNode {
+  name: string;
+  path: string;
+  type: 'leaf';
+  parsedTitle: string | null;
+  cjkTitle: string | null;
+  parsedSeason: number | null;
+  specialSuffix: string | null;
+  bangumiId: number | null;
+  videoCount: number;
+  totalVideoFiles: number;
+  totalSize: number;
+  videos: { name: string; size: number; isExtra: boolean }[];
+  parentChain: string[];
+}
+
+interface BranchNode {
+  name: string;
+  path: string;
+  type: 'branch';
+  children: ScanNode[];
+}
+
+type ScanNode = LeafNode | BranchNode;
+
 /**
  * Build a leaf node for a folder that directly contains video files.
  * parentChain is an array of ancestor folder names from mediaDir to parent.
  * parentName is the immediate parent folder name (may differ from chain[-1]).
  */
-async function buildLeaf(dirPath, name, parentName, parentChain) {
+async function buildLeaf(dirPath: string, name: string, parentName: string | null, parentChain: string[]): Promise<LeafNode | null> {
   const allVideos = await findVideos(dirPath);
   if (allVideos.length === 0) return null;
 
@@ -245,7 +294,7 @@ async function buildLeaf(dirPath, name, parentName, parentChain) {
   }
 
   // Walk ancestors for title fallback and CJK discovery
-  let nearestCjk = null;
+  let nearestCjk: string | null = null;
 
   // 1. Check parentName (immediate parent) — always checks CJK + title independently
   if (parentName) {
@@ -307,8 +356,8 @@ async function buildLeaf(dirPath, name, parentName, parentChain) {
  * When `collect` is provided, each discovered leaf is also pushed to the collector
  * (enabling `scanMediaDirFlat` without a separate recursive implementation).
  */
-async function walkDirs(dirPath, chain, collect) {
-  const children = [];
+async function walkDirs(dirPath: string, chain: string[], collect?: (l: LeafNode) => void): Promise<ScanNode[]> {
+  const children: ScanNode[] = [];
   const parentName = path.basename(dirPath);
   try {
     const entries = await fs.promises.readdir(dirPath, { withFileTypes: true });
@@ -328,7 +377,7 @@ async function walkDirs(dirPath, chain, collect) {
         }
       }
     }
-  } catch (e) {
+  } catch (e: any) {
     console.error(`[Scanner] walkDirs: cannot read ${dirPath}: ${e.message}`);
   }
   return children;
@@ -337,14 +386,14 @@ async function walkDirs(dirPath, chain, collect) {
 /**
  * Recursively scan a directory's sub-directories for anime entries (tree).
  */
-async function scanDir(dirPath, chain) {
+async function scanDir(dirPath: string, chain: string[]): Promise<ScanNode[]> {
   return walkDirs(dirPath, chain || [], null);
 }
 
 /**
  * Scan a single top-level directory and return its tree node.
  */
-async function scanTopDir(mediaDir, dirName) {
+export async function scanTopDir(mediaDir: string, dirName: string): Promise<LeafNode | BranchNode | null> {
   const fullPath = path.join(mediaDir, dirName);
   if (await hasDirectVideos(fullPath)) {
     return buildLeaf(fullPath, dirName, null, []);
@@ -359,11 +408,11 @@ async function scanTopDir(mediaDir, dirName) {
 /**
  * Scan media dir and return a flat array of leaf nodes.
  */
-async function scanMediaDirFlat(mediaDir) {
-  const results = [];
+export async function scanMediaDirFlat(mediaDir: string): Promise<LeafNode[]> {
+  const results: LeafNode[] = [];
   try {
     await walkDirs(mediaDir, [], l => results.push(l));
-  } catch (e) {
+  } catch (e: any) {
     // Preserve stack: re-throw with original error as cause
     throw new Error(`Failed to scan media directory: ${e.message}`, { cause: e });
   }
@@ -376,10 +425,10 @@ async function scanMediaDirFlat(mediaDir) {
  * Extract Bangumi ID from folder name or path.
  * Matches [bgm525565], [bgm12345] at any position.
  */
-function extractBgmId(name) {
+export function extractBgmId(name: string): number | null {
   if (!name) return null;
   const m = name.match(/\[bgm(\d+)\]/i);
   return m ? parseInt(m[1]) : null;
 }
 
-module.exports = { scanMediaDirFlat, scanTopDir, parseFolderName, findVideos, hasDirectVideos, isExtraVideo, extractBgmId, VIDEO_EXTS };
+export { VIDEO_EXTS, findVideos };

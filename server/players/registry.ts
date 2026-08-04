@@ -1,5 +1,4 @@
-// @ts-nocheck
-// server/players/registry.js — 播放器策略注册与调度
+// server/players/registry.ts — 播放器策略注册与调度
 //
 // 职责：
 //   1. 维护策略类注册表
@@ -7,18 +6,27 @@
 //   3. 按配置调度默认策略
 //   4. 提供测试注入接口
 
-const logger = require('../logger').child('[Players]');
+import { Logger } from '../logger';
 
-/** @type {Map<string, typeof BasePlayerStrategy>} */
-const _registry = new Map();
+const logger: Logger = require('../logger').child('[Players]');
+
+/** 播放器策略类的构造器签名（duck typing，与 base-player 的接口契约一致） */
+type PlayerStrategyClass = {
+    type: string;
+    displayName?: string;
+    checkAvailable(execPath: string): boolean;
+};
+
+/** @type {Map<string, PlayerStrategyClass>} */
+const _registry = new Map<string, PlayerStrategyClass>();
 
 // ── 注册 ────────────────────────────────────────────────────────────────────
 
 /**
  * 注册一个播放器策略类
- * @param {typeof BasePlayerStrategy} strategyClass
+ * @param {PlayerStrategyClass} strategyClass
  */
-function register(strategyClass) {
+function register(strategyClass: PlayerStrategyClass): void {
     const type = strategyClass.type;
     if (!type) {
         logger.warn('Skipping strategy registration: missing static type');
@@ -33,9 +41,9 @@ function register(strategyClass) {
 /**
  * 获取指定类型的策略类
  * @param {string} type - 'mpv', 'vlc', 等
- * @returns {typeof BasePlayerStrategy|null}
+ * @returns {PlayerStrategyClass|null}
  */
-function getStrategy(type) {
+function getStrategy(type: string): PlayerStrategyClass | null {
     return _registry.get(type) || null;
 }
 
@@ -44,11 +52,11 @@ function getStrategy(type) {
  * @param {object} config - 应用配置，含各播放器路径设置
  * @returns {Array<{ type: string, displayName: string, available: boolean }>}
  */
-function getAvailable(config) {
-    const results = [];
+function getAvailable(config: Record<string, unknown>): Array<{ type: string; displayName: string; available: boolean }> {
+    const results: Array<{ type: string; displayName: string; available: boolean }> = [];
     for (const [type, cls] of _registry) {
         const configKey = type === 'mpv' ? 'mpvPath' : type + 'Path';
-        const execPath = config?.[configKey] || type;
+        const execPath = (config?.[configKey] as string) || type;
         const available = cls.checkAvailable(execPath);
         results.push({
             type,
@@ -62,10 +70,10 @@ function getAvailable(config) {
 /**
  * 获取默认策略类（按配置的首选播放器，回退到 mpv）
  * @param {object} config
- * @returns {typeof BasePlayerStrategy|null}
+ * @returns {PlayerStrategyClass|null}
  */
-function getDefault(config) {
-    const preferred = config?.playerMode || 'mpv';
+function getDefault(config: Record<string, unknown>): PlayerStrategyClass | null {
+    const preferred = (config?.playerMode as string) || 'mpv';
     const strategy = _registry.get(preferred);
     if (strategy) return strategy;
     // 回退到第一个已注册的
@@ -77,7 +85,7 @@ function getDefault(config) {
  * 列出所有已注册策略类型
  * @returns {string[]}
  */
-function listTypes() {
+function listTypes(): string[] {
     return Array.from(_registry.keys());
 }
 
@@ -86,20 +94,20 @@ function listTypes() {
 /**
  * 替换或添加一个策略（用于测试）
  * @param {string} type
- * @param {typeof BasePlayerStrategy} strategyClass
+ * @param {PlayerStrategyClass} strategyClass
  */
-function _setMock(type, strategyClass) {
+function _setMock(type: string, strategyClass: PlayerStrategyClass): void {
     _registry.set(type, strategyClass);
 }
 
 /**
  * 清空注册表（用于测试）
  */
-function _reset() {
+function _reset(): void {
     _registry.clear();
 }
 
-module.exports = {
+export {
     register,
     getStrategy,
     getAvailable,

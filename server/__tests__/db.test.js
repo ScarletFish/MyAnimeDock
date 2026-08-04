@@ -5,7 +5,7 @@ describe('DB Integration Tests', () => {
   let db;
 
   before(async () => {
-    db = require('../db');
+    db = require('../dist/db');
   });
 
   describe('loadData', () => {

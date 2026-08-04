@@ -2,6 +2,7 @@
 // server/lib/config.js — 路径、配置管理
 const path = require('path');
 const fs = require('fs');
+const { SERVER_ROOT, PROJECT_ROOT } = require('./paths');
 
 // ── 引导日志（写入 %TEMP%，崩溃也不丢）──
 const BOOT_LOG = path.join(process.env.TEMP || process.env.TMP || '.', 'myanimedock-bootstrap.log');
@@ -11,10 +12,10 @@ const bootLog = (msg) => { try { fs.appendFileSync(BOOT_LOG, `[${new Date().toIS
 // pkg 模式：%APPDATA%/MyAnimeDock（可写），开发模式：本模块上级 server/
 const DATA_DIR = process.pkg
   ? path.join(process.env.APPDATA || process.env.HOME || '.', 'MyAnimeDock')
-  : path.join(__dirname, '..');
+  : SERVER_ROOT;
 const ASSET_DIR = process.pkg
   ? path.dirname(process.execPath)  // pkg: exe 同级，Tauri 把 resources 放根目录
-  : path.join(__dirname, '..', '..'); // 开发模式：config.js 在 server/lib/
+  : PROJECT_ROOT; // 开发模式：config.js 在 server/lib/
 const CONFIG_PATH = path.join(DATA_DIR, 'config.json');
 const SCANNED_TREE_PATH = path.join(DATA_DIR, 'scanned-tree.json');
 const PORT = 3456;

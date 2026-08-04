@@ -8,7 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { mockReq, mockRes, mockState } = require('../helpers/mock-http');
-const playback = require('../../routes/playback');
+const playback = require('../../dist/routes/playback');
 
 describe('playback route handlers', () => {
   describe('handleMpvStatus', () => {

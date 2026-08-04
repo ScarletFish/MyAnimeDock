@@ -6,6 +6,7 @@
 
 const path = require('path');
 const fs = require('fs');
+const { PROJECT_ROOT } = require('./lib/paths');
 
 // better-sqlite3 是原生模块：dev 模式直接 require；pkg 快照无法内嵌 .node，
 // 必须从 exe 旁的 sidecar-modules 运行时加载（动态 require + NODE_PATH，
@@ -24,7 +25,7 @@ const logger = require('./logger').child('[DB]');
 // 数据目录：pkg 模式在 %APPDATA%/MyAnimeDock（可写），开发模式在项目根
 const DATA_DIR = process.pkg
   ? path.join(process.env.APPDATA || process.env.HOME || '.', 'MyAnimeDock')
-  : path.join(__dirname, '..');
+  : PROJECT_ROOT;
 
 // 确保数据目录存在
 if (!fs.existsSync(DATA_DIR)) {

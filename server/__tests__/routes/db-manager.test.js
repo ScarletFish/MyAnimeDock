@@ -6,8 +6,8 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const { mockReq, mockRes, mockState } = require('../helpers/mock-http');
-const { DATA_DIR } = require('../../lib/config');
-const dbmgr = require('../../routes/db-manager');
+const { DATA_DIR } = require('../../dist/lib/config');
+const dbmgr = require('../../dist/routes/db-manager');
 
 describe('db-manager route handlers', () => {
   describe('handleDbInfo', () => {

@@ -3,7 +3,7 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const { mockReq, mockRes, mockState } = require('../helpers/mock-http');
-const stats = require('../../routes/stats');
+const stats = require('../../dist/routes/stats');
 
 describe('stats route handlers', () => {
   describe('handleStats', () => {

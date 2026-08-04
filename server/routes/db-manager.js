@@ -2,6 +2,7 @@
 // server/routes/db-manager.js — 数据库管理：信息、备份、恢复、清除、重置、优化
 const path = require('path');
 const fs = require('fs');
+const { PROJECT_ROOT } = require('../lib/paths');
 const { jsonResp, readBody } = require('../lib/utils');
 const { DATA_DIR, CONFIG_PATH, SCANNED_TREE_PATH } = require('../lib/config');
 
@@ -10,7 +11,7 @@ const { DATA_DIR, CONFIG_PATH, SCANNED_TREE_PATH } = require('../lib/config');
 // 本文件: __dirname=server/routes/ → path.join(__dirname,'..','..')=项目根目录
 const APP_ROOT = process.pkg
   ? (process.env.APPDATA || process.env.HOME || '.')
-  : path.join(__dirname, '..', '..');
+  : PROJECT_ROOT;
 const DB_FILE = process.pkg
   ? path.join(APP_ROOT, 'MyAnimeDock', 'anime.db')
   : path.join(APP_ROOT, 'prisma', 'anime.db');

@@ -6,8 +6,8 @@ const {
   normalizeTitle, sorensenDice, toHiragana, isPrimarilyRomaji,
   pickBestBySimilarity, extractRomajiTitle,
   syncAnilistDetail, syncAnilist, registry,
-} = require('../scrapers');
-const { parseFolderName } = require('../scanner');
+} = require('../dist/scrapers');
+const { parseFolderName } = require('../dist/scanner');
 
 // ── Mock helpers ──
 function mockAnilist(overrides) {

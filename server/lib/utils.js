@@ -2,11 +2,12 @@
 // server/lib/utils.js — 工具函数
 const path = require('path');
 const fs = require('fs');
+const { PROJECT_ROOT } = require('./paths');
 const { spawn } = require('child_process');
 const logger = require('../logger').child('[UTILS]');
 let ffmpegPath = (() => {
   if (process.env.FFMPEG_BIN) return process.env.FFMPEG_BIN;
-  const upx = path.join(__dirname, '..', '..', 'scripts', 'ffmpeg-upx.exe');
+  const upx = path.join(PROJECT_ROOT, 'scripts', 'ffmpeg-upx.exe');
   if (fs.existsSync(upx)) return upx;
   return 'ffmpeg';
 })();

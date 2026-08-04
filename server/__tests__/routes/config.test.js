@@ -4,7 +4,7 @@
 const { describe, it, before } = require('node:test');
 const assert = require('node:assert');
 const { mockReq, mockRes, mockState } = require('../helpers/mock-http');
-const config = require('../../routes/config');
+const config = require('../../dist/routes/config');
 
 describe('config route handlers', () => {
   describe('handleGetConfig', () => {

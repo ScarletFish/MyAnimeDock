@@ -7,7 +7,7 @@
 const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert');
 const { mockReq, mockRes, mockState } = require('../helpers/mock-http');
-const bangumi = require('../../routes/bangumi');
+const bangumi = require('../../dist/routes/bangumi');
 
 function makeBangumiPersonal(overrides = {}) {
   return {

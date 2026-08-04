@@ -5,7 +5,7 @@
 const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert');
 const { mockReq, mockRes, mockState } = require('../helpers/mock-http');
-const disc = require('../../routes/discovery');
+const disc = require('../../dist/routes/discovery');
 
 describe('discovery route handlers', () => {
   describe('handleDiscoveryUnlink', () => {

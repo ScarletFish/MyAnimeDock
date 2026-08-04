@@ -8,7 +8,7 @@ const assert = require('node:assert');
 const { mockReq, mockRes, mockState } = require('../helpers/mock-http');
 const fs = require('fs');
 const path = require('path');
-const lib = require('../../routes/library');
+const lib = require('../../dist/routes/library');
 
 describe('library route handlers', () => {
   describe('handleGetLibrary', () => {

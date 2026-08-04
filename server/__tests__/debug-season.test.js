@@ -7,8 +7,8 @@ const { Parser } = require('anitomy');
 const {
   buildSearchTerms, toHiragana, pickBestBySimilarity,
   searchBangumiBySeason, registry, matchSeason, searchViaAniList,
-} = require('../scrapers');
-const { parseFolderName } = require('../scanner');
+} = require('../dist/scrapers');
+const { parseFolderName } = require('../dist/scanner');
 
 const anitomy = new Parser();
 
@@ -148,7 +148,7 @@ describe('4: searchBangumiBySeason 季节排序', () => {
 
   it('S2 应正确选择第二季 (2012 SUMMER)', async () => {
     searchCalls = [];
-    const reg = require('../scrapers').registry;
+    const reg = require('../dist/scrapers').registry;
     const bangumi = reg.get('bangumi');
     const results = await searchBangumiBySeason(reg, bangumi, 'Yuru Yuri', 2, CONFIG);
     // searchBangumi 负责搜索 Bangumi，因为实际 Bangumi API 搜索不到模拟器
@@ -161,7 +161,7 @@ describe('4: searchBangumiBySeason 季节排序', () => {
 
   it('S3 应正确选择第三季 (2015 FALL)', async () => {
     searchCalls = [];
-    const reg = require('../scrapers').registry;
+    const reg = require('../dist/scrapers').registry;
     const bangumi = reg.get('bangumi');
     const results = await searchBangumiBySeason(reg, bangumi, 'Yuru Yuri', 3, CONFIG);
     assert.ok(searchCalls.length > 0, 'AniList search 应该被调用');
@@ -222,7 +222,7 @@ describe('6: matchSeason 完整调用链', () => {
     const fp = parseFolderName('[VCB-Studio] Yuru Yuri [Ma10p_1080p]');
     assert.equal(fp.season, null);
     // 手动调 searchViaAniList 验证 AniList 被调用
-    const reg = require('../scrapers').registry;
+    const reg = require('../dist/scrapers').registry;
     const bangumi = reg.get('bangumi');
     await searchViaAniList(reg, bangumi, 'Yuru Yuri', CONFIG);
     assert.ok(anilistCalls.length > 0,
@@ -233,7 +233,7 @@ describe('6: matchSeason 完整调用链', () => {
   it('S2 (season=2) → 应走 searchBangumiBySeason 路径', async () => {
     anilistCalls = [];
     const fp = parseFolderName('[VCB-Studio] Yuru Yuri 2 [Ma10p_1080p]');
-    const reg = require('../scrapers').registry;
+    const reg = require('../dist/scrapers').registry;
     const bangumi = reg.get('bangumi');
     await searchBangumiBySeason(reg, bangumi, fp.cleanTitle, fp.season, CONFIG);
     assert.ok(anilistCalls.length > 0,

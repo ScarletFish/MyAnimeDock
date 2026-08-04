@@ -8,7 +8,7 @@ const {
   parseFolderName, isExtraVideo, extractBgmId,
   findVideos, hasDirectVideos,
   scanMediaDirFlat,
-} = require('../scanner');
+} = require('../dist/scanner');
 
 // ─── Pure Functions ────────────────────────────────────────────────
 

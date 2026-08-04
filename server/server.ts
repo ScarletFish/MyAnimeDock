@@ -138,15 +138,7 @@ const H: any = Object.assign(
   require('./routes/relations')
 );
 
-// ── 内联 handler（关闭、封面、静态文件、CORS）──
-function handleQuit(req: any, res: any, state: any) {
-  const { db, logger } = state;
-  jsonResp(res, 200, { ok: true, shutdown: true });
-  logger.info('Shutdown requested via web UI.');
-  db.shutdown().catch(() => {});
-  setTimeout(() => process.exit(0), 1500);
-}
-
+// ── 内联 handler（封面、静态文件、CORS）──
 function handleCoverImage(req: any, res: any, _state: any) {
   const urlPath = new URL(req.url, 'http://localhost').pathname;
   const coverPath = path.join(DATA_DIR, decodeURIComponent(urlPath));
@@ -287,8 +279,6 @@ const routeTable = [
   { method: 'POST', path: '/api/db/vacuum', handler: H.handleDbVacuum },
   { method: 'POST', path: '/api/db/clear-cache', handler: H.handleDbClearCache },
   { method: 'POST', path: '/api/db/reset', handler: H.handleDbReset },
-  // Quit
-  { method: 'POST', path: '/api/quit', handler: handleQuit },
   // Covers
   { method: 'GET', prefix: '/covers/', handler: handleCoverImage },
   // Banners
@@ -412,7 +402,7 @@ async function init() {
     const candidate = BASE_PORT + i;
     try {
       await new Promise<void>((resolve, reject) => {
-        const s = server.listen(candidate, () => { actualPort = candidate; resolve(); });
+        const s = server.listen(candidate, '127.0.0.1', () => { actualPort = candidate; resolve(); });
         s.on('error', (e: any) => { if (e.code === 'EADDRINUSE') reject(e); else reject(e); });
       });
       break;

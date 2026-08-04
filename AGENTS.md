@@ -6,8 +6,6 @@ Vanilla JS SPA + Node.js HTTP server + Tauri v2 desktop shell. 自托管动漫�
 
 完整流程见 `docs/dev/workflow.md`（6 阶段）。**禁止跳过阶段直接写代码**。
 
-方向判断 → 前置研究 → 需求确认 → 实现 → 测试 → 审查+报告
-
 | 场景 | 行为 |
 |------|------|
 | 功能需求（新增/修改功能） | **必须先出需求确认表** → `skill("req-implement-test")` |
@@ -32,9 +30,7 @@ npm run dev:server:watch   # 开发后端 (tsc -w + nodemon watch dist)
 npm run dev:frontend       # 开发前端 (Vite HMR)
 npm run dev:tauri          # 全开 (server + Vite + Tauri 窗口)
 npm run dev                # server + Vite (无 Tauri)
-npm run check:frontend     # 改前端后的总检查：node --check 全部 JS + check:css --strict + build:frontend（一键）
-npm run build:frontend     # 仅构建前端到 dist/（check:frontend 已包含）
-npm run check:css          # 仅扫描 views/ + layouts/ 的 CSS token 合规
+npm run check:frontend     # 改前端后的一键检查：JS 语法 + CSS token + 构建 dist/
 npm run build              # MSI/NSIS 安装包
 npm run check:rust         # Rust 类型检查 (~20s)
 npm run db:migrate         # DB 迁移（db.ts ensureSchema）
@@ -50,14 +46,13 @@ cd server && npm test      # 测试（先自动跑 tsc）
 - **window.close() 无效**: 需 Rust `window.close()` 或 `__TAURI__` IPC
 - **缩略图**: 依赖 ffmpeg PATH，首次延迟
 - **封面路径**: `localCover` 绝对路径，迁移 DATA_DIR 后可能不存在
-- **无认证**: `/api/quit` 局域网可关服
 - **CSS *禁止* `zoom`**: 用 `--scale` calc（详见 `docs/dev/frontend.md`）
 - **"先找后写"三步协议**: 新增 CSS 前先查已有组件和 token，禁止写死值。完成后跑 `npm run check:frontend` 验证（详见 `docs/dev/frontend.md` 必读章节）
-- **改前端后跑 `npm run check:frontend`（一键）**: 内含 ① `node --check` 全部 `frontend/src/js/*.js`（Vite `concatJsPlugin` 跳过语法校验）② `check:css --strict`（token 违规即失败）③ `build:frontend` 更新 `frontend/dist/`（服务器生产模式从 `dist/` 读）。**不要只跑其中一条**，否则语法错误静默进 dist / dist 过期"改了没生效"
+- **改前端后跑 `npm run check:frontend`**: 勿只跑其中一条，否则 dist 过期"改了没生效"
 - **CSS 子文件结构**: 勿改 `styles.css`（仅入口）；视图样式放 `views/*.css`，小组件用 `@utility` 放 `patterns.css`，主题特有放 `layouts/` 和 `components/`
 - **Grid 列公式**: 在 `library.js` 的 `GRID_CARD_MIN`/`GRID_CARD_MAX`，不通过 CSS utility 控制
 - **mpv-status**: 不轮询 — `EventSource` 监听 `/api/events/mpv-status`，DB 落盘仅 `final` 事件
-- **后端 TS 纪律**: 后端源码是 `.ts`（strict 模式），**禁止新增 `any`**；改后端后跑 `npm run typecheck`（必须 0 错误）+ `cd server && npm test`。编译产物在 `server/dist/`，运行/测试/打包都吃 dist，改完源码不 build 则 dist 是旧的"改了没生效"
+- **后端 TS 纪律**: 后端源码是 `.ts`（strict 模式），**禁止新增 `any`**；改后端后跑 `npm run typecheck`（必须 0 错误）+ `cd server && npm test`
 - **类型定义集中地**: 跨文件共享类型放 `server/types.ts`（AppData/ServerState/Anime/MyListItem/ScanNode 等），禁止散落在各路由文件里各自定义
 - **lib/paths.js 故意留 JS**: 路径单点计算（findServerRoot 按 name=anime-manager-server），不转 TS；其余后端文件全部 .ts
 

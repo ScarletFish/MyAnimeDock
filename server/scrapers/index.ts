@@ -15,6 +15,8 @@ export interface Scraper {
   fetchMetadata: (title: any, coverDir: string, subjectId: any, preDetail?: any) => Promise<any>;
   downloadCover: (imageUrl: string, coverDir: string, subjectId: any) => Promise<string | null>;
   getSubjectDetail?: (id: any) => Promise<any>;
+  getDetail?: (id: any) => Promise<any>;
+  getRecommendations?: (id: any, perPage?: number) => Promise<any>;
   downloadBanner?: (imageUrl: string, bannerDir: string, subjectId: any) => Promise<any>;
   enabled?: (config: ScraperConfig) => boolean;
   setSource?: (source: any) => void;

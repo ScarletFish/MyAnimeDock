@@ -1,12 +1,11 @@
-// @ts-nocheck
-// server/routes/relations.js — 关联作品 + 推荐 (on-demand)
-const { jsonResp } = require('../lib/utils');
-const { registry } = require('../scrapers');
+// server/routes/relations.ts — 关联作品 + 推荐 (on-demand)
+import { jsonResp } from '../lib/utils';
+import { registry } from '../scrapers';
 
 // 服务端内存缓存，避免重复调 AniList API
 const _cache = new Map();
 const _CACHE_TTL_MS = 60 * 60 * 1000; // 1 小时
-function cachedFetch(key, fetcher) {
+function cachedFetch(key: string, fetcher: () => Promise<any>) {
   const hit = _cache.get(key);
   if (hit && Date.now() - hit.ts < _CACHE_TTL_MS) return hit.data;
 
@@ -29,8 +28,8 @@ function cachedFetch(key, fetcher) {
   return p;
 }
 
-module.exports = {
-  async handleAnimeRelations(req, res, state) {
+export = {
+  async handleAnimeRelations(req: any, res: any, state: any): Promise<void> {
     const { data, logger } = state;
     const match = req.url.match(/^\/api\/anime\/(.+)\/relations$/);
     if (!match) { jsonResp(res, 400, { error: 'Invalid URL' }); return; }
@@ -61,13 +60,13 @@ module.exports = {
         };
       });
       jsonResp(res, 200, { relations });
-    } catch (e) {
+    } catch (e: any) {
       logger.error('Relations fetch failed:', e.message);
       jsonResp(res, 200, { relations: [], error: e.message });
     }
   },
 
-  async handleAnimeRecommendations(req, res, state) {
+  async handleAnimeRecommendations(req: any, res: any, state: any): Promise<void> {
     const { data, logger } = state;
     const match = req.url.match(/^\/api\/anime\/(.+)\/recommendations$/);
     if (!match) { jsonResp(res, 400, { error: 'Invalid URL' }); return; }
@@ -97,7 +96,7 @@ module.exports = {
         };
       });
       jsonResp(res, 200, { recommendations });
-    } catch (e) {
+    } catch (e: any) {
       logger.error('Recommendations fetch failed:', e.message);
       jsonResp(res, 200, { recommendations: [], error: e.message });
     }

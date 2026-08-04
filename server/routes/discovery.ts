@@ -1,13 +1,14 @@
-// @ts-nocheck
-// server/routes/discovery.js — 浏览、扫描、导入、元数据匹配
-const path = require('path');
-const fs = require('fs');
-const { jsonResp, readBody } = require('../lib/utils');
-const { saveScannedTree, DATA_DIR } = require('../lib/config');
-const { syncAnilist } = require('../scrapers');
+// server/routes/discovery.ts — 浏览、扫描、导入、元数据匹配
+import path from 'path';
+import fs from 'fs';
+import { jsonResp, readBody } from '../lib/utils';
+import { saveScannedTree, DATA_DIR } from '../lib/config';
+import { syncAnilist } from '../scrapers';
 
-module.exports = {
-  async handleBrowse(req, res, state) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type State = any;
+
+async function handleBrowse(req: any, res: any, state: State) {
     const { data, config, logger } = state;
     if (!config.mediaDir) {
       jsonResp(res, 200, { tree: [], mediaDir: '' });
@@ -19,7 +20,7 @@ module.exports = {
       let tree = JSON.parse(JSON.stringify(data.scannedTree || []));
       // Migrate old tree format
       if (tree.some(n => n.type === 'branch')) {
-        const flatten = (nodes) => {
+        const flatten = (nodes: any[]) => {
           const result = [];
           for (const n of nodes) {
             if (n.type === 'leaf') result.push(n);
@@ -47,9 +48,9 @@ module.exports = {
     } catch (e) {
       jsonResp(res, 500, { error: e.message });
     }
-  },
+  }
 
-  async handleScan(req, res, state) {
+  async function handleScan(req: any, res: any, state: State) {
     const { data, config, logger, pendingNotifications } = state;
     if (!config.mediaDir) {
       jsonResp(res, 400, { error: 'Media directory not configured' });
@@ -60,9 +61,9 @@ module.exports = {
       'Cache-Control': 'no-cache',
       'Connection': 'keep-alive',
     });
-    const send = (obj) => res.write(`data: ${JSON.stringify(obj)}\n\n`);
+    const send = (obj: any) => res.write(`data: ${JSON.stringify(obj)}\n\n`);
     try {
-      const { scanTopDir } = require('../scanner');
+      const { scanTopDir } = require('../scanner') as any;
       const entries = await fs.promises.readdir(config.mediaDir, { withFileTypes: true });
       const dirs = entries.filter(e => e.isDirectory() && e.name !== 'covers');
       const total = dirs.length;
@@ -74,10 +75,10 @@ module.exports = {
         send({ type: 'progress', current: i + 1, total, folder: entry.name });
         const node = await scanTopDir(config.mediaDir, entry.name);
         if (node) {
-          (function flatten(n) {
+          (function flatten(n: any) {
             if (n.type === 'leaf') {
               n.alreadyImported = libraryPaths.has(n.path);
-              const existing = existingNodes.get(n.path);
+              const existing: any = existingNodes.get(n.path);
               if (existing) {
                 n.excluded = existing.excluded || false;
                 n.bangumiMatched = existing.bangumiMatched || false;
@@ -107,9 +108,9 @@ module.exports = {
       send({ type: 'error', message: e.message });
     }
     res.end();
-  },
+  }
 
-  async handleImport(req, res, state) {
+  async function handleImport(req: any, res: any, state: State) {
     const { data, config, db, bangumiSync, logger, pendingNotifications } = state;
     try {
       const body = await readBody(req);
@@ -118,7 +119,7 @@ module.exports = {
         jsonResp(res, 400, { error: 'items array is required' });
         return;
       }
-      const { findVideos, isExtraVideo } = require('../scanner');
+      const { findVideos, isExtraVideo } = require('../scanner') as any;
       const imported = [];
       for (const item of items) {
         const { folderPath, folderName, parsedTitle, parsedSeason, specialSuffix } = item;
@@ -181,7 +182,7 @@ module.exports = {
       // 后台拉取 AniList banner（不影响封面显示）
       const bannerDir = path.join(DATA_DIR, 'banners');
       const coverDir = path.join(DATA_DIR, 'covers');
-      imported.forEach(id => {
+      imported.forEach((id: any) => {
         const anime = data.library.find(a => a.id === id);
         if (anime) {
           state.thumbnailQueue?.enqueue(anime);
@@ -195,9 +196,9 @@ module.exports = {
     } catch (e) {
       jsonResp(res, 400, { error: 'Invalid request body' });
     }
-  },
+  }
 
-  async handleDiscoveryUnlink(req, res, state) {
+  async function handleDiscoveryUnlink(req: any, res: any, state: State) {
     const { data, db } = state;
     try {
       const body = await readBody(req);
@@ -231,9 +232,9 @@ module.exports = {
     } catch (e) {
       jsonResp(res, 400, { error: 'Invalid request body' });
     }
-  },
+  }
 
-  async handleDiscoveryExclude(req, res, state) {
+  async function handleDiscoveryExclude(req: any, res: any, state: State) {
     const { data } = state;
     try {
       const body = await readBody(req);
@@ -247,9 +248,9 @@ module.exports = {
     } catch (e) {
       jsonResp(res, 400, { error: 'Invalid request body' });
     }
-  },
+  }
 
-  async handleDiscoveryInclude(req, res, state) {
+  async function handleDiscoveryInclude(req: any, res: any, state: State) {
     const { data } = state;
     try {
       const body = await readBody(req);
@@ -263,5 +264,13 @@ module.exports = {
     } catch (e) {
       jsonResp(res, 400, { error: 'Invalid request body' });
     }
-  },
+  }
+
+export {
+    handleBrowse,
+    handleScan,
+    handleImport,
+    handleDiscoveryUnlink,
+    handleDiscoveryExclude,
+    handleDiscoveryInclude,
 };

@@ -6,16 +6,16 @@ import { spawn } from 'child_process';
 import { jsonResp, readBody, serveImage, getFfmpegPath } from '../lib/utils';
 import { DATA_DIR, MAX_PLAY_SESSIONS } from '../lib/config';
 import { Logger } from '../logger';
+import type { ServerState } from '../types';
 const logger: Logger = require('../logger').child('[Playback]');
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type State = any;
+type State = ServerState;
 
 // ─── Thumbnail helpers (module-scoped, not on exports — avoids `this` issues) ───
 
 const _durCache = new Map();
 
-function _probeDuration(videoPath, cb) {
+function _probeDuration(videoPath: string, cb: (dur: number | null) => void) {
   const cached = _durCache.get(videoPath);
   if (cached !== undefined) { cb(cached); return; }
   const ffmpegPath = getFfmpegPath();
@@ -42,7 +42,7 @@ function _probeDuration(videoPath, cb) {
   setTimeout(() => { if (!done) { done = true; ff.kill(); cb(null); } }, 10000);
 }
 
-function _generateThumb(videoPath, time, cacheKey, req, res) {
+function _generateThumb(videoPath: string, time: number, cacheKey: string, req: any, res: any) {
   const hash = crypto.createHash('md5').update(videoPath + cacheKey).digest('hex');
   const thumbDir = path.join(DATA_DIR, 'thumbs');
   const thumbPath = path.join(thumbDir, hash + '.jpg');
@@ -74,7 +74,7 @@ function _generateThumb(videoPath, time, cacheKey, req, res) {
       responded = true;
       jsonResp(res, 500, { error: 'ffmpeg not available' });
     });
-  } catch (e) {
+  } catch (e: any) {
     if (!responded) { responded = true; jsonResp(res, 500, { error: e.message }); }
   }
 }
@@ -135,7 +135,7 @@ async function handlePlay(req: any, res: any, state: State) {
       let spawnError = null;
       const spawnResult = await new Promise<any>((resolve) => {
         strategy.start(mpvPath, filePath, startSeconds || 0, {
-          onProgress: ({ sessionId: cbSid, filePath: fp, progress, peakPos, watched, duration, final }) => {
+          onProgress: ({ cbSid, fp, progress, peakPos, watched, duration, final }: any) => {
             if (cbSid !== sessionId) return;
             const active = activePlays.get(fp);
             if (!active) return;
@@ -164,7 +164,7 @@ async function handlePlay(req: any, res: any, state: State) {
             if (active.anime) {
               const myEntry = (data.myList || []).find(m => m.animeId === active.anime.id);
               const allWatched = active.anime.episodes && active.anime.episodes.length > 0
-                && active.anime.episodes.every(e => e.watched);
+                && active.anime.episodes.every((e: any) => e.watched);
               if (allWatched && myEntry) {
                 myEntry.status = 'completed';
                 myEntry.completedAt = new Date().toISOString();
@@ -180,7 +180,7 @@ async function handlePlay(req: any, res: any, state: State) {
             activePlays.delete(fp);
             broadcastMpvStatus?.();
           },
-          onError: (msg) => {
+          onError: (msg: any) => {
             const active = activePlays.get(filePath);
             if (active && active.sessionId) {
               const idx = data.playSessions.findIndex(s => s.sessionId === active.sessionId);
@@ -198,7 +198,7 @@ async function handlePlay(req: any, res: any, state: State) {
       });
       if (spawnResult?.error) { jsonResp(res, 500, { error: spawnResult.error }); }
       else { jsonResp(res, 200, { ok: true }); }
-    } catch (e) {
+    } catch (e: any) {
       jsonResp(res, 500, { error: e.message });
     }
   } catch (e) {
@@ -254,7 +254,7 @@ function handleThumbnail(req: any, res: any, state: State) {
       _generateThumb(videoPath, time, 'mid', req, res);
     });
   } else {
-    const time = parseFloat(timeRaw) || 60;
+    const time = parseFloat(timeRaw ?? '') || 60;
     _generateThumb(videoPath, time, String(time), req, res);
   }
 }

@@ -3,9 +3,9 @@ import path from 'path';
 import { jsonResp, readBody } from '../lib/utils';
 import { saveConfig, DATA_DIR } from '../lib/config';
 import { syncAnilist } from '../scrapers';
+import type { ServerState } from '../types';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type State = any;
+type State = ServerState;
 
 async function handleBangumiSearch(req: any, res: any, state: State) {
   const { data, config, logger } = state;
@@ -17,7 +17,7 @@ async function handleBangumiSearch(req: any, res: any, state: State) {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { registry, searchViaAniList } = require('../scrapers') as any;
     let results = await registry.searchAll(keyword, config);
-    results = results.filter(r => r.source !== 'anilist');
+    results = results.filter((r: any) => r.source !== 'anilist');
     // Bangumi 直搜无结果时，走 AniList 桥接反查日文名（与批量匹配路径一致）
     if (results.length === 0) {
       const bangumi = registry.get('bangumi');
@@ -27,7 +27,7 @@ async function handleBangumiSearch(req: any, res: any, state: State) {
       }
     }
     jsonResp(res, 200, { results });
-  } catch (e) {
+  } catch (e: any) {
     jsonResp(res, 500, { error: e.message });
   }
 }
@@ -38,7 +38,7 @@ async function handleBangumiFetch(req: any, res: any, state: State) {
     const body = await readBody(req);
     let { animeId, subjectId, source = 'bangumi' } = JSON.parse(body);
     if (!animeId) { jsonResp(res, 400, { error: 'animeId is required' }); return; }
-    const anime = data.library.find(a => a.id === animeId);
+    const anime = data.library.find((a: any) => a.id === animeId);
     if (!anime) { jsonResp(res, 404, { error: 'Anime not found' }); return; }
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { registry, matchSeason } = require('../scrapers') as any;
@@ -51,7 +51,7 @@ async function handleBangumiFetch(req: any, res: any, state: State) {
       const videoCount = anime.episodes?.length || 0;
       const match = await matchSeason(registry, folderParsed.cleanTitle, folderParsed, videoCount, config);
       if (!match) {
-        const results = (await registry.searchAll(anime.title, config)).filter(r => r.source !== 'anilist');
+        const results = (await registry.searchAll(anime.title, config)).filter((r: any) => r.source !== 'anilist');
         if (results.length === 0) { jsonResp(res, 404, { error: '未找到匹配结果' }); return; }
         jsonResp(res, 200, { results, animeId: anime.id });
         return;
@@ -77,7 +77,7 @@ async function handleBangumiFetch(req: any, res: any, state: State) {
     if (anime.anilistId === -1) anime.anilistId = null;
     try {
       await syncAnilist(anime, config, bannerDir, coverDir);
-    } catch (e) {
+    } catch (e: any) {
       logger.error('AniList sync failed: ' + e.message);
     }
     if (!hadBangumiId && anime.bangumiId) {
@@ -87,7 +87,7 @@ async function handleBangumiFetch(req: any, res: any, state: State) {
     const { saveScannedTree } = require('../lib/config') as any;
     await Promise.all([db.saveLibrary(data, new Set([anime.id])), saveScannedTree(data.scannedTree)]);
     jsonResp(res, 200, { ok: true, anime });
-  } catch (e) {
+  } catch (e: any) {
     jsonResp(res, 500, { error: e.message });
   }
 }
@@ -103,10 +103,10 @@ async function handleBangumiSync(req: any, res: any, state: State) {
       saveConfig(config);
     }
     if (result.created > 0 || result.wishlistAdded > 0) {
-      try { await db.saveMyList(data); } catch (e) { logger.error('MyList save after sync failed:', e.message); }
+      try { await db.saveMyList(data); } catch (e: any) { logger.error('MyList save after sync failed:', e.message); }
     }
     jsonResp(res, 200, result);
-  } catch (e) {
+  } catch (e: any) {
     jsonResp(res, 400, { error: e.message });
   }
 }
@@ -136,7 +136,7 @@ function handleBangumiAuthCallback(req: any, res: any, state: State) {
     res.end(deniedHtml);
     return;
   }
-  bangumiPersonal.exchangeCode(code).then(state => {
+  bangumiPersonal.exchangeCode(code).then((st: any) => {
     saveConfig(config);
     const closeHtml = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>\u6388\u6743\u5b8c\u6210</title><style>body{font-family:-apple-system,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#1a1a2e;color:#e0e0e0;text-align:center}.msg{max-width:400px;padding:2rem}h2{margin:0 0 .5rem;color:#22c55e}p{margin:0;color:#a0a0a0;font-size:.9rem}</style></head><body><div class="msg"><h2>\u2713 \u6388\u6743\u5b8c\u6210</h2><p>\u6b64\u9875\u9762\u53ef\u4ee5\u5173\u95ed\uff0c\u8bf7\u8fd4\u56de\u5e94\u7528\u7ee7\u7eed\u64cd\u4f5c\u3002</p></div><script>window.close()</script></body></html>';
     res.writeHead(200, {
@@ -144,9 +144,9 @@ function handleBangumiAuthCallback(req: any, res: any, state: State) {
       'Content-Length': Buffer.byteLength(closeHtml)
     });
     res.end(closeHtml);
-  }).catch(e => {
+  }).catch((e: any) => {
     logger.error('Bangumi OAuth callback error:', e.message);
-    const errMsg = (e.message || '\u67e5\u770b\u63a7\u5236\u53f0\u8f93\u51fa').replace(/[<>&"']/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'})[c]);
+    const errMsg = (e.message || '\u67e5\u770b\u63a7\u5236\u53f0\u8f93\u51fa').replace(/[<>&"']/g, (c: string) => (({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;' }) as Record<string, string>)[c]);
     const closeHtml = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>\u6388\u6743\u5931\u8d25</title><style>body{font-family:-apple-system,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#1a1a2e;color:#e0e0e0;text-align:center}.msg{max-width:400px;padding:2rem}h2{margin:0 0 .5rem;color:#ef4444}p{margin:0;color:#a0a0a0;font-size:.9rem}</style></head><body><div class="msg"><h2>\u2717 \u6388\u6743\u5931\u8d25</h2><p>' + errMsg + '</p></div><script>window.close()</script></body></html>';
     res.writeHead(200, {
       'Content-Type': 'text/html; charset=utf-8',
@@ -174,7 +174,7 @@ async function handleBangumiAuthCreds(req: any, res: any, state: State) {
       saveConfig(config);
     }
     jsonResp(res, 200, bangumiPersonal.getState());
-  } catch (e) {
+  } catch (e: any) {
     jsonResp(res, 400, { error: e.message });
   }
 }
@@ -185,7 +185,7 @@ function handleBangumiMe(req: any, res: any, state: State) {
     jsonResp(res, 401, { error: 'Not authenticated' });
     return;
   }
-  bangumiPersonal.getMe().then(me => jsonResp(res, 200, me)).catch(e => jsonResp(res, 500, { error: e.message }));
+  bangumiPersonal.getMe().then((me: any) => jsonResp(res, 200, me)).catch((e: any) => jsonResp(res, 500, { error: e.message }));
 }
 
 export {

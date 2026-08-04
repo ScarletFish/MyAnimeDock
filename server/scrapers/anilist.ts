@@ -154,7 +154,7 @@ class AniListScraper {
 
   enabled(config: any): boolean {
     if (!config?.apiSources) return true; // No config → enabled by default
-    const src = config.apiSources.find(s => s.type === 'anilist');
+    const src = config.apiSources.find((s: any) => s.type === 'anilist');
     if (!src) return true; // Not listed → enabled by default (AniList is free)
     return src.enabled !== false; // Explicitly disabled only if enabled:false
   }

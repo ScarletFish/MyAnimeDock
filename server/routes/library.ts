@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import * as crypto from 'crypto';
 import { jsonResp, readBody, serveImage } from '../lib/utils';
 import { saveScannedTree, DATA_DIR } from '../lib/config';
+import type { ServerState } from '../types';
 
 // Shared helper: resolve folder parsed for structural folders
 function resolveFolderParsed(anime: any) {
@@ -42,7 +43,7 @@ function resolveFolderParsed(anime: any) {
  * 为所有缺 anilistId 的已有库条目回填 AniList 元数据。
  * 每处理 5 部落盘一次，返回处理结果统计。
  */
-async function runAnilistBackfill(state: any) {
+async function runAnilistBackfill(state: ServerState) {
   const { data, config, db, logger } = state;
   const { syncAnilist, parallelMap } = require('../scrapers') as any;
   const bannerDir = path.join(DATA_DIR, 'banners');
@@ -76,7 +77,7 @@ async function runAnilistBackfill(state: any) {
   return { total: candidates.length, succeeded, failed, skipped };
 }
 
-export function handleGetLibrary(req: any, res: any, state: any) {
+export function handleGetLibrary(req: any, res: any, state: ServerState) {
   const { data, config, logger } = state;
   // Compute pinyin for each anime
   const pinyinModule = require('pinyin') as any;
@@ -102,7 +103,7 @@ export function handleGetLibrary(req: any, res: any, state: any) {
   jsonResp(res, 200, data.library.filter((a: any) => a.downloaded !== false));
 }
 
-export function handleGetAnimeDetail(req: any, res: any, state: any) {
+export function handleGetAnimeDetail(req: any, res: any, state: ServerState) {
   const { data, config, logger } = state;
   const id = decodeURIComponent(req.url.slice('/api/anime/'.length));
   const anime = data.library.find((a: any) => a.id === id);
@@ -128,16 +129,16 @@ export function handleGetAnimeDetail(req: any, res: any, state: any) {
     const { syncAnilistDetail } = require('../scrapers') as any;
     const bannerDir = path.join(DATA_DIR, 'banners');
     const coverDir = path.join(DATA_DIR, 'covers');
-    syncAnilistDetail(anime, config, bannerDir, coverDir).then(result => {
+    syncAnilistDetail(anime, config, bannerDir, coverDir).then((result: any) => {
       if (result) {
         const { db } = state;
         db.updateAnime(anime.id, { anilistBanner: anime.anilistBanner ?? null, anilistTitleEn: anime.anilistTitleEn ?? null });
       }
-    }).catch(e => logger.warn(`Detail lazy banner failed for ${id}: ${e.message}`));
+    }).catch((e: any) => logger.warn(`Detail lazy banner failed for ${id}: ${e.message}`));
   }
 }
 
-export function handleDeleteAnime(req: any, res: any, state: any) {
+export function handleDeleteAnime(req: any, res: any, state: ServerState) {
   const { data, db, logger } = state;
   const id = decodeURIComponent(req.url.slice('/api/anime/'.length));
   const idx = data.library.findIndex((a: any) => a.id === id);
@@ -147,7 +148,7 @@ export function handleDeleteAnime(req: any, res: any, state: any) {
     const myIdx = data.myList.findIndex((m: any) => m.animeId === id);
     if (myIdx !== -1) data.myList.splice(myIdx, 1);
   }
-  const scannedNode = data.scannedTree && data.scannedTree.find((n: any) => n.path === removed.folderPath);
+  const scannedNode: any = data.scannedTree && data.scannedTree.find((n: any) => n.path === removed.folderPath);
   if (scannedNode) {
     scannedNode.alreadyImported = false;
     scannedNode.bangumiMatched = false;
@@ -168,7 +169,7 @@ export function handleDeleteAnime(req: any, res: any, state: any) {
 
 // GET /api/anime/:id/sessions is in stats.js
 
-export function handleLibrarySyncStream(req: any, res: any, state: any) {
+export function handleLibrarySyncStream(req: any, res: any, state: ServerState) {
   const { data, config, db, logger, cancelledSyncSessions } = state;
   // OPTIONS for mmCanStream probe
   if (req.method === 'OPTIONS') {
@@ -343,7 +344,7 @@ export function handleLibrarySyncStream(req: any, res: any, state: any) {
   })();
 }
 
-export async function handleAnilistBackfill(req: any, res: any, state: any) {
+export async function handleAnilistBackfill(req: any, res: any, state: ServerState) {
   try {
     const result = await runAnilistBackfill(state);
     jsonResp(res, 200, result);

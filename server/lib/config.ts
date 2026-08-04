@@ -30,6 +30,13 @@ export interface ConfigShape {
   autoMarkWatched: boolean;
   uiScale: number;
   apiSources: { type: string; url: string; key: string }[];
+  // 运行时由 server.ts / routes 注入的字段（可选）
+  reduceMotion?: boolean;
+  bangumiAccessToken?: string;
+  bangumiClientId?: string;
+  bangumiClientSecret?: string;
+  bangumiLastSync?: string;
+  bangumiUsername?: string;
 }
 
 const DEFAULT_CONFIG: ConfigShape = {
@@ -87,7 +94,7 @@ function loadScannedTree(): unknown[] {
 async function saveScannedTree(tree: unknown[]): Promise<void> {
   try {
     await fs.promises.writeFile(SCANNED_TREE_PATH, JSON.stringify(tree, null, 2), 'utf-8');
-  } catch (e) {
+  } catch (e: any) {
     console.error(`[Config] saveScannedTree: ${e.message}`);
   }
 }

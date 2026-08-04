@@ -81,7 +81,7 @@ class MpvIpcConnection {
         this._client.on('data', (data: any) => {
             this._buffer += data.toString('utf-8');
             const lines = this._buffer.split('\n');
-            this._buffer = lines.pop();
+            this._buffer = lines.pop() || '';
             for (const line of lines) {
                 if (!line.trim()) continue;
                 try {
@@ -129,7 +129,7 @@ class MpvIpcConnection {
         }
         try {
             this._client.write(JSON.stringify(obj) + '\n');
-        } catch (e) {
+        } catch (e: any) {
             this._log.warn('send failed:', e.message);
         }
     }
@@ -230,7 +230,8 @@ class MpvIpcConnection {
     _dispatch(msg: any): void {
         // request_id 匹配 → 响应 pending call
         if (msg.request_id !== undefined && this._pending.has(msg.request_id)) {
-            const { resolve, timer } = this._pending.get(msg.request_id);
+            const pending = this._pending.get(msg.request_id)!;
+            const { resolve, timer } = pending;
             this._pending.delete(msg.request_id);
             clearTimeout(timer);
             resolve(msg);
@@ -238,7 +239,7 @@ class MpvIpcConnection {
         }
         // 否则作为事件派发
         if (this._eventHandler) {
-            try { this._eventHandler(msg); } catch (e) {
+            try { this._eventHandler(msg); } catch (e: any) {
                 this._log.warn('event handler threw:', e.message);
             }
         }

@@ -170,7 +170,7 @@ export async function searchBangumi(bangumi: any, keyword: string, config: Scrap
 
   try {
     const results = await bangumi.search(keyword, source);
-    const filtered = results.filter(r => r.type === 2);
+    const filtered = results.filter((r: any) => r.type === 2);
     logger.debug(`searchBangumi: "${keyword}" → Bangumi 返回 ${results.length} 条，filter type=2 → ${filtered.length} 条`);
     _bangumiSearchCache.set(keyword, { results: filtered, ts: Date.now() });
     _bangumiSearchFailLogged = false;
@@ -189,7 +189,7 @@ export async function searchBangumi(bangumi: any, keyword: string, config: Scrap
  */
 export async function searchViaAniList(registry: ScraperRegistry, bangumi: any, searchTerm: string, config: ScraperConfig): Promise<{ bangumiResults: any[]; anilistId: any }> {
   const anilist = registry.get('anilist');
-  if (!anilist || !anilist.enabled(config)) {
+  if (!anilist || !anilist.enabled?.(config)) {
     logger.debug(`searchViaAniList: "${searchTerm}" → AniList 不可用，直搜 Bangumi`);
     const fallbackResults = await searchBangumi(bangumi, searchTerm, config);
     return { bangumiResults: fallbackResults, anilistId: null };
@@ -246,7 +246,7 @@ export function pickBestBySimilarity(cleanTitle: string, results: any[]): { item
  */
 export async function searchBangumiBySeason(registry: ScraperRegistry, bangumi: any, baseTitle: string, season: number, config: ScraperConfig): Promise<{ bangumiResults: any[]; anilistId: any }> {
   const anilist = registry.get('anilist');
-  if (!anilist || !anilist.enabled(config)) {
+  if (!anilist || !anilist.enabled?.(config)) {
     logger.debug(`searchBangumiBySeason: "${baseTitle}" S${season} → AniList 不可用`);
     return { bangumiResults: [], anilistId: null };
   }
@@ -314,7 +314,7 @@ export async function searchBangumiBySeason(registry: ScraperRegistry, bangumi: 
  */
 export async function findSeasonByAnilistId(registry: ScraperRegistry, baseTitle: string, anilistId: any, config: ScraperConfig): Promise<number | null> {
   const anilist = registry.get('anilist');
-  if (!anilist || !anilist.enabled(config) || !baseTitle || !anilistId) return null;
+  if (!anilist || !anilist.enabled?.(config) || !baseTitle || !anilistId) return null;
   try {
     const source = config.apiSources?.find(s => s.type === 'anilist');
     const alResults = await anilist.search(baseTitle, source);
@@ -406,7 +406,7 @@ export async function matchSeason(registry: ScraperRegistry, keyword: string, fo
   logger.info(`matchSeason: pickBestBySimilarity → id=${best.id} name="${best.name_cn || best.name}" score=${matchResult.score.toFixed(3)}`);
 
   // 5. Get full detail
-  const detail = await bangumi.getSubjectDetail(best.id);
+  const detail = await bangumi.getSubjectDetail?.(best.id);
   if (!detail) {
     logger.info(`matchSeason: getSubjectDetail(${best.id}) 返回 null`);
     return null;
@@ -573,7 +573,7 @@ export async function syncAnilistDetail(anime: any, config: ScraperConfig, banne
   if (!anime || !anime.anilistId || anime.anilistId === -1) return null;
 
   const anilist = registry.get('anilist');
-  if (!anilist || !anilist.enabled(config)) return null;
+  if (!anilist || !anilist.enabled?.(config)) return null;
 
   const anilistId = anime.anilistId;
 
@@ -590,7 +590,7 @@ export async function syncAnilistDetail(anime: any, config: ScraperConfig, banne
     anime.anilistBanner = meta.bannerImage;
     // Download banner locally — on cache hit returns local path immediately
     try {
-      const localPath = await anilist.downloadBanner(meta.bannerImage, bannerDir, anilistId);
+      const localPath = await anilist.downloadBanner?.(meta.bannerImage, bannerDir, anilistId);
       if (localPath) anime.anilistBanner = localPath;
     } catch (_) {
       // Remote URL remains as fallback
@@ -619,7 +619,7 @@ export async function syncAnilist(anime: any, config: ScraperConfig, bannerDir: 
   }
 
   const anilist = registry.get('anilist');
-  if (!anilist || !anilist.enabled(config)) return null;
+  if (!anilist || !anilist.enabled?.(config)) return null;
   const source = config.apiSources?.find(s => s.type === 'anilist');
 
   const searchTerm = anime.bangumiTitleJp || anime.folderName || extractRomajiTitle(anime.infobox);
@@ -651,7 +651,7 @@ export async function syncAnilist(anime: any, config: ScraperConfig, bannerDir: 
     anime.anilistBanner = bestItem.bannerImage;
     if (bestItem.bannerImage.startsWith('http')) {
       try {
-        const localPath = await anilist.downloadBanner(bestItem.bannerImage, bannerDir, anilistId);
+        const localPath = await anilist.downloadBanner?.(bestItem.bannerImage, bannerDir, anilistId);
         if (localPath) anime.anilistBanner = localPath;
       } catch (_) {}
     }

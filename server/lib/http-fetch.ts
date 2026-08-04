@@ -81,7 +81,7 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeout:
   try {
     const fetcher: any = typeof fetch === 'function' ? fetch : nodeFetch;
     return await fetcher(url, { ...options, signal: controller.signal });
-  } catch (e) {
+  } catch (e: any) {
     if (e.name === 'AbortError') throw new Error('请求超时');
     if (e.code === 'ECONNREFUSED') throw new Error('无法连接到 API，请检查网络');
     throw e;

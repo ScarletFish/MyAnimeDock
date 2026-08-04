@@ -7,6 +7,7 @@ import path from 'path';
 import fs from 'fs';
 import { PROJECT_ROOT } from './lib/paths';
 import { Logger } from './logger';
+import type { AppData } from './types';
 
 // better-sqlite3 是原生模块：dev 模式直接 require；pkg 快照无法内嵌 .node，
 // 必须从 exe 旁的 sidecar-modules 运行时加载（动态 require + NODE_PATH，
@@ -266,7 +267,7 @@ async function ensureSchema() {
     }
 
     // 3. 对每个预定义表，检查并补充缺少的列
-    const tableDefs = INIT_SQL
+    const tableDefs: { name: string; columns: { name: string; def: string }[] }[] = INIT_SQL
       .filter(sql => sql.startsWith('CREATE TABLE IF NOT EXISTS'))
       .map(sql => {
         const m = sql.match(/CREATE TABLE IF NOT EXISTS "(\w+)"\s*\(([\s\S]+)\)/);
@@ -277,9 +278,9 @@ async function ensureSchema() {
         const columns = colDefs.map(s => {
           const cm = s.match(/^"(\w+)"/);
           return cm ? { name: cm[1], def: s } : null;
-        }).filter(Boolean);
+        }).filter((c): c is { name: string; def: string } => c !== null);
         return { name: tableName, columns };
-      }).filter(Boolean);
+      }).filter((t): t is { name: string; columns: { name: string; def: string }[] } => t !== null);
 
     for (const table of tableDefs) {
       // 仅处理存在于 sqlite_master 中的表（跳过 CREATE TABLE IF NOT EXISTS 已处理的）
@@ -444,7 +445,7 @@ function upsertMyListByAnimeId(d: any, animeId: any, data: any) {
 
 // 从 SQLite 加载全部数据，返回传统 JSON 格式。
 // 若 SQLite 不可用（首次运行/DB 不存在）返回 null，调用者应回退到 JSON 文件。
-async function loadData(): Promise<any> {
+async function loadData(): Promise<AppData | null> {
   try {
     ensureSchema();
     const d = getDb();

@@ -6,6 +6,7 @@ import { spawn } from 'child_process';
 import pinyinModule from 'pinyin';
 
 import { Logger } from './logger';
+import type { ServerState } from './types';
 const logger: Logger = require('./logger').child('[SERVER]');
 
 import BangumiPersonal = require('./scrapers/bangumi-personal');
@@ -299,7 +300,7 @@ const routeTable = [
 // ── HTTP 服务器 ──
 let server: any;
 
-function makeState() {
+function makeState(): ServerState {
   return {
     data, config, db, logger, activePlays, cancelledSyncSessions, thumbnailQueue,
     bangumiPersonal, bangumiSync, pendingNotifications,
@@ -362,7 +363,7 @@ async function init() {
   cleanupOldCache(DATA_DIR).then(total => {
     if (total > 0) logger.info(`Cleaned ${total} expired cache files (>14d)`);
   }).catch(e => logger.warn('Cache cleanup error:', e.message));
-  await db.ensureSchema().catch(e => logger.warn('Schema ensure skipped:', e.message));
+  await db.ensureSchema().catch((e: any) => logger.warn('Schema ensure skipped:', e.message));
 
   // Phase 2: Hydrate data
   data = (await db.loadData()) || { discovered: [], library: [], myList: [], playSessions: [] };
@@ -389,13 +390,13 @@ async function init() {
   if (!data.myList) data.myList = [];
   let myListDirty = false;
   for (const anime of data.library) {
-    if (!data.myList.find(m => m.animeId === anime.id)) {
+    if (!data.myList.find((m: any) => m.animeId === anime.id)) {
       data.myList.push({ animeId: anime.id, status: 'wish', rating: null, thoughts: '', notes: '' });
       myListDirty = true;
     }
   }
   if (myListDirty) {
-    db.saveMyList(data).catch(e => logger.warn('MyList migration save error:', e.message));
+    db.saveMyList(data).catch((e: any) => logger.warn('MyList migration save error:', e.message));
     logger.info(`Auto-created MyList entries for ${data.library.length} library items`);
   }
 
@@ -405,7 +406,7 @@ async function init() {
   // Phase 4: Start serving (try ports 3456→3460, fallback on EADDRINUSE)
   // BASE_PORT can be overridden via env (e.g. Vite dev on 3456 → backend on 3457)
   const PORT_RANGE = 5;
-  const BASE_PORT = parseInt(process.env.BASE_PORT, 10) || 3456;
+  const BASE_PORT = parseInt(process.env.BASE_PORT || '', 10) || 3456;
   let actualPort: any = null;
   for (let i = 0; i < PORT_RANGE; i++) {
     const candidate = BASE_PORT + i;

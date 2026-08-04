@@ -57,4 +57,4 @@ function createLogger(tag?: string): Logger {
   };
 }
 
-module.exports = createLogger(null);
+module.exports = createLogger();

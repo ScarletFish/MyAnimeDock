@@ -81,8 +81,8 @@ function preGenerateCovers(coverPath: string): void {
 // --- Image serving (with ffmpeg resize when ?w= param present) ---
 function serveImage(filePath: string, url: string, res: any): void {
   const params = new URL(url, 'http://localhost').searchParams;
-  const w = parseInt(params.get('w'));
-  const q = parseInt(params.get('q')) || 75;
+  const w = parseInt(params.get('w') ?? '');
+  const q = parseInt(params.get('q') ?? '') || 75;
   if (w && ffmpegPath && fs.existsSync(ffmpegPath) && fs.existsSync(filePath)) {
     const ext = path.extname(filePath) || '.jpg';
     const cacheDir = path.join(path.dirname(filePath), '.resized');

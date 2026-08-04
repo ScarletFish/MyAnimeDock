@@ -162,7 +162,7 @@ export function parseFolderName(name: string): ParsedFolder {
   if (yearMatch) result.year = parseInt(yearMatch[1]);
 
   // 8. Clean title: strip season markers, special suffix, preserve punctuation
-  let cleanTitle = result.title;
+  let cleanTitle = result.title || '';
   cleanTitle = cleanTitle.replace(/\s*S\d+\s*$/i, '').trim();
   cleanTitle = cleanTitle.replace(/\s*Season\s*\d+\s*/i, '').trim();
   cleanTitle = cleanTitle.replace(/第(\d+)季/g, '').trim();
@@ -170,7 +170,7 @@ export function parseFolderName(name: string): ParsedFolder {
   cleanTitle = cleanTitle.replace(/[~～]/g, '').trim();
   result.cleanTitle = cleanTitle;
   // Also strip S\d+ from result.title (not just cleanTitle), for cleaner display title
-  result.title = result.title.replace(/\s*S\d+\s*$/i, '').trim();
+  result.title = (result.title || '').replace(/\s*S\d+\s*$/i, '').trim() || null;
 
   // 9. Regex fallback for season (raw base, when anitomy missed)
   if (!result.season) {
@@ -193,7 +193,7 @@ export function parseFolderName(name: string): ParsedFolder {
 
   // 12. Extract special suffix (~...~) for OVA/special detection (retain in title for display)
   result.specialSuffix = null;
-  const suffixMatch = result.title.match(/([~～][^~～]*[~～])\s*$/);
+  const suffixMatch = (result.title || '').match(/([~～][^~～]*[~～])\s*$/);
   if (suffixMatch) result.specialSuffix = suffixMatch[1].trim();
 
   // 13. Trailing number 2-20 → season (only if not volume)
@@ -227,7 +227,7 @@ function isSeasonOnly(title: string): boolean {
  * Used when the leaf folder itself has no [bgmN] identifier.
  */
 function propagateBgmIdFromChain(parentName: string | null, chain: string[] | null): number | null {
-  const candidates = [parentName, ...(chain || [])].filter(Boolean);
+  const candidates = [parentName, ...(chain || [])].filter((x): x is string => !!x);
   for (const c of candidates) {
     const id = extractBgmId(c);
     if (id) return id;
@@ -387,7 +387,7 @@ async function walkDirs(dirPath: string, chain: string[], collect?: (l: LeafNode
  * Recursively scan a directory's sub-directories for anime entries (tree).
  */
 async function scanDir(dirPath: string, chain: string[]): Promise<ScanNode[]> {
-  return walkDirs(dirPath, chain || [], null);
+  return walkDirs(dirPath, chain || [], undefined);
 }
 
 /**

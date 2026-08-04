@@ -1,7 +1,8 @@
 // server/routes/stats.ts — 统计面板、观看活动、会话数据
 import { jsonResp } from '../lib/utils';
+import type { ServerState } from '../types';
 
-export function handleStats(req: any, res: any, state: any): void {
+export function handleStats(req: any, res: any, state: ServerState): void {
   const { data } = state;
   const lib = data.library || [];
   const watching = lib.filter((a: any) => a.myListStatus === 'watching').length;
@@ -23,7 +24,7 @@ export function handleStats(req: any, res: any, state: any): void {
   jsonResp(res, 200, { watching, completed, total, totalEpWatched, totalWatchSeconds, totalFileSize, totalFileCount });
 }
 
-export function handleStatsTags(req: any, res: any, state: any): void {
+export function handleStatsTags(req: any, res: any, state: ServerState): void {
   const { data } = state;
   const isNoise = (tag: any, platform: any): boolean => {
     if (!tag) return true;
@@ -52,7 +53,7 @@ export function handleStatsTags(req: any, res: any, state: any): void {
   jsonResp(res, 200, { tags: tagCount });
 }
 
-export function handleStatsSeasons(req: any, res: any, state: any): void {
+export function handleStatsSeasons(req: any, res: any, state: ServerState): void {
   const { data } = state;
   const lib = data.library || [];
   const seasonCount: Record<string, number> = { spring: 0, summer: 0, autumn: 0, winter: 0, unknown: 0 };
@@ -71,7 +72,7 @@ export function handleStatsSeasons(req: any, res: any, state: any): void {
   jsonResp(res, 200, { seasons: seasonCount });
 }
 
-export function handleStatsRatings(req: any, res: any, state: any): void {
+export function handleStatsRatings(req: any, res: any, state: ServerState): void {
   const { data } = state;
   const lib = data.library || [];
   const bins = [0, 0, 0, 0, 0, 0, 0];
@@ -89,7 +90,7 @@ export function handleStatsRatings(req: any, res: any, state: any): void {
   jsonResp(res, 200, { bins, labels: ['0-2', '2-4', '4-6', '6-7', '7-8', '8-9', '9-10'] });
 }
 
-export function handleStatsWatchActivity(req: any, res: any, state: any): void {
+export function handleStatsWatchActivity(req: any, res: any, state: ServerState): void {
   const { data } = state;
   const sessions = data.playSessions || [];
   const months: Array<{ ym: string; label: string; minutes: number }> = [];
@@ -113,7 +114,7 @@ export function handleStatsWatchActivity(req: any, res: any, state: any): void {
   jsonResp(res, 200, { months: months.map(m => ({ label: m.label, minutes: m.minutes })) });
 }
 
-export function handleAnimeSessions(req: any, res: any, state: any): void {
+export function handleAnimeSessions(req: any, res: any, state: ServerState): void {
   const { data } = state;
   const id = decodeURIComponent(req.url.slice('/api/anime/'.length, -'/sessions'.length));
   const sessions = data.playSessions.filter((s: any) => s.animeId === id && s.endTime);

@@ -22,7 +22,7 @@ function nodeFetch(urlStr: string, options: any = {}, timeoutMs: number = 15000)
       } : {}),
       timeout: timeoutMs,
     }, (res) => {
-      const chunks = [];
+      const chunks: Buffer[] = [];
       res.on('data', (chunk) => chunks.push(chunk));
       res.on('end', () => {
         const buf = Buffer.concat(chunks);

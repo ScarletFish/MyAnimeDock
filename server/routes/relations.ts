@@ -34,15 +34,16 @@ export = {
     const match = req.url.match(/^\/api\/anime\/(.+)\/relations$/);
     if (!match) { jsonResp(res, 400, { error: 'Invalid URL' }); return; }
     const id = decodeURIComponent(match[1]);
-    const anime = data.library.find(a => a.id === id);
+    const anime = data.library.find((a: any) => a.id === id);
     if (!anime || !anime.anilistId) { jsonResp(res, 200, { relations: [] }); return; }
 
     try {
       const anilist = registry.get('anilist');
-      const detail = await cachedFetch('detail:' + anime.anilistId, () => anilist.getDetail(anime.anilistId));
-      const relations = (detail?.relations?.edges || []).map(e => {
+      if (!anilist) { jsonResp(res, 200, { relations: [] }); return; }
+      const detail = await cachedFetch('detail:' + anime.anilistId, () => anilist.getDetail?.(anime.anilistId) ?? Promise.resolve(undefined));
+      const relations = (detail?.relations?.edges || []).map((e: any) => {
         const node = e.node;
-        const local = data.library.find(a => a.anilistId === node.id);
+        const local = data.library.find((a: any) => a.anilistId === node.id);
         return {
           relationType: e.relationType,
           id: node.id,
@@ -71,14 +72,15 @@ export = {
     const match = req.url.match(/^\/api\/anime\/(.+)\/recommendations$/);
     if (!match) { jsonResp(res, 400, { error: 'Invalid URL' }); return; }
     const id = decodeURIComponent(match[1]);
-    const anime = data.library.find(a => a.id === id);
+    const anime = data.library.find((a: any) => a.id === id);
     if (!anime || !anime.anilistId) { jsonResp(res, 200, { recommendations: [] }); return; }
 
     try {
       const anilist = registry.get('anilist');
-      const recs = await cachedFetch('rec:' + anime.anilistId, () => anilist.getRecommendations(anime.anilistId));
-      const recommendations = recs.map(r => {
-        const local = data.library.find(a => a.anilistId === r.id);
+      if (!anilist) { jsonResp(res, 200, { recommendations: [] }); return; }
+      const recs = await cachedFetch('rec:' + anime.anilistId, () => anilist.getRecommendations?.(anime.anilistId) ?? Promise.resolve(undefined));
+      const recommendations = recs.map((r: any) => {
+        const local = data.library.find((a: any) => a.anilistId === r.id);
         return {
           rating: r.rating || 0,
           id: r.id,

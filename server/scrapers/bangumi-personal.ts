@@ -26,7 +26,7 @@ async function bgmFetch(url: string, options: any = {}, timeoutMs: number = TIME
   try {
     const fetcher = typeof fetch === 'function' ? fetch : nodeFetch;
     return await fetcher(url, { ...options, signal: controller.signal });
-  } catch (e) {
+  } catch (e: any) {
     if (e.name === 'AbortError') throw new Error('Bangumi API 请求超时');
     throw e;
   } finally {

@@ -21,7 +21,7 @@ class BangumiScraper {
    */
 enabled(config: any): boolean {
     if (config?.apiSources) {
-      return !!config.apiSources.find(s => s.type === 'bangumi');
+      return !!config.apiSources.find((s: any) => s.type === 'bangumi');
     }
     return config?.scrapers?.bangumi?.enabled !== false;
   }
@@ -63,7 +63,7 @@ async search(keyword: string, source: any): Promise<any[]> {
       body: JSON.stringify({ keyword }),
     });
     const data = await res.json();
-    return (data.data || []).filter(r => r.type === 2);
+    return (data.data || []).filter((r: any) => r.type === 2);
   }
 
   async getSubjectDetail(id: any): Promise<any> {
@@ -137,11 +137,11 @@ async search(keyword: string, source: any): Promise<any[]> {
       eps: detail.eps || null,
       totalEpisodes: detail.total_episodes || null,
       platform: detail.platform || null,
-      tags: (detail.tags || []).map(t => typeof t === 'string' ? t : (t.name || '')),
+      tags: (detail.tags || []).map((t: any) => typeof t === 'string' ? t : (t.name || '')),
       infobox: detail.infobox || [],
       collection: detail.collection || null,
       characters: (() => {
-        const ROLE_ORDER = { '主角': 0, '配角': 1, '客串': 2 };
+        const ROLE_ORDER: Record<string, number> = { '主角': 0, '配角': 1, '客串': 2 };
         const SKIP_NAMES = [
           'アナウンス', '旁白', '解说', 'ナレーター', 'Narrator', '播报员', '播音员',
           'モブキャラクター', '路人甲', '群演', 'extras', 'Mob',
@@ -153,7 +153,7 @@ async search(keyword: string, source: any): Promise<any[]> {
             nameCn: c.name_cn || '',
         image: c.images?.small || c.images?.grid || null,
         roleName: c.relation || c.role_name || '',
-        actors: (c.actors || []).map(a => ({
+        actors: (c.actors || []).map((a: any) => ({
           id: a.id,
           name: a.name,
           nameCn: a.name_cn || '',

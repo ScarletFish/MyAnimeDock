@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
 import { spawn } from 'child_process';
-import { jsonResp, readBody, serveImage, getFfmpegPath } from '../lib/utils';
+import { jsonResp, readBody, serveImage, getFfmpegPath, THUMB_HASH_SEED } from '../lib/utils';
 import { DATA_DIR, MAX_PLAY_SESSIONS } from '../lib/config';
 import { Logger } from '../logger';
 import type { ServerState } from '../types';
@@ -42,14 +42,18 @@ function _probeDuration(videoPath: string, cb: (dur: number | null) => void) {
   setTimeout(() => { if (!done) { done = true; ff.kill(); cb(null); } }, 10000);
 }
 
-function _generateThumb(videoPath: string, time: number, cacheKey: string, req: any, res: any) {
+/** 缩略图缓存文件路径 — 与 thumbnail-queue.ts 共享同一缓存键（THUMB_HASH_SEED） */
+function _thumbPath(videoPath: string, cacheKey: string): string {
   const hash = crypto.createHash('md5').update(videoPath + cacheKey).digest('hex');
-  const thumbDir = path.join(DATA_DIR, 'thumbs');
-  const thumbPath = path.join(thumbDir, hash + '.jpg');
+  return path.join(DATA_DIR, 'thumbs', hash + '.jpg');
+}
+
+function _generateThumb(videoPath: string, time: number, cacheKey: string, req: any, res: any) {
+  const thumbPath = _thumbPath(videoPath, cacheKey);
   if (fs.existsSync(thumbPath)) { serveImage(thumbPath, req.url, res); return; }
   let responded = false;
   try {
-    if (!fs.existsSync(thumbDir)) fs.mkdirSync(thumbDir, { recursive: true });
+    if (!fs.existsSync(path.dirname(thumbPath))) fs.mkdirSync(path.dirname(thumbPath), { recursive: true });
     const ffmpegPath = getFfmpegPath();
     if (!ffmpegPath) { jsonResp(res, 500, { error: 'ffmpeg not available' }); return; }
     const ff = spawn(ffmpegPath, [
@@ -246,9 +250,12 @@ function handleThumbnail(req: any, res: any, state: State) {
   if (!videoPath || !fs.existsSync(videoPath)) { jsonResp(res, 404, { error: 'File not found' }); return; }
 
   if (timeRaw === 'mid') {
+    // 与缩略图队列共享缓存键：命中直接返回，避免重复跑 ffmpeg + 时长探测
+    const cached = _thumbPath(videoPath, THUMB_HASH_SEED);
+    if (fs.existsSync(cached)) { serveImage(cached, req.url, res); return; }
     _probeDuration(videoPath, (dur) => {
       const time = dur ? Math.floor(dur / 2) : 60;
-      _generateThumb(videoPath, time, 'mid', req, res);
+      _generateThumb(videoPath, time, THUMB_HASH_SEED, req, res);
     });
   } else {
     const time = parseFloat(timeRaw ?? '') || 60;

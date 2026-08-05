@@ -4,13 +4,10 @@ import { spawn } from 'child_process';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import { getFfmpegPath } from './lib/utils';
+import { getFfmpegPath, THUMB_HASH_SEED } from './lib/utils';
 import { DATA_DIR } from './lib/config';
 import { Logger } from './logger';
 const logger: Logger = require('./logger').child('[THUMBQ]');
-
-/** Thumbnail cache hash seed — change to invalidate all cached thumbnails */
-const THUMB_HASH_SEED = 'v1';
 
 /** Remove a 0-byte thumbnail file so it gets regenerated next time */
 function _cleanupZeroByte(thumbPath: string): void {

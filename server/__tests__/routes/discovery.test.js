@@ -250,7 +250,7 @@ describe('discovery route handlers', () => {
     let origScanner;
 
     before(() => {
-      const scannerPath = require.resolve('../../scanner');
+      const scannerPath = require.resolve('../../dist/scanner');
       origScanner = require.cache[scannerPath];
       require.cache[scannerPath] = {
         id: scannerPath, filename: scannerPath, loaded: true,
@@ -265,7 +265,7 @@ describe('discovery route handlers', () => {
     });
 
     after(() => {
-      const scannerPath = require.resolve('../../scanner');
+      const scannerPath = require.resolve('../../dist/scanner');
       require.cache[scannerPath] = origScanner;
     });
 
@@ -332,7 +332,9 @@ describe('discovery route handlers', () => {
       const res = mockRes();
       await disc.handleImport(req, res, state);
       assert.strictEqual(res._status, 200);
-      assert.strictEqual(state.data.library[0].id, 'Anime Two-Season 2');
+      // 主键统一 UUID（crypto.randomUUID()），不再使用 "Title-Season N" slug 形式
+      assert.match(state.data.library[0].id, /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+      assert.strictEqual(state.data.library[0].title, 'Anime Two');
       assert.strictEqual(state.data.library[0].season, 2);
     });
 

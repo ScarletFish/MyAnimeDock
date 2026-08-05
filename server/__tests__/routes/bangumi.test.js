@@ -175,7 +175,7 @@ describe('bangumi route handlers', () => {
     let origScrapersExports;
 
     before(() => {
-      const sp = require.resolve('../../scrapers');
+      const sp = require.resolve('../../dist/scrapers');
       origScrapersExports = require.cache[sp]?.exports;
       if (require.cache[sp]) {
         require.cache[sp].exports = {
@@ -192,7 +192,7 @@ describe('bangumi route handlers', () => {
     });
 
     after(() => {
-      const sp = require.resolve('../../scrapers');
+      const sp = require.resolve('../../dist/scrapers');
       if (require.cache[sp]) {
         require.cache[sp].exports = origScrapersExports;
       }
@@ -291,7 +291,7 @@ describe('bangumi route handlers', () => {
     let origScrapers, origScanner;
 
     before(() => {
-      const sp = require.resolve('../../scrapers');
+      const sp = require.resolve('../../dist/scrapers');
       origScrapers = require.cache[sp]?.exports;
       if (require.cache[sp]) {
         require.cache[sp].exports = {
@@ -304,7 +304,7 @@ describe('bangumi route handlers', () => {
           matchSeason: async () => null,
         };
       }
-      const scp = require.resolve('../../scanner');
+      const scp = require.resolve('../../dist/scanner');
       origScanner = require.cache[scp]?.exports;
       if (require.cache[scp]) {
         require.cache[scp].exports = {
@@ -315,9 +315,9 @@ describe('bangumi route handlers', () => {
     });
 
     after(() => {
-      const sp = require.resolve('../../scrapers');
+      const sp = require.resolve('../../dist/scrapers');
       if (require.cache[sp]) require.cache[sp].exports = origScrapers;
-      const scp = require.resolve('../../scanner');
+      const scp = require.resolve('../../dist/scanner');
       if (require.cache[scp]) require.cache[scp].exports = origScanner;
     });
 
@@ -346,7 +346,7 @@ describe('bangumi route handlers', () => {
       };
 
       // Override scrapers mock's fetchMetadata to return data
-      const sp = require.resolve('../../scrapers');
+      const sp = require.resolve('../../dist/scrapers');
       const origFetchMeta = require.cache[sp].exports.registry.fetchMetadata;
       require.cache[sp].exports.registry.fetchMetadata = async () => ({
         bangumiId: 12345,
@@ -356,7 +356,7 @@ describe('bangumi route handlers', () => {
       });
 
       // Mock saveScannedTree on config module
-      const cp = require.resolve('../../lib/config');
+      const cp = require.resolve('../../dist/lib/config');
       let saveScannedTreeCalled = false;
       const origSaveTree = require.cache[cp].exports.saveScannedTree;
       require.cache[cp].exports.saveScannedTree = async () => { saveScannedTreeCalled = true; };

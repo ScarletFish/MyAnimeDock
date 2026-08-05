@@ -42,6 +42,12 @@ function getFfmpegPath(): string {
   return ffmpegPath;
 }
 
+// --- Thumbnail cache key seed ---
+// 缩略图队列（thumbnail-queue.ts）与按需端点（routes/playback.ts time=mid）
+// 共用同一缓存键：md5(filePath + THUMB_HASH_SEED).jpg。
+// 修改此值会使全部缩略图缓存失效并重新生成。
+const THUMB_HASH_SEED = 'v1';
+
 // --- Cover pre-generation sizes ---
 const COVER_PRE_SIZES = [
   { w: 400, q: 75 },
@@ -256,6 +262,7 @@ function createPersistentCache<T>(ttlMs: number, filePath?: string): { get(): T 
 
 export {
   mime,
+  THUMB_HASH_SEED,
   COVER_PRE_SIZES,
   setFfmpegPath, getFfmpegPath,
   preGenerateCovers,

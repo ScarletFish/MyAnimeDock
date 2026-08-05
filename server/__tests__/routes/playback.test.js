@@ -7,8 +7,12 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const crypto = require('crypto');
 const { mockReq, mockRes, mockState } = require('../helpers/mock-http');
 const playback = require('../../dist/routes/playback');
+const ThumbnailQueue = require('../../dist/thumbnail-queue');
+const { THUMB_HASH_SEED } = require('../../dist/lib/utils');
+const { DATA_DIR } = require('../../dist/lib/config');
 
 describe('playback route handlers', () => {
   describe('handleMpvStatus', () => {
@@ -188,7 +192,7 @@ describe('playback route handlers', () => {
         }
         stop() {}
       }
-      const regPath = require.resolve('../../players/registry');
+      const regPath = require.resolve('../../dist/players/registry');
       origRegistry = require.cache[regPath]?.exports;
       require.cache[regPath] = {
         id: regPath, filename: regPath, loaded: true,
@@ -207,7 +211,7 @@ describe('playback route handlers', () => {
     });
 
     after(() => {
-      const regPath = require.resolve('../../players/registry');
+      const regPath = require.resolve('../../dist/players/registry');
       require.cache[regPath] = origRegistry;
       try { fs.unlinkSync(tmpFile); } catch (_) {}
     });
@@ -288,9 +292,10 @@ describe('playback route handlers', () => {
       const req = mockReq({ url: '/api/thumbnail?path=' + encodeURIComponent(tmpFile) + '&time=60' });
       const res = mockRes();
       playback.handleThumbnail(req, res, state);
-      // The handler calls _generateThumb which spawns ffmpeg.
-      // Without ffmpeg in PATH, spawn emits 'error' → 500.
-      await new Promise(r => setTimeout(r, 100));
+      // 机器上可能存在真实 ffmpeg（scripts/ffmpeg-upx.exe），对 dummy 文件解码失败退出较慢，
+      // 轮询等待响应写入而非固定延时。
+      const deadline = Date.now() + 3000;
+      while (res._status === null && Date.now() < deadline) await new Promise(r => setTimeout(r, 50));
       assert.strictEqual(res._status, 500);
       assert.ok(res._body?.error, 'should have error message: ' + JSON.stringify(res._body));
     });
@@ -301,9 +306,47 @@ describe('playback route handlers', () => {
       const res = mockRes();
       playback.handleThumbnail(req, res, state);
       // mid path: _probeDuration spawns ffmpeg -i → error → cb(null) → _generateThumb spawns again → error → 500
-      await new Promise(r => setTimeout(r, 200));
+      const deadline = Date.now() + 3000;
+      while (res._status === null && Date.now() < deadline) await new Promise(r => setTimeout(r, 50));
       assert.strictEqual(res._status, 500);
       assert.ok(res._body?.error, 'should have error message: ' + JSON.stringify(res._body));
+    });
+
+    it('serves cached mid thumbnail from the shared queue key WITHOUT ffmpeg', async () => {
+      // 队列预生成键 = md5(path + THUMB_HASH_SEED)，端点 time=mid 必须命中同一文件。
+      // 无 ffmpeg 环境下任何缓存 miss 都会 500，因此 200 + 原字节返回即证明走了缓存。
+      const hash = crypto.createHash('md5').update(tmpFile + THUMB_HASH_SEED).digest('hex');
+      const thumbPath = path.join(DATA_DIR, 'thumbs', hash + '.jpg');
+      const dummy = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00]);
+      fs.mkdirSync(path.dirname(thumbPath), { recursive: true });
+      fs.writeFileSync(thumbPath, dummy);
+      try {
+        const state = mockState();
+        const req = mockReq({ url: '/api/thumbnail?path=' + encodeURIComponent(tmpFile) + '&time=mid' });
+        const rawRes = { _status: null, _body: null, writeHead(s) { this._status = s; }, end(b) { this._body = b; } };
+        playback.handleThumbnail(req, rawRes, state);
+        await new Promise(r => setTimeout(r, 50));
+        assert.strictEqual(rawRes._status, 200);
+        assert.ok(Buffer.isBuffer(rawRes._body), 'body should be raw bytes');
+        assert.strictEqual(Buffer.compare(rawRes._body, dummy), 0, 'should serve exact cached file bytes');
+      } finally {
+        try { fs.unlinkSync(thumbPath); } catch (_) {}
+      }
+    });
+
+    it('queue enqueue dedupes episodes already cached under the shared key', () => {
+      const hash = crypto.createHash('md5').update(tmpFile + THUMB_HASH_SEED).digest('hex');
+      const thumbPath = path.join(DATA_DIR, 'thumbs', hash + '.jpg');
+      fs.mkdirSync(path.dirname(thumbPath), { recursive: true });
+      fs.writeFileSync(thumbPath, 'x');
+      try {
+        const q = new ThumbnailQueue(new Map());
+        q.enqueue({ id: 'a1', title: 'T', episodes: [{ filePath: tmpFile, number: 1 }] });
+        assert.strictEqual(q.length, 0, 'queue should skip episodes whose shared-key thumb already exists');
+        q.clear();
+      } finally {
+        try { fs.unlinkSync(thumbPath); } catch (_) {}
+      }
     });
   });
 });

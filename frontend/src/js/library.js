@@ -288,7 +288,10 @@ function renderContinueSection(data, container) {
             ? Math.min(Math.round(ep.progress), ep.duration - 10)
             : Math.round(ep.duration * 0.25);
           if (thumbTime <= 0) thumbTime = 60;
-          thumbUrl = '/api/thumbnail?path=' + encodeURIComponent(ep.filePath) + '&time=' + thumbTime;
+          // 未过半时 25% 位置与缩略图队列生成的通用缩略图一致，用 time=mid
+          // 走共享缓存键，避免同一张图按数字 key 重复跑 ffmpeg
+          thumbUrl = '/api/thumbnail?path=' + encodeURIComponent(ep.filePath)
+            + (ep.progress > ep.duration * 0.5 ? '&time=' + thumbTime : '&time=mid');
         } else {
           // 未播放过的下一集：用中间缩略图
           thumbUrl = '/api/thumbnail?path=' + encodeURIComponent(ep.filePath) + '&time=mid';

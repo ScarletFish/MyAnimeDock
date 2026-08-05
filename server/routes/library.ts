@@ -80,12 +80,11 @@ async function runAnilistBackfill(state: ServerState) {
 export function handleGetLibrary(req: any, res: any, state: ServerState) {
   const { data, config, logger } = state;
   // Compute pinyin for each anime
-  const pinyinModule = require('pinyin') as any;
-  const pinyinFn = pinyinModule.pinyin || pinyinModule.default || pinyinModule;
+  const { pinyin } = require('pinyin-pro');
   data.library.forEach((a: any) => {
     const name = a.bangumiTitle || a.title || '';
     try {
-      a.pinyinTitle = pinyinFn(name).map((p: string[]) => (p[0] || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')).join('');
+      a.pinyinTitle = pinyin(name, { toneType: 'none', type: 'array', nonZh: 'consecutive' }).join('');
     } catch (_) {
       a.pinyinTitle = '';
     }

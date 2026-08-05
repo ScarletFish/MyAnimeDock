@@ -26,6 +26,6 @@
   "dependencies": {
     "anitomy": "^0.0.35",
     "better-sqlite3": "^12.6.0",
-    "pinyin": "^4.0.0"
+    "pinyin-pro": "^3.28.2"
   }
 }

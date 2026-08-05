@@ -3,7 +3,6 @@ import * as http from 'http';
 import * as fs from 'fs';
 import * as path from 'path';
 import { spawn } from 'child_process';
-import pinyinModule from 'pinyin';
 
 import { Logger } from './logger';
 import type { ServerState } from './types';
@@ -79,8 +78,6 @@ try {
 }
 bootLog('Loading scanner...');
 const { scanMediaDirFlat, extractBgmId, isExtraVideo, parseFolderName } = require('./scanner');
-bootLog('Loading pinyin...');
-const pinyinFn: any = (pinyinModule as any).pinyin || (pinyinModule as any).default || pinyinModule;
 bootLog('All modules loaded OK');
 
 // ── 全局错误处理 ──

@@ -256,7 +256,7 @@ createFilterBar({ container, options, initial, onChange });
 
 - 前端搜索库列表（不调 API）
 - 匹配字段：`title` / `bangumiTitle` / `pinyinTitle`
-- `pinyinTitle` 由 server.ts 返回（去声调）
+- `pinyinTitle` 由后端 library 路由计算（pinyin-pro，去声调）
 
 ## CSS 缩放标准
 

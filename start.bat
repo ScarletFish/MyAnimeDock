@@ -1,6 +1,30 @@
 @echo off
+setlocal enabledelayedexpansion
 title MyAnimeDock
 cd /d "%~dp0"
+
+:CHECK_PORTS
+echo Checking for leftover dev processes (ports 3455-3458)...
+set "STALE_PIDS="
+for %%P in (3455 3456 3457 3458) do (
+    for /f "tokens=5" %%p in ('netstat -ano ^| findstr "LISTENING" ^| findstr /C:":%%P "') do (
+        echo !STALE_PIDS! | findstr /c:" %%p " >nul || set "STALE_PIDS=!STALE_PIDS! %%p"
+    )
+)
+if defined STALE_PIDS (
+    echo.
+    echo WARNING: Ports 3455-3458 are in use by PIDs:!STALE_PIDS!
+    echo These are likely leftover dev processes from a previous session.
+    set /p KILL_STALE="Kill them now to free the ports? (Y/N): "
+    if /i "!KILL_STALE!"=="Y" (
+        for %%p in (!STALE_PIDS!) do taskkill /PID %%p /F >nul 2>&1
+        echo Cleaned. Ports freed.
+    ) else (
+        echo Leaving them as-is. Ports may conflict on startup.
+    )
+    echo.
+)
+set "STALE_PIDS="
 
 :MENU
 cls

@@ -30,7 +30,7 @@ MyAnimeDocker/
 ```
 server/
 ├── server.ts                  # HTTP 入口：注册路由 + 中间件
-├── db.ts                      # better-sqlite3 原生 SQL 封装（ensureSchema + MigrationLog 版本化迁移器）
+├── db.ts                      # better-sqlite3 原生 SQL 封装（ensureSchema 幂等建表/补列）
 ├── scanner.ts                 # 媒体目录扫描 + 文件夹名解析
 ├── mpv-ipc.ts                 # mpv IPC 播放进度追踪
 ├── thumbnail-queue.ts         # ffmpeg 缩略图生成队列
@@ -209,7 +209,7 @@ data/
 └── anime.db                   # SQLite 数据库（better-sqlite3 读写；dev 模式：<项目根>/data/anime.db）
 ```
 
-> schema 与迁移不由此目录管理：表结构真源在 `server/db.ts`（INIT_SQL + `ensureSchema()` 版本化迁移器，写 MigrationLog 表）。`npm run db:migrate` 触发迁移。
+> schema 不由此目录管理：表结构真源在 `server/db.ts`（INIT_SQL + `ensureSchema()` 幂等建表/补列，无版本化迁移历史）。`npm run db:migrate` 触发 schema 同步。
 
 ---
 
@@ -263,7 +263,7 @@ docs/
 | 前端检查脚本 | `scripts/check-frontend.js`（`npm run check:frontend` 一键检查+构建） |
 | Rust 入口 | `src-tauri/src/main.rs` |
 | Tauri 配置 | `src-tauri/tauri.conf.json` |
-| DB schema 与迁移 | `server/db.ts`（`ensureSchema` + MigrationLog，`npm run db:migrate`） |
+| DB schema | `server/db.ts`（`ensureSchema` 幂等建表/补列，`npm run db:migrate`） |
 | 后端测试 | `server/__tests__/` |
 | 路由测试 | `server/__tests__/routes/*.test.js` (8 个) |
 | 配置文件 | `server/config.json` |

@@ -7,7 +7,7 @@
 - API 响应字段改了就改——**不保留旧字段**，不加 deprecated 过渡期，不做向后兼容
 - 前端和后端一起改，一起验证
 - 旧代码/旧字段/旧路由 → 直接删。留着的死代码是未来的 bug 源
-- 唯一的"兼容"场景：SQLite 数据库 schema 迁移（通过 db.js 版本化迁移器，只加字段不改现有数据）
+- 唯一的"兼容"场景：SQLite 数据库 schema 同步（`ensureSchema()` 幂等建表/补列，只加字段不改现有数据）
 
 ## 架构概要
 
@@ -120,7 +120,7 @@ db.loadData() → 读 SQLite 初始化
 ### better-sqlite3 注意事项
 
 - `server/db.ts` 用 better-sqlite3 原生 SQL，单例 `Database`（PRAGMA `foreign_keys=ON` / WAL / busy_timeout）
-- schema 变更：改 `db.ts` 的 INIT_SQL + 迁移，`npm run db:migrate` 触发 `ensureSchema()` 版本化迁移（写 MigrationLog 表，v2_merge_wishlist、v3_uuid_anime_ids 已在案）
+- schema 变更：改 `db.ts` 的 INIT_SQL，`npm run db:migrate` 触发 `ensureSchema()`（幂等建表 + ALTER 补列，无版本化迁移历史）
 - **布尔陷阱**：SQLite 布尔存 0/1，读回后需 `!!` 强转（downloaded/watched），否则透传给前端会挂 `if (a.downloaded)` 和 `watched === true` 断言
 - **undefined 字段陷阱**：动态 SET 前必须过滤 `undefined` 键，否则 `SET x = undefined` 直接报错（ORM 会忽略 undefined，原生 SQL 层不会）
 - DB 路径：dev=`<项目根>/data/anime.db`，pkg=`%APPDATA%/MyAnimeDock/anime.db`（见 `db.ts` DB_PATH）

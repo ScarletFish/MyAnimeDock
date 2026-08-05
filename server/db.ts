@@ -5,7 +5,6 @@
 
 import path from 'path';
 import fs from 'fs';
-import crypto from 'crypto';
 import { PROJECT_ROOT } from './lib/paths';
 import { Logger } from './logger';
 import type { AppData } from './types';
@@ -115,8 +114,6 @@ const INIT_SQL = [
   `CREATE INDEX IF NOT EXISTS "MyList_status_idx" ON "MyList"("status")`,
   `CREATE TABLE IF NOT EXISTS "ScannedTree" ("id" TEXT NOT NULL PRIMARY KEY DEFAULT 'current', "data" TEXT NOT NULL, "updatedAt" DATETIME NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS "Config" ("id" TEXT NOT NULL PRIMARY KEY DEFAULT 'singleton', "data" TEXT NOT NULL, "updatedAt" DATETIME NOT NULL)`,
-  `CREATE TABLE IF NOT EXISTS "MigrationLog" ("id" TEXT NOT NULL PRIMARY KEY, "version" TEXT NOT NULL, "appliedAt" DATETIME NOT NULL DEFAULT (unixepoch() * 1000), "description" TEXT)`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS "MigrationLog_version_key" ON "MigrationLog"("version")`,
 ];
 
 // ─── 单例数据库连接 ───
@@ -133,148 +130,10 @@ function getDb(): any {
   return db;
 }
 
-// ─── 版本化迁移函数表 ───
-// "schema sync"（ensureSchema 的 CREATE TABLE IF NOT EXISTS + ALTER 补列循环）是基线，
-// 幂等且已被测试覆盖，不在此表登记。此表仅登记需显式数据/结构变更的版本。
-// 每个版本 `up(db)` 内自行完成变更；MigrationLog 记录已应用版本，重复启动天然跳过。
-// 注意：`up` 中禁用 VACUUM（better-sqlite3 不允许在事务内 VACUUM；此处也不包事务）。
-const MIGRATIONS: any[] = [
-  {
-    version: 'v2_merge_wishlist',
-    description: 'Merge Wishlist into MyList — nullable animeId + bangumiId fields',
-    up(d: any) {
-      // 检查旧表是否仍有 NOT NULL 约束
-      const colInfo = d.prepare(`SELECT name, "notnull" FROM pragma_table_info('MyList')`).all();
-      const animeIdCol = colInfo.find((c: any) => c.name === 'animeId');
-      if (animeIdCol && animeIdCol.notnull === 1) {
-        logger.info('[Migration v2] Merging Wishlist into MyList — recreating table...');
-        d.exec(`PRAGMA foreign_keys=OFF`);
-
-        // 删除旧索引
-        d.exec(`DROP INDEX IF EXISTS "MyList_animeId_key"`);
-        d.exec(`DROP INDEX IF EXISTS "MyList_animeId_idx"`);
-        d.exec(`DROP INDEX IF EXISTS "MyList_status_idx"`);
-
-        // 创建新表（animeId 可空，含 bangumiId/元数据字段）
-        d.exec(`
-          CREATE TABLE IF NOT EXISTS "MyList_v2" (
-            "id" TEXT NOT NULL PRIMARY KEY,
-            "animeId" TEXT REFERENCES "Anime"("id") ON DELETE CASCADE,
-            "bangumiId" INTEGER,
-            "title" TEXT NOT NULL DEFAULT '',
-            "bangumiTitle" TEXT,
-            "coverUrl" TEXT,
-            "summary" TEXT,
-            "status" TEXT NOT NULL DEFAULT 'watching',
-            "rating" REAL,
-            "thoughts" TEXT,
-            "notes" TEXT,
-            "createdAt" DATETIME NOT NULL DEFAULT (unixepoch() * 1000),
-            "updatedAt" DATETIME NOT NULL
-          )
-        `);
-
-        // 复制旧 MyList 数据
-        d.exec(`
-          INSERT INTO "MyList_v2" ("id", "animeId", "status", "rating", "thoughts", "notes", "createdAt", "updatedAt")
-          SELECT "id", "animeId", "status", "rating", "thoughts", "notes", "createdAt", "updatedAt" FROM "MyList"
-        `);
-
-        // 迁移 Wishlist 数据到 MyList
-        const hasWishlist = d.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='Wishlist'`).all();
-        if (hasWishlist.length > 0) {
-          d.exec(`
-            INSERT INTO "MyList_v2" ("id", "bangumiId", "title", "bangumiTitle", "coverUrl", "summary", "rating", "status", "createdAt", "updatedAt")
-            SELECT "id", "bangumiId", "title", "bangumiTitle", "coverUrl", "summary", "rating", 'wish', "addedAt", "addedAt" FROM "Wishlist"
-          `);
-          d.exec(`DROP TABLE IF EXISTS "Wishlist"`);
-        }
-
-        // 切换表
-        d.exec(`DROP TABLE IF EXISTS "MyList"`);
-        d.exec(`ALTER TABLE "MyList_v2" RENAME TO "MyList"`);
-
-        // 重建索引
-        d.exec(`CREATE UNIQUE INDEX IF NOT EXISTS "MyList_animeId_key" ON "MyList"("animeId")`);
-        d.exec(`CREATE UNIQUE INDEX IF NOT EXISTS "MyList_bangumiId_key" ON "MyList"("bangumiId")`);
-        d.exec(`CREATE INDEX IF NOT EXISTS "MyList_animeId_idx" ON "MyList"("animeId")`);
-        d.exec(`CREATE INDEX IF NOT EXISTS "MyList_bangumiId_idx" ON "MyList"("bangumiId")`);
-        d.exec(`CREATE INDEX IF NOT EXISTS "MyList_status_idx" ON "MyList"("status")`);
-
-        d.exec(`PRAGMA foreign_keys=ON`);
-        logger.info('[Migration v2] Wishlist merged into MyList');
-      } else {
-        // 表已使用新 schema，但可能仍有遗留 Wishlist 表
-        d.exec(`DROP TABLE IF EXISTS "Wishlist"`);
-      }
-    },
-  },
-  {
-    version: 'v3_uuid_anime_ids',
-    description: 'Unify Anime primary keys to UUID; drop folderPath unique index',
-    up(d: any) {
-      // 读取所有现有 Anime 行，建立 oldId → newUuid 映射
-      const rows = d.prepare(`SELECT id FROM Anime`).all();
-      const idMap = new Map<string, string>();
-      for (const r of rows) {
-        idMap.set(r.id, crypto.randomUUID());
-      }
-      if (idMap.size === 0) {
-        // 空库：仅清理遗留索引
-        d.exec(`DROP INDEX IF EXISTS "Anime_folderPath_key"`);
-        logger.info('[Migration v3] No anime rows, removed folderPath unique index');
-        return;
-      }
-      logger.info(`[Migration v3] Converting ${idMap.size} anime ids to UUID...`);
-      d.exec(`PRAGMA foreign_keys=OFF`);
-
-      // 1. 重写子表外键引用：Episode / PlaySession / MyList 的 animeId
-      for (const [oldId, newId] of idMap) {
-        d.prepare(`UPDATE "Episode" SET "animeId" = ? WHERE "animeId" = ?`).run(newId, oldId);
-        d.prepare(`UPDATE "PlaySession" SET "animeId" = ? WHERE "animeId" = ?`).run(newId, oldId);
-        d.prepare(`UPDATE "MyList" SET "animeId" = ? WHERE "animeId" = ?`).run(newId, oldId);
-        // MyList.id 在库条目中 == animeId（insertMyListRow 用 id: animeId），一并改写
-        d.prepare(`UPDATE "MyList" SET "id" = ? WHERE "id" = ? AND "animeId" = ?`).run(newId, oldId, oldId);
-        // Episode.id 格式为 `${animeId}-${number}`，同步改写为新 UUID 前缀
-        d.prepare(`UPDATE "Episode" SET "id" = ? || '-' || "number" WHERE "animeId" = ?`).run(newId, newId);
-      }
-
-      // 2. 重写 Anime 主键本身
-      for (const [oldId, newId] of idMap) {
-        d.prepare(`UPDATE "Anime" SET "id" = ? WHERE "id" = ?`).run(newId, oldId);
-      }
-
-      // 3. 移除 folderPath 唯一索引（解耦关键）
-      d.exec(`DROP INDEX IF EXISTS "Anime_folderPath_key"`);
-
-      d.exec(`PRAGMA foreign_keys=ON`);
-      logger.info('[Migration v3] Anime ids converted to UUID, folderPath unique index dropped');
-    },
-  },
-];
-
-// 运行未应用的版本化迁移，并把应用过的版本写入 MigrationLog。
-// 结束后幂等清理遗留 Wishlist 表（即使已迁移也执行，确保无残留）。
-function runMigrations() {
-  const d = getDb();
-  const applied = new Set(
-    d.prepare(`SELECT version FROM MigrationLog`).all().map((r: any) => r.version)
-  );
-  for (const mig of MIGRATIONS) {
-    if (applied.has(mig.version)) continue;
-    logger.info(`[Migration] ${mig.version}: ${mig.description}`);
-    mig.up(d);
-    d.prepare(`INSERT INTO MigrationLog (id, version, description, appliedAt) VALUES (?, ?, ?, ?)`)
-      .run(mig.version, mig.version, mig.description, Date.now());
-  }
-  // 幂等：无论是否已迁移，都确保遗留 Wishlist 表被清理
-  d.exec(`DROP TABLE IF EXISTS "Wishlist"`);
-}
-
 /**
  * 首次启动时自动创建表结构（CREATE TABLE IF NOT EXISTS）。
- * 对已有表检查缺少的列（如通过迁移添加的列），自动 ALTER TABLE 补充。
- * 不依赖 Prisma 迁移历史，适用于 pkg 生产环境。
+ * 对已有表检查缺少的列，自动 ALTER TABLE 补充（幂等 schema sync）。
+ * 适用于 pkg 生产环境（无迁移历史，INIT_SQL 即真源）。
  * 保持 async 签名以兼容原调用方（内部为同步执行）。
  */
 async function ensureSchema() {
@@ -340,11 +199,6 @@ async function ensureSchema() {
         d.exec(`ALTER TABLE "${table.name}" ADD COLUMN ${col.def}`);
       }
     }
-
-    // ─── 版本化迁移 ───
-    // "schema sync"（上方 CREATE TABLE + ALTER 补列循环）是基线，幂等且已被测试覆盖；
-    // MIGRATIONS 表仅登记需显式数据/结构变更的版本，只跑 MigrationLog 未记录过的。
-    await runMigrations();
 
     logger.info('Database schema verified/updated.');
   } catch (e: any) {

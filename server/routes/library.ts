@@ -131,7 +131,8 @@ export function handleGetAnimeDetail(req: any, res: any, state: ServerState) {
     syncAnilistDetail(anime, config, bannerDir, coverDir).then((result: any) => {
       if (result) {
         const { db } = state;
-        db.updateAnime(anime.id, { anilistBanner: anime.anilistBanner ?? null, anilistTitleEn: anime.anilistTitleEn ?? null });
+        // 方案 A：saveLibrary 一次性写回列字段（anilistBanner/anilistTitleEn）+ metadata（anilistTags/anilistStudios）
+        db.saveLibrary(data, new Set([anime.id]));
       }
     }).catch((e: any) => logger.warn(`Detail lazy banner failed for ${id}: ${e.message}`));
   }
@@ -299,18 +300,18 @@ export function handleLibrarySyncStream(req: any, res: any, state: ServerState) 
     // 通知前端进入收尾阶段（banner 获取等）
     send('finalizing', { message: '正在获取封面横幅…' });
 
-    // 批量补全缺 banner 的条目（一次 `id_in` 查询处理最多 50 条，代替 N 次独立 DETAIL_QUERY）
+    // 批量补全缺 banner 或缺 tags 的条目（一次 `id_in` 查询处理最多 50 条，代替 N 次独立 DETAIL_QUERY）
     const anilistScraper = registry.get('anilist');
-    const needBanner = data.library.filter((a: any) => a.anilistId && a.anilistId !== -1 && !a.anilistBanner && a.anilistBanner !== '__none__');
-    if (needBanner.length > 0 && anilistScraper) {
-      const ids = [...new Set(needBanner.map((a: any) => a.anilistId))];
-      logger.info(`Batch AniList detail: ${ids.length} ids (${needBanner.length} items)`);
+    const needAnilistDetail = data.library.filter((a: any) => a.anilistId && a.anilistId !== -1 && ((!a.anilistBanner && a.anilistBanner !== '__none__') || !a.anilistTags));
+    if (needAnilistDetail.length > 0 && anilistScraper) {
+      const ids = [...new Set(needAnilistDetail.map((a: any) => a.anilistId))];
+      logger.info(`Batch AniList detail: ${ids.length} ids (${needAnilistDetail.length} items)`);
       for (let i = 0; i < ids.length; i += 50) {
         const chunk = ids.slice(i, i + 50);
         try {
           const results = await anilistScraper.batchGetDetails(chunk);
           for (const media of results) {
-            const matches = needBanner.filter((a: any) => a.anilistId === media.id);
+            const matches = needAnilistDetail.filter((a: any) => a.anilistId === media.id);
             for (const anime of matches) {
               if (media.bannerImage) {
                 anime.anilistBanner = media.bannerImage;
@@ -322,6 +323,19 @@ export function handleLibrarySyncStream(req: any, res: any, state: ServerState) 
                 anime.anilistBanner = '__none__'; // 标记为"已确认无横幅"，避免重复查询
               }
               if (media.title?.english) anime.anilistTitleEn = media.title.english;
+              if (media.tags) {
+                anime.anilistTags = media.tags.map((t: any) => ({
+                  name: t.name,
+                  rank: t.rank,
+                  isGeneralSpoiler: t.isGeneralSpoiler,
+                  isMediaSpoiler: t.isMediaSpoiler,
+                }));
+              }
+              if (media.studios?.edges) {
+                anime.anilistStudios = media.studios.edges
+                  .filter((e: any) => e.isMain)
+                  .map((e: any) => e.node.name);
+              }
             }
           }
         } catch (e: any) {

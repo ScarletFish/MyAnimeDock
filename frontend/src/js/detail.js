@@ -81,7 +81,8 @@ function expandTags() {
   const tagsEl = document.getElementById('detailTags');
   const allTags = tagsEl._allTags;
   if (!allTags) return;
-    tagsEl.innerHTML = `<div class="detail-tags-list">${allTags.map(t => `<span class="tag-pill">${escHtml(t)}</span>`).join('')}</div>`;
+  const studioHtml = tagsEl._studioHtml || '';
+  tagsEl.innerHTML = `<div class="detail-tags-list">${studioHtml}${allTags.map(t => `<span class="tag-pill">${escHtml(t.name)}</span>`).join('')}</div>`;
 }
 let detailSourceView = 'library';
 
@@ -365,34 +366,26 @@ function renderDetail() {
     (rightParts.length ? `<span class="info-tags">${rightParts.join('')}</span>` : '');
   infoLine.style.display = leftParts.length || rightParts.length ? '' : 'none';
 
-  // ─── Tags ───
+  // ─── Tags（AniList 固定词库）───
   const tagsEl = document.getElementById('detailTags');
-  let tags = (anime.tags || []).filter(t => {
-    if (anime.platform && t === anime.platform) return false;
-    if (/\d{4}(年|年\d{1,2}月|\-\d{2})/.test(t)) return false;
-    if (/^\d{1,2}月$/.test(t)) return false;
-    return true;
-  });
-  // Sort: production company first (contains 制作 or common studio names)
-  const studioKeywords = ['制作', '动画', 'studio', 'Production', 'Works'];
-  tags.sort((a, b) => {
-    const aIsStudio = studioKeywords.some(k => a.toLowerCase().includes(k.toLowerCase()));
-    const bIsStudio = studioKeywords.some(k => b.toLowerCase().includes(k.toLowerCase()));
-    if (aIsStudio && !bIsStudio) return -1;
-    if (!aIsStudio && bIsStudio) return 1;
-    return 0;
-  });
-  if (tags.length) {
+  const studios = anime.anilistStudios || [];
+  let tags = (anime.anilistTags || [])
+    .filter(t => !t.isGeneralSpoiler)          // 滤剧透
+    .map(t => ({ name: ANILIST_TAG_ZH[t.name] || t.name, rank: t.rank }))
+    .sort((a, b) => b.rank - a.rank);          // rank 降序
+  const studioHtml = studios.length ? `<span class="tag-pill tag-pill--studio">${t('detail.studioLabel')} ${escHtml(studios[0])}</span>` : '';
+  if (studios.length || tags.length) {
     const MAX_TAGS = 4;
     const shown = tags.slice(0, MAX_TAGS);
     const remaining = tags.length - MAX_TAGS;
-    let html = shown.map(t => `<span class="tag-pill">${escHtml(t)}</span>`).join('');
+    let html = studioHtml + shown.map(tag => `<span class="tag-pill">${escHtml(tag.name)}</span>`).join('');
     if (remaining > 0) {
       html += `<span class="tag-pill tag-pill--more" onclick="expandTags()">+${remaining}</span>`;
     }
     tagsEl.innerHTML = `<div class="detail-tags-list">${html}</div>`;
     tagsEl.style.display = '';
     tagsEl._allTags = tags;
+    tagsEl._studioHtml = studioHtml;
   } else {
     tagsEl.style.display = 'none';
   }
@@ -745,9 +738,11 @@ function renderCharacters(anime) {
   // Render staff (skip if elements don't exist)
   if (!staffSection || !staffList) return;
 
-  const filtered = persons.filter(p =>
-    (p.roleName && p.roleName !== '出版社') || (p.jobs && p.jobs.length > 0)
-  );
+  const filtered = persons.filter(p => {
+    // 制作公司（动画制作/制作）已在 tag 行以「製」标注展示，staff 区跳过避免重复
+    if (p.roleName === '动画制作' || p.roleName === '制作') return false;
+    return (p.roleName && p.roleName !== '出版社') || (p.jobs && p.jobs.length > 0);
+  });
   // Deduplicate by role (each role appears once)
   const roleMap = new Map();
   for (const p of filtered) {

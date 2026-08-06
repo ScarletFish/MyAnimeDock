@@ -599,8 +599,10 @@ export async function syncAnilistDetail(anime: any, config: ScraperConfig, banne
     anime.anilistBanner = '__none__'; // 标记为"已确认无横幅"，避免重复查询
   }
   if (meta.anilistTitleEn) anime.anilistTitleEn = meta.anilistTitleEn;
+  if (meta.anilistTags) anime.anilistTags = meta.anilistTags;
+  if (meta.anilistStudios) anime.anilistStudios = meta.anilistStudios;
 
-  logger.info(`syncAnilistDetail: done for id=${anime.id} → anilistId=${anilistId}${meta.bannerImage ? ' +banner' : ''}`);
+  logger.info(`syncAnilistDetail: done for id=${anime.id} → anilistId=${anilistId}${meta.bannerImage ? ' +banner' : ''}${meta.anilistTags ? ` +${meta.anilistTags.length}tags` : ''}`);
   return { anilistId, localBanner: meta.bannerImage, anilistTitleEn: meta.anilistTitleEn };
 }
 
@@ -658,6 +660,20 @@ export async function syncAnilist(anime: any, config: ScraperConfig, bannerDir: 
   }
   if (bestItem.title_english) {
     anime.anilistTitleEn = bestItem.title_english;
+  }
+  // 搜索结果已含 tags/studios（SEARCH_QUERY 已扩展），提前返回前写回
+  if (bestItem.tags) {
+    anime.anilistTags = bestItem.tags.map((t: any) => ({
+      name: t.name,
+      rank: t.rank,
+      isGeneralSpoiler: t.isGeneralSpoiler,
+      isMediaSpoiler: t.isMediaSpoiler,
+    }));
+  }
+  if (bestItem.studios?.edges) {
+    anime.anilistStudios = bestItem.studios.edges
+      .filter((e: any) => e.isMain)
+      .map((e: any) => e.node.name);
   }
 
   if (anime.anilistBanner) {

@@ -38,6 +38,8 @@ query ($search: String!, $type: MediaType) {
       format
       season
       seasonYear
+      tags { name rank isGeneralSpoiler isMediaSpoiler }
+      studios { edges { isMain node { name } } }
       relations {
         edges {
           relationType
@@ -70,7 +72,8 @@ query ($id: Int!) {
     endDate { year month day }
     description(asHtml: false)
     genres
-    tags { name rank }
+    tags { name rank isGeneralSpoiler isMediaSpoiler }
+    studios { edges { isMain node { name } } }
     relations {
       edges {
         relationType
@@ -107,6 +110,8 @@ query ($ids: [Int!]) {
       coverImage { large }
       meanScore
       episodes
+      tags { name rank isGeneralSpoiler isMediaSpoiler }
+      studios { edges { isMain node { name } } }
       relations {
         edges {
           relationType
@@ -283,6 +288,15 @@ class AniListScraper {
           format: m.format,
           season: m.season,
           seasonYear: m.seasonYear,
+          tags: (m.tags || []).map((t: any) => ({
+            name: t.name,
+            rank: t.rank,
+            isGeneralSpoiler: t.isGeneralSpoiler,
+            isMediaSpoiler: t.isMediaSpoiler,
+          })),
+          studios: (m.studios?.edges || [])
+            .filter((e: any) => e.isMain)
+            .map((e: any) => e.node.name),
           relations: (m.relations?.edges || []).map((e: any) => ({
             relationType: e.relationType,
             id: e.node.id,
@@ -379,6 +393,15 @@ class AniListScraper {
       rating: detail.meanScore ? Number((detail.meanScore / 10).toFixed(1)) : null,
       episodes: detail.episodes,
       genres: detail.genres || [],
+      anilistTags: (detail.tags || []).map((t: any) => ({
+        name: t.name,
+        rank: t.rank,
+        isGeneralSpoiler: t.isGeneralSpoiler,
+        isMediaSpoiler: t.isMediaSpoiler,
+      })),
+      anilistStudios: (detail.studios?.edges || [])
+        .filter((e: any) => e.isMain)
+        .map((e: any) => e.node.name),
       relations: (detail.relations?.edges || []).map((e: any) => ({
         relationType: e.relationType,
         id: e.node.id,

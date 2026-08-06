@@ -402,6 +402,7 @@ window.I18N_ZH = {
   'detail.mark': '标记',
   'detail.noSummary': '暂无简介',
   'detail.staffFallbackRole': '职员',
+  'detail.studioLabel': '製',
   'detail.replay': '重新播放',
   'detail.continue': '继续播放',
   'detail.startPlay': '开始播放',

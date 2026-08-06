@@ -437,6 +437,7 @@ async function saveLibrary(data: any, changedIds: any = null) {
           'characters', 'persons', 'tags', 'date', 'platform',
           'ratingRank', 'ratingTotal', 'infobox', 'collection',
           'eps', 'totalEpisodes', 'specialSuffix',
+          'anilistTags', 'anilistStudios',
         ];
         const extraFields: any = {};
         for (const key of EXTRA_FIELDS) {

@@ -50,15 +50,15 @@ fn should_spawn_sidecar() -> bool {
 
 /// 获取 .port 文件路径（与 Node.js 端 DATA_DIR 保持一致）。
 /// 生产模式：%APPDATA%/MyAnimeDock/.port
-/// 开发模式：server/.port（仅在手动启动时有用，sidecar 模式不读）
+/// 开发模式：data/.port（仅在手动启动时有用，sidecar 模式不读）
 fn port_file_path() -> PathBuf {
     if cfg!(debug_assertions) {
-        // dev 模式：server/.port（与 server/lib/config.js DATA_DIR 一致）
+        // dev 模式：data/.port（与 server/lib/config.ts DATA_DIR 一致：项目根 data/）
         let exe_dir = std::env::current_exe()
             .ok()
             .and_then(|p| p.parent().map(|p| p.to_path_buf()))
             .unwrap_or_else(|| PathBuf::from("."));
-        exe_dir.join("server").join(".port")
+        exe_dir.join("data").join(".port")
     } else {
         // 生产模式：%APPDATA%/MyAnimeDock/.port
         let appdata = std::env::var("APPDATA").unwrap_or_else(|_| ".".to_string());

@@ -121,10 +121,11 @@ export function handleGetAnimeDetail(req: any, res: any, state: ServerState) {
   // 后台预生成缩略图（详情页查看时插队到队列最前）
   state.thumbnailQueue?.enqueue(anime, true);
 
-  // 懒加载 banner：已有 anilistId 但缺 banner 时异步补全（不阻塞响应）
+  // 懒加载 AniList 详情：已有 anilistId 但缺 banner 或缺 tags 时异步补全（不阻塞响应）
   // 仅针对有 anilistId 的条目 —— SSE 同步和 handleBangumiFetch 已处理 AniList 解析
   // 跳过已确认无横幅的条目（anilistBanner === '__none__'）
-  if (anime.anilistId && anime.anilistId !== -1 && anime.anilistBanner !== '__none__' && (!anime.anilistBanner || anime.anilistBanner.startsWith('http'))) {
+  const needsAnilistDetail = (anime.anilistBanner !== '__none__' && (!anime.anilistBanner || anime.anilistBanner.startsWith('http'))) || !anime.anilistTags;
+  if (anime.anilistId && anime.anilistId !== -1 && needsAnilistDetail) {
     const { syncAnilistDetail } = require('../scrapers') as any;
     const bannerDir = path.join(DATA_DIR, 'banners');
     const coverDir = path.join(DATA_DIR, 'covers');

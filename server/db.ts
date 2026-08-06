@@ -23,10 +23,10 @@ if (process.pkg) {
 }
 const logger: Logger = require('./logger').child('[DB]');
 
-// 数据目录：pkg 模式在 %APPDATA%/MyAnimeDock（可写），开发模式在项目根
+// 数据目录：pkg 模式在 %APPDATA%/MyAnimeDock（可写），开发模式在项目根 data/（与 lib/config.ts 对齐）
 const DATA_DIR = process.pkg
   ? path.join(process.env.APPDATA || process.env.HOME || '.', 'MyAnimeDock')
-  : PROJECT_ROOT;
+  : path.join(PROJECT_ROOT, 'data');
 
 // 确保数据目录存在
 if (!fs.existsSync(DATA_DIR)) {
@@ -36,13 +36,9 @@ if (!fs.existsSync(DATA_DIR)) {
 
 // 开发模式：DB 在 data/anime.db（迁移已有）
 // 生产模式：DB 在 %APPDATA%/MyAnimeDock/anime.db（可写）
-const DB_PATH = process.pkg
-  ? path.join(DATA_DIR, 'anime.db')
-  : path.join(DATA_DIR, 'data', 'anime.db');
-// 用于文件存在性检查（pkg 模式下 DB 直接在 DATA_DIR，dev 模式在 data/ 子目录）
-const DB_FILE = process.pkg
-  ? path.join(DATA_DIR, 'anime.db')
-  : path.join(DATA_DIR, 'data', 'anime.db');
+const DB_PATH = path.join(DATA_DIR, 'anime.db');
+// 用于文件存在性检查（两种模式 DB 都在 DATA_DIR 根）
+const DB_FILE = path.join(DATA_DIR, 'anime.db');
 
 // ─── pkg 模式：原生模块路径修复 ───
 // pkg 无法打包 .node 原生模块，需要从外部 node_modules/ 加载。

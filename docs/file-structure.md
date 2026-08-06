@@ -266,8 +266,9 @@ docs/
 | DB schema | `server/db.ts`（`ensureSchema` 幂等建表/补列，`npm run db:migrate`） |
 | 后端测试 | `server/__tests__/` |
 | 路由测试 | `server/__tests__/routes/*.test.js` (8 个) |
-| 配置文件 | `server/config.json` |
-| 封面缓存 | `server/covers/` |
-| 缩略图缓存 | `server/thumbs/` |
+| 配置文件 | `data/config.json` |
+| 封面缓存 | `data/covers/` |
+| 缩略图缓存 | `data/thumbs/` |
+| 运行时数据目录 | `data/`（dev：covers/banners/thumbs/backups/cache/config.json/scanned-tree.json/anime.db；pkg：`%APPDATA%/MyAnimeDock`） |
 | 构建脚本 | `scripts/` |
 | 项目文档总入口 | `docs/` |

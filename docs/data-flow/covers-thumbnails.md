@@ -2,7 +2,7 @@
 
 ## Cover 服务
 
-### Dev mode (`server/covers/`):
+### Dev mode (`data/covers/`):
 ```
 GET /covers/12345.jpg?w=400&q=75
   → server.ts: handleCoverImage() (inline)

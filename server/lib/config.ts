@@ -8,10 +8,11 @@ const BOOT_LOG = path.join(process.env.TEMP || process.env.TMP || '.', 'myanimed
 const bootLog = (msg: string): void => { try { fs.appendFileSync(BOOT_LOG, `[${new Date().toISOString()}] ${msg}\n`); } catch (e) {} };
 
 // ── 用户数据目录 ──
-// pkg 模式：%APPDATA%/MyAnimeDock（可写），开发模式：本模块上级 server/
+// pkg 模式：%APPDATA%/MyAnimeDock（可写）
+// 开发模式：项目根 data/（运行时数据与源码分离，避免 tsc -w 监视运行时写入）
 const DATA_DIR = process.pkg
   ? path.join(process.env.APPDATA || process.env.HOME || '.', 'MyAnimeDock')
-  : SERVER_ROOT;
+  : path.join(PROJECT_ROOT, 'data');
 const ASSET_DIR = process.pkg
   ? path.dirname(process.execPath)  // pkg: exe 同级，Tauri 把 resources 放根目录
   : PROJECT_ROOT; // 开发模式：config.ts 在 server/lib/

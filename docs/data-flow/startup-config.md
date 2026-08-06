@@ -101,8 +101,10 @@ server.ts: route dispatch (routeTable)
 | File | Location (dev) | Location (MSI/pkg) | Purpose |
 |------|---------------|-------------------|---------|
 | `anime.db` | `data/anime.db` | `%APPDATA%/MyAnimeDock/anime.db` | SQLite — primary store for library, playSessions |
-| `config.json` | `server/config.json` | `%APPDATA%/MyAnimeDock/config.json` | Settings (JSON only, managed by lib/config.ts) |
-| `scanned-tree.json` | `server/scanned-tree.json` | `%APPDATA%/MyAnimeDock/scanned-tree.json` | Scan result tree (JSON only, managed by lib/config.ts) |
-| `covers/*.jpg` | `server/covers/` | `%APPDATA%/MyAnimeDock/covers/` | Downloaded cover images |
-| `banners/*.jpg` | `server/banners/` | `%APPDATA%/MyAnimeDock/banners/` | AniList banner images |
-| `thumbs/*.jpg` | `server/thumbs/` | `%APPDATA%/MyAnimeDock/thumbs/` | Video thumbnails (ffmpeg) |
+| `config.json` | `data/config.json` | `%APPDATA%/MyAnimeDock/config.json` | Settings (JSON only, managed by lib/config.ts) |
+| `scanned-tree.json` | `data/scanned-tree.json` | `%APPDATA%/MyAnimeDock/scanned-tree.json` | Scan result tree (JSON only, managed by lib/config.ts) |
+| `covers/*.jpg` | `data/covers/` | `%APPDATA%/MyAnimeDock/covers/` | Downloaded cover images |
+| `banners/*.jpg` | `data/banners/` | `%APPDATA%/MyAnimeDock/banners/` | AniList banner images |
+| `thumbs/*.jpg` | `data/thumbs/` | `%APPDATA%/MyAnimeDock/thumbs/` | Video thumbnails (ffmpeg) |
+
+> dev 模式运行时数据统一收口在项目根 `data/`（与 DB 同目录），`server/` 只保留源码与构建产物。

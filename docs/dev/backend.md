@@ -172,7 +172,7 @@ const data = await httpFetch.fetch(url, { headers, retries: 2 });
 
 ## 配置
 
-`server/config.json`（基于 `config.example.json` 复制）：
+`data/config.json`（dev 模式；基于 `server/config.example.json` 复制）：
 
 ```json
 {

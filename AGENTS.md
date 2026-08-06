@@ -39,13 +39,13 @@ cd server && npm test      # 测试（先自动跑 tsc）
 
 ## Gotchas
 
-- **DATA_DIR**: dev=`server/`, pkg=`%APPDATA%/MyAnimeDock`
+- **DATA_DIR**: dev=`项目根/data/`（运行时数据统一收口：covers/banners/thumbs/backups/cache/config.json/scanned-tree.json/anime.db/.port；`server/` 只留源码+dist），pkg=`%APPDATA%/MyAnimeDock`
 - **动漫 ID**: 主键统一 UUID（`crypto.randomUUID()`）；`bangumiId` 为内容身份（唯一索引），匹配优先级 bangumiId → folderPath
 - **播放器**: 仅 mpv（`--input-ipc-server` IPC）
 - **自动标记前集**必须 `db.updateEpisodesWatched()` 落盘
 - **window.close() 无效**: 需 Rust `window.close()` 或 `__TAURI__` IPC
 - **缩略图**: 依赖 ffmpeg PATH，首次延迟
-- **封面路径**: `localCover` 绝对路径，迁移 DATA_DIR 后可能不存在
+- **封面路径**: `localCover` 绝对路径；跨 DATA_DIR 迁移由 `server.ts` 的 `migrateLegacyDataPaths()` 启动钩子幂等重写（旧 `server/` 前缀 → 新 `data/`）
 - **CSS *禁止* `zoom`**: 用 `--scale` calc（详见 `docs/dev/frontend.md`）
 - **"先找后写"三步协议**: 新增 CSS 前先查已有组件和 token，禁止写死值。完成后跑 `npm run check:frontend` 验证（详见 `docs/dev/frontend.md` 必读章节）
 - **改前端后跑 `npm run check:frontend`**: 勿只跑其中一条，否则 dist 过期"改了没生效"

@@ -16,6 +16,7 @@ import {
   PORT, MAX_PLAY_SESSIONS, DEFAULT_CONFIG,
   loadConfig, saveConfig, loadScannedTree, saveScannedTree,
 } from './lib/config';
+import { SERVER_ROOT } from './lib/paths';
 import {
   mime, setFfmpegPath, serveImage, serveRaw, readBody, jsonResp, cleanupOldCache,
 } from './lib/utils';
@@ -341,6 +342,38 @@ async function validateCovers(data: any) {
   }
 }
 
+// ── 结构整改迁移：dev 运行时数据 server/ → data/（一次性，幂等）──
+// 旧 dev DATA_DIR = SERVER_ROOT（server/），DB 中存的 localCover/anilistBanner 等
+// 是旧绝对路径。文件已物理迁移到 data/，这里把 DB 中的旧前缀重写到新 DATA_DIR。
+// 幂等：路径已以 DATA_DIR 开头则跳过；pkg 模式不执行（生产路径从未是 server/）。
+function migrateLegacyDataPaths(data: any): boolean {
+  if (process.pkg || !data) return false;
+  if (DATA_DIR === SERVER_ROOT) return false; // 理论上不会发生，防御
+  const oldPrefix = SERVER_ROOT + path.sep;
+  let changed = false;
+
+  const rewrite = (p: string | null | undefined): string | null | undefined => {
+    if (!p || !p.startsWith(oldPrefix)) return p;
+    return path.join(DATA_DIR, p.slice(oldPrefix.length));
+  };
+
+  for (const a of data.library || []) {
+    for (const key of ['localCover', 'anilistBanner', 'anilistCover']) {
+      if (a[key]) {
+        const nv = rewrite(a[key]);
+        if (nv !== a[key]) { a[key] = nv; changed = true; }
+      }
+    }
+  }
+  for (const m of data.myList || []) {
+    if (m.coverUrl) {
+      const nv = rewrite(m.coverUrl);
+      if (nv !== m.coverUrl) { m.coverUrl = nv; changed = true; }
+    }
+  }
+  return changed;
+}
+
 // ── 初始化 ──
 async function init() {
   const startTime = Date.now();
@@ -354,6 +387,16 @@ async function init() {
 
   // Phase 2: Hydrate data
   data = (await db.loadData()) || { discovered: [], library: [], myList: [], playSessions: [] };
+
+  // 结构整改迁移：DB 中旧 server/ 前缀的本地路径 → data/（幂等，一次性）
+  try {
+    if (migrateLegacyDataPaths(data)) {
+      await db.saveAll(data).catch((e: any) => logger.warn('Legacy path migration save error:', e.message));
+      logger.info(`Migrated legacy data paths: ${SERVER_ROOT} → ${DATA_DIR}`);
+    }
+  } catch (e: any) {
+    logger.warn('Legacy path migration error:', e.message);
+  }
 
   // Migrate scannedTree from old anime-data.json
   const OLD_DATA_PATH = path.join(DATA_DIR, 'anime-data.json');

@@ -44,9 +44,14 @@ rustup-init.exe
 
 # Generated runtime files
 server/.port
+data/.port
 
 # Generated runtime caches
 server/cache/
+data/cache/
+
+# Dev-mode runtime data (统一收口到项目根 data/：封面/横幅/缩略图/备份/配置/扫描树/DB)
+data/
 
 # Dev/test files
 toast-preview.html

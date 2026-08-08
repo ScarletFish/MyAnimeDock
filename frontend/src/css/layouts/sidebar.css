@@ -205,6 +205,13 @@
   opacity: 0;
   transform: translateY(4px);
 }
+#globalTooltip.is-rich {
+  white-space: normal;
+  max-width: 320px;
+  line-height: 1.5;
+  font-weight: var(--fw-normal);
+  padding: var(--space-2) var(--space-3);
+}
 html[data-reduce-motion="true"] #globalTooltip {
   transition: none !important;
 }

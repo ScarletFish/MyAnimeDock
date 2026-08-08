@@ -7,7 +7,7 @@
     "dev": "concurrently -n server,frontend -c cyan,magenta \"set BASE_PORT=3457 && npm run dev:server:watch\" \"npm run dev:frontend\"",
     "dev:tauri": "concurrently -n frontend,server,tauri -c cyan,magenta,green \"npm run dev:frontend\" \"set BASE_PORT=3457 && npm run dev:server:watch\" \"tauri dev\"",
     "dev:server": "set NODE_OPTIONS=--no-deprecation && npm run build:ts && node server/dist/server.js",
-    "dev:server:watch": "set NODE_OPTIONS=--no-deprecation && concurrently -k \"cd server && tsc -w --preserveWatchOutput\" \"nodemon --delay 500 -w server/dist --ignore server/dist/anime-data.json --ignore server/dist/config.json --ignore server/dist/scanned-tree.json --ignore server/dist/data/ --ignore server/dist/covers/ --ignore server/dist/thumbs/ server/dist/server.js\"",
+    "dev:server:watch": "set NODE_OPTIONS=--no-deprecation && tsc -p server && concurrently -k \"tsc -p server -w --preserveWatchOutput\" \"nodemon --delay 500 -w server/dist --ignore server/dist/anime-data.json --ignore server/dist/config.json --ignore server/dist/scanned-tree.json --ignore server/dist/data/ --ignore server/dist/covers/ --ignore server/dist/thumbs/ server/dist/server.js\"",
     "typecheck": "cd server && tsc --noEmit",
     "build:ts": "cd server && tsc",
     "dev:frontend": "cd frontend && npx vite",

@@ -176,6 +176,9 @@ window.closeModal = function closeModal(el) {
     var entryY = e.clientY;
 
     showTimer = setTimeout(function() {
+      // Rich tooltip: multiline wrapped text (data-tooltip-rich), else single-line
+      var rich = target.hasAttribute('data-tooltip-rich');
+      el.classList.toggle('is-rich', rich);
       el.textContent = target.getAttribute('data-tooltip');
       position(entryX, entryY);
       el.classList.remove('is-exiting');

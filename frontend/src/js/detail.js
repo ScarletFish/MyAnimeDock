@@ -82,7 +82,7 @@ function expandTags() {
   const allTags = tagsEl._allTags;
   if (!allTags) return;
   const studioHtml = tagsEl._studioHtml || '';
-  tagsEl.innerHTML = `<div class="detail-tags-list">${studioHtml}${allTags.map(t => `<span class="tag-pill">${escHtml(t.name)}</span>`).join('')}</div>`;
+  tagsEl.innerHTML = `<div class="detail-tags-list">${studioHtml}${allTags.map(t => `<span class="tag-pill"${t.desc ? ` data-tooltip="${escAttr(t.desc)}" data-tooltip-rich` : ''}>${escHtml(t.name)}</span>`).join('')}</div>`;
 }
 let detailSourceView = 'library';
 
@@ -371,14 +371,21 @@ function renderDetail() {
   const studios = anime.anilistStudios || [];
   let tags = (anime.anilistTags || [])
     .filter(t => !t.isGeneralSpoiler)          // 滤剧透
-    .map(t => ({ name: ANILIST_TAG_ZH[t.name] || t.name, rank: t.rank }))
+    .map(t => {
+      const d = ANILIST_TAG_DATA[t.name];
+      return {
+        name: d?.zh || t.name,
+        desc: d?.descZh || d?.descEn || '',
+        rank: t.rank,
+      };
+    })
     .sort((a, b) => b.rank - a.rank);          // rank 降序
   const studioHtml = studios.length ? `<span class="tag-pill tag-pill--studio">${t('detail.studioLabel')} ${escHtml(studios[0])}</span>` : '';
   if (studios.length || tags.length) {
     const MAX_TAGS = 4;
     const shown = tags.slice(0, MAX_TAGS);
     const remaining = tags.length - MAX_TAGS;
-    let html = studioHtml + shown.map(tag => `<span class="tag-pill">${escHtml(tag.name)}</span>`).join('');
+    let html = studioHtml + shown.map(tag => `<span class="tag-pill"${tag.desc ? ` data-tooltip="${escAttr(tag.desc)}" data-tooltip-rich` : ''}>${escHtml(tag.name)}</span>`).join('');
     if (remaining > 0) {
       html += `<span class="tag-pill tag-pill--more" onclick="expandTags()">+${remaining}</span>`;
     }

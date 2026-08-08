@@ -71,11 +71,17 @@ describe('stats route handlers', () => {
       assert.deepStrictEqual(res._body.tags, {});
     });
 
-    it('filters out noise tags (numbers, TVA, date patterns)', () => {
+    it('filters out spoiler tags (isGeneralSpoiler)', () => {
       const state = mockState({
         data: {
           library: [
-            { id: '1', tags: ['action', '123', 'TVA', '2024年'], platform: 'bangumi' },
+            {
+              id: '1',
+              anilistTags: [
+                { name: 'Action', rank: 90, isGeneralSpoiler: false },
+                { name: 'Plot Twist', rank: 80, isGeneralSpoiler: true },
+              ],
+            },
           ],
         },
       });
@@ -83,15 +89,27 @@ describe('stats route handlers', () => {
       const res = mockRes();
       stats.handleStatsTags(req, res, state);
       assert.strictEqual(res._status, 200);
-      assert.deepStrictEqual(res._body.tags, { action: 1 });
+      assert.deepStrictEqual(res._body.tags, { Action: 1 });
     });
 
     it('accumulates tag counts across multiple anime', () => {
       const state = mockState({
         data: {
           library: [
-            { id: '1', tags: ['action', 'comedy'], platform: 'bangumi' },
-            { id: '2', tags: ['action', 'drama'], platform: 'bangumi' },
+            {
+              id: '1',
+              anilistTags: [
+                { name: 'Action', rank: 90, isGeneralSpoiler: false },
+                { name: 'Comedy', rank: 80, isGeneralSpoiler: false },
+              ],
+            },
+            {
+              id: '2',
+              anilistTags: [
+                { name: 'Action', rank: 85, isGeneralSpoiler: false },
+                { name: 'Drama', rank: 70, isGeneralSpoiler: false },
+              ],
+            },
           ],
         },
       });
@@ -99,17 +117,17 @@ describe('stats route handlers', () => {
       const res = mockRes();
       stats.handleStatsTags(req, res, state);
       assert.strictEqual(res._status, 200);
-      assert.strictEqual(res._body.tags.action, 2);
-      assert.strictEqual(res._body.tags.comedy, 1);
-      assert.strictEqual(res._body.tags.drama, 1);
+      assert.strictEqual(res._body.tags.Action, 2);
+      assert.strictEqual(res._body.tags.Comedy, 1);
+      assert.strictEqual(res._body.tags.Drama, 1);
     });
 
-    it('handles anime without tags', () => {
+    it('handles anime without anilistTags', () => {
       const state = mockState({
         data: {
           library: [
             { id: '1', title: 'No tags' },
-            { id: '2', tags: null, platform: 'bangumi' },
+            { id: '2', anilistTags: null },
           ],
         },
       });

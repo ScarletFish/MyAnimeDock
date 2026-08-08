@@ -446,7 +446,7 @@ window.I18N_ZH = {
   'stats.noSeason': '暂无季度数据',
   'stats.noSeasonHint': '导入动漫并获取元数据后，季度分布将在此展示',
   'stats.wordCloud': '分类词云',
-  'stats.wordCloudSubtitle': 'Bangumi 类型标签聚合',
+  'stats.wordCloudSubtitle': 'AniList 类型标签聚合',
   'stats.noTags': '暂无标签数据',
   'stats.noTagsHint': '导入动漫并获取元数据后，标签词云将在此展示',
   'stats.refreshChart': '刷新图表',

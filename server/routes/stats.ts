@@ -26,28 +26,13 @@ export function handleStats(req: any, res: any, state: ServerState): void {
 
 export function handleStatsTags(req: any, res: any, state: ServerState): void {
   const { data } = state;
-  const isNoise = (tag: any, platform: any): boolean => {
-    if (!tag) return true;
-    if (/^\d+$/.test(tag)) return true;
-    if (/^\d{4}年/.test(tag)) return true;
-    if (/^\d{1,2}月$/.test(tag)) return true;
-    if (/^第\d+[期季部]$/.test(tag)) return true;
-    if (/^(TVA|OVA|OAD|OAV|WEB|BD|DVD|TV|SP|ONA)$/i.test(tag)) return true;
-    if (/^(劇場版|映画|映畫|短片|番組|PV|特典|CM|预告|預告|予告)$/.test(tag)) return true;
-    if (/^(原作|漫画改|小说改|游戏改|轻小说改|Web系)$/.test(tag)) return true;
-    if (/^(日本|日本动画|动画|アニメ)$/.test(tag)) return true;
-    if (/^(评分|推薦|推荐)$/.test(tag)) return true;
-    if (platform && tag === platform) return true;
-    return false;
-  };
   const lib = data.library || [];
   const tagCount: Record<string, number> = {};
   for (const a of lib) {
-    if (!a.tags || !Array.isArray(a.tags)) continue;
-    for (const t of a.tags) {
-      const tag = t.trim();
-      if (isNoise(tag, a.platform)) continue;
-      tagCount[tag] = (tagCount[tag] || 0) + 1;
+    if (!a.anilistTags || !Array.isArray(a.anilistTags)) continue;
+    for (const t of a.anilistTags) {
+      if (!t || !t.name || t.isGeneralSpoiler) continue;
+      tagCount[t.name] = (tagCount[t.name] || 0) + 1;
     }
   }
   jsonResp(res, 200, { tags: tagCount });

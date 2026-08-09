@@ -10,9 +10,12 @@ const bootLog = (msg: string): void => { try { fs.appendFileSync(BOOT_LOG, `[${n
 // ── 用户数据目录 ──
 // pkg 模式：%APPDATA%/MyAnimeDock（可写）
 // 开发模式：项目根 data/（运行时数据与源码分离，避免 tsc -w 监视运行时写入）
-const DATA_DIR = process.pkg
-  ? path.join(process.env.APPDATA || process.env.HOME || '.', 'MyAnimeDock')
-  : path.join(PROJECT_ROOT, 'data');
+// 测试隔离：MYANIMEDOCK_DATA_DIR 优先，避免测试写真实 data/ 目录
+const DATA_DIR = process.env.MYANIMEDOCK_DATA_DIR
+  ? process.env.MYANIMEDOCK_DATA_DIR
+  : process.pkg
+    ? path.join(process.env.APPDATA || process.env.HOME || '.', 'MyAnimeDock')
+    : path.join(PROJECT_ROOT, 'data');
 const ASSET_DIR = process.pkg
   ? path.dirname(process.execPath)  // pkg: exe 同级，Tauri 把 resources 放根目录
   : PROJECT_ROOT; // 开发模式：config.ts 在 server/lib/

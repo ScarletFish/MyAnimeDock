@@ -7,8 +7,8 @@
   "scripts": {
     "start": "node dist/server.js",
     "build": "pkg . --target node22-win-x64 --output ../src-tauri/resources/server.exe",
-    "test": "tsc && node --test __tests__/*.test.js __tests__/routes/*.test.js",
-    "test:routes": "tsc && node --test __tests__/routes/*.test.js"
+    "test": "tsc && node -r ./__tests__/setup.js --test __tests__/*.test.js __tests__/routes/*.test.js",
+    "test:routes": "tsc && node -r ./__tests__/setup.js --test __tests__/routes/*.test.js"
   },
   "pkg": {
     "assets": [],

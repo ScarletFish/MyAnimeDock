@@ -124,7 +124,12 @@ export function handleGetAnimeDetail(req: any, res: any, state: ServerState) {
   // 懒加载 AniList 详情：已有 anilistId 但缺 banner 或缺 tags 时异步补全（不阻塞响应）
   // 仅针对有 anilistId 的条目 —— SSE 同步和 handleBangumiFetch 已处理 AniList 解析
   // 跳过已确认无横幅的条目（anilistBanner === '__none__'）
-  const needsAnilistDetail = (anime.anilistBanner !== '__none__' && (!anime.anilistBanner || anime.anilistBanner.startsWith('http'))) || !anime.anilistTags;
+  // 本地路径但文件已缺失（手动删除/迁移遗漏）→ 视为需要重新下载，避免永久裂图
+  const bannerFileMissing = anime.anilistBanner &&
+    !anime.anilistBanner.startsWith('http') &&
+    anime.anilistBanner !== '__none__' &&
+    !fs.existsSync(path.join(DATA_DIR, 'banners', path.basename(anime.anilistBanner)));
+  const needsAnilistDetail = (anime.anilistBanner !== '__none__' && (!anime.anilistBanner || anime.anilistBanner.startsWith('http') || bannerFileMissing)) || !anime.anilistTags;
   if (anime.anilistId && anime.anilistId !== -1 && needsAnilistDetail) {
     const { syncAnilistDetail } = require('../scrapers') as any;
     const bannerDir = path.join(DATA_DIR, 'banners');

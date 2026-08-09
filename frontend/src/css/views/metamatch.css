@@ -501,6 +501,35 @@
   font-size: var(--text-xs); margin-left: 2px;
 }
 .mm-panel-id-link:hover { text-decoration: underline; }
+
+/* ─── 双源数据完整性状态卡 ─── */
+.mm-source-row { padding: var(--space-2) 0; }
+.mm-source-row + .mm-source-row { border-top: var(--space-025) solid var(--border); }
+.mm-source-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.mm-source-name { font-size: var(--text-sm); font-weight: var(--fw-semibold); color: var(--fg-primary); }
+.mm-source-meta { display: flex; align-items: center; gap: 4px; margin-top: var(--space-1); font-size: var(--text-sm); }
+.mm-status-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: var(--text-xs); font-weight: var(--fw-semibold);
+  padding: var(--space-025) 8px; border-radius: 999px;
+  line-height: 1.4; white-space: nowrap;
+}
+.mm-status-badge--ok {
+  color: var(--success); background: rgba(var(--success-rgb), 0.12);
+}
+.mm-status-badge--missing {
+  color: var(--error); background: rgba(var(--error-rgb), 0.12);
+}
+.mm-banner-row {
+  display: flex; align-items: center; gap: var(--space-2);
+  border-top: var(--space-025) solid var(--border);
+  padding-top: var(--space-2); margin-top: var(--space-1);
+  font-size: var(--text-sm);
+}
+.mm-banner-status { font-size: var(--text-sm); }
+.mm-banner-status--ok { color: var(--success); }
+.mm-banner-status--pending { color: var(--warning); }
+.mm-banner-status--none { color: var(--fg-muted); }
 .mm-panel-scroll {
   flex: 1; overflow-y: auto;
   padding: var(--space-4);

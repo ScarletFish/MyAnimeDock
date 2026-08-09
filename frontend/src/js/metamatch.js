@@ -115,6 +115,9 @@ async function mmLoadModalData() {
       season: a.matchedSeason || a.season,
       anilistId: a.anilistId,
       anilistBanner: a.anilistBanner || null,
+      anilistTitleEn: a.anilistTitleEn || null,
+      anilistTags: a.anilistTags || null,
+      anilistCover: a.anilistCover || null,
     }));
 
     mmUpdateUI();
@@ -603,36 +606,59 @@ function mmRenderPanel(item) {
     }
   }
 
-  // ID 绑定信息
+  // 双源数据完整性状态卡（Bangumi + AniList）
   let idInfoHtml = '';
   if (item.status === 'matched') {
     const bgmId = item.meta?.bangumiId;
+    const bgmTitle = item.meta?.bangumiTitle;
+    const bgmCover = item.meta?.localCover;
+    const bgmOk = !!(bgmId && bgmTitle && bgmCover);
+
     const alId = item.anilistId;
-    const hasBanner = item.anilistBanner === '__none__' ? t('metamatch.noBanner') : (item.anilistBanner ? t('metamatch.bannerFetched') : t('metamatch.bannerNotFetched'));
-    const parts = [];
-    if (bgmId) {
-      parts.push(`<span class="mm-panel-id-item">
-        <span class="mm-panel-id-label">Bangumi</span>
-        <code class="mm-panel-id-value">${escHtml(String(bgmId))}</code>
-        <a class="mm-panel-id-link" href="https://bgm.tv/subject/${bgmId}" target="_blank" rel="noopener">${t('metamatch.open')}</a>
-      </span>`);
-    }
-    if (alId != null && alId !== -1) {
-      parts.push(`<span class="mm-panel-id-item">
-        <span class="mm-panel-id-label">AniList</span>
-        <code class="mm-panel-id-value">${escHtml(String(alId))}</code>
-        <a class="mm-panel-id-link" href="https://anilist.co/anime/${alId}" target="_blank" rel="noopener">${t('metamatch.open')}</a>
-      </span>`);
-    } else {
-      parts.push(`<span class="mm-panel-id-item">
-        <span class="mm-panel-id-label">AniList</span>
-        <span class="mm-panel-id-value">—</span>
-      </span>`);
-    }
-    parts.push(`<span class="mm-panel-id-item"><span class="mm-panel-id-label">${t('metamatch.bannerLabel')}</span><span class="mm-panel-id-value">${hasBanner}</span></span>`);
+    const banner = item.anilistBanner;
+    const bannerDownloaded = !!banner && banner !== '__none__' && !banner.startsWith('http');
+    const alOk = (alId != null && alId !== -1) && bannerDownloaded && !!item.anilistTags;
+
+    // banner 单独一行：__none__=无横幅（中性）、http=未下载（⚠）、本地路径=已下载（✓）
+    let bannerState;
+    if (banner === '__none__') bannerState = { cls: 'none', text: t('metamatch.noBanner') };
+    else if (banner && banner.startsWith('http')) bannerState = { cls: 'pending', text: t('metamatch.bannerNotFetched') };
+    else if (bannerDownloaded) bannerState = { cls: 'ok', text: t('metamatch.bannerFetched') };
+    else bannerState = { cls: 'none', text: t('metamatch.noBanner') };
+
+    const bgmBadge = `<span class="mm-status-badge ${bgmOk ? 'mm-status-badge--ok' : 'mm-status-badge--missing'}">${bgmOk ? t('metamatch.complete') : t('metamatch.missing')}</span>`;
+    const alBadge = `<span class="mm-status-badge ${alOk ? 'mm-status-badge--ok' : 'mm-status-badge--missing'}">${alOk ? t('metamatch.complete') : t('metamatch.missing')}</span>`;
+
     idInfoHtml = `<div class="mm-panel-section">
-      <div class="mm-panel-label">${t('metamatch.idBinding')}</div>
-      <div class="mm-panel-ids">${parts.join('')}</div>
+      <div class="mm-panel-label">${t('metamatch.dataIntegrity')}</div>
+      <div class="mm-panel-ids">
+        <div class="mm-source-row">
+          <div class="mm-source-head">
+            <span class="mm-source-name">Bangumi</span>
+            ${bgmBadge}
+          </div>
+          <div class="mm-source-meta">
+            ${bgmId
+              ? `<code class="mm-panel-id-value">${escHtml(String(bgmId))}</code><a class="mm-panel-id-link" href="https://bgm.tv/subject/${bgmId}" target="_blank" rel="noopener">${t('metamatch.open')}</a>`
+              : `<span class="mm-panel-id-value">—</span>`}
+          </div>
+        </div>
+        <div class="mm-source-row">
+          <div class="mm-source-head">
+            <span class="mm-source-name">AniList</span>
+            ${alBadge}
+          </div>
+          <div class="mm-source-meta">
+            ${alId != null && alId !== -1
+              ? `<code class="mm-panel-id-value">${escHtml(String(alId))}</code><a class="mm-panel-id-link" href="https://anilist.co/anime/${alId}" target="_blank" rel="noopener">${t('metamatch.open')}</a>`
+              : `<span class="mm-panel-id-value">—</span>`}
+          </div>
+        </div>
+        <div class="mm-banner-row">
+          <span class="mm-panel-id-label">${t('metamatch.bannerLabel')}</span>
+          <span class="mm-banner-status mm-banner-status--${bannerState.cls}">${bannerState.text}</span>
+        </div>
+      </div>
     </div>`;
   }
 
@@ -800,6 +826,9 @@ async function mmApplyFix(animeId, resultIndex) {
       if (a.matchedSeason != null) item.matchedSeason = a.matchedSeason;
       item.anilistId = a.anilistId;
       item.anilistBanner = a.anilistBanner || null;
+      item.anilistTitleEn = a.anilistTitleEn || null;
+      item.anilistTags = a.anilistTags || null;
+      item.anilistCover = a.anilistCover || null;
       mmNeedsRefresh = true;
       mmAddSyncLogEntry(animeId, null, 'matched', a.bangumiTitle || title);
     } else {
@@ -1044,6 +1073,12 @@ async function mmSyncViaSSE(animeIds, options = {}) {
           item.coverUrl = data.meta?.coverUrl || null;
           item.error = null;
           if (data.matchedSeason != null) item.matchedSeason = data.matchedSeason;
+          // 服务端若在 progress 事件携带 anilist 字段则同步更新，保证状态卡实时一致
+          if (data.anilistId != null) item.anilistId = data.anilistId;
+          if (data.anilistBanner != null) item.anilistBanner = data.anilistBanner;
+          if (data.anilistTitleEn != null) item.anilistTitleEn = data.anilistTitleEn;
+          if (data.anilistTags != null) item.anilistTags = data.anilistTags;
+          if (data.anilistCover != null) item.anilistCover = data.anilistCover;
           mmAddSyncLogEntry(data.animeId, null, 'matched', (data.meta?.bangumiTitle || data.meta?.title || t('metamatch.matched')));
         } else {
           item.status = 'failed';

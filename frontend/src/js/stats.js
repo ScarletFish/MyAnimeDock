@@ -551,11 +551,147 @@ function renderSeasonBars(container, items, unknownCount) {
   }
 }
 
+// ─── Tag Co-occurrence (D3 Chord Diagram) ───
+
+function loadChordChart() {
+  const container = document.getElementById('chordChartContainer');
+  const loadingEl = document.getElementById('chordLoading');
+  const emptyEl = document.getElementById('chordEmpty');
+  if (!container) return;
+
+  loadingEl.style.display = '';
+  emptyEl.style.display = 'none';
+  container.innerHTML = '';
+  container.style.display = 'none';
+
+  API.get('/api/stats/tag-cooccurrence').then(data => {
+    loadingEl.style.display = 'none';
+    const tags = data.tags || [];
+    const matrix = data.matrix || [];
+    if (tags.length < 2 || matrix.length < 2) {
+      emptyEl.style.display = '';
+      return;
+    }
+    container.style.display = '';
+    renderChordChart(container, tags, matrix);
+  }).catch(err => {
+    loadingEl.style.display = 'none';
+    emptyEl.style.display = '';
+    console.error('Chord chart load error:', err);
+  });
+}
+
+function tagZh(name) {
+  const d = window.ANILIST_TAG_DATA && window.ANILIST_TAG_DATA[name];
+  return (d && d.zh) || name;
+}
+
+function renderChordChart(container, tags, matrix) {
+  const tc = getThemeColors();
+  const rect = container.parentElement.getBoundingClientRect();
+
+  // 标签空间按最长标签宽度预留，保证完整显示不裁剪（CJK 全角 ≈ 字号，拉丁 ≈ 0.6 字号）
+  const fontSize = 12; // 0.75rem
+  const maxLabelW = tags.reduce((mx, name) => {
+    let w = 0;
+    for (const ch of tagZh(name)) {
+      w += /[\u2E80-\u9FFF\uF900-\uFAFF\uFF00-\uFFEF]/.test(ch) ? fontSize : fontSize * 0.6;
+    }
+    return Math.max(mx, w);
+  }, 0);
+  const labelPad = 14; // 标签与圆环间距 + 边距
+  const minRadius = 130; // 圆环最小半径
+
+  const required = minRadius + labelPad + maxLabelW;
+  const size = Math.min(Math.max(rect.width - 32, required * 2, 320), 720);
+  const outerRadius = size / 2 - labelPad - maxLabelW;
+  const innerRadius = outerRadius - 26;
+
+  container.innerHTML = '';
+  const svg = d3.select(container).append('svg')
+    .attr('width', size)
+    .attr('height', size)
+    .attr('viewBox', `0 0 ${size} ${size}`)
+    .style('max-width', '100%')
+    .style('height', 'auto')
+    .append('g')
+    .attr('transform', `translate(${size / 2},${size / 2})`);
+
+  const chord = d3.chord()
+    .padAngle(0.05)
+    .sortSubgroups(d3.descending);
+
+  const chords = chord(matrix);
+
+  // Color scale: accent-tinted gradient across groups
+  const rgb = tc.accentRgb.split(',').map(Number);
+  const color = (i) => {
+    const t = i / Math.max(tags.length - 1, 1);
+    const mix = 0.35 + t * 0.5;
+    const r = Math.round(rgb[0] * mix + (tc.isDark ? 60 : 200) * (1 - mix));
+    const g = Math.round(rgb[1] * mix + (tc.isDark ? 60 : 200) * (1 - mix));
+    const b = Math.round(rgb[2] * mix + (tc.isDark ? 60 : 200) * (1 - mix));
+    return `rgb(${r},${g},${b})`;
+  };
+
+  // Ribbons (co-occurrence flows)
+  const ribbon = d3.ribbon().radius(innerRadius);
+  svg.append('g')
+    .attr('fill-opacity', 0.6)
+    .selectAll('path')
+    .data(chords)
+    .join('path')
+    .attr('d', ribbon)
+    .attr('fill', d => color(d.source.index))
+    .attr('stroke', tc.bg)
+    .attr('stroke-width', 0.5)
+    .style('cursor', 'pointer')
+    .on('mousemove', (evt, d) => {
+      const a = tagZh(tags[d.source.index]);
+      const b = tagZh(tags[d.target.index]);
+      showTooltip(evt, `<b>${a} × ${b}</b><br>${t('stats.chordPair', { count: d.source.value })}`);
+    })
+    .on('mouseleave', hideTooltip);
+
+  // Arcs (groups)
+  const arc = d3.arc()
+    .innerRadius(innerRadius)
+    .outerRadius(outerRadius);
+
+  const group = svg.append('g')
+    .selectAll('g')
+    .data(chords.groups)
+    .join('g');
+
+  group.append('path')
+    .attr('d', arc)
+    .attr('fill', d => color(d.index))
+    .attr('stroke', tc.bg)
+    .attr('stroke-width', 1.5)
+    .style('cursor', 'pointer')
+    .on('mousemove', (evt, d) => {
+      showTooltip(evt, `<b>${tagZh(tags[d.index])}</b><br>${t('stats.chordCooccur', { count: d.value })}`);
+    })
+    .on('mouseleave', hideTooltip);
+
+  // Labels (radial, space reserved so long names like "LGBTQ+主题" display fully)
+  group.append('text')
+    .each(d => { d.angle = (d.startAngle + d.endAngle) / 2; })
+    .attr('dy', '.35em')
+    .attr('transform', d => `rotate(${(d.angle * 180 / Math.PI - 90)}) translate(${outerRadius + 12})` + (d.angle > Math.PI ? ' rotate(180)' : ''))
+    .attr('text-anchor', d => d.angle > Math.PI ? 'end' : 'start')
+    .attr('fill', tc.text)
+    .attr('font-size', '0.75rem')
+    .attr('font-weight', '600')
+    .text(d => tagZh(tags[d.index]));
+}
+
 // ─── ESM exports for onclick handlers ───
 window.loadStats = loadStats;
 window.loadActivityChart = loadActivityChart;
 window.loadRatingChart = loadRatingChart;
 window.loadSeasonChart = loadSeasonChart;
+window.loadChordChart = loadChordChart;
 
 // ─── Theme change ───
 
@@ -566,5 +702,6 @@ document.addEventListener('themechanged', () => {
     loadActivityChart();
     loadRatingChart();
     loadSeasonChart();
+    loadChordChart();
   }
 });

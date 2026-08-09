@@ -103,6 +103,7 @@ function showView(view) {
     window.loadActivityChart();
     window.loadRatingChart();
     window.loadSeasonChart();
+    window.loadChordChart();
   }
 }
 

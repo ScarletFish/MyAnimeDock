@@ -38,6 +38,79 @@ export function handleStatsTags(req: any, res: any, state: ServerState): void {
   jsonResp(res, 200, { tags: tagCount });
 }
 
+// 和弦图排除的泛化 tag：Cast-Main Cast（主角/卡司构成）+ Demographic（受众向）。
+// 这两类几乎每部番都有，会主导共现矩阵成为中心枢纽，故排除；保留 Cast-Traits 等具体特征。
+const CHORD_EXCLUDED_TAGS = new Set([
+  // Cast-Main Cast
+  'Anti-Hero', 'Elderly Protagonist', 'Ensemble Cast', 'Estranged Family',
+  'Female Protagonist', 'Male Protagonist', 'Primarily Adult Cast',
+  'Primarily Animal Cast', 'Primarily Child Cast', 'Primarily Female Cast',
+  'Primarily Male Cast', 'Primarily Teen Cast',
+  // Demographic
+  'Josei', 'Kids', 'Seinen', 'Shoujo', 'Shounen',
+]);
+
+const CHORD_MAX_TAGS = 12;
+
+export function handleStatsTagCooccurrence(req: any, res: any, state: ServerState): void {
+  const { data } = state;
+  const lib = data.library || [];
+
+  // 统计 tag 频次（过滤剧透 + 排除泛化分类）
+  const tagCount: Record<string, number> = {};
+  for (const a of lib) {
+    if (!a.anilistTags || !Array.isArray(a.anilistTags)) continue;
+    for (const t of a.anilistTags) {
+      if (!t || !t.name || t.isGeneralSpoiler || CHORD_EXCLUDED_TAGS.has(t.name)) continue;
+      tagCount[t.name] = (tagCount[t.name] || 0) + 1;
+    }
+  }
+
+  // 取 Top N 高频 tag
+  const topTags = Object.entries(tagCount)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, CHORD_MAX_TAGS)
+    .map(([name]) => name);
+
+  if (topTags.length < 2) {
+    jsonResp(res, 200, { tags: topTags, matrix: [] });
+    return;
+  }
+
+  const index = new Map(topTags.map((name, i) => [name, i]));
+  const n = topTags.length;
+  const matrix: number[][] = Array.from({ length: n }, () => new Array(n).fill(0));
+
+  // 统计共现：同一部番内出现的 tag 两两 +1
+  for (const a of lib) {
+    if (!a.anilistTags || !Array.isArray(a.anilistTags)) continue;
+    const present = new Set<number>();
+    for (const t of a.anilistTags) {
+      if (!t || !t.name || t.isGeneralSpoiler || CHORD_EXCLUDED_TAGS.has(t.name)) continue;
+      const idx = index.get(t.name);
+      if (idx !== undefined) present.add(idx);
+    }
+    const arr = Array.from(present);
+    for (let i = 0; i < arr.length; i++) {
+      for (let j = i + 1; j < arr.length; j++) {
+        matrix[arr[i]][arr[j]]++;
+        matrix[arr[j]][arr[i]]++;
+      }
+    }
+  }
+
+  // 对角线 = 该 tag 的总共现次数（d3.chord 以对角为组值）
+  for (let i = 0; i < n; i++) {
+    let sum = 0;
+    for (let j = 0; j < n; j++) {
+      if (i !== j) sum += matrix[i][j];
+    }
+    matrix[i][i] = sum;
+  }
+
+  jsonResp(res, 200, { tags: topTags, matrix });
+}
+
 export function handleStatsSeasons(req: any, res: any, state: ServerState): void {
   const { data } = state;
   const lib = data.library || [];

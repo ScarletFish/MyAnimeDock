@@ -135,7 +135,8 @@
 
 #activityChartContainer,
 #ratingChartContainer,
-#seasonChartContainer {
+#seasonChartContainer,
+#chordChartContainer {
   width: 100%;
   display: flex;
   justify-content: center;

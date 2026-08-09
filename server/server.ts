@@ -255,6 +255,7 @@ const routeTable = [
   // Stats
   { method: 'GET', path: '/api/stats', handler: H.handleStats },
   { method: 'GET', path: '/api/stats/tags', handler: H.handleStatsTags },
+  { method: 'GET', path: '/api/stats/tag-cooccurrence', handler: H.handleStatsTagCooccurrence },
   { method: 'GET', path: '/api/stats/seasons', handler: H.handleStatsSeasons },
   { method: 'GET', path: '/api/stats/ratings', handler: H.handleStatsRatings },
   { method: 'GET', path: '/api/stats/watch-activity', handler: H.handleStatsWatchActivity },

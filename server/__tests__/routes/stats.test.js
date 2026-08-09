@@ -139,6 +139,106 @@ describe('stats route handlers', () => {
     });
   });
 
+  describe('handleStatsTagCooccurrence', () => {
+    it('returns empty tags/matrix for empty library', () => {
+      const state = mockState({ data: { library: [] } });
+      const req = mockReq({ url: '/api/stats/tag-cooccurrence' });
+      const res = mockRes();
+      stats.handleStatsTagCooccurrence(req, res, state);
+      assert.strictEqual(res._status, 200);
+      assert.deepStrictEqual(res._body.tags, []);
+      assert.deepStrictEqual(res._body.matrix, []);
+    });
+
+    it('excludes spoiler tags and generalized categories', () => {
+      const state = mockState({
+        data: {
+          library: [
+            {
+              id: '1',
+              anilistTags: [
+                { name: 'Action', rank: 90, isGeneralSpoiler: false },
+                { name: 'Plot Twist', rank: 80, isGeneralSpoiler: true },   // spoiler → excluded
+                { name: 'Female Protagonist', rank: 70, isGeneralSpoiler: false }, // Cast-Main Cast → excluded
+                { name: 'Seinen', rank: 60, isGeneralSpoiler: false },       // Demographic → excluded
+              ],
+            },
+          ],
+        },
+      });
+      const req = mockReq({ url: '/api/stats/tag-cooccurrence' });
+      const res = mockRes();
+      stats.handleStatsTagCooccurrence(req, res, state);
+      assert.strictEqual(res._status, 200);
+      assert.deepStrictEqual(res._body.tags, ['Action']);
+      assert.deepStrictEqual(res._body.matrix, []);
+    });
+
+    it('builds symmetric co-occurrence matrix with diagonal totals', () => {
+      const state = mockState({
+        data: {
+          library: [
+            {
+              id: '1',
+              anilistTags: [
+                { name: 'Action', rank: 90, isGeneralSpoiler: false },
+                { name: 'Comedy', rank: 80, isGeneralSpoiler: false },
+              ],
+            },
+            {
+              id: '2',
+              anilistTags: [
+                { name: 'Action', rank: 85, isGeneralSpoiler: false },
+                { name: 'Drama', rank: 70, isGeneralSpoiler: false },
+              ],
+            },
+            {
+              id: '3',
+              anilistTags: [
+                { name: 'Comedy', rank: 75, isGeneralSpoiler: false },
+                { name: 'Drama', rank: 65, isGeneralSpoiler: false },
+              ],
+            },
+          ],
+        },
+      });
+      const req = mockReq({ url: '/api/stats/tag-cooccurrence' });
+      const res = mockRes();
+      stats.handleStatsTagCooccurrence(req, res, state);
+      assert.strictEqual(res._status, 200);
+      const { tags, matrix } = res._body;
+      assert.deepStrictEqual(tags, ['Action', 'Comedy', 'Drama']);
+      // Action×Comedy=1, Action×Drama=1, Comedy×Drama=1
+      assert.strictEqual(matrix[0][1], 1);
+      assert.strictEqual(matrix[1][0], 1);
+      assert.strictEqual(matrix[0][2], 1);
+      assert.strictEqual(matrix[2][0], 1);
+      assert.strictEqual(matrix[1][2], 1);
+      assert.strictEqual(matrix[2][1], 1);
+      // Diagonal = total co-occurrence per tag
+      assert.strictEqual(matrix[0][0], 2);
+      assert.strictEqual(matrix[1][1], 2);
+      assert.strictEqual(matrix[2][2], 2);
+    });
+
+    it('caps at CHORD_MAX_TAGS (12) by frequency', () => {
+      const tags = [];
+      for (let i = 0; i < 20; i++) tags.push({ name: `Tag${i}`, rank: 100 - i, isGeneralSpoiler: false });
+      const state = mockState({
+        data: {
+          library: [
+            { id: '1', anilistTags: tags },
+          ],
+        },
+      });
+      const req = mockReq({ url: '/api/stats/tag-cooccurrence' });
+      const res = mockRes();
+      stats.handleStatsTagCooccurrence(req, res, state);
+      assert.strictEqual(res._status, 200);
+      assert.strictEqual(res._body.tags.length, 12);
+    });
+  });
+
   describe('handleStatsSeasons', () => {
     it('returns all zeros for empty library', () => {
       const state = mockState({ data: { library: [] } });

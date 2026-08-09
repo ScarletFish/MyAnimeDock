@@ -38,45 +38,6 @@ function resolveFolderParsed(anime: any) {
   return fp;
 }
 
-/**
- * POST /api/library/sync-anilist-backfill
- * 为所有缺 anilistId 的已有库条目回填 AniList 元数据。
- * 每处理 5 部落盘一次，返回处理结果统计。
- */
-async function runAnilistBackfill(state: ServerState) {
-  const { data, config, db, logger } = state;
-  const { syncAnilist, parallelMap } = require('../scrapers') as any;
-  const bannerDir = path.join(DATA_DIR, 'banners');
-  const coverDir = path.join(DATA_DIR, 'covers');
-
-  const candidates = data.library.filter(a => a.anilistId == null && a.anilistId !== -1);
-
-  logger.info(`AniList backfill: ${candidates.length} candidates`);
-
-  const results = await parallelMap(candidates, async (anime: any) => {
-    try {
-      const result = await syncAnilist(anime, config, bannerDir, coverDir);
-      if (result) {
-        logger.info(`Backfill: ${anime.title} → anilistId=${result.anilistId}`);
-        return 'succeeded';
-      } else {
-        return 'skipped';
-      }
-    } catch (e: any) {
-      logger.error(`Backfill: ${anime.title} → ${e.message}`);
-      return 'failed';
-    }
-  }, 2);
-
-  const backfillIds = new Set(candidates.map((a: any) => a.id));
-  await db.saveLibrary(data, backfillIds);
-
-  const succeeded = results.filter((r: string) => r === 'succeeded').length;
-  const skipped = results.filter((r: string) => r === 'skipped').length;
-  const failed = results.filter((r: string) => r === 'failed').length;
-  return { total: candidates.length, succeeded, failed, skipped };
-}
-
 export function handleGetLibrary(req: any, res: any, state: ServerState) {
   const { data, config, logger } = state;
   // Compute pinyin for each anime
@@ -103,7 +64,7 @@ export function handleGetLibrary(req: any, res: any, state: ServerState) {
 }
 
 export function handleGetAnimeDetail(req: any, res: any, state: ServerState) {
-  const { data, config, logger } = state;
+  const { data } = state;
   const id = decodeURIComponent(req.url.slice('/api/anime/'.length));
   const anime = data.library.find((a: any) => a.id === id);
   if (!anime) { jsonResp(res, 404, { error: 'Anime not found' }); return; }
@@ -120,28 +81,6 @@ export function handleGetAnimeDetail(req: any, res: any, state: ServerState) {
 
   // 后台预生成缩略图（详情页查看时插队到队列最前）
   state.thumbnailQueue?.enqueue(anime, true);
-
-  // 懒加载 AniList 详情：已有 anilistId 但缺 banner 或缺 tags 时异步补全（不阻塞响应）
-  // 仅针对有 anilistId 的条目 —— SSE 同步和 handleBangumiFetch 已处理 AniList 解析
-  // 跳过已确认无横幅的条目（anilistBanner === '__none__'）
-  // 本地路径但文件已缺失（手动删除/迁移遗漏）→ 视为需要重新下载，避免永久裂图
-  const bannerFileMissing = anime.anilistBanner &&
-    !anime.anilistBanner.startsWith('http') &&
-    anime.anilistBanner !== '__none__' &&
-    !fs.existsSync(path.join(DATA_DIR, 'banners', path.basename(anime.anilistBanner)));
-  const needsAnilistDetail = (anime.anilistBanner !== '__none__' && (!anime.anilistBanner || anime.anilistBanner.startsWith('http') || bannerFileMissing)) || !anime.anilistTags;
-  if (anime.anilistId && anime.anilistId !== -1 && needsAnilistDetail) {
-    const { syncAnilistDetail } = require('../scrapers') as any;
-    const bannerDir = path.join(DATA_DIR, 'banners');
-    const coverDir = path.join(DATA_DIR, 'covers');
-    syncAnilistDetail(anime, config, bannerDir, coverDir).then((result: any) => {
-      if (result) {
-        const { db } = state;
-        // 方案 A：saveLibrary 一次性写回列字段（anilistBanner/anilistTitleEn）+ metadata（anilistTags/anilistStudios）
-        db.saveLibrary(data, new Set([anime.id]));
-      }
-    }).catch((e: any) => logger.warn(`Detail lazy banner failed for ${id}: ${e.message}`));
-  }
 }
 
 export function handleDeleteAnime(req: any, res: any, state: ServerState) {
@@ -244,12 +183,12 @@ export function handleLibrarySyncStream(req: any, res: any, state: ServerState) 
         // Cover resize removed — browser handles display scaling
           if (matchedSeason != null) anime.matchedSeason = matchedSeason;
           // 从 matchSeason 直存 anilistId（罗马音走 AniList 桥）
+          // banner 不在此阶段设置——统一由收尾阶段 batchGetDetails 批量查询下载
           if (match && match.anilistId) {
             anime.anilistId = match.anilistId;
-            if (match.anilistBanner) anime.anilistBanner = match.anilistBanner;
             if (match.anilistTitleEn) anime.anilistTitleEn = match.anilistTitleEn;
           }
-          // 仍无 anilistId → 用 Bangumi 日文原名搜 AniList 拿 banner
+          // 仍无 anilistId → 用 Bangumi 日文原名搜 AniList 拿 anilistId（banner 由收尾阶段统一批量下载）
           if (!anime.anilistId || anime.anilistId === -1) {
             try {
               const anilist = registry.get('anilist');
@@ -264,7 +203,7 @@ export function handleLibrarySyncStream(req: any, res: any, state: ServerState) 
                     if (bestMatch.item && bestMatch.score >= 0.5) {
                       const bestItem = bestMatch.item;
                       anime.anilistId = bestItem.id;
-                      if (bestItem.bannerImage) anime.anilistBanner = bestItem.bannerImage;
+                      // banner 不在此阶段设置——统一由收尾阶段 batchGetDetails 批量查询下载
                       if (bestItem.title_english) anime.anilistTitleEn = bestItem.title_english;
                     }
                   }
@@ -308,7 +247,7 @@ export function handleLibrarySyncStream(req: any, res: any, state: ServerState) 
 
     // 批量补全缺 banner 或缺 tags 的条目（一次 `id_in` 查询处理最多 50 条，代替 N 次独立 DETAIL_QUERY）
     const anilistScraper = registry.get('anilist');
-    const needAnilistDetail = data.library.filter((a: any) => a.anilistId && a.anilistId !== -1 && ((!a.anilistBanner && a.anilistBanner !== '__none__') || !a.anilistTags));
+    const needAnilistDetail = data.library.filter((a: any) => a.anilistId && a.anilistId !== -1 && ((!a.anilistBanner && a.anilistBanner !== '__none__') || (a.anilistBanner && a.anilistBanner.startsWith('http')) || !a.anilistTags));
     if (needAnilistDetail.length > 0 && anilistScraper) {
       const ids = [...new Set(needAnilistDetail.map((a: any) => a.anilistId))];
       logger.info(`Batch AniList detail: ${ids.length} ids (${needAnilistDetail.length} items)`);
@@ -361,13 +300,4 @@ export function handleLibrarySyncStream(req: any, res: any, state: ServerState) 
       state.thumbnailQueue?.enqueue(anime);
     }
   })();
-}
-
-export async function handleAnilistBackfill(req: any, res: any, state: ServerState) {
-  try {
-    const result = await runAnilistBackfill(state);
-    jsonResp(res, 200, result);
-  } catch (e: any) {
-    jsonResp(res, 500, { error: e.message });
-  }
 }

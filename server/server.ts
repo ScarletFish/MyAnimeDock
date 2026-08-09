@@ -229,7 +229,6 @@ const routeTable = [
   { method: 'POST', path: '/api/discovery/include', handler: H.handleDiscoveryInclude },
   // Library
   { method: 'GET', path: '/api/library', handler: H.handleGetLibrary },
-  { method: 'POST', path: '/api/library/sync-anilist-backfill', handler: H.handleAnilistBackfill },
   { method: 'GET', path: '/api/library/sync/stream', handler: H.handleLibrarySyncStream },
   { method: 'OPTIONS', path: '/api/library/sync/stream', handler: handleCorsPreflight },
   // Anime detail (order matters: /sessions before /:id)

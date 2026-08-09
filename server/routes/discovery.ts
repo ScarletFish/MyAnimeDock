@@ -4,7 +4,6 @@ import fs from 'fs';
 import crypto from 'crypto';
 import { jsonResp, readBody } from '../lib/utils';
 import { saveScannedTree, DATA_DIR } from '../lib/config';
-import { syncAnilist } from '../scrapers';
 import type { ServerState, ScanNode } from '../types';
 
 type State = ServerState;
@@ -189,18 +188,11 @@ async function handleBrowse(req: any, res: any, state: State) {
       await db.saveMyList(data);
       await saveScannedTree(data.scannedTree);
       jsonResp(res, 200, { ok: true, imported });
-      // 后台拉取 AniList banner（不影响封面显示）
-      const bannerDir = path.join(DATA_DIR, 'banners');
-      const coverDir = path.join(DATA_DIR, 'covers');
+      // 后台生成缩略图（不影响封面显示）
       imported.forEach((id: any) => {
         const anime = data.library.find(a => a.id === id);
         if (anime) {
           state.thumbnailQueue?.enqueue(anime);
-        }
-        if (anime && anime.bangumiId) {
-          syncAnilist(anime, config, bannerDir, coverDir)
-            .then(() => db.saveLibrary(data, new Set([anime.id])))
-            .catch(e => logger.warn(`AniList sync failed for ${id}: ${e.message}`));
         }
       });
     } catch (e: any) {

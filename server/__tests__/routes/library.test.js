@@ -2,7 +2,7 @@
 // Route handler tests for library.js
 //   Simple: handleGetLibrary, handleDeleteAnime
 //   Complex: handleGetAnimeDetail (fs + lazy requires)
-//   Skipped: handleLibrarySyncStream (heavy SSE), handleAnilistBackfill (scrapers API)
+//   Skipped: handleLibrarySyncStream (heavy SSE)
 const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert');
 const { mockReq, mockRes, mockState } = require('../helpers/mock-http');

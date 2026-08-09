@@ -260,7 +260,7 @@ async function handleDbClearCache(req: any, res: any, state: State): Promise<voi
       results[t] = { ok: true, cleared, size: freed };
     }
     // 清横幅缓存后，同步清掉 DB 里指向已删文件的本地路径引用（置 null），
-    // 解锁懒加载重下（library.js handleGetAnime 的 syncAnilistDetail / backfill）
+    // 避免残留失效路径；banner 由匹配工作台/手动刷元数据重新获取
     if (targets.includes('banners') && state?.data?.library) {
       const clearedIds = new Set<string>();
       for (const a of state.data.library) {

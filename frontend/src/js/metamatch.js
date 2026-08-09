@@ -384,6 +384,8 @@ function mmToggleSelect(animeId) {
   } else {
     mmSelectedIds.add(animeId);
     mmSelectionOrder.push(animeId);
+    // 新增选中时让详情面板跟随最后点击的条目
+    mmSelectForPanel(animeId);
   }
   mmUpdateBatchBar();
   mmUpdateRowSelection();
@@ -617,7 +619,9 @@ function mmRenderPanel(item) {
     const alId = item.anilistId;
     const banner = item.anilistBanner;
     const bannerDownloaded = !!banner && banner !== '__none__' && !banner.startsWith('http');
-    const alOk = (alId != null && alId !== -1) && bannerDownloaded && !!item.anilistTags;
+    // 无横幅（__none__）是"确认本来就没有"，不算缺失；只有未下载(http)/未获取(null)才算缺失
+    const bannerOk = bannerDownloaded || banner === '__none__';
+    const alOk = (alId != null && alId !== -1) && bannerOk && !!item.anilistTags;
 
     // banner 单独一行：__none__=无横幅（中性）、http=未下载（⚠）、本地路径=已下载（✓）
     let bannerState;

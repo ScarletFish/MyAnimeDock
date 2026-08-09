@@ -170,11 +170,12 @@ describe('stats route handlers', () => {
       const res = mockRes();
       stats.handleStatsTagCooccurrence(req, res, state);
       assert.strictEqual(res._status, 200);
-      assert.deepStrictEqual(res._body.tags, ['Action']);
+      // Action 单独出现、无交叉共现 → 被过滤
+      assert.deepStrictEqual(res._body.tags, []);
       assert.deepStrictEqual(res._body.matrix, []);
     });
 
-    it('builds symmetric co-occurrence matrix with diagonal totals', () => {
+    it('builds symmetric co-occurrence matrix with zero diagonal (no self-ribbon)', () => {
       const state = mockState({
         data: {
           library: [
@@ -215,10 +216,10 @@ describe('stats route handlers', () => {
       assert.strictEqual(matrix[2][0], 1);
       assert.strictEqual(matrix[1][2], 1);
       assert.strictEqual(matrix[2][1], 1);
-      // Diagonal = total co-occurrence per tag
-      assert.strictEqual(matrix[0][0], 2);
-      assert.strictEqual(matrix[1][1], 2);
-      assert.strictEqual(matrix[2][2], 2);
+      // 对角线为 0，不产生 self-ribbon
+      assert.strictEqual(matrix[0][0], 0);
+      assert.strictEqual(matrix[1][1], 0);
+      assert.strictEqual(matrix[2][2], 0);
     });
 
     it('caps at CHORD_MAX_TAGS (12) by frequency', () => {

@@ -72,16 +72,11 @@ export function handleStatsTagCooccurrence(req: any, res: any, state: ServerStat
     .slice(0, CHORD_MAX_TAGS)
     .map(([name]) => name);
 
-  if (topTags.length < 2) {
-    jsonResp(res, 200, { tags: topTags, matrix: [] });
-    return;
-  }
-
   const index = new Map(topTags.map((name, i) => [name, i]));
   const n = topTags.length;
   const matrix: number[][] = Array.from({ length: n }, () => new Array(n).fill(0));
 
-  // 统计共现：同一部番内出现的 tag 两两 +1
+  // 统计共现：同一部番内出现的 tag 两两 +1（对角保持 0，避免 d3.chord 生成 self-ribbon）
   for (const a of lib) {
     if (!a.anilistTags || !Array.isArray(a.anilistTags)) continue;
     const present = new Set<number>();
@@ -99,16 +94,31 @@ export function handleStatsTagCooccurrence(req: any, res: any, state: ServerStat
     }
   }
 
-  // 对角线 = 该 tag 的总共现次数（d3.chord 以对角为组值）
-  for (let i = 0; i < n; i++) {
-    let sum = 0;
-    for (let j = 0; j < n; j++) {
-      if (i !== j) sum += matrix[i][j];
-    }
-    matrix[i][i] = sum;
+  // 过滤掉没有任何交叉共现的 tag（行和为 0），避免 d3.chord 组值为空
+  const keep = topTags
+    .map((name, i) => ({ name, rowSum: matrix[i].reduce((s, v) => s + v, 0) }))
+    .filter(t => t.rowSum > 0)
+    .map(t => t.name);
+
+  if (keep.length < 2) {
+    jsonResp(res, 200, { tags: keep, matrix: [] });
+    return;
   }
 
-  jsonResp(res, 200, { tags: topTags, matrix });
+  const keepIndex = new Map(keep.map((name, i) => [name, i]));
+  const m = keep.length;
+  const filtered: number[][] = Array.from({ length: m }, () => new Array(m).fill(0));
+  for (let i = 0; i < n; i++) {
+    const ki = keepIndex.get(topTags[i]);
+    if (ki === undefined) continue;
+    for (let j = 0; j < n; j++) {
+      const kj = keepIndex.get(topTags[j]);
+      if (kj === undefined) continue;
+      filtered[ki][kj] = matrix[i][j];
+    }
+  }
+
+  jsonResp(res, 200, { tags: keep, matrix: filtered });
 }
 
 export function handleStatsSeasons(req: any, res: any, state: ServerState): void {

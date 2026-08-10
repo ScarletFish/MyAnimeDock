@@ -233,8 +233,6 @@ const routeTable = [
   { method: 'GET', path: '/api/library', handler: H.handleGetLibrary },
   { method: 'GET', path: '/api/library/sync/stream', handler: H.handleLibrarySyncStream },
   { method: 'OPTIONS', path: '/api/library/sync/stream', handler: handleCorsPreflight },
-  { method: 'POST', path: '/api/library/backfill', handler: H.handleLibraryBackfill },
-  { method: 'GET', path: '/api/library/backfill/status', handler: H.handleLibraryBackfillStatus },
   // Anime detail (order matters: /sessions before /:id)
   { method: 'GET', pattern: /^\/api\/anime\/(.+?)\/sessions$/, handler: H.handleAnimeSessions },
   { method: 'GET', pattern: /^\/api\/anime\/(.+?)\/relations$/, handler: H.handleAnimeRelations },

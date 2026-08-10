@@ -113,32 +113,6 @@ export function handleDeleteAnime(req: any, res: any, state: ServerState) {
 
 // GET /api/anime/:id/sessions is in stats.js
 
-// GET /api/library/backfill/status — 查询缺失数据数量（供前端补全前提示）
-export function handleLibraryBackfillStatus(req: any, res: any, state: ServerState) {
-  const { data, config } = state;
-  const { countMissingData } = require('../scrapers') as any;
-  const bannerDir = path.join(DATA_DIR, 'banners');
-  jsonResp(res, 200, countMissingData(data, config, bannerDir));
-}
-
-// POST /api/library/backfill — 手动触发自动批量补全缺失数据（双源）
-export async function handleLibraryBackfill(req: any, res: any, state: ServerState) {
-  const { data, config, db, logger } = state;
-  const { ensureMetadataBatch } = require('../scrapers') as any;
-  const bannerDir = path.join(DATA_DIR, 'banners');
-  const coverDir = path.join(DATA_DIR, 'covers');
-  try {
-    const changed = await ensureMetadataBatch(data.library, config, { coverDir, bannerDir });
-    if (changed.size > 0) {
-      await db.saveLibrary(data, changed);
-    }
-    jsonResp(res, 200, { ok: true, backfilled: changed.size });
-  } catch (e: any) {
-    logger.error('Backfill error:', e.message);
-    jsonResp(res, 500, { error: 'Backfill failed' });
-  }
-}
-
 export function handleLibrarySyncStream(req: any, res: any, state: ServerState) {
   const { data, config, db, logger, cancelledSyncSessions } = state;
   // OPTIONS for mmCanStream probe

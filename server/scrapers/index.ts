@@ -712,45 +712,4 @@ export async function ensureMetadataBatch(animes: any[], config: ScraperConfig, 
   return changed;
 }
 
-/**
- * 判断条目是否缺 AniList banner。
- * 除 DB 字段外，还检查本地文件是否存在——若 anilistBanner 是本地路径但文件已删/损坏，视为缺失。
- */
-function needsAnilistBanner(a: any, bannerDir: string): boolean {
-  const b = a.anilistBanner;
-  if (!b) return true;                 // 无 banner
-  if (b === '__none__') return false;  // 已确认无横幅
-  return !fs.existsSync(b);            // 本地路径但文件不存在 → 缺失
-}
-
-/**
- * 统计"已有 ID 但缺数据"的条目数（双源，去重）。
- * 与 backfillMissingData 的过滤条件一致，供前端补全前提示检测数量。
- */
-export function countMissingData(data: any, config: ScraperConfig, bannerDir: string): { anilist: number; bangumi: number; total: number } {
-  const anilist = registry.get('anilist') as any;
-  const bangumi = registry.get('bangumi') as any;
-  const missing = new Set<string>();
-  let anilistCount = 0;
-  let bangumiCount = 0;
-
-  if (anilist && anilist.enabled?.(config)) {
-    for (const a of data.library) {
-      if (a.anilistId && a.anilistId !== -1 && (needsAnilistBanner(a, bannerDir) || !a.anilistTags)) {
-        anilistCount++;
-        missing.add(a.id);
-      }
-    }
-  }
-  if (bangumi && bangumi.enabled?.(config)) {
-    for (const a of data.library) {
-      if (a.bangumiId && !a.summaryChecked && (!a.summary || !a.rating || !a.characters?.length)) {
-        bangumiCount++;
-        missing.add(a.id);
-      }
-    }
-  }
-  return { anilist: anilistCount, bangumi: bangumiCount, total: missing.size };
-}
-
 export const truncateSummary = BangumiScraper.truncateSummary;

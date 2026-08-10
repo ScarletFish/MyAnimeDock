@@ -690,11 +690,26 @@ function renderSummary(anime) {
 // ─── Key staff roles to display (filtered) ───
 const KEY_STAFF_ROLES = ['原作', '监督', '导演', '系列构成', '脚本', '音乐', '动画制作', '角色设计', '人物设定', '制作', '製作', 'author', 'editor', 'producer', 'storyboard', 'director'];
 
+// 角色头像加载失败（离线/断网/CDN 不可达）→ 整个角色模块不可视（与推荐/相关一致）
+function charAvatarFallback() {
+  const container = document.getElementById('detailCharacters');
+  if (container) container.style.display = 'none';
+  const staffSection = document.getElementById('detailStaffSection');
+  if (staffSection) staffSection.style.display = 'none';
+}
+
 function renderCharacters(anime) {
   const container = document.getElementById('detailCharacters');
   const grid = document.getElementById('detailCharGrid');
   const staffSection = document.getElementById('detailStaffSection');
   const staffList = document.getElementById('detailStaffList');
+
+  // 无网络 → 整个角色模块不可视（头像依赖远程 CDN，与推荐/相关一致）
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    if (container) container.style.display = 'none';
+    if (staffSection) staffSection.style.display = 'none';
+    return;
+  }
 
   const chars = anime.characters || [];
   const persons = anime.persons || [];
@@ -712,7 +727,7 @@ function renderCharacters(anime) {
         ? escHtml(c.actors[0].nameCn || c.actors[0].name)
         : null;
       const img = c.image
-        ? `<img class="detail-char-avatar" src="${escAttr(c.image)}" alt="" loading="lazy" decoding="async">`
+        ? `<img class="detail-char-avatar" src="${escAttr(c.image)}" alt="" loading="lazy" decoding="async" onerror="charAvatarFallback()">`
         : `<div class="detail-char-avatar-placeholder">${name.charAt(0)}</div>`;
       return `<div class="detail-char-card">
         ${img}

@@ -1189,6 +1189,35 @@ async function mmStartResearch(animeId) {
   mmMatchItems([animeId]);
 }
 
+// 手动触发后端批量补全缺失数据（双源：AniList + Bangumi）
+async function mmBackfill() {
+  if (mmSyncInProgress) return;
+  const btn = document.getElementById('mmBackfillBtn');
+  if (btn) { btn.disabled = true; btn.textContent = t('metamatch.backfilling'); }
+  try {
+    // 先查检测数量，提示用户有多少部缺失
+    const status = await API.get('/api/library/backfill/status');
+    const detected = status.total || 0;
+    if (detected === 0) {
+      showToast(t('metamatch.backfillNone'), 'info');
+      return;
+    }
+    showToast(t('metamatch.backfillDetected', { n: detected }), 'info');
+    const res = await API.post('/api/library/backfill');
+    if (res.ok) {
+      showToast(t('metamatch.backfillDone', { n: res.backfilled }), 'success');
+      mmNeedsRefresh = true;
+      mmLoadModalData();
+    } else {
+      showToast(t('metamatch.backfillFailed', { error: res.error || '' }), 'error');
+    }
+  } catch (e) {
+    showToast(t('metamatch.backfillFailed', { error: e.message }), 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = t('metamatch.backfill'); }
+  }
+}
+
 // ─── Expose globals ───
 window.mmOpenModal = mmOpenModal;
 window.mmSetFilter = mmSetFilter;
@@ -1201,3 +1230,4 @@ window.mmApplyFix = mmApplyFix;
 window.mmStartResearch = mmStartResearch;
 window.mmToggleSelect = mmToggleSelect;
 window.mmMatchItems = mmMatchItems;
+window.mmBackfill = mmBackfill;

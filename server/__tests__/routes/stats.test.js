@@ -299,20 +299,23 @@ describe('stats route handlers', () => {
       const res = mockRes();
       stats.handleStatsRatings(req, res, state);
       assert.strictEqual(res._status, 200);
-      assert.deepStrictEqual(res._body.bins, [0, 0, 0, 0, 0, 0, 0]);
+      assert.deepStrictEqual(res._body.bins, [0, 0, 0, 0, 0]);
     });
 
     it('correctly bins ratings', () => {
       const state = mockState({
         data: {
           library: [
-            { id: '1', rating: 1.5 },  // 0-2
-            { id: '2', rating: 3.0 },  // 2-4
-            { id: '3', rating: 5.5 },  // 4-6
-            { id: '4', rating: 6.5 },  // 6-7
-            { id: '5', rating: 7.5 },  // 7-8
-            { id: '6', rating: 8.5 },  // 8-9
-            { id: '7', rating: 9.5 },  // 9-10
+            { id: '1', rating: 0.5 },  // round=1 → 桶0(★1)
+            { id: '2', rating: 1.6 },  // round=2 → 桶0(★1)
+            { id: '3', rating: 2.5 },  // round=3 → 桶1(★2)
+            { id: '4', rating: 3.5 },  // round=4 → 桶1(★2)
+            { id: '5', rating: 4.5 },  // round=5 → 桶2(★3)
+            { id: '6', rating: 5.5 },  // round=6 → 桶2(★3)
+            { id: '7', rating: 6.5 },  // round=7 → 桶3(★4)
+            { id: '8', rating: 7.5 },  // round=8 → 桶3(★4)
+            { id: '9', rating: 8.5 },  // round=9 → 桶4(★5)
+            { id: '10', rating: 9.6 }, // round=10 → 桶4(★5)
           ],
         },
       });
@@ -320,14 +323,15 @@ describe('stats route handlers', () => {
       const res = mockRes();
       stats.handleStatsRatings(req, res, state);
       assert.strictEqual(res._status, 200);
-      assert.deepStrictEqual(res._body.bins, [1, 1, 1, 1, 1, 1, 1]);
+      assert.deepStrictEqual(res._body.bins, [2, 2, 2, 2, 2]);
+      assert.deepStrictEqual(res._body.labels, ['1', '2', '3', '4', '5']);
     });
 
     it('skips items without ratings', () => {
       const state = mockState({
         data: {
           library: [
-            { id: '1', rating: 7.5 },
+            { id: '1', rating: 8.4 },  // round=8 → 桶3(★4)
             { id: '2' },            // no rating
             { id: '3', rating: null },
             { id: '4', rating: NaN },
@@ -338,7 +342,7 @@ describe('stats route handlers', () => {
       const res = mockRes();
       stats.handleStatsRatings(req, res, state);
       assert.strictEqual(res._status, 200);
-      assert.strictEqual(res._body.bins[4], 1); // 7-8 bin
+      assert.strictEqual(res._body.bins[3], 1); // ★4 bin
       assert.strictEqual(res._body.bins.reduce((a, b) => a + b, 0), 1);
     });
   });

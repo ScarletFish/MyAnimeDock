@@ -43,7 +43,9 @@ function getThemeColors() {
     accent: style.getPropertyValue('--accent').trim() || '#e9407a',
     accentRgb: style.getPropertyValue('--accent-rgb').trim() || '233,64,122',
     border: isDark ? 'rgba(237,232,226,0.1)' : 'rgba(44,36,24,0.1)',
-    gridLine: isDark ? 'rgba(237,232,226,0.08)' : 'rgba(44,36,24,0.08)'
+    gridLine: isDark ? 'rgba(237,232,226,0.08)' : 'rgba(44,36,24,0.08)',
+    fontBody: style.getPropertyValue('--font-body').trim() || "'DM Sans', 'Noto Sans SC', 'Noto Sans JP', sans-serif",
+    fontMono: style.getPropertyValue('--font-mono').trim() || "'JetBrains Mono', monospace"
   };
 }
 
@@ -194,7 +196,7 @@ function renderActivityChart(container, months) {
   const tc = getThemeColors();
   const rect = container.parentElement.getBoundingClientRect();
   const margin = { top: 20, right: 20, bottom: 40, left: 50 };
-  const width = Math.min(Math.max(rect.width - 32, 300), 800) - margin.left - margin.right;
+  const width = Math.max(rect.width - 32, 300) - margin.left - margin.right;
   const height = 220 - margin.top - margin.bottom;
 
   container.innerHTML = '';
@@ -296,22 +298,24 @@ function renderActivityChart(container, months) {
     })
     .on('mouseleave', hideTooltip);
 
-  // X axis
+  // X axis (month labels → body)
   svg.append('g')
     .attr('transform', `translate(0,${height})`)
     .call(d3.axisBottom(x).tickSize(0))
     .selectAll('text')
     .attr('fill', tc.muted)
-    .attr('font-size', '0.75rem')
+    .attr('font-family', tc.fontBody)
+    .attr('font-size', '0.938rem')
     .attr('dy', '1em');
   svg.selectAll('.domain').attr('stroke', tc.border);
 
-  // Y axis
+  // Y axis (time values → mono)
   svg.append('g')
     .call(d3.axisLeft(y).ticks(5).tickFormat(d => d >= 60 ? (d / 60).toFixed(0) + 'h' : d + 'm'))
     .selectAll('text')
     .attr('fill', tc.muted)
-    .attr('font-size', '0.75rem');
+    .attr('font-family', tc.fontMono)
+    .attr('font-size', '0.938rem');
   svg.selectAll('.domain').attr('stroke', tc.border);
 }
 
@@ -347,92 +351,91 @@ function loadRatingChart() {
 
 function renderRatingChart(container, labels, bins, total) {
   const tc = getThemeColors();
-  const rect = container.parentElement.getBoundingClientRect();
-  const margin = { top: 20, right: 20, bottom: 40, left: 50 };
-  const width = Math.min(Math.max(rect.width - 32, 300), 800) - margin.left - margin.right;
-  const height = 220 - margin.top - margin.bottom;
+  const rgb = tc.accentRgb.split(',').map(Number);
+
+  // data: score = bin index + 1
+  const data = labels.map((label, i) => ({ label, score: i + 1, count: bins[i] || 0 }));
+
+  // Weighted average anchor
+  const weighted = data.reduce((s, d) => s + d.score * d.count, 0);
+  const avg = total > 0 ? weighted / total : 0;
+
+  // Mode = the score with the most titles
+  const maxCount = d3.max(data, d => d.count) || 0;
+  const modeSet = new Set(data.filter(d => maxCount > 0 && d.count === maxCount).map(d => d.score));
 
   container.innerHTML = '';
-  const svg = d3.select(container).append('svg')
-    .attr('width', width + margin.left + margin.right)
-    .attr('height', height + margin.top + margin.bottom)
-    .append('g')
-    .attr('transform', `translate(${margin.left},${margin.top})`);
 
-  const data = labels.map((label, i) => ({ label, count: bins[i] }));
+  const wrap = document.createElement('div');
+  wrap.className = 'rating-chart';
 
-  const x = d3.scaleBand()
-    .domain(labels)
-    .range([0, width])
-    .padding(0.2);
+  // ── Top anchor: average + star badge ──
+  const head = document.createElement('div');
+  head.className = 'rating-chart-head';
+  const badge = document.createElement('span');
+  badge.className = 'rating-chart-badge';
+  badge.textContent = '★';
+  const avgEl = document.createElement('span');
+  avgEl.className = 'rating-chart-avg';
+  avgEl.textContent = avg.toFixed(1);
+  const avgLabel = document.createElement('span');
+  avgLabel.className = 'rating-chart-avg-label';
+  avgLabel.textContent = t('stats.avgRating');
+  head.appendChild(badge);
+  head.appendChild(avgEl);
+  head.appendChild(avgLabel);
+  wrap.appendChild(head);
 
-  const y = d3.scaleLinear()
-    .domain([0, d3.max(bins) || 1])
-    .nice()
-    .range([height, 0]);
+  // ── Rows: ★ score · horizontal bar · count/pct ──
+  const rows = document.createElement('div');
+  rows.className = 'rating-chart-rows';
 
-  // Grid lines
-  svg.append('g')
-    .call(d3.axisLeft(y).ticks(5).tickSize(-width).tickFormat(''))
-    .selectAll('line')
-    .attr('stroke', tc.gridLine);
-  svg.selectAll('.domain').remove();
+  data.forEach(d => {
+    const pct = total > 0 ? (d.count / total) * 100 : 0;
+    const widthPct = maxCount > 0 ? (d.count / maxCount) * 100 : 0;
 
-  // Color scale: low bins灰, high bins亮
-  const rgb = tc.accentRgb.split(',').map(Number);
-  const barColors = data.map((_, i) => {
-    const t = i / (data.length - 1);
-    const mix = 0.3 + t * 0.7;
-    const r = Math.round(rgb[0] * mix + (tc.isDark ? 80 : 180) * (1 - mix));
-    const g = Math.round(rgb[1] * mix + (tc.isDark ? 80 : 180) * (1 - mix));
-    const b = Math.round(rgb[2] * mix + (tc.isDark ? 80 : 180) * (1 - mix));
-    return `rgb(${r},${g},${b})`;
+    // Higher score → brighter accent-tinted bar
+    const t = (d.score - 1) / Math.max(data.length - 1, 1);
+    const mix = 0.35 + t * 0.65;
+    const neutral = tc.isDark ? 90 : 205;
+    const r = Math.round(rgb[0] * mix + neutral * (1 - mix));
+    const g = Math.round(rgb[1] * mix + neutral * (1 - mix));
+    const b = Math.round(rgb[2] * mix + neutral * (1 - mix));
+    const color = `rgb(${r},${g},${b})`;
+
+    const row = document.createElement('div');
+    row.className = 'rating-row' + (modeSet.has(d.score) ? ' rating-row--mode' : '');
+
+    const scoreEl = document.createElement('span');
+    scoreEl.className = 'rating-row-score';
+    scoreEl.textContent = '★ ' + d.score;
+
+    const track = document.createElement('div');
+    track.className = 'rating-row-track';
+    const bar = document.createElement('div');
+    bar.className = 'rating-row-bar';
+    bar.style.width = widthPct + '%';
+    bar.style.background = modeSet.has(d.score) ? tc.accent : color;
+    track.appendChild(bar);
+
+    const countEl = document.createElement('span');
+    countEl.className = 'rating-row-count';
+    countEl.textContent = `${d.count}`;
+
+    row.appendChild(scoreEl);
+    row.appendChild(track);
+    row.appendChild(countEl);
+
+    row.addEventListener('mousemove', evt => {
+      showTooltip(evt, `<b>${d.score} ${t('stats.scoreUnit')}</b><br>${t('stats.titleCount', { count: d.count, pct: pct.toFixed(1) })}`);
+    });
+    row.addEventListener('mouseleave', hideTooltip);
+
+    rows.appendChild(row);
   });
 
-  // Bars
-  svg.selectAll('.bar')
-    .data(data)
-    .join('rect')
-    .attr('class', 'bar')
-    .attr('x', d => x(d.label))
-    .attr('y', d => y(d.count))
-    .attr('width', x.bandwidth())
-    .attr('height', d => height - y(d.count))
-    .attr('fill', (_, i) => barColors[i])
-    .attr('rx', 3);
-
-  // Hover rects
-  svg.selectAll('.hover-rect')
-    .data(data)
-    .join('rect')
-    .attr('x', d => x(d.label))
-    .attr('y', 0)
-    .attr('width', x.bandwidth())
-    .attr('height', height)
-    .attr('fill', 'transparent')
-    .on('mousemove', (evt, d) => {
-      const pct = ((d.count / total) * 100).toFixed(1);
-      showTooltip(evt, `<b>${d.label}</b><br>${t('stats.titleCount', { count: d.count, pct })}`);
-    })
-    .on('mouseleave', hideTooltip);
-
-  // X axis
-  svg.append('g')
-    .attr('transform', `translate(0,${height})`)
-    .call(d3.axisBottom(x).tickSize(0))
-    .selectAll('text')
-    .attr('fill', tc.muted)
-    .attr('font-size', '0.75rem')
-    .attr('dy', '1em');
-  svg.selectAll('.domain').attr('stroke', tc.border);
-
-  // Y axis
-  svg.append('g')
-    .call(d3.axisLeft(y).ticks(5).tickFormat(d3.format('d')))
-    .selectAll('text')
-    .attr('fill', tc.muted)
-    .attr('font-size', '0.75rem');
-  svg.selectAll('.domain').attr('stroke', tc.border);
+  wrap.appendChild(rows);
+  container.appendChild(wrap);
 }
 
 // ─── Season Distribution (D3 Horizontal Bar Chart) ───
@@ -475,80 +478,111 @@ function loadSeasonChart() {
 
 function renderSeasonBars(container, items, unknownCount) {
   const tc = getThemeColors();
-  const rect = container.parentElement.getBoundingClientRect();
-  const margin = { top: 10, right: 60, bottom: unknownCount > 0 ? 30 : 10, left: 40 };
-  const width = Math.min(Math.max(rect.width - 32, 300), 800) - margin.left - margin.right;
-  const barHeight = 36;
-  const barGap = 12;
-  const height = items.length * (barHeight + barGap) - barGap;
+
+  const data = items.map(d => ({ ...d }));
+  const total = data.reduce((s, v) => s + v.count, 0) + unknownCount;
+  if (unknownCount > 0) {
+    data.push({ key: 'unknown', label: t('common.unknown'), color: tc.muted, count: unknownCount });
+  }
+
+  const labelFor = d => (d.key === 'unknown' ? t('common.unknown') : t('stats.seasonLabel', { name: d.label }));
 
   container.innerHTML = '';
-  const svg = d3.select(container).append('svg')
-    .attr('width', width + margin.left + margin.right)
-    .attr('height', height + margin.top + margin.bottom)
+  const wrap = document.createElement('div');
+  wrap.className = 'season-chart';
+
+  const main = document.createElement('div');
+  main.className = 'season-chart-main';
+
+  // ── Donut ──
+  const donutWrap = document.createElement('div');
+  donutWrap.className = 'season-chart-donut';
+
+  const size = 260;
+  const outerR = size * 0.38;
+  const innerR = outerR * 0.68;
+
+  const svg = d3.select(donutWrap).append('svg')
+    .attr('width', size)
+    .attr('height', size)
+    .attr('viewBox', `0 0 ${size} ${size}`)
     .append('g')
-    .attr('transform', `translate(${margin.left},${margin.top})`);
+    .attr('transform', `translate(${size / 2},${size / 2})`);
 
-  const maxVal = d3.max(items, d => d.count) || 1;
+  const pie = d3.pie().value(d => d.count).sort(null).padAngle(0.02);
+  const arc = d3.arc().innerRadius(innerR).outerRadius(outerR).cornerRadius(3);
 
-  const x = d3.scaleLinear()
-    .domain([0, maxVal])
-    .range([0, width]);
-
-  const y = d3.scaleBand()
-    .domain(items.map(d => d.label))
-    .range([0, height])
-    .padding(0.2);
-
-  // Bars
-  svg.selectAll('.bar')
-    .data(items)
-    .join('rect')
-    .attr('x', 0)
-    .attr('y', d => y(d.label))
-    .attr('width', d => x(d.count))
-    .attr('height', y.bandwidth())
-    .attr('fill', d => d.color)
-    .attr('rx', 4)
-    .attr('opacity', 0.85);
-
-  // Labels (season name)
-  svg.selectAll('.label')
-    .data(items)
-    .join('text')
-    .attr('x', d => x(d.count) + 8)
-    .attr('y', d => y(d.label) + y.bandwidth() / 2)
-    .attr('dy', '0.35em')
-    .attr('fill', tc.text)
-    .attr('font-size', '0.875rem')
-    .attr('font-weight', '600')
-    .text(d => `${d.label} ${d.count}`);
-
-  // Hover rects
-  svg.selectAll('.hover-rect')
-    .data(items)
-    .join('rect')
-    .attr('x', 0)
-    .attr('y', d => y(d.label))
-    .attr('width', d => Math.max(x(d.count), 10))
-    .attr('height', y.bandwidth())
-    .attr('fill', 'transparent')
+  svg.selectAll('path')
+    .data(pie(data))
+    .join('path')
+    .attr('d', arc)
+    .attr('fill', d => d.data.color)
+    .attr('stroke', tc.bg)
+    .attr('stroke-width', 1.5)
+    .style('cursor', 'pointer')
     .on('mousemove', (evt, d) => {
-      const total = items.reduce((s, v) => s + v.count, 0) + unknownCount;
-      const pct = total > 0 ? ((d.count / total) * 100).toFixed(1) : '0';
-      showTooltip(evt, `<b>${t('stats.seasonLabel', { name: d.label })}</b><br>${t('stats.titleCount', { count: d.count, pct })}`);
+      const pct = total > 0 ? ((d.data.count / total) * 100).toFixed(1) : '0';
+      showTooltip(evt, `<b>${labelFor(d.data)}</b><br>${t('stats.titleCount', { count: d.data.count, pct })}`);
     })
     .on('mouseleave', hideTooltip);
 
+  // Center total (hero number → mono)
+  svg.append('text')
+    .attr('text-anchor', 'middle')
+    .attr('dy', '-0.15em')
+    .attr('fill', tc.text)
+    .attr('font-family', tc.fontMono)
+    .attr('font-size', '1.5rem')
+    .attr('font-weight', '700')
+    .text(total);
+  svg.append('text')
+    .attr('text-anchor', 'middle')
+    .attr('dy', '1.5em')
+    .attr('fill', tc.muted)
+    .attr('font-family', tc.fontBody)
+    .attr('font-size', '0.938rem')
+    .text(t('stats.total'));
+
+  main.appendChild(donutWrap);
+
+  // ── Legend ──
+  const legend = document.createElement('div');
+  legend.className = 'season-chart-legend';
+
+  data.forEach(d => {
+    const item = document.createElement('div');
+    item.className = 'season-legend-item';
+
+    const swatch = document.createElement('span');
+    swatch.className = 'season-legend-swatch';
+    swatch.style.background = d.color;
+
+    const name = document.createElement('span');
+    name.className = 'season-legend-name';
+    name.textContent = labelFor(d);
+
+    const value = document.createElement('span');
+    value.className = 'season-legend-value';
+    value.textContent = `${d.count}`;
+
+    item.appendChild(swatch);
+    item.appendChild(name);
+    item.appendChild(value);
+    legend.appendChild(item);
+  });
+
+  main.appendChild(legend);
+  wrap.appendChild(main);
+
   // Unknown hint
   if (unknownCount > 0) {
-    svg.append('text')
-      .attr('x', 0)
-      .attr('y', height + 18)
-      .attr('fill', tc.muted)
-      .attr('font-size', '0.75rem')
-      .text(t('stats.unknownSeason', { count: unknownCount }));
+    const hint = document.createElement('div');
+    hint.className = 'season-chart-hint';
+    hint.textContent = t('stats.unknownSeason', { count: unknownCount });
+    wrap.appendChild(hint);
   }
+
+  container.appendChild(wrap);
 }
 
 // ─── Tag Co-occurrence (D3 Chord Diagram) ───
@@ -591,7 +625,7 @@ function renderChordChart(container, tags, matrix) {
   const rect = container.parentElement.getBoundingClientRect();
 
   // 标签空间按最长标签宽度预留，保证完整显示不裁剪（CJK 全角 ≈ 字号，拉丁 ≈ 0.6 字号）
-  const fontSize = 12; // 0.75rem
+  const fontSize = 15; // --text-sm ≈ 0.938rem（与下方渲染字号一致）
   const maxLabelW = tags.reduce((mx, name) => {
     let w = 0;
     for (const ch of tagZh(name)) {
@@ -681,7 +715,8 @@ function renderChordChart(container, tags, matrix) {
     .attr('transform', d => `rotate(${(d.angle * 180 / Math.PI - 90)}) translate(${outerRadius + 12})` + (d.angle > Math.PI ? ' rotate(180)' : ''))
     .attr('text-anchor', d => d.angle > Math.PI ? 'end' : 'start')
     .attr('fill', tc.text)
-    .attr('font-size', '0.75rem')
+    .attr('font-family', tc.fontBody)
+    .attr('font-size', '0.938rem')
     .attr('font-weight', '600')
     .text(d => tagZh(tags[d.index]));
 }

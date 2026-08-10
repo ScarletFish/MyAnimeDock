@@ -1,9 +1,16 @@
 /* ─── Stats View ─── */
 
 .stats-grid {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: var(--space-6);
+}
+
+/* 大图（词云/和弦/活跃度）占满整行，分布类小图（评分/季度）并排 */
+.stats-card--wordcloud,
+.stats-card--chord,
+.stats-card--activity {
+  grid-column: 1 / -1;
 }
 
 .stats-card {
@@ -140,4 +147,156 @@
   width: 100%;
   display: flex;
   justify-content: center;
+}
+
+/* ─── Rating: star decomposition bar ─── */
+
+.rating-chart {
+  width: 100%;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.rating-chart-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.rating-chart-badge {
+  color: var(--rating);
+  font-size: var(--text-xl);
+  line-height: 1;
+}
+
+.rating-chart-avg {
+  font-family: var(--font-mono);
+  font-size: var(--text-3xl);
+  font-weight: var(--fw-bold);
+  color: var(--fg-primary);
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.rating-chart-avg-label {
+  font-size: var(--text-sm);
+  color: var(--fg-muted);
+}
+
+.rating-chart-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-150);
+}
+
+.rating-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.rating-row-score {
+  min-width: var(--space-8);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--fg-secondary);
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.rating-row-track {
+  flex: 1;
+  height: var(--space-2);
+  background: var(--overlay-glass);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.rating-row-bar {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  opacity: 0.4;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+.rating-row--mode .rating-row-bar,
+.rating-row:hover .rating-row-bar {
+  opacity: 1;
+}
+
+.rating-row-count {
+  min-width: var(--space-10);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--fg-muted);
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ─── Season: donut ─── */
+
+.season-chart {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.season-chart-main {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  justify-content: center;
+}
+
+.season-chart-donut {
+  flex-shrink: 0;
+}
+
+.season-chart-donut svg {
+  display: block;
+  filter: drop-shadow(0 var(--space-050) var(--space-2) rgba(0, 0, 0, 0.25));
+}
+
+.season-chart-legend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: var(--space-8);
+}
+
+.season-legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.season-legend-swatch {
+  width: var(--space-3);
+  height: var(--space-3);
+  border-radius: var(--radius-xs);
+  flex-shrink: 0;
+}
+
+.season-legend-name {
+  color: var(--fg-secondary);
+  font-weight: var(--fw-medium);
+}
+
+.season-legend-value {
+  color: var(--fg-muted);
+  font-family: var(--font-mono);
+  margin-left: var(--space-2);
+}
+
+.season-chart-hint {
+  font-size: var(--text-sm);
+  color: var(--fg-muted);
 }

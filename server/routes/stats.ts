@@ -143,19 +143,14 @@ export function handleStatsSeasons(req: any, res: any, state: ServerState): void
 export function handleStatsRatings(req: any, res: any, state: ServerState): void {
   const { data } = state;
   const lib = data.library || [];
-  const bins = [0, 0, 0, 0, 0, 0, 0];
+  const bins = [0, 0, 0, 0, 0];
   for (const a of lib) {
     const r = a.rating;
     if (r == null || typeof r !== 'number' || isNaN(r)) continue;
-    if (r < 2) bins[0]++;
-    else if (r < 4) bins[1]++;
-    else if (r < 6) bins[2]++;
-    else if (r < 7) bins[3]++;
-    else if (r < 8) bins[4]++;
-    else if (r < 9) bins[5]++;
-    else bins[6]++;
+    const idx = Math.round(r);
+    if (idx >= 1 && idx <= 10) bins[Math.ceil(idx / 2) - 1]++;
   }
-  jsonResp(res, 200, { bins, labels: ['0-2', '2-4', '4-6', '6-7', '7-8', '8-9', '9-10'] });
+  jsonResp(res, 200, { bins, labels: ['1', '2', '3', '4', '5'] });
 }
 
 export function handleStatsWatchActivity(req: any, res: any, state: ServerState): void {

@@ -414,7 +414,7 @@ function openStatusModal(e, id) {
   if (bgEl) {
     var coverSrc = anime && anime.localCover
       ? '/covers/' + path.basename(anime.localCover) + '?w=600&q=80'
-      : (anime && anime.coverUrl || '');
+      : '';
     if (coverSrc) {
       bgEl.style.backgroundImage = 'url(' + coverSrc + ')';
     } else {

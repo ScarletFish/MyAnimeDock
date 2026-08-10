@@ -362,7 +362,9 @@ class AniListScraper {
 
   async downloadBanner(imageUrl: string, bannerDir: string, subjectId: number) {
     if (!imageUrl) return null;
-    const filename = `al-${subjectId}.jpg`;
+    // 按真实扩展名存，避免 webp/png 内容被当 .jpg 服务导致裂图
+    const ext = path.extname(new URL(imageUrl).pathname) || '.jpg';
+    const filename = `al-${subjectId}${ext}`;
     return downloadImage(imageUrl, bannerDir, filename, { timeout: DEFAULT_TIMEOUT });
   }
 
@@ -387,7 +389,6 @@ class AniListScraper {
       bangumiTitleEn: detail.title.english,
       bangumiTitleRomaji: detail.title.romaji,
       summary: detail.description || null,
-      coverUrl: detail.coverImage?.large || null,
       localCover,
       bannerImage: detail.bannerImage || null,
       rating: detail.meanScore ? Number((detail.meanScore / 10).toFixed(1)) : null,

@@ -1,5 +1,7 @@
 import BangumiScraper from './bangumi';
 import AniListScraper from './anilist';
+import * as fs from 'fs';
+import * as path from 'path';
 import { Logger } from '../logger';
 
 const logger: Logger = require('../logger').child('[SCRAPER]');
@@ -565,123 +567,190 @@ export function extractRomajiTitle(infobox: any[]): string | null {
 }
 
 /**
- * Fetch AniList metadata + download banner for an anime that already has anilistId.
- * Heavy — calls fetchMetadata + downloadBanner. Modifies anime in place.
- * Returns { anilistId, localBanner, anilistTitleEn } or null.
+ * 统一元数据管线：给定一个已有 bangumiId / anilistId 的 anime，
+ * 从双源拉取元数据并下载封面/横幅到本地。核心不变式：
+ *   - 存储字段只存「本地路径 / null / '__none__'」，绝不落远程 URL
+ *   - 下载失败 → null（前端显示占位，不裂图）
+ *   - '__none__' 表示"已确认无横幅"，避免重复查 API
+ * 原地修改 anime，返回被修改的字段 key 集合（供调用方落盘）。
  */
-export async function syncAnilistDetail(anime: any, config: ScraperConfig, bannerDir: string, coverDir: string): Promise<any> {
-  if (!anime || !anime.anilistId || anime.anilistId === -1) return null;
+export interface MetadataDirs {
+  coverDir: string;
+  bannerDir: string;
+}
 
+async function downloadBannerLocal(anime: any, url: string, id: number, bannerDir: string): Promise<void> {
   const anilist = registry.get('anilist');
-  if (!anilist || !anilist.enabled?.(config)) return null;
-
-  const anilistId = anime.anilistId;
-
-  let meta;
+  if (!anilist?.downloadBanner) { anime.anilistBanner = null; return; }
   try {
-    meta = await anilist.fetchMetadata(anime.title || '', coverDir, anilistId);
-  } catch (e: any) {
-    logger.error(`syncAnilistDetail: fetchMetadata failed for id=${anilistId}: ${e.message}`);
-    return null;
+    const localPath = await anilist.downloadBanner(url, bannerDir, id);
+    anime.anilistBanner = localPath || null;
+  } catch (_) {
+    anime.anilistBanner = null; // 下载失败 → null，不裂图
   }
-  if (!meta) return null;
+}
 
-  if (meta.bannerImage) {
-    anime.anilistBanner = meta.bannerImage;
-    // Download banner locally — on cache hit returns local path immediately
+export async function ensureMetadata(anime: any, config: ScraperConfig, dirs: MetadataDirs): Promise<Set<string>> {
+  const changed = new Set<string>();
+  if (!anime) return changed;
+  const bangumi = registry.get('bangumi');
+  const anilist = registry.get('anilist');
+
+  // ── Bangumi 侧：有 bangumiId → 拉元数据 + 下载封面到本地 ──
+  if (anime.bangumiId && bangumi && bangumi.enabled?.(config)) {
     try {
-      const localPath = await anilist.downloadBanner?.(meta.bannerImage, bannerDir, anilistId);
-      if (localPath) anime.anilistBanner = localPath;
-    } catch (_) {
-      // Remote URL remains as fallback
+      const meta = await bangumi.fetchMetadata(anime.title || '', dirs.coverDir, anime.bangumiId);
+      if (meta) {
+        Object.assign(anime, meta); // 含 localCover（本地路径或 null）
+        changed.add(anime.id);
+      }
+    } catch (e: any) {
+      logger.error(`ensureMetadata: Bangumi fetch failed for id=${anime.bangumiId}: ${e.message}`);
     }
-  } else {
-    anime.anilistBanner = '__none__'; // 标记为"已确认无横幅"，避免重复查询
   }
-  if (meta.anilistTitleEn) anime.anilistTitleEn = meta.anilistTitleEn;
-  if (meta.anilistTags) anime.anilistTags = meta.anilistTags;
-  if (meta.anilistStudios) anime.anilistStudios = meta.anilistStudios;
 
-  logger.info(`syncAnilistDetail: done for id=${anime.id} → anilistId=${anilistId}${meta.bannerImage ? ' +banner' : ''}${meta.anilistTags ? ` +${meta.anilistTags.length}tags` : ''}`);
-  return { anilistId, localBanner: meta.bannerImage, anilistTitleEn: meta.anilistTitleEn };
+  // ── AniList 侧：有 anilistId → 拉元数据 + 下载横幅到本地 ──
+  if (anime.anilistId && anime.anilistId !== -1 && anilist && anilist.enabled?.(config)) {
+    try {
+      const meta = await anilist.fetchMetadata(anime.title || '', dirs.coverDir, anime.anilistId);
+      if (meta) {
+        if (meta.bannerImage) {
+          await downloadBannerLocal(anime, meta.bannerImage, anime.anilistId, dirs.bannerDir);
+        } else {
+          anime.anilistBanner = '__none__'; // 已确认无横幅，避免重复查询
+        }
+        if (meta.anilistTitleEn) anime.anilistTitleEn = meta.anilistTitleEn;
+        if (meta.anilistTags) anime.anilistTags = meta.anilistTags;
+        if (meta.anilistStudios) anime.anilistStudios = meta.anilistStudios;
+        changed.add(anime.id);
+      }
+    } catch (e: any) {
+      logger.error(`ensureMetadata: AniList fetch failed for id=${anime.anilistId}: ${e.message}`);
+    }
+  }
+
+  return changed;
 }
 
 /**
- * 用文件夹名搜 AniList 找 anilistId，顺便预提取 banner（避免 DETAIL_QUERY）。
- * 修改 anime.anilistId / .anilistBanner / .anilistTitleEn。
- * 返回 { anilistId, localBanner, anilistTitleEn } 或 null。
+ * 批量版 ensureMetadata：对一批 anime 用 batchGetDetails（id_in 一次 50 条）批量拉 AniList 数据，
+ * 再并行下载横幅到本地。Bangumi 侧逐条 fetchMetadata。
+ * 返回被修改的 anime id 集合。
  */
-export async function syncAnilist(anime: any, config: ScraperConfig, bannerDir: string, coverDir: string): Promise<any> {
-  if (!anime) return null;
-  if (anime.anilistId === -1) return null;
+export async function ensureMetadataBatch(animes: any[], config: ScraperConfig, dirs: MetadataDirs): Promise<Set<string>> {
+  const changed = new Set<string>();
+  if (!animes || animes.length === 0) return changed;
+  const anilist = registry.get('anilist') as any;
+  const bangumi = registry.get('bangumi') as any;
 
-  // 已有 anilistId → 直接下载 banner
-  if (anime.anilistId) {
-    return syncAnilistDetail(anime, config, bannerDir, coverDir);
-  }
-
-  const anilist = registry.get('anilist');
-  if (!anilist || !anilist.enabled?.(config)) return null;
-  const source = config.apiSources?.find(s => s.type === 'anilist');
-
-  const searchTerm = anime.bangumiTitleJp || anime.folderName || extractRomajiTitle(anime.infobox);
-  if (!searchTerm) return null;
-
-  const results = await anilist.search(searchTerm, source);
-  if (!results || results.length === 0) {
-    anime.anilistId = -1;
-    return null;
-  }
-
-  const matchResult = pickBestBySimilarity(searchTerm, results);
-  if (!matchResult.item) {
-    anime.anilistId = -1;
-    return null;
-  }
-  const bestItem = matchResult.item;
-
-  if (matchResult.score < 0.5) {
-    anime.anilistId = -1;
-    return null;
-  }
-
-  const anilistId = bestItem.id;
-  anime.anilistId = anilistId;
-
-  // 预提取 banner（搜索结果已含 bannerImage，跳过 DETAIL_QUERY）
-  if (bestItem.bannerImage) {
-    anime.anilistBanner = bestItem.bannerImage;
-    if (bestItem.bannerImage.startsWith('http')) {
+  // ── AniList 侧：批量补 banner/tags/studios/titleEn ──
+  if (anilist && anilist.enabled?.(config)) {
+    const needAnilist = animes.filter((a: any) => a.anilistId && a.anilistId !== -1);
+    const ids = [...new Set(needAnilist.map((a: any) => a.anilistId))];
+    for (let i = 0; i < ids.length; i += 50) {
+      const chunk = ids.slice(i, i + 50);
       try {
-        const localPath = await anilist.downloadBanner?.(bestItem.bannerImage, bannerDir, anilistId);
-        if (localPath) anime.anilistBanner = localPath;
-      } catch (_) {}
+        const results = await anilist.batchGetDetails(chunk);
+        const toDownload: Array<{ anime: any; url: string; id: number }> = [];
+        for (const media of results) {
+          const matches = needAnilist.filter((a: any) => a.anilistId === media.id);
+          for (const anime of matches) {
+            if (media.bannerImage) {
+              anime.anilistBanner = media.bannerImage;
+              toDownload.push({ anime, url: media.bannerImage, id: media.id });
+            } else {
+              anime.anilistBanner = '__none__'; // 已确认无横幅，避免重复查询
+            }
+            if (media.title?.english) anime.anilistTitleEn = media.title.english;
+            if (media.tags) {
+              anime.anilistTags = media.tags.map((t: any) => ({
+                name: t.name,
+                rank: t.rank,
+                isGeneralSpoiler: t.isGeneralSpoiler,
+                isMediaSpoiler: t.isMediaSpoiler,
+              }));
+            }
+            if (media.studios?.edges) {
+              anime.anilistStudios = media.studios.edges
+                .filter((e: any) => e.isMain)
+                .map((e: any) => e.node.name);
+            }
+            changed.add(anime.id);
+          }
+        }
+        // 并行下载 banner（并发 5）
+        await parallelMap(toDownload, async ({ anime, url, id }: any) => {
+          await downloadBannerLocal(anime, url, id, dirs.bannerDir);
+        }, 5);
+      } catch (e: any) {
+        logger.error(`ensureMetadataBatch: AniList batch failed: ${e.message}`);
+      }
+    }
+    if (ids.length > 0) logger.info(`ensureMetadataBatch: AniList 补全 ${ids.length} 个 id`);
+  }
+
+  // ── Bangumi 侧：逐条补缺核心字段 ──
+  if (bangumi && bangumi.enabled?.(config)) {
+    const needBangumi = animes.filter((a: any) => a.bangumiId && !a.summaryChecked && (!a.summary || !a.rating || !a.characters?.length));
+    if (needBangumi.length > 0) {
+      await parallelMap(needBangumi, async (anime: any) => {
+        try {
+          const meta = await bangumi.fetchMetadata(anime.title || '', dirs.coverDir, anime.bangumiId);
+          if (meta) {
+            Object.assign(anime, meta);
+            if (!meta.summary) anime.summaryChecked = true;
+            changed.add(anime.id);
+          }
+        } catch (e: any) {
+          logger.error(`ensureMetadataBatch: Bangumi fetch failed for id=${anime.bangumiId}: ${e.message}`);
+        }
+      }, 3);
+      logger.info(`ensureMetadataBatch: Bangumi 补全 ${needBangumi.length} 条`);
     }
   }
-  if (bestItem.title_english) {
-    anime.anilistTitleEn = bestItem.title_english;
-  }
-  // 搜索结果已含 tags/studios（SEARCH_QUERY 已扩展），提前返回前写回
-  if (bestItem.tags) {
-    anime.anilistTags = bestItem.tags.map((t: any) => ({
-      name: t.name,
-      rank: t.rank,
-      isGeneralSpoiler: t.isGeneralSpoiler,
-      isMediaSpoiler: t.isMediaSpoiler,
-    }));
-  }
-  if (bestItem.studios?.edges) {
-    anime.anilistStudios = bestItem.studios.edges
-      .filter((e: any) => e.isMain)
-      .map((e: any) => e.node.name);
-  }
 
-  if (anime.anilistBanner) {
-    return { anilistId, localBanner: anime.anilistBanner, anilistTitleEn: anime.anilistTitleEn };
-  }
+  return changed;
+}
 
-  // 搜索结果没 banner → 调 DETAIL_QUERY 拿
-  return syncAnilistDetail(anime, config, bannerDir, coverDir);
+/**
+ * 判断条目是否缺 AniList banner。
+ * 除 DB 字段外，还检查本地文件是否存在——若 anilistBanner 是本地路径但文件已删/损坏，视为缺失。
+ */
+function needsAnilistBanner(a: any, bannerDir: string): boolean {
+  const b = a.anilistBanner;
+  if (!b) return true;                 // 无 banner
+  if (b === '__none__') return false;  // 已确认无横幅
+  return !fs.existsSync(b);            // 本地路径但文件不存在 → 缺失
+}
+
+/**
+ * 统计"已有 ID 但缺数据"的条目数（双源，去重）。
+ * 与 backfillMissingData 的过滤条件一致，供前端补全前提示检测数量。
+ */
+export function countMissingData(data: any, config: ScraperConfig, bannerDir: string): { anilist: number; bangumi: number; total: number } {
+  const anilist = registry.get('anilist') as any;
+  const bangumi = registry.get('bangumi') as any;
+  const missing = new Set<string>();
+  let anilistCount = 0;
+  let bangumiCount = 0;
+
+  if (anilist && anilist.enabled?.(config)) {
+    for (const a of data.library) {
+      if (a.anilistId && a.anilistId !== -1 && (needsAnilistBanner(a, bannerDir) || !a.anilistTags)) {
+        anilistCount++;
+        missing.add(a.id);
+      }
+    }
+  }
+  if (bangumi && bangumi.enabled?.(config)) {
+    for (const a of data.library) {
+      if (a.bangumiId && !a.summaryChecked && (!a.summary || !a.rating || !a.characters?.length)) {
+        bangumiCount++;
+        missing.add(a.id);
+      }
+    }
+  }
+  return { anilist: anilistCount, bangumi: bangumiCount, total: missing.size };
 }
 
 export const truncateSummary = BangumiScraper.truncateSummary;

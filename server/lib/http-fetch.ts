@@ -26,22 +26,27 @@ const CURL_COOLDOWN = 60000;
 /**
  * Spawn a child process and return { stdout, stderr } as strings.
  * Uses spawn (async) — does NOT block the event loop.
+ * When binary=true, stdout is collected as a Buffer (for image downloads).
  */
-function spawnAsync(cmd: string, args: string[], timeout?: number): Promise<{ stdout: string; stderr: string }> {
+function spawnAsync(cmd: string, args: string[], timeout?: number, binary = false): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
-    const child = spawn(cmd, args, { encoding: 'utf-8', timeout } as any);
+    const child = spawn(cmd, args, { encoding: binary ? undefined : 'utf-8', timeout } as any);
+    const stdoutChunks: Buffer[] = [];
     let stdout = '';
     let stderr = '';
-    child.stdout!.on('data', d => { stdout += d; });
+    child.stdout!.on('data', d => {
+      if (binary) stdoutChunks.push(Buffer.isBuffer(d) ? d : Buffer.from(d));
+      else stdout += d;
+    });
     child.stderr!.on('data', d => { stderr += d; });
     child.on('error', err => reject(new Error(`${cmd} 启动失败: ${err.message}`)));
     child.on('close', (code, signal) => {
       if (signal) {
         reject(new Error(`${cmd} 被信号 ${signal} 终止`));
-      } else if (code !== 0 && !stdout.trim()) {
+      } else if (code !== 0 && !(binary ? stdoutChunks.length : stdout.trim())) {
         reject(new Error(`${cmd} 退出码 ${code}: ${stderr || '未知错误'}`));
       } else {
-        resolve({ stdout, stderr });
+        resolve({ stdout: binary ? Buffer.concat(stdoutChunks) as any : stdout, stderr });
       }
     });
   });
@@ -68,7 +73,7 @@ async function curlFetch(method: string, url: string, body?: string): Promise<un
  */
 async function curlDownload(url: string, maxTimeSec = 5): Promise<Buffer> {
   const args = ['-s', '--max-time', String(maxTimeSec), url];
-  const { stdout } = await spawnAsync('curl', args, (maxTimeSec + 2) * 1000);
+  const { stdout } = await spawnAsync('curl', args, (maxTimeSec + 2) * 1000, true);
   return stdout as unknown as Buffer;
 }
 

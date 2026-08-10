@@ -146,7 +146,9 @@ function handleCoverImage(req: any, res: any, _state: any) {
 function handleBannerImage(req: any, res: any, _state: any) {
   const urlPath = new URL(req.url, 'http://localhost').pathname;
   const bannerPath = path.join(DATA_DIR, decodeURIComponent(urlPath));
-  serveImage(bannerPath, req.url, res);
+  console.log(`[BANNER] req=${req.url} → path=${bannerPath} exists=${fs.existsSync(bannerPath)}`);
+  // no-cache：banner 可能被重新下载修复，避免浏览器缓存损坏图
+  serveImage(bannerPath, req.url, res, true);
 }
 
 // ── SSE: mpv-status 事件推送 ──
@@ -342,6 +344,17 @@ async function validateCovers(data: any) {
   }
 }
 
+// 启动时校验 banner 本地文件是否存在，缺失则置 null（避免前端引用已删除文件）
+async function validateBanners(data: any) {
+  const bannerDir = path.join(DATA_DIR, 'banners');
+  for (const item of data.library || []) {
+    if (item.anilistBanner && item.anilistBanner !== '__none__') {
+      const bannerPath = path.join(bannerDir, path.basename(item.anilistBanner));
+      if (!fs.existsSync(bannerPath)) item.anilistBanner = null;
+    }
+  }
+}
+
 // ── 结构整改迁移：dev 运行时数据 server/ → data/（一次性，幂等）──
 // 旧 dev DATA_DIR = SERVER_ROOT（server/），DB 中存的 localCover/anilistBanner 等
 // 是旧绝对路径。文件已物理迁移到 data/，这里把 DB 中的旧前缀重写到新 DATA_DIR。
@@ -358,7 +371,7 @@ function migrateLegacyDataPaths(data: any): boolean {
   };
 
   for (const a of data.library || []) {
-    for (const key of ['localCover', 'anilistBanner', 'anilistCover']) {
+    for (const key of ['localCover', 'anilistBanner']) {
       if (a[key]) {
         const nv = rewrite(a[key]);
         if (nv !== a[key]) { a[key] = nv; changed = true; }
@@ -432,6 +445,7 @@ async function init() {
 
   // Phase 3: Cover validation
   validateCovers(data).catch(e => logger.warn('Cover validation error:', e.message));
+  validateBanners(data).catch(e => logger.warn('Banner validation error:', e.message));
 
   // Phase 4: Start serving (try ports 3456→3460, fallback on EADDRINUSE)
   // BASE_PORT can be overridden via env (e.g. Vite dev on 3456 → backend on 3457)

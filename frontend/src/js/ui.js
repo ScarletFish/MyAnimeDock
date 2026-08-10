@@ -68,10 +68,10 @@ function renderAnimeCard(anime, options = {}) {
   const id = escAttr(anime.id);
   const title = escHtml(anime.bangumiTitle || anime.title);
 
-  // Cover: localCover (library) → coverUrl (wishlist) → gray placeholder
+  // Cover: localCover (library) → gray placeholder
   const coverSrc = anime.localCover
     ? '/covers/' + path.basename(anime.localCover) + '?w=' + coverSize + '&q=75'
-    : (anime.coverUrl || '');
+    : '';
 
   const coverStyle = isWish ? 'opacity:0.45;filter:grayscale(0.6)' : '';
   const cardClass = isWish ? 'anime-card anime-card--wish' : 'anime-card';

@@ -102,7 +102,6 @@ export function handleDeleteAnime(req: any, res: any, state: ServerState) {
     scannedNode.bangumiTitleJp = null;
     scannedNode.bangumiTitleEn = null;
     scannedNode.summary = null;
-    scannedNode.coverUrl = null;
     scannedNode.localCover = null;
     scannedNode.rating = null;
     scannedNode.metadataSource = null;
@@ -245,48 +244,12 @@ export function handleLibrarySyncStream(req: any, res: any, state: ServerState) 
     // 通知前端进入收尾阶段（banner 获取等）
     send('finalizing', { message: '正在获取封面横幅…' });
 
-    // 批量补全缺 banner 或缺 tags 的条目（一次 `id_in` 查询处理最多 50 条，代替 N 次独立 DETAIL_QUERY）
-    const anilistScraper = registry.get('anilist');
-    const needAnilistDetail = data.library.filter((a: any) => a.anilistId && a.anilistId !== -1 && ((!a.anilistBanner && a.anilistBanner !== '__none__') || (a.anilistBanner && a.anilistBanner.startsWith('http')) || !a.anilistTags));
-    if (needAnilistDetail.length > 0 && anilistScraper) {
-      const ids = [...new Set(needAnilistDetail.map((a: any) => a.anilistId))];
-      logger.info(`Batch AniList detail: ${ids.length} ids (${needAnilistDetail.length} items)`);
-      for (let i = 0; i < ids.length; i += 50) {
-        const chunk = ids.slice(i, i + 50);
-        try {
-          const results = await anilistScraper.batchGetDetails(chunk);
-          for (const media of results) {
-            const matches = needAnilistDetail.filter((a: any) => a.anilistId === media.id);
-            for (const anime of matches) {
-              if (media.bannerImage) {
-                anime.anilistBanner = media.bannerImage;
-                try {
-                  const localPath = await anilistScraper.downloadBanner(media.bannerImage, bannerDir, media.id);
-                  if (localPath) anime.anilistBanner = localPath;
-                } catch (_) {}
-              } else {
-                anime.anilistBanner = '__none__'; // 标记为"已确认无横幅"，避免重复查询
-              }
-              if (media.title?.english) anime.anilistTitleEn = media.title.english;
-              if (media.tags) {
-                anime.anilistTags = media.tags.map((t: any) => ({
-                  name: t.name,
-                  rank: t.rank,
-                  isGeneralSpoiler: t.isGeneralSpoiler,
-                  isMediaSpoiler: t.isMediaSpoiler,
-                }));
-              }
-              if (media.studios?.edges) {
-                anime.anilistStudios = media.studios.edges
-                  .filter((e: any) => e.isMain)
-                  .map((e: any) => e.node.name);
-              }
-            }
-          }
-        } catch (e: any) {
-          logger.error('Batch AniList detail failed: ' + e.message);
-        }
-      }
+    // 批量补全缺 banner/tags 的条目（统一入口 ensureMetadataBatch，一次 `id_in` 查询最多 50 条）
+    const { ensureMetadataBatch } = require('../scrapers') as any;
+    // 只补本次同步的条目（syncedIds），避免修改全库却只落盘本次导致非本次修改丢失
+    const needDetail = data.library.filter((a: any) => syncedIds.has(a.id) && a.anilistId && a.anilistId !== -1 && ((!a.anilistBanner && a.anilistBanner !== '__none__') || !a.anilistTags));
+    if (needDetail.length > 0) {
+      await ensureMetadataBatch(needDetail, config, { coverDir, bannerDir });
     }
 
     await Promise.all([db.saveLibrary(data, syncedIds), saveScannedTree(data.scannedTree)]);

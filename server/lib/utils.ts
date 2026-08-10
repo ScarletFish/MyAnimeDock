@@ -85,10 +85,11 @@ function preGenerateCovers(coverPath: string): void {
 }
 
 // --- Image serving (with ffmpeg resize when ?w= param present) ---
-function serveImage(filePath: string, url: string, res: any): void {
+function serveImage(filePath: string, url: string, res: any, noCache = false): void {
   const params = new URL(url, 'http://localhost').searchParams;
   const w = parseInt(params.get('w') ?? '');
   const q = parseInt(params.get('q') ?? '') || 75;
+  const cacheCtrl = noCache ? 'no-cache' : 'public, max-age=86400';
   if (w && ffmpegPath && fs.existsSync(ffmpegPath) && fs.existsSync(filePath)) {
     const ext = path.extname(filePath) || '.jpg';
     const cacheDir = path.join(path.dirname(filePath), '.resized');
@@ -97,10 +98,10 @@ function serveImage(filePath: string, url: string, res: any): void {
 
     if (fs.existsSync(cachePath)) {
       fs.readFile(cachePath, (e2, d2) => {
-        if (e2) { serveRaw(filePath, res); return; }
+        if (e2) { serveRaw(filePath, res, noCache); return; }
         res.writeHead(200, {
           'Content-Type': mime[ext] || 'application/octet-stream',
-          'Cache-Control': 'public, max-age=86400',
+          'Cache-Control': cacheCtrl,
         });
         res.end(d2);
       });
@@ -122,37 +123,37 @@ function serveImage(filePath: string, url: string, res: any): void {
         if (done) return; done = true;
         if (code === 0 && fs.existsSync(cachePath)) {
           fs.readFile(cachePath, (e2, d2) => {
-            if (e2) { serveRaw(filePath, res); return; }
+            if (e2) { serveRaw(filePath, res, noCache); return; }
             res.writeHead(200, {
               'Content-Type': mime[ext] || 'application/octet-stream',
-              'Cache-Control': 'public, max-age=86400',
+              'Cache-Control': cacheCtrl,
             });
             res.end(d2);
           });
         } else {
-          serveRaw(filePath, res);
+          serveRaw(filePath, res, noCache);
         }
       });
       ff.on('error', () => {
         if (done) return; done = true;
-        serveRaw(filePath, res);
+        serveRaw(filePath, res, noCache);
       });
     } catch (e) {
       if (done) return; done = true;
-      serveRaw(filePath, res);
+      serveRaw(filePath, res, noCache);
     }
     return;
   }
 
-  serveRaw(filePath, res);
+  serveRaw(filePath, res, noCache);
 }
 
-function serveRaw(filePath: string, res: any): void {
+function serveRaw(filePath: string, res: any, noCache = false): void {
   fs.readFile(filePath, (e, d) => {
     if (e) { res.writeHead(404); res.end('Not found'); return; }
     res.writeHead(200, {
       'Content-Type': mime[path.extname(filePath).toLowerCase()] || 'application/octet-stream',
-      'Cache-Control': 'public, max-age=86400',
+      'Cache-Control': noCache ? 'no-cache' : 'public, max-age=86400',
     });
     res.end(d);
   });

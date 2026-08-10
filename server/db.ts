@@ -86,7 +86,7 @@ if (process.pkg) {
 // 首次启动时 anime.db 不存在，连接后自动创建空文件，
 // 但不会创建表。以下 SQL 在首次启动时自建制表（CREATE TABLE IF NOT EXISTS）。
 const INIT_SQL = [
-  `CREATE TABLE IF NOT EXISTS "Anime" ("id" TEXT NOT NULL PRIMARY KEY, "folderPath" TEXT NOT NULL, "folderName" TEXT NOT NULL, "title" TEXT NOT NULL, "season" INTEGER, "importedAt" DATETIME NOT NULL DEFAULT (unixepoch() * 1000), "downloaded" BOOLEAN NOT NULL DEFAULT true, "bangumiId" INTEGER, "bangumiTitle" TEXT, "bangumiTitleJp" TEXT, "summary" TEXT, "coverUrl" TEXT, "localCover" TEXT, "rating" REAL, "source" TEXT, "pinyinTitle" TEXT, "matchedSeason" INTEGER, "metadata" TEXT, "anilistId" INTEGER, "anilistBanner" TEXT, "anilistCover" TEXT, "anilistTitleEn" TEXT)`,
+  `CREATE TABLE IF NOT EXISTS "Anime" ("id" TEXT NOT NULL PRIMARY KEY, "folderPath" TEXT NOT NULL, "folderName" TEXT NOT NULL, "title" TEXT NOT NULL, "season" INTEGER, "importedAt" DATETIME NOT NULL DEFAULT (unixepoch() * 1000), "downloaded" BOOLEAN NOT NULL DEFAULT true, "bangumiId" INTEGER, "bangumiTitle" TEXT, "bangumiTitleJp" TEXT, "summary" TEXT, "localCover" TEXT, "rating" REAL, "source" TEXT, "pinyinTitle" TEXT, "matchedSeason" INTEGER, "metadata" TEXT, "anilistId" INTEGER, "anilistBanner" TEXT, "anilistTitleEn" TEXT)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "Anime_bangumiId_key" ON "Anime"("bangumiId")`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "Anime_anilistId_key" ON "Anime"("anilistId")`,
   `CREATE INDEX IF NOT EXISTS "Anime_bangumiId_idx" ON "Anime"("bangumiId")`,
@@ -235,7 +235,6 @@ function animeToLegacy(a: any) {
     bangumiTitle: a.bangumiTitle,
     bangumiTitleJp: a.bangumiTitleJp,
     summary: a.summary,
-    coverUrl: a.coverUrl,
     localCover: a.localCover,
     rating: a.rating,
     source: a.source,
@@ -243,7 +242,6 @@ function animeToLegacy(a: any) {
     matchedSeason: a.matchedSeason,
     anilistId: a.anilistId,
     anilistBanner: a.anilistBanner,
-    anilistCover: a.anilistCover,
     anilistTitleEn: a.anilistTitleEn,
     // Spread persisted extras (characters, persons, tags, date, platform,
     // ratingRank, ratingTotal, infobox, collection, eps, totalEpisodes, specialSuffix)
@@ -434,6 +432,7 @@ async function saveLibrary(data: any, changedIds: any = null) {
           'ratingRank', 'ratingTotal', 'infobox', 'collection',
           'eps', 'totalEpisodes', 'specialSuffix',
           'anilistTags', 'anilistStudios',
+          'summaryChecked',
         ];
         const extraFields: any = {};
         for (const key of EXTRA_FIELDS) {
@@ -454,7 +453,6 @@ async function saveLibrary(data: any, changedIds: any = null) {
           bangumiTitle: a.bangumiTitle,
           bangumiTitleJp: a.bangumiTitleJp,
           summary: a.summary,
-          coverUrl: a.coverUrl,
           localCover: a.localCover,
           rating: ratingVal,
           source: a.source,
@@ -463,7 +461,6 @@ async function saveLibrary(data: any, changedIds: any = null) {
           matchedSeason: a.matchedSeason ?? null,
           anilistId: a.anilistId != null && a.anilistId !== -1 ? a.anilistId : null,
           anilistBanner: a.anilistBanner ?? null,
-          anilistCover: a.anilistCover ?? null,
           anilistTitleEn: a.anilistTitleEn ?? null,
         };
 
@@ -481,7 +478,7 @@ async function saveLibrary(data: any, changedIds: any = null) {
           const existingAnilist = d.prepare(`SELECT id FROM Anime WHERE anilistId = ? AND id != ?`).get(animeData.anilistId, a.id);
           if (existingAnilist) {
             logger.warn(`anilistId ${animeData.anilistId} already owned by ${existingAnilist.id}, clearing old owner`);
-            d.prepare(`UPDATE Anime SET anilistId = NULL, anilistBanner = NULL, anilistCover = NULL, anilistTitleEn = NULL WHERE id = ?`).run(existingAnilist.id);
+            d.prepare(`UPDATE Anime SET anilistId = NULL, anilistBanner = NULL, anilistTitleEn = NULL WHERE id = ?`).run(existingAnilist.id);
           }
         }
 

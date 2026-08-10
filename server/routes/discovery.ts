@@ -91,7 +91,6 @@ async function handleBrowse(req: any, res: any, state: State) {
                 n.bangumiTitle = existing.bangumiTitle;
                 n.bangumiTitleJp = existing.bangumiTitleJp;
                 n.summary = existing.summary;
-                n.coverUrl = existing.coverUrl;
                 n.localCover = existing.localCover;
                 n.rating = existing.rating;
               } else {
@@ -159,7 +158,6 @@ async function handleBrowse(req: any, res: any, state: State) {
           bangumiTitle: scannedNode?.bangumiTitle || null,
           bangumiTitleJp: scannedNode?.bangumiTitleJp || null,
           summary: scannedNode?.summary || null,
-          coverUrl: scannedNode?.coverUrl || null,
           localCover: scannedNode?.localCover || null,
           rating: scannedNode?.rating || null,
           tags: scannedNode?.tags || [],
@@ -222,7 +220,6 @@ async function handleBrowse(req: any, res: any, state: State) {
         scannedNode.bangumiTitleJp = null;
         scannedNode.bangumiTitleEn = null;
         scannedNode.summary = null;
-        scannedNode.coverUrl = null;
         scannedNode.localCover = null;
         scannedNode.rating = null;
         scannedNode.metadataSource = null;

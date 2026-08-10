@@ -306,8 +306,6 @@ function renderDetail() {
   const coverEl = document.getElementById('detailCover');
   if (anime.localCover) {
     coverEl.innerHTML = `<img src="/covers/${path.basename(anime.localCover)}?w=540&q=80" alt="${escAttr(anime.title)}">`;
-  } else if (anime.coverUrl) {
-    coverEl.innerHTML = `<img src="${escAttr(anime.coverUrl)}" alt="${escAttr(anime.title)}">`;
   } else {
     const initial = (anime.bangumiTitle || anime.title || '?')[0].toUpperCase();
     coverEl.innerHTML = `<div class="gray-cover"><span class="gray-cover-text">${escHtml(initial)}</span></div>`;
@@ -322,14 +320,17 @@ function renderDetail() {
     bannerBg.className = 'detail-banner-bg';
     const bannerImg = document.createElement('img');
     bannerImg.className = 'detail-banner-bg-img';
-    // Remote URL (http/https) → use directly; local path → use /banners/ route
-    bannerImg.src = anime.anilistBanner.startsWith('http')
-      ? anime.anilistBanner
-      : `/banners/${path.basename(anime.anilistBanner)}`;
+    // anilistBanner is now always a local path (or null/'__none__') → use /banners/ route
+    bannerImg.src = `/banners/${path.basename(anime.anilistBanner)}`;
     bannerImg.alt = '';
     // Very wide banners (ratio > 2.5): shift upward to keep face visible
     bannerImg.onload = function() {
       if (this.naturalWidth / this.naturalHeight > 2.5) this.style.objectPosition = 'center 25%';
+    };
+    // Fallback: if the banner fails to load, hide it and fall back to no-banner layout
+    bannerImg.onerror = function() {
+      bannerBg.remove();
+      detailView.classList.add('detail-no-banner');
     };
     bannerBg.appendChild(bannerImg);
     detailView.insertBefore(bannerBg, detailView.querySelector('.detail-content'));

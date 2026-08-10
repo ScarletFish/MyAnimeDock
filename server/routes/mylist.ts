@@ -21,7 +21,7 @@ function handleGetMyList(req: any, res: any, state: ServerState) {
         title: anime ? anime.title : item.title,
         bangumiTitle: anime ? anime.bangumiTitle : item.bangumiTitle,
         bangumiTitleJp: anime ? anime.bangumiTitleJp : null,
-        coverUrl: anime ? anime.coverUrl : item.coverUrl,
+        coverUrl: anime ? anime.localCover : item.coverUrl,
         localCover: anime ? anime.localCover : null,
         season: anime ? anime.season : null,
         matchedSeason: anime ? anime.matchedSeason : null,

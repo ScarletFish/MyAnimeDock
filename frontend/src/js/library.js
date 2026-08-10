@@ -299,7 +299,7 @@ function renderContinueSection(data, container) {
       }
       var coverSrc = a.localCover
         ? '/covers/' + path.basename(a.localCover)
-        : (a.coverUrl || '');
+        : '';
       var bgStyle = thumbUrl ? ' style="background-image:url(' + escAttr(thumbUrl) + ')"' :
         (coverSrc ? ' style="background-image:url(' + escAttr(coverSrc) + ')"' : '');
 

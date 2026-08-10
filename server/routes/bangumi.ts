@@ -2,7 +2,7 @@
 import path from 'path';
 import { jsonResp, readBody } from '../lib/utils';
 import { saveConfig, DATA_DIR } from '../lib/config';
-import { syncAnilist } from '../scrapers';
+import { ensureMetadata } from '../scrapers';
 import type { ServerState } from '../types';
 
 type State = ServerState;
@@ -41,7 +41,7 @@ async function handleBangumiFetch(req: any, res: any, state: State) {
     const anime = data.library.find((a: any) => a.id === animeId);
     if (!anime) { jsonResp(res, 404, { error: 'Anime not found' }); return; }
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { registry, matchSeason } = require('../scrapers') as any;
+    const { registry, matchSeason, pickBestBySimilarity } = require('../scrapers') as any;
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { parseFolderName } = require('../scanner') as any;
     const coverDir = path.join(DATA_DIR, 'covers');
@@ -68,15 +68,34 @@ async function handleBangumiFetch(req: any, res: any, state: State) {
       if (matchInfo.matchedSeason != null) anime.matchedSeason = matchInfo.matchedSeason;
       if (matchInfo.anilistId) anime.anilistId = matchInfo.anilistId;
     } else {
-      // 手动指定了 subjectId（修正），清空旧 anilist 数据让 syncAnilist 重新搜索
+      // 手动指定了 subjectId（修正），清空旧 anilist 数据后重新搜索
       anime.anilistId = null;
       anime.anilistBanner = null;
+      // 用 Bangumi 日文原名搜 AniList 拿 anilistId
+      try {
+        const anilist = registry.get('anilist');
+        if (anilist && anilist.enabled(config)) {
+          const source = config.apiSources?.find((s: any) => s.type === 'anilist');
+          const searchTerm = anime.bangumiTitleJp || anime.folderName || anime.title;
+          if (searchTerm) {
+            const results = await anilist.search(searchTerm, source);
+            if (results && results.length > 0) {
+              const bestMatch = pickBestBySimilarity(searchTerm, results);
+              if (bestMatch.item && bestMatch.score >= 0.5) {
+                anime.anilistId = bestMatch.item.id;
+              }
+            }
+          }
+        }
+      } catch (e: any) {
+        logger.error(`AniList search failed for ${anime.id}: ${e.message}`);
+      }
     }
-    // AniList 双源同步（手动同步时重置 -1 重新搜索）
+    // AniList 双源同步（统一入口 ensureMetadata：有 anilistId 则拉元数据 + 下载横幅到本地）
     const bannerDir = path.join(DATA_DIR, 'banners');
     if (anime.anilistId === -1) anime.anilistId = null;
     try {
-      await syncAnilist(anime, config, bannerDir, coverDir);
+      await ensureMetadata(anime, config, { coverDir, bannerDir });
     } catch (e: any) {
       logger.error('AniList sync failed: ' + e.message);
     }

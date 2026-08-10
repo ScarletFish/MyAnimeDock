@@ -104,12 +104,12 @@ async function mmLoadModalData() {
         bangumiTitle: a.bangumiTitle,
         bangumiTitleJp: a.bangumiTitleJp,
         summary: a.summary,
-        coverUrl: a.coverUrl,
+        coverUrl: a.localCover,
         localCover: a.localCover,
         rating: a.rating,
         metadataSource: a.metadataSource,
       } : null,
-      coverUrl: a.coverUrl || a.localCover || null,
+      coverUrl: a.localCover || null,
       localCover: a.localCover || null,
       bangumiTitle: a.bangumiTitle,
       season: a.matchedSeason || a.season,
@@ -576,8 +576,10 @@ function mmRenderPanel(item) {
   // Cover with status overlay
   const coverAlt = escAttr(item.meta?.bangumiTitle || item.title || t('metamatch.coverAlt'));
   let coverHtml = '';
-  if (item.meta?.coverUrl || item.coverUrl) {
-    const src = escAttr(item.meta?.coverUrl || item.coverUrl);
+  const coverPath = item.meta?.localCover || item.localCover || item.coverUrl;
+  if (coverPath) {
+    // localCover 是本地绝对路径 → 转成 /covers/ 前缀；远程 URL 原样用
+    const src = escAttr(coverPath.startsWith('http') ? coverPath : '/covers/' + path.basename(coverPath));
     coverHtml = `<img src="${src}" alt="${coverAlt}" loading="lazy" decoding="async" onerror="this.outerHTML='<div class=mm-panel-cover-sm-fallback>${escHtml((item.title||'?')[0].toUpperCase())}</div>'">`;
   } else {
     coverHtml = `<div class="mm-panel-cover-sm-fallback">${escHtml((item.title||'?')[0].toUpperCase())}</div>`;
@@ -618,15 +620,14 @@ function mmRenderPanel(item) {
 
     const alId = item.anilistId;
     const banner = item.anilistBanner;
-    const bannerDownloaded = !!banner && banner !== '__none__' && !banner.startsWith('http');
-    // 无横幅（__none__）是"确认本来就没有"，不算缺失；只有未下载(http)/未获取(null)才算缺失
+    const bannerDownloaded = !!banner && banner !== '__none__';
+    // 无横幅（__none__）是"确认本来就没有"，不算缺失；只有未获取(null)才算缺失
     const bannerOk = bannerDownloaded || banner === '__none__';
     const alOk = (alId != null && alId !== -1) && bannerOk && !!item.anilistTags;
 
-    // banner 单独一行：__none__=无横幅（中性）、http=未下载（⚠）、本地路径=已下载（✓）
+    // banner 单独一行：__none__=无横幅（中性）、本地路径=已下载（✓）、null=未获取
     let bannerState;
     if (banner === '__none__') bannerState = { cls: 'none', text: t('metamatch.noBanner') };
-    else if (banner && banner.startsWith('http')) bannerState = { cls: 'pending', text: t('metamatch.bannerNotFetched') };
     else if (bannerDownloaded) bannerState = { cls: 'ok', text: t('metamatch.bannerFetched') };
     else bannerState = { cls: 'none', text: t('metamatch.noBanner') };
 
@@ -820,12 +821,12 @@ async function mmApplyFix(animeId, resultIndex) {
         bangumiTitle: a.bangumiTitle,
         bangumiTitleJp: a.bangumiTitleJp,
         summary: a.summary,
-        coverUrl: a.coverUrl,
+        coverUrl: a.localCover,
         localCover: a.localCover,
         rating: a.rating,
         metadataSource: a.metadataSource,
       };
-      item.coverUrl = a.coverUrl || a.localCover || item.coverUrl;
+      item.coverUrl = a.localCover || item.coverUrl;
       item.error = null;
       if (a.matchedSeason != null) item.matchedSeason = a.matchedSeason;
       item.anilistId = a.anilistId;
@@ -1074,7 +1075,7 @@ async function mmSyncViaSSE(animeIds, options = {}) {
         if (data.success) {
           item.status = 'matched';
           item.meta = data.meta || null;
-          item.coverUrl = data.meta?.coverUrl || null;
+          item.coverUrl = data.meta?.localCover || null;
           item.error = null;
           if (data.matchedSeason != null) item.matchedSeason = data.matchedSeason;
           // 服务端若在 progress 事件携带 anilist 字段则同步更新，保证状态卡实时一致

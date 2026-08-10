@@ -128,7 +128,6 @@ async search(keyword: string, source: any): Promise<any[]> {
       bangumiTitle: detail.name_cn || detail.name || null,
       bangumiTitleJp: detail.name || null,
       summary: detail.summary || null,
-      coverUrl: detail.images?.large || null,
       localCover,
       rating: detail.rating?.score ? parseFloat(detail.rating.score.toFixed(1)) : null,
       ratingRank: detail.rating?.rank || null,

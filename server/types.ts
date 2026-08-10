@@ -30,7 +30,6 @@ export interface Anime {
   bangumiTitle: string | null;
   bangumiTitleJp: string | null;
   summary: string | null;
-  coverUrl: string | null;
   localCover: string | null;
   rating: number | null;
   source: string | null;
@@ -38,7 +37,6 @@ export interface Anime {
   matchedSeason: number | null;
   anilistId: number | null;
   anilistBanner: string | null;
-  anilistCover: string | null;
   anilistTitleEn: string | null;
   // 持久化 metadata 扩展字段（部分在 routes 中读写）
   characters?: any[];

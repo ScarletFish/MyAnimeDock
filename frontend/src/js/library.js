@@ -271,21 +271,6 @@ function renderContinueSection(data, container) {
     return bTime - aTime;
   }).slice(0, 10);
 
-  // [DEBUG] 天空之城继续观看追踪
-  data.forEach(function(a) {
-    if (a.bangumiTitle === '天空之城' || a.title === '天空の城ラピュタ') {
-      var eps = a.episodes || [];
-      var wc = eps.filter(function(e) { return e.watched; }).length;
-      var ip = eps.some(function(e) { return e.progress > 0 && !e.watched; });
-      var inWatch = ip || (wc > 0 && wc < eps.length);
-      var ep = findContinueEpisode(a);
-      console.log('[CONTINUE-DEBUG] 天空之城 inWatching=' + inWatch + ' watchedCount=' + wc + ' inProgress=' + ip +
-        ' lastPlayedEp=' + a.lastPlayedEp + ' lastPlayedAt=' + a.lastPlayedAt +
-        ' findContinueEp=' + (ep ? ('#' + ep.number + ' progress=' + ep.progress + ' dur=' + ep.duration + ' watched=' + ep.watched) : 'null'));
-    }
-  });
-  console.log('[CONTINUE-DEBUG] watching.length=' + watching.length + ' titles=' + watching.map(function(w) { return w.bangumiTitle || w.title; }).join('|'));
-
   container.parentElement.style.display = watching.length === 0 ? 'none' : '';
   if (watching.length === 0) return;
 
@@ -313,8 +298,8 @@ function renderContinueSection(data, container) {
       var coverSrc = a.localCover
         ? '/covers/' + path.basename(a.localCover)
         : '';
-      var bgStyle = thumbUrl ? ' style="background-image:url(' + escAttr(thumbUrl) + ')"' :
-        (coverSrc ? ' style="background-image:url(' + escAttr(coverSrc) + ')"' : '');
+      var bgStyle = thumbUrl ? ' style="background-image:url(&quot;' + escAttr(thumbUrl) + '&quot;)"' :
+        (coverSrc ? ' style="background-image:url(&quot;' + escAttr(coverSrc) + '&quot;)"' : '');
 
       return '<div class="dashboard-continue-card" onclick="navigateToDetailWithPlay(\'' + escAttr(a.id) + '\', this)" oncontextmenu="showContextMenu(event, \'' + escAttr(a.id) + '\')">' +
         '<div class="dashboard-continue-bg"' + bgStyle + '></div>' +

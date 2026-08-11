@@ -1043,7 +1043,7 @@ async function fetchAndRenderRelations(animeId) {
         : `onclick="openExternalUrl('https://anilist.co/anime/${r.id}')"`;
       return `<div class="relation-card" ${click}>
         <div class="relation-card-cover">
-          <div class="relation-card-img"${cover ? ' style="background-image:url(' + cover.replace(/\)/g,'%29') + ')"' : ''}></div>
+          <div class="relation-card-img"${cover ? ' style="background-image:url(&quot;' + cover.replace(/"/g,'%22') + '&quot;)"' : ''}></div>
           <span class="relation-badge" style="background:${color}">${escHtml(label)}</span>
         </div>
         <div class="relation-card-title">${escHtml(title)}</div>
@@ -1099,7 +1099,7 @@ scrollEl.innerHTML = recs.map(r => {
         : `onclick="openExternalUrl('https://anilist.co/anime/${r.id}')"`;
       return `<div class="relation-card" ${click}>
         <div class="relation-card-cover">
-          <div class="relation-card-img"${cover ? ' style="background-image:url(' + cover.replace(/\)/g,'%29') + ')"' : ''}></div>
+          <div class="relation-card-img"${cover ? ' style="background-image:url(&quot;' + cover.replace(/"/g,'%22') + '&quot;)"' : ''}></div>
           ${rating ? `<span class="relation-badge relation-badge--rating">${escHtml(rating)}</span>` : ''}
         </div>
         <div class="relation-card-title">${escHtml(title)}</div>

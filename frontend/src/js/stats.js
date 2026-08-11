@@ -149,14 +149,14 @@ function generatePalette(accent, accentRgb, isDark, count) {
 
   if (isDark) {
     for (let i = 0; i < steps; i++) {
-      const t = i / (steps - 1);
-      const mix = 0.3 + t * 0.5;
+      const norm = i / (steps - 1);
+      const mix = 0.3 + norm * 0.5;
       colors.push(`rgb(${Math.round(r + (255 - r) * (1 - mix))},${Math.round(g + (255 - g) * (1 - mix))},${Math.round(b + (255 - b) * (1 - mix))})`);
     }
   } else {
     for (let i = 0; i < steps; i++) {
-      const t = i / (steps - 1);
-      colors.push(`rgb(${Math.round(r * (0.5 + t * 0.5))},${Math.round(g * (0.5 + t * 0.5))},${Math.round(b * (0.5 + t * 0.5))})`);
+      const norm = i / (steps - 1);
+      colors.push(`rgb(${Math.round(r * (0.5 + norm * 0.5))},${Math.round(g * (0.5 + norm * 0.5))},${Math.round(b * (0.5 + norm * 0.5))})`);
     }
   }
   return colors;
@@ -395,8 +395,8 @@ function renderRatingChart(container, labels, bins, total) {
     const widthPct = maxCount > 0 ? (d.count / maxCount) * 100 : 0;
 
     // Higher score → brighter accent-tinted bar
-    const t = (d.score - 1) / Math.max(data.length - 1, 1);
-    const mix = 0.35 + t * 0.65;
+    const norm = (d.score - 1) / Math.max(data.length - 1, 1);
+    const mix = 0.35 + norm * 0.65;
     const neutral = tc.isDark ? 90 : 205;
     const r = Math.round(rgb[0] * mix + neutral * (1 - mix));
     const g = Math.round(rgb[1] * mix + neutral * (1 - mix));
@@ -660,8 +660,8 @@ function renderChordChart(container, tags, matrix) {
   // Color scale: accent-tinted gradient across groups
   const rgb = tc.accentRgb.split(',').map(Number);
   const color = (i) => {
-    const t = i / Math.max(tags.length - 1, 1);
-    const mix = 0.35 + t * 0.5;
+    const norm = i / Math.max(tags.length - 1, 1);
+    const mix = 0.35 + norm * 0.5;
     const r = Math.round(rgb[0] * mix + (tc.isDark ? 60 : 200) * (1 - mix));
     const g = Math.round(rgb[1] * mix + (tc.isDark ? 60 : 200) * (1 - mix));
     const b = Math.round(rgb[2] * mix + (tc.isDark ? 60 : 200) * (1 - mix));

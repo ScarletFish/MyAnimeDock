@@ -271,6 +271,21 @@ function renderContinueSection(data, container) {
     return bTime - aTime;
   }).slice(0, 10);
 
+  // [DEBUG] 天空之城继续观看追踪
+  data.forEach(function(a) {
+    if (a.bangumiTitle === '天空之城' || a.title === '天空の城ラピュタ') {
+      var eps = a.episodes || [];
+      var wc = eps.filter(function(e) { return e.watched; }).length;
+      var ip = eps.some(function(e) { return e.progress > 0 && !e.watched; });
+      var inWatch = ip || (wc > 0 && wc < eps.length);
+      var ep = findContinueEpisode(a);
+      console.log('[CONTINUE-DEBUG] 天空之城 inWatching=' + inWatch + ' watchedCount=' + wc + ' inProgress=' + ip +
+        ' lastPlayedEp=' + a.lastPlayedEp + ' lastPlayedAt=' + a.lastPlayedAt +
+        ' findContinueEp=' + (ep ? ('#' + ep.number + ' progress=' + ep.progress + ' dur=' + ep.duration + ' watched=' + ep.watched) : 'null'));
+    }
+  });
+  console.log('[CONTINUE-DEBUG] watching.length=' + watching.length + ' titles=' + watching.map(function(w) { return w.bangumiTitle || w.title; }).join('|'));
+
   container.parentElement.style.display = watching.length === 0 ? 'none' : '';
   if (watching.length === 0) return;
 
@@ -283,19 +298,17 @@ function renderContinueSection(data, container) {
       var thumbUrl = '';
       if (ep) {
         if (ep.progress > 0 && ep.duration > 0) {
-          // 有关键帧进度：用关闭时位置的缩略图
-          var thumbTime = ep.progress > ep.duration * 0.5
-            ? Math.min(Math.round(ep.progress), ep.duration - 10)
-            : Math.round(ep.duration * 0.25);
+          // 有进度：用退出帧
+          var thumbTime = Math.min(Math.round(ep.progress), ep.duration - 10);
           if (thumbTime <= 0) thumbTime = 60;
-          // 未过半时 25% 位置与缩略图队列生成的通用缩略图一致，用 time=mid
-          // 走共享缓存键，避免同一张图按数字 key 重复跑 ffmpeg
-          thumbUrl = '/api/thumbnail?path=' + encodeURIComponent(ep.filePath)
-            + (ep.progress > ep.duration * 0.5 ? '&time=' + thumbTime : '&time=mid');
+          thumbUrl = '/api/thumbnail?path=' + encodeURIComponent(ep.filePath) + '&time=' + thumbTime;
         } else {
-          // 未播放过的下一集：用中间缩略图
+          // 未播放过的下一集：用 50% 中间缩略图
           thumbUrl = '/api/thumbnail?path=' + encodeURIComponent(ep.filePath) + '&time=mid';
         }
+      }
+      if (a.bangumiTitle === '天空之城' || a.title === '天空の城ラピュタ') {
+        console.log('[CONTINUE-DEBUG] 天空之城 thumbUrl=' + thumbUrl + ' bgStyle=' + (thumbUrl ? 'HAS-BG' : 'NO-BG'));
       }
       var coverSrc = a.localCover
         ? '/covers/' + path.basename(a.localCover)

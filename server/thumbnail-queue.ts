@@ -137,10 +137,10 @@ class ThumbnailQueue {
       return Promise.resolve();
     }
 
-    // 取 25% 位置，下限 30s 上限 120s
+    // 取 50% 中点位置，与按需端点 time=mid 完全一致（共享缓存键）
     let time = 60;
     if (duration && duration > 0) {
-      time = Math.min(Math.max(Math.round(duration * 0.25), 30), 120);
+      time = Math.floor(duration / 2);
     }
 
     const hash = this._thumbHash(filePath);

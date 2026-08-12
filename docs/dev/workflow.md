@@ -330,7 +330,7 @@ MyAnimeDock 功能开发/修 bug 的标准流程。**禁止跳过阶段直接写
 ## 变更总结
 - 文件：5 个（2 backend + 3 frontend）
 - 新增：+127 行，删除：-34 行
-- 测试：222/222 pass
+- 测试：368/368 pass
 - 文档更新：docs/data-flow.md 新增 /api/mylist/batch-watch
 - 待解决：批量操作 UI 的 loading indicator 下次迭代优化
 ```

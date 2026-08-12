@@ -40,19 +40,19 @@ POST /api/bangumi/fetch (for library items — already imported)
       │   │       ├─ fetch image → buffer → write to covers/
       │   │       └─ Return absolute localCover path
       └─ Returns: { source, bangumiId, bangumiTitle, bangumiTitleJp,
-                     summary, coverUrl, localCover, rating }
+                     summary, localCover, rating }
   → Object.assign(anime, meta) — update library anime record
   → db.saveLibrary(data) + saveScannedTree(data.scannedTree)
 ```
 
-## AniList 双源同步
+## 双源元数据管线
 
-同步路径分三段：流内内联 AniList 搜索取 ID + 预取 banner → **batchGetDetails**（批量补缺 banner）→ **syncAnilistDetail**（重量，单条 metadata + banner）。
+统一入口为 `ensureMetadata`（单条）/ `ensureMetadataBatch`（批量），取代旧的 `syncAnilist` / `syncAnilistDetail`。存储字段只存本地路径 / null / `__none__`，**不再存远程 URL**（`coverUrl` / `anilistCover` 已移除，前端一律用 `localCover`）。
 
 | 触发方式 | 端点/位置 | 调用方式 | 函数 | 备注 |
 |---------|-----------|---------|------|------|
-| 详情页刷元数据 | `POST /api/bangumi/fetch` → `bangumi.ts` | `await` | `syncAnilist` | 重置 `-1` 重新搜索 |
-| SSE 流式同步 | `GET /api/library/sync/stream` → `library.ts` | `parallelMap` | 流内内联 AniList 搜索取 ID+banner + `batchGetDetails`(流末) | [bgmN] 跳过 matchSeason，ID 直取 |
+| 详情页刷元数据 | `POST /api/bangumi/fetch` → `bangumi.ts` | `await` | `ensureMetadata` | 重置 `-1` 重新搜索 |
+| SSE 流式同步 | `GET /api/library/sync/stream` → `library.ts` | `parallelMap` | 流内内联 AniList 搜索取 ID + 收尾 `ensureMetadataBatch` | [bgmN] 跳过 matchSeason，ID 直取 |
 
 ### 搜索优化策略
 
@@ -61,5 +61,5 @@ POST /api/bangumi/fetch (for library items — already imported)
 1. **搜索词分级**：两档优先搜索（romaji / 日文名 → 英文 / 中文 / 文件夹名），前者命中即停
 2. **搜索结果预取 banner**：流内内联 AniList 搜索从 SEARCH 结果直接提取 `bannerImage` + `title_english`，对 ~80%+ 条目免去后续 DETAIL_QUERY
 3. **去重缓存**：`registry._searchCache`（5 分钟 TTL）缓存 SEARCH 结果；`anilist._pendingSearches` Map 共享相同关键词的 in-flight Promise
-4. **批量 DETAIL**：流末一次 `batchGetDetails(chunk)`（50 条/批）补全剩余缺 banner 的条目
+4. **批量补全**：流末一次 `ensureMetadataBatch(chunk)`（`id_in` 一次最多 50 条）补全剩余缺 banner/tags 的条目，AniList 批量 DETAIL + 并行下载 banner 到本地，Bangumi 侧逐条 `fetchMetadata`
 5. **Retry-After 感知**：429 响应优先用 `Retry-After` / `X-RateLimit-Reset` 头确定等待时间

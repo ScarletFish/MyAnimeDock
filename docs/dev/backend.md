@@ -147,7 +147,7 @@ db.loadData() → 读 SQLite 初始化
 
 ## Thumbnail 约定
 
-- `thumbnail-queue.ts`：队列 + 去重 + 限并发（默认 2）
+- `thumbnail-queue.ts`：队列 + 去重 + 限并发（默认 3）
 - 依赖 ffmpeg：dev 模式用仓库内置 `scripts/ffmpeg-upx.exe`（Windows），打包模式用 `sidecar-modules/ffmpeg.exe`，均无需系统安装 ffmpeg；仅当两者缺失时才回落系统 PATH
 - 生成缓存到 `thumbs/` 目录
 - ffmpeg 命令：`ffmpeg -ss {time} -i {video} -vframes 1 -vf scale=320:-1 {output}`

@@ -22,6 +22,13 @@ server.ts ⇒ init()
   ├─ 5. Validate localCover paths
   │     (if file missing → clear field → frontend shows gray placeholder)
   │
+  ├─ 5b. migrateLegacyDataPaths(data) — 旧路径迁移钩子
+  │     (dev 模式把 DB 中旧 `server/` 前缀的 localCover/anilistBanner 重写到新 `data/`；
+  │      幂等：已以 DATA_DIR 开头则跳过；pkg 模式不执行)
+  │
+  ├─ 5c. validateBanners(data) — 启动校验 banner 本地文件
+  │     (文件缺失 → 置 null，避免前端引用已删除文件)
+  │
   ├─ 6. Initialize mpv-ipc (activePlays Map)
   │
   ├─ 7. Start HTTP server (http.createServer, listen :3456)

@@ -40,7 +40,7 @@ User must re-fetch metadata to download covers to AppData
 GET /api/thumbnail?path=VIDEO_PATH&time=60
   → routes/playback.ts:handleThumbnail()
   → Validate videoPath exists
-  → hash = MD5(videoPath + time)
+  → hash = MD5(videoPath + 'mid')   // 与队列共享缓存键（见下）
   → thumbPath = DATA_DIR/thumbs/${hash}.jpg
   → If cache hit: serveImage(thumbPath, ...) → same cover pipeline
   → If cache miss:
@@ -79,7 +79,7 @@ lib/utils.ts: 解析顺序 FFMPEG_BIN 环境变量 → scripts/ffmpeg-upx.exe �
 - **并发**：3 路 ffmpeg `-vframes 1`（0.5-2s/张）
 - **空闲检测**：`activePlays.size === 0`，mpv 运行时暂停 → 30s 后重试
 - **生成位置**：25% 时长（30-120s 区间），已知 `ep.duration` 则用，否则 60s
-- **缓存键**：`md5(filePath + 'mid').jpg`，与 `time=mid` 按需生成共享缓存
+- **缓存键**：`md5(filePath + 'mid').jpg`，与 `time=mid` 按需生成**共享同一缓存键**——队列已生成的缩略图按需端点直接命中，不再重复跑 ffmpeg
 - **无持久化队列**：重启后队列丢失，缩略图可重新生成
 - **按需兜底**：`handleThumbnail` 保持不变，队列没来得及时即时生成
 

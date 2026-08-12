@@ -3,8 +3,8 @@
 ## 运行命令
 
 ```bash
-cd server && npm test                     # 全量（222 tests, ~30s）
-cd server && npm run test:routes          # Route 测试（119 tests, ~2s）
+cd server && npm test                     # 全量（368 tests, ~13s）
+cd server && npm run test:routes          # Route 测试（135 tests, ~2s）
 cd server && node --test                  # 同 npm test
 cd server && node --test __tests__/xx.test.js  # 单文件
 cd server && node --test __tests__/routes/*.test.js  # 全 route
@@ -15,10 +15,10 @@ cd server && node --test --watch          # 监听模式
 
 | 文件 | 测试数 | 覆盖模块 | 运行时机 |
 |------|--------|----------|----------|
-| `__tests__/db.test.js` | 25 | `loadData`, `saveLibrary`, `saveMyList`, `updateEpisodesWatched`, `saveAll`, `updateMyItemStatus`, `updateMyListItem`, `updatePlaySession`, `deletePlaySession`, `ensureSchema`, bangumiId/anilistId 唯一性, 全生命周期 | 数据持久化改动时 |
-| `__tests__/scanner.test.js` | 65 | `parseFolderName`(21), `isExtraVideo`(16), `extractBgmId`(7), `findVideos`(5), `hasDirectVideos`(5), `buildLeaf` via `scanMediaDirFlat`(5), `scanMediaDirFlat`(5), `scanMediaDir`(1) | scanner 改动时 |
-| `__tests__/scrapers.test.js` | 66 | `normalizeTitle`, `sorensenDice`, `toHiragana`, `pickBestBySimilarity`, `extractRomajiTitle`, `parseFolderName` 真实数据集(15), `resolveAnilistId`(mock + real API), `syncAnilistDetail`(mock) | 匹配逻辑改动时 |
-| `__tests__/playback-encoding.test.js` | 42 | 播放路径编码、`escAttr` → HTML → `dataset` → JSON 全链路 | 播放路径改动时 |
+| `__tests__/db.test.js` | 35 | `loadData`, `saveLibrary`, `saveMyList`, `updateEpisodesWatched`, `saveAll`, `updateMyItemStatus`, `updateMyListItem`, `updatePlaySession`, `deletePlaySession`, `ensureSchema`, bangumiId/anilistId 唯一性, 全生命周期 | 数据持久化改动时 |
+| `__tests__/scanner.test.js` | 64 | `parseFolderName`(21), `isExtraVideo`(16), `extractBgmId`(7), `findVideos`(5), `hasDirectVideos`(5), `buildLeaf` via `scanMediaDirFlat`(5), `scanMediaDirFlat`(5), `scanMediaDir`(1) | scanner 改动时 |
+| `__tests__/scrapers.test.js` | 65 | `normalizeTitle`, `sorensenDice`, `toHiragana`, `pickBestBySimilarity`, `extractRomajiTitle`, `parseFolderName` 真实数据集(15), `resolveAnilistId`(mock + real API), `ensureMetadata`/`ensureMetadataBatch`(mock) | 匹配逻辑改动时 |
+| `__tests__/playback-encoding.test.js` | 44 | 播放路径编码、`escAttr` → HTML → `dataset` → JSON 全链路 | 播放路径改动时 |
 
 详细测试模式惯例、已知行为记录、命名约定见 `docs/testing.md`（原测试指南）。
 
@@ -87,15 +87,15 @@ assert.deepStrictEqual(parseFolderName('[bgm5] Title (2024)'), {
 
 | 文件 | 测试数 | 覆盖 Handler | mock 策略 |
 |------|--------|-------------|-----------|
-| `mylist.test.js` | 13 | 6/7 | 仅 state mock |
+| `mylist.test.js` | 15 | 6/7 | 仅 state mock |
 | `config.test.js` | 14 | 4/4 | 仅 state mock |
-| `stats.test.js` | 19 | 6/6 | 仅 state mock |
+| `stats.test.js` | 23 | 7/7 | 仅 state mock |
 | `db-manager.test.js` | 15 | 6/8 | state.db mock + fs monkey-patch; 跳过二进制流/文件读取 |
 | `discovery.test.js` | 23 | 5/6 | state mock + require.cache mock for scanner; 跳过 SSE |
 | `library.test.js` | 9 | 3/5 | state mock; 跳过 SSE/AniList |
 | `bangumi.test.js` | 18 | 8/9 | require.cache mock for scrapers + scanner |
-| `playback.test.js` | 16 | 4/4 | require.cache mock for mpv-ipc + ffmpeg error path |
-| **合计** | **125** | **42/49** | **86% handler 覆盖** |
+| `playback.test.js` | 18 | 4/4 | require.cache mock for mpv-ipc + ffmpeg error path |
+| **合计** | **135** | **43/50** | **86% handler 覆盖** |
 
 ### Mock-http 模式
 
@@ -150,6 +150,8 @@ afterEach(() => {
   fs.unlinkSync('./test.db');
 });
 ```
+
+> **DATA_DIR 隔离**：`__tests__/setup.js` 把 `DATA_DIR` 指向临时目录（`lib/config.ts` 支持 `DATA_DIR` 环境变量覆盖），避免跑测试覆盖真实 `data/config.json` / `anime.db`。
 
 ## 已知限制
 

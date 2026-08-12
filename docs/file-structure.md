@@ -114,6 +114,7 @@ frontend/
 │   │   ├── discovery.js       #   媒体浏览视图
 │   │   ├── library.js         #   库视图（grid 列公式 GRID_CARD_MIN/MAX）
 │   │   ├── detail.js          #   详情页
+│   │   ├── tag-data.js        #   标签词库（含中英解释，悬停 tooltip 数据源）
 │   │   ├── detail-nav.js      #   详情页导航
 │   │   ├── detail-stats.js    #   详情页统计
 │   │   ├── detail-pagination.js # 详情页分页

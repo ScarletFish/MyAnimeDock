@@ -235,9 +235,27 @@ window.closeModal = function closeModal(el) {
   }
 })();
 
+// ─── Native file/directory dialogs (Tauri) ───
+
+async function openDialog(options) {
+  // Tauri v2 withGlobalTauri: plugin API 挂载在 __TAURI__.dialog
+  if (window.__TAURI__?.dialog?.open) {
+    return await window.__TAURI__.dialog.open(options);
+  }
+  // 回退：core.invoke（Tauri v2 plugin 命名规则用竖线分隔）
+  if (window.__TAURI__?.core?.invoke) {
+    return await window.__TAURI__.core.invoke('plugin:dialog|open', options);
+  }
+  if (window.__TAURI__?.invoke) {
+    return await window.__TAURI__.invoke('plugin:dialog|open', options);
+  }
+  return null;
+}
+
 // ─── ESM exports for cross-module utilities ───
 window.escHtml = escHtml;
 window.escAttr = escAttr;
 window.renderGrayCover = renderGrayCover;
 window.renderAnimeCard = renderAnimeCard;
 window.openModal = openModal;
+window.openDialog = openDialog;

@@ -18,7 +18,7 @@ const app = mount(App, {
 window.SVELTE_VIEWS = {
   discovery: true,
   library: true,
-  stats: false,
+  stats: true,
   mylist: true,
   detail: false,
 };

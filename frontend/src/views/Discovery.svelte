@@ -150,6 +150,25 @@
     if ($discoveryOpen) loadDiscovery();
   });
 
+  // ─── 视图切换入场：fade + rise（方案 B）───
+  // 视图打开（store false→true）时整块淡入上浮。用 tick() 等 DOM 更新后再动画，
+  // 避免在 class:hidden 未移除时对隐藏元素空跑。
+  $effect(() => {
+    if (!$discoveryOpen) return;
+    tick().then(() => {
+      const el = document.getElementById('svelte-discoveryView');
+      if (!el || typeof globalThis.gsap !== 'function') return;
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      const gsap = globalThis.gsap;
+      gsap.killTweensOf(el);
+      gsap.fromTo(
+        el,
+        { autoAlpha: 0, y: 16 },
+        { autoAlpha: 1, y: 0, duration: 0.4, ease: 'power2.out', clearProps: 'transform,opacity' }
+      );
+    });
+  });
+
   // 卡片入场动画（对齐 vanilla discovery.js:202-204）
   // 只依赖数据变化（rows），不依赖视图开关——切走再切回不重新动画，与 vanilla 一致
   $effect(() => {

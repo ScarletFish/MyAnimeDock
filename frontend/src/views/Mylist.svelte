@@ -79,6 +79,21 @@
     }
   });
 
+  // ─── 视图切换入场：容器淡入（方案 B）───
+  // 视图打开时整块淡入。Mylist 已有模块级 fade+rise + 卡片 ScrollTrigger，容器只做淡入（y:0），
+  // 避免双层位移叠加过重。{#if} 渲染视图：tick() 等 section 进入 DOM 后再动画。
+  $effect(() => {
+    if (!$mylistOpen) return;
+    tick().then(() => {
+      const el = document.getElementById('svelte-mylistView');
+      if (!el || typeof globalThis.gsap !== 'function') return;
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      const gsap = globalThis.gsap;
+      gsap.killTweensOf(el);
+      gsap.fromTo(el, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.4, ease: 'power2.out', clearProps: 'opacity' });
+    });
+  });
+
   onMount(() => {
     function onDocClick(e) {
       if (sortOpen && !e.target.closest('.mylist-sort-bar')) sortOpen = false;

@@ -85,6 +85,21 @@
     if ($libraryOpen) loadLibrary(true);
   });
 
+  // ─── 视图切换入场：容器淡入（方案 B）───
+  // 视图打开时整块淡入。Library 已有模块级 fade+rise（模块浮起），容器只做淡入（y:0），
+  // 避免「容器浮起 + 内部模块浮起」双层位移叠加过重。store 触发天然 once（每次打开播一次）。
+  $effect(() => {
+    if (!$libraryOpen) return;
+    tick().then(() => {
+      const el = document.getElementById('svelte-libraryView');
+      if (!el || typeof globalThis.gsap !== 'function') return;
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      const gsap = globalThis.gsap;
+      gsap.killTweensOf(el);
+      gsap.fromTo(el, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.4, ease: 'power2.out', clearProps: 'opacity' });
+    });
+  });
+
   // ─── 加载 ───
   async function loadLibrary(fromViewSwitch = false) {
     const mc = document.querySelector('.main-content');

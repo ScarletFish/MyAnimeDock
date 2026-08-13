@@ -3,6 +3,7 @@ import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 import tailwindcss from '@tailwindcss/vite';
+import { svelte } from '@sveltejs/vite-plugin-svelte';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -87,5 +88,5 @@ export default defineConfig({
     emptyOutDir: true,
     cssMinify: false,
   },
-  plugins: [tailwindcss(), concatJsPlugin()],
+  plugins: [tailwindcss(), svelte(), concatJsPlugin()],
 });

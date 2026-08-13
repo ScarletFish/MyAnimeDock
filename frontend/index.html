@@ -800,6 +800,10 @@
   </div>
 </div>
 
+<!-- Svelte 挂载点（渐进迁移期间承载 Svelte 组件库，现有 vanilla app 继续由上方 HTML 渲染） -->
+<!-- 置于 .main-content 末尾，使 Svelte 视图参与主滚动/布局 -->
+<div id="app"></div>
+
 </main>
 
 </div> <!-- /body-wrapper -->
@@ -907,5 +911,6 @@
 <script src="/src/js/search.js"></script>
 <script src="/src/js/onboarding.js"></script>
 <script src="/src/js/keyboard.js"></script>
+<script type="module" src="/src/main.js"></script>
 </body>
 </html>

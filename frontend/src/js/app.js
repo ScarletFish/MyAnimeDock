@@ -63,6 +63,7 @@ function showView(view) {
 
   const views = ['discovery', 'library', 'stats', 'mylist', 'detail'];
   for (const v of views) {
+    if (window.SVELTE_VIEWS?.[v]) continue; // Svelte 拥有的视图由 store 驱动，vanilla 不 toggle
     const el = document.getElementById(v + 'View');
     if (el) el.classList.toggle('hidden', v !== view);
   }
@@ -88,23 +89,26 @@ function showView(view) {
     if (typeof window.setTitlebarContext === 'function') window.setTitlebarContext('default');
   }
 
-  // Load data for view
-  if (view === 'discovery') window.loadDiscovery();
-  if (view === 'library') {
+  // Load data for view（Svelte 拥有的视图由组件自身加载，vanilla 不重复渲染）
+  if (view === 'discovery' && !window.SVELTE_VIEWS?.discovery) window.loadDiscovery();
+  if (view === 'library' && !window.SVELTE_VIEWS?.library) {
     _libraryChangingView = true;
     window.loadLibrary(true);
   }
-  if (view === 'mylist') {
+  if (view === 'mylist' && !window.SVELTE_VIEWS?.mylist) {
     _mylistChangingView = true;
     window.loadMyList();
   }
-  if (view === 'stats') {
+  if (view === 'stats' && !window.SVELTE_VIEWS?.stats) {
     window.loadStats();
     window.loadActivityChart();
     window.loadRatingChart();
     window.loadSeasonChart();
     window.loadChordChart();
   }
+
+  // 同步 Svelte 视图可见性（未拥有的视图 store 恒 false）
+  if (window.__svelteViewSync) window.__svelteViewSync(view);
 }
 
 function goBack() {

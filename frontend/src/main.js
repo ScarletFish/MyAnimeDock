@@ -19,7 +19,7 @@ window.SVELTE_VIEWS = {
   discovery: true,
   library: true,
   stats: false,
-  mylist: false,
+  mylist: true,
   detail: false,
 };
 
@@ -75,6 +75,18 @@ window.loadLibrary = (soft) => {
     return true;
   }
   if (typeof vanillaLoadLibrary === 'function') return vanillaLoadLibrary(soft);
+  return false;
+};
+
+// ─── 桥接外部刷新入口到 Svelte mylist ───
+// 镜像 loadLibrary 桥接模式：当 mylist 由 Svelte 接管时路由到 Svelte 视图刷新；否则回退 vanilla。
+const vanillaLoadMyList = window.loadMyList;
+window.loadMyList = () => {
+  if (window.SVELTE_VIEWS?.mylist && typeof window.loadMyListSvelte === 'function') {
+    window.loadMyListSvelte();
+    return true;
+  }
+  if (typeof vanillaLoadMyList === 'function') return vanillaLoadMyList();
   return false;
 };
 

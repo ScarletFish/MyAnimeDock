@@ -14,6 +14,10 @@
   // 跨视图副作用（showDetail/openStatusModal/showView/mmOpenModal 等）通过 window 桥接现有全局。
   import { onMount, tick } from 'svelte';
   import { showToast } from '../components/Toast.svelte';
+  import StatusModal from '../components/StatusModal.svelte';
+  import ContextMenu from '../components/ContextMenu.svelte';
+  import LocalAnimeSection from './LocalAnimeSection.svelte';
+  import { calcGridCols, readScale } from '../lib/grid.js';
 
   // ─── Grid 列公式（原 library.js GRID_CARD_MIN/MAX）───
   const GRID_CARD_MIN = 200;
@@ -42,26 +46,18 @@
   let libraryData = $state([]);
   let stats = $state(null);
   let layout = $state([]);
-  let sortMode = $state('name');
-  let sortOpen = $state(false);
   let loading = $state(true);
   let gridCols = $state('');
 
-  // ─── 排序选项（镜像 mylist.js ANIME_SORT_OPTIONS）───
-  const SORT_OPTIONS = [
-    { key: 'name', label: tr('mylist.sortName', '名称') },
-    { key: 'recent', label: tr('mylist.sortRecent', '最近观看') },
-    { key: 'updated', label: tr('mylist.sortUpdated', '最近更新') },
-    { key: 'rating', label: tr('common.rating', '评分') },
-    { key: 'imported', label: tr('mylist.sortImported', '导入时间') },
-  ];
+  // 状态弹窗
+  let statusTarget = $state(null);
+  let statusModalOpen = $state(false);
 
-  // ─── 状态分区（watching/wish/completed）───
-  const STATUS_SECTIONS = [
-    { status: 'watching', label: tr('common.watching', '在看') },
-    { status: 'wish', label: tr('common.wish', '想看') },
-    { status: 'completed', label: tr('common.completed', '看过') },
-  ];
+  // 右键菜单
+  let ctxOpen = $state(false);
+  let ctxX = $state(0);
+  let ctxY = $state(0);
+  let ctxItem = $state(null);
 
   // ─── 默认布局（镜像 dashboard-layout.js）───
   function defaultLayout() {
@@ -72,14 +68,12 @@
     ];
   }
 
-  // ─── 挂载：点击外部关闭排序菜单 + 暴露 Svelte 刷新入口 ───
+  // ─── 挂载：暴露 Svelte 刷新入口 ───
   onMount(() => {
-    document.addEventListener('click', onDocClick);
     // 桥接：vanilla 流程（saveStatusModal/detail.js 等）调裸 loadLibrary() 时，
     // main.js 的 window.loadLibrary 路由到这里刷新 Svelte 库页（in-place，保留当前滚动）。
     window.loadLibrarySvelte = () => loadLibrary(false);
     return () => {
-      document.removeEventListener('click', onDocClick);
       delete window.loadLibrarySvelte;
     };
   });
@@ -90,10 +84,6 @@
   $effect(() => {
     if ($libraryOpen) loadLibrary(true);
   });
-
-  function onDocClick(e) {
-    if (sortOpen && !e.target.closest('.library-sort-bar')) sortOpen = false;
-  }
 
   // ─── 加载 ───
   async function loadLibrary(fromViewSwitch = false) {
@@ -108,7 +98,6 @@
       libraryData = newData;
       const getLayout = g('getDashboardLayout');
       layout = getLayout ? getLayout() : defaultLayout();
-      sortMode = localStorage.getItem('librarySort') || 'name';
       await loadStats();
       loading = false;
       // 等 DOM 渲染完成后恢复滚动（重渲染会重置 scrollTop）
@@ -132,10 +121,7 @@
   // ─── Grid 列公式（响应 --scale）───
   $effect(() => {
     void libraryData;
-    const scale = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--scale')) || 1;
-    const min = Math.round(GRID_CARD_MIN * scale);
-    const max = Math.round(GRID_CARD_MAX * scale);
-    gridCols = `repeat(auto-fit, minmax(${min}px, ${max}px))`;
+    gridCols = calcGridCols(readScale());
   });
 
   // ─── 继续观看（镜像 renderContinueSection）───
@@ -200,23 +186,6 @@
     const ep = findContinueEpisode(a);
     const total = a.episodes ? a.episodes.length : 0;
     return tr('library.episodeProgress', '第 {current}/{total} 集', { current: ep ? ep.number : '?', total });
-  }
-
-  // ─── 状态网格（镜像 renderStatusGrids + sortAnimeItems）───
-  const statusGrids = $derived(
-    STATUS_SECTIONS.map((cfg) => {
-      const items = sortAnimeItems(
-        libraryData.filter((a) => (a.myListStatus || 'wish') === cfg.status),
-        sortMode
-      );
-      return { ...cfg, items };
-    })
-  );
-
-  function sortAnimeItems(items, mode) {
-    const fn = g('sortAnimeItems');
-    if (fn) return fn(items, mode);
-    return items;
   }
 
   // ─── 继续观看：GSAP 交错入场（对齐 vanilla library.js renderContinueSectionFull animate=true）
@@ -306,62 +275,6 @@
     });
   });
 
-  // ─── 卡片级：状态网格卡片 ScrollTrigger 视口渐显（替换原 cardReveal）───
-  // 适配动态网格（auto-fit 列数/卡片数不定）：每个网格建一个 ScrollTrigger，
-  // 网格进入视口时卡片交错渐显（once:true）。数据重载/排序后先 kill 旧触发器再重建。
-  let cardTriggers = [];
-  $effect(() => {
-    void statusGrids;
-    if (loading) return;
-    const gsap = globalThis.gsap;
-    if (!gsap || !gsap.ScrollTrigger) return;
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    tick().then(() => {
-      // 清理旧触发器，避免重复触发/泄漏
-      cardTriggers.forEach((t) => t.kill());
-      cardTriggers = [];
-      if (reduce) return; // 减少动态效果：跳过动画，卡片直接显示
-      const scroller = document.querySelector('.main-content');
-      if (!scroller) return;
-      for (const cfg of statusGrids) {
-        const grid = document.querySelector(`#svelte-libraryGrid-${cfg.status}`);
-        if (!grid) continue;
-        const cards = grid.querySelectorAll('.anime-card');
-        if (!cards.length) continue;
-        const tween = gsap.fromTo(
-          cards,
-          { autoAlpha: 0, y: 24 },
-          {
-            autoAlpha: 1,
-            y: 0,
-            duration: 0.5,
-            ease: 'power2.out',
-            stagger: 0.05,
-            scrollTrigger: { trigger: grid, start: 'top 92%', once: true, scroller },
-          }
-        );
-        if (tween.scrollTrigger) cardTriggers.push(tween.scrollTrigger);
-      }
-    });
-  });
-
-  // ─── 视图关闭时清理卡片 ScrollTrigger ───
-  $effect(() => {
-    if ($libraryOpen) return;
-    if (!cardTriggers.length) return;
-    cardTriggers.forEach((t) => t.kill());
-    cardTriggers = [];
-  });
-
-  // ─── 卡片 HTML（复用全局 renderAnimeCard，视觉一致）───
-  function cardHtml(a) {
-    const getTitle = g('getCardTitleVisible');
-    const alwaysShowTitle = getTitle ? getTitle('library') : false;
-    const fn = g('renderAnimeCard');
-    if (fn) return fn(a, { alwaysShowTitle });
-    return '';
-  }
-
   // ─── 工具 ───
   function basename(p) {
     if (!p) return '';
@@ -384,16 +297,6 @@
   }
 
   // ─── 交互 ───
-  function toggleSort() {
-    sortOpen = !sortOpen;
-  }
-
-  function selectSort(key) {
-    sortMode = key;
-    localStorage.setItem('librarySort', key);
-    sortOpen = false;
-  }
-
   function navigateToDetail(id, el) {
     const img = el.querySelector('img');
     let rect = null;
@@ -414,13 +317,78 @@
   }
 
   function openContextMenu(e, id) {
-    const fn = g('showContextMenu');
-    if (fn) fn(e, id);
+    e.preventDefault();
+    e.stopPropagation();
+    const item = libraryData.find((a) => a.id === id);
+    if (!item) return;
+    ctxItem = item;
+    ctxX = e.clientX;
+    ctxY = e.clientY;
+    ctxOpen = true;
   }
 
-  function openStatus(e, id) {
-    const fn = g('openStatusModal');
-    if (fn) fn(e, id);
+  function openStatus(item, e) {
+    statusTarget = item;
+    statusModalOpen = true;
+  }
+
+  function afterSave() {
+    loadLibrary(false);
+  }
+
+  function closeCtx() {
+    ctxOpen = false;
+    ctxItem = null;
+  }
+
+  async function copyTitle() {
+    const item = ctxItem;
+    const title = item ? item.bangumiTitle || item.title || '' : '';
+    closeCtx();
+    try {
+      await navigator.clipboard.writeText(title);
+      showToast(tr('mylist.copied', '已复制'), 'success');
+    } catch (e) {
+      showToast(tr('mylist.copyFailed', '复制失败'), 'error');
+    }
+  }
+
+  function openInBgm() {
+    const item = ctxItem;
+    closeCtx();
+    if (!item) return;
+    const url = getBangumiFrontendUrl() + '/subject/' + item.id;
+    if (window.__TAURI__?.shell?.open) {
+      window.__TAURI__.shell.open(url).catch(() => {});
+    } else {
+      window.open(url, '_blank');
+    }
+  }
+
+  function getBangumiFrontendUrl() {
+    if (typeof window.getBangumiFrontendUrl === 'function') return window.getBangumiFrontendUrl();
+    return 'https://bgm.tv';
+  }
+
+  async function removeLibraryItem() {
+    const item = ctxItem;
+    closeCtx();
+    if (!item) return;
+    const name = item.bangumiTitle || item.title || item.id;
+    const confirmed = await showConfirm(tr('mylist.confirmRemove', '确认从我的列表移除「{name}」？', { name }));
+    if (!confirmed) return;
+    try {
+      await api.del('/api/mylist/' + encodeURIComponent(item.id));
+      showToast(tr('mylist.removed', '已移除'), 'info');
+      loadLibrary(false);
+    } catch (e) {
+      showToast(tr('mylist.removeFailed', '移除失败：{message}', { message: e.message }), 'error');
+    }
+  }
+
+  async function showConfirm(message) {
+    if (typeof window.showConfirm === 'function') return await window.showConfirm(message);
+    return window.confirm(message);
   }
 
   function goDiscovery() {
@@ -534,49 +502,41 @@
             </div>
           </div>
         {:else if s.enabled && s.id === 'localLibrary'}
-          <div class="dashboard-section" data-section="localLibrary">
-            <div class="dashboard-section-header">
-              <span class="dashboard-section-title">{tr('library.localAnime', '本地动漫')}</span>
-              <div class="library-sort-bar">
-                <button class="library-sort-trigger" class:open={sortOpen} onclick={toggleSort} aria-label={tr('mylist.sort', '排序')}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M6 12h12M9 18h6"/></svg>
-                </button>
-                {#if sortOpen}
-                  <div class="library-sort-menu open">
-                    {#each SORT_OPTIONS as o (o.key)}
-                      <div class="library-sort-option" class:active={o.key === sortMode} onclick={() => selectSort(o.key)}>{o.label}</div>
-                    {/each}
-                  </div>
-                {/if}
-              </div>
-            </div>
-            <div class="dashboard-section-body">
-              {#each statusGrids as cfg (cfg.status)}
-                {#if cfg.items.length > 0}
-                  <div class="status-section" id="svelte-statusSection-{cfg.status}">
-                    <div class="status-section-header">
-                      <span class="status-section-title">{cfg.label}</span>
-                      <span class="status-section-count">{cfg.items.length}</span>
-                    </div>
-                    <div class="grid-container" id="svelte-libraryGrid-{cfg.status}" style="grid-template-columns:{gridCols}">
-                      {#each cfg.items as a (a.id)}
-                        <div
-                          class="anime-card"
-                          data-id={a.id}
-                          onclick={(e) => navigateToDetail(a.id, e.currentTarget)}
-                          oncontextmenu={(e) => openContextMenu(e, a.id)}
-                        >
-                          {@html cardHtml(a)}
-                        </div>
-                      {/each}
-                    </div>
-                  </div>
-                {/if}
-              {/each}
-            </div>
-          </div>
+          <LocalAnimeSection
+            items={libraryData}
+            {gridCols}
+            onOpenContextMenu={(item, e) => openContextMenu(e, item.id)}
+            onOpenStatus={openStatus}
+          />
         {/if}
       {/each}
     {/if}
   </div>
+
+  <!-- 右键菜单 -->
+  <ContextMenu bind:open={ctxOpen} bind:x={ctxX} bind:y={ctxY}>
+    {#if ctxItem}
+      <div class="context-menu-item" onclick={copyTitle}>
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        <span>{tr('mylist.copyTitle', '复制标题')}</span>
+      </div>
+      <div class="context-menu-item" onclick={openInBgm}>
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        <span>{tr('mylist.openInBgm', '在 Bangumi 打开')}</span>
+      </div>
+      <div class="context-menu-divider"></div>
+      <div class="context-menu-item" onclick={() => { const it = ctxItem; closeCtx(); openStatus(it, null); }}>
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span>{tr('mylist.markStatus', '标记状态')}</span>
+      </div>
+      <div class="context-menu-divider"></div>
+      <div class="context-menu-item context-menu-danger" onclick={removeLibraryItem}>
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+        <span>{tr('common.remove', '移除')}</span>
+      </div>
+    {/if}
+  </ContextMenu>
+
+  <!-- 状态弹窗 -->
+  <StatusModal bind:open={statusModalOpen} item={statusTarget} onSaved={afterSave} />
 </section>

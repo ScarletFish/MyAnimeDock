@@ -10,6 +10,9 @@ let _mylistChangingView = false;
 // （此时 library 仍可见，mc.scrollTop 处于 library 坐标系）。Svelte 版重渲染后据此恢复。
 window.__getLibraryScrollTop = () => libraryScrollTop;
 
+// 暴露给 Svelte Mylist：showView 离开 mylist 时已把正确滚动位置存进 mylistScrollTop。
+window.__getMyListScrollTop = () => mylistScrollTop;
+
 // ── 全局 mpv-status 监听：播放结束反馈在任何页面生效 ──
 // 进度数据由 server 每次事件落盘（与前端页面无关）；这里负责"播放结束"那一刻的
 // UI 反馈：自动聚焦窗口（不跳页）+ toast + 回详情页时的兜底"标记看完"弹窗。

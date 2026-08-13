@@ -17,7 +17,7 @@ const app = mount(App, {
 // 未拥有的视图 store 恒 false，避免双份渲染。
 window.SVELTE_VIEWS = {
   discovery: true,
-  library: false,
+  library: true,
   stats: false,
   mylist: false,
   detail: false,
@@ -61,6 +61,21 @@ window.refreshDiscovery = () => {
 };
 window.loadDiscovery = () => {
   if (!svelteRefreshDiscovery() && typeof vanillaLoadDiscovery === 'function') vanillaLoadDiscovery();
+};
+
+// ─── 桥接外部刷新入口到 Svelte library ───
+// 状态保存（mylist.js saveStatusModal）、详情页操作（detail.js:981/997）、
+// discovery/metamatch 等 vanilla 流程调用裸 loadLibrary()（经典脚本全局绑定 = window.loadLibrary）。
+// 当 library 由 Svelte 接管时路由到 Svelte 视图刷新；否则回退 vanilla。
+// 若不桥接，外部调用会渲染进隐藏的 vanilla #libraryDashboard，Svelte 库页收不到刷新信号。
+const vanillaLoadLibrary = window.loadLibrary;
+window.loadLibrary = (soft) => {
+  if (window.SVELTE_VIEWS?.library && typeof window.loadLibrarySvelte === 'function') {
+    window.loadLibrarySvelte();
+    return true;
+  }
+  if (typeof vanillaLoadLibrary === 'function') return vanillaLoadLibrary(soft);
+  return false;
 };
 
 // Detail 接管时启用：window.showDetail = window.openDetail（签名兼容）

@@ -12,7 +12,7 @@
   // 复用现有 CSS 类名（视觉不变），与 vanilla 版共存（后续清理阶段再删 vanilla）。
   // 核心逻辑（网格渲染/排序/空状态/继续观看）用 runes 重写；
   // 跨视图副作用（showDetail/openStatusModal/showView/mmOpenModal 等）通过 window 桥接现有全局。
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { showToast } from '../components/Toast.svelte';
 
   // ─── Grid 列公式（原 library.js GRID_CARD_MIN/MAX）───
@@ -72,15 +72,23 @@
     ];
   }
 
-  // ─── 挂载：点击外部关闭排序菜单 ───
+  // ─── 挂载：点击外部关闭排序菜单 + 暴露 Svelte 刷新入口 ───
   onMount(() => {
     document.addEventListener('click', onDocClick);
-    return () => document.removeEventListener('click', onDocClick);
+    // 桥接：vanilla 流程（saveStatusModal/detail.js 等）调裸 loadLibrary() 时，
+    // main.js 的 window.loadLibrary 路由到这里刷新 Svelte 库页（in-place，保留当前滚动）。
+    window.loadLibrarySvelte = () => loadLibrary(false);
+    return () => {
+      document.removeEventListener('click', onDocClick);
+      delete window.loadLibrarySvelte;
+    };
   });
 
   // ─── 打开时加载数据（避免启动时全量 fetch）───
+  // fromViewSwitch=true：视图切换进入（从详情/其他视图返回），恢复 vanilla 保存的滚动位置；
+  // fromViewSwitch=false：库页已显示时的就地刷新（状态变更等），保留当前滚动。
   $effect(() => {
-    if ($libraryOpen) loadLibrary();
+    if ($libraryOpen) loadLibrary(true);
   });
 
   function onDocClick(e) {
@@ -88,7 +96,12 @@
   }
 
   // ─── 加载 ───
-  async function loadLibrary() {
+  async function loadLibrary(fromViewSwitch = false) {
+    const mc = document.querySelector('.main-content');
+    // 进入时先确定恢复目标：视图切换用 vanilla 保存值；就地刷新用当前滚动。
+    const restore = $libraryOpen && mc
+      ? (fromViewSwitch ? (window.__getLibraryScrollTop?.() ?? 0) : mc.scrollTop)
+      : 0;
     loading = true;
     try {
       const newData = await api.get('/api/library');
@@ -98,6 +111,9 @@
       sortMode = localStorage.getItem('librarySort') || 'name';
       await loadStats();
       loading = false;
+      // 等 DOM 渲染完成后恢复滚动（重渲染会重置 scrollTop）
+      await tick();
+      if ($libraryOpen && mc) mc.scrollTop = restore;
     } catch (e) {
       loading = false;
       if (!window.location.origin.startsWith('http')) return;
@@ -158,13 +174,20 @@
       if (ep.progress > 0 && ep.duration > 0) {
         let thumbTime = Math.min(Math.round(ep.progress), ep.duration - 10);
         if (thumbTime <= 0) thumbTime = 60;
-        thumbUrl = '/api/thumbnail?path=' + encodeURIComponent(ep.filePath) + '&time=' + thumbTime;
+        thumbUrl = '/api/thumbnail?path=' + encPath(ep.filePath) + '&time=' + thumbTime;
       } else {
-        thumbUrl = '/api/thumbnail?path=' + encodeURIComponent(ep.filePath) + '&time=mid';
+        thumbUrl = '/api/thumbnail?path=' + encPath(ep.filePath) + '&time=mid';
       }
     }
     const coverSrc = a.localCover ? '/covers/' + basename(a.localCover) : '';
     return thumbUrl || coverSrc;
+  }
+
+  // encodeURIComponent 不编码单引号 '（保留 ' ( ) ! ~ * - _ .），而 continueBg 结果会放进
+  // CSS url('...') 单引号字符串，路径里的 ' 会提前终止 CSS 字符串导致缩略图不显示
+  // （回归 61b51d8，vanilla 用 &quot; 双引号规避，Svelte 版用单引号重新引入）。补编码 ' → %27。
+  function encPath(p) {
+    return encodeURIComponent(p).replace(/'/g, '%27');
   }
 
   function continueProgress(a) {
@@ -195,6 +218,140 @@
     if (fn) return fn(items, mode);
     return items;
   }
+
+  // ─── 继续观看：GSAP 交错入场（对齐 vanilla library.js renderContinueSectionFull animate=true）
+  // 注意：vanilla 此动画没有 prefers-reduced-motion 守卫（library.js:345-356），这里同样不加，
+  // 否则系统开启减少动态效果时 vanilla 有动画、Svelte 无动画，行为不一致。
+  // 依赖 loading：libraryData 在 loadLibrary 中先于 loading=false 赋值，若 effect 只依赖
+  // continueItems，会在 loading 占位渲染（卡片未入 DOM）时触发并空返回，永不再跑。
+  $effect(() => {
+    const items = continueItems;
+    if (loading) return;
+    if (items.length === 0) return;
+    const gsap = globalThis.gsap;
+    if (!gsap) return;
+    tick().then(() => {
+      const scrollEl = document.querySelector('#svelte-libraryView .dashboard-continue-scroll');
+      if (!scrollEl) return;
+      const cards = scrollEl.querySelectorAll('.dashboard-continue-card');
+      if (!cards.length) return;
+      gsap.killTweensOf(cards);
+      gsap.from(cards, {
+        y: 30,
+        autoAlpha: 0,
+        scale: 0.92,
+        duration: 0.6,
+        ease: 'back.out(1.4)',
+        stagger: { each: 0.08, from: 'start' },
+        clearProps: 'all',
+      });
+    });
+  });
+
+  // ─── 继续观看横向滚动分页圆点（对齐 vanilla library.js renderContinueSectionFull）───
+  $effect(() => {
+    const items = continueItems;
+    if (loading) return;
+    if (items.length === 0) return;
+    tick().then(() => {
+      const scrollEl = document.querySelector('#svelte-libraryView .dashboard-continue-scroll');
+      if (!scrollEl) return;
+      const section = scrollEl.closest('.dashboard-section');
+      const header = section ? section.querySelector('.dashboard-section-header') : null;
+      const init = window.initScrollDots;
+      if (typeof init !== 'function') return;
+      init({
+        scroll: scrollEl,
+        cardSelector: '.dashboard-continue-card',
+        total: scrollEl.querySelectorAll('.dashboard-continue-card').length,
+        dotsParent: header,
+      });
+    });
+  });
+
+  // ─── 模块级 fade 入场：视图打开时稳定分区容器整块淡入（交错）───
+  // 只动画稳定容器（继续观看分区 + 各状态分区），不动画动态内容。
+  // 触发时机是视图打开（$libraryOpen false→true），不是数据变化——用 modulesAnimated
+  // 标记本次打开只播一次，刷新/状态变更不重播；同时依赖 loading，避免占位渲染期空跑。
+  let modulesAnimated = false;
+  $effect(() => {
+    const open = $libraryOpen;
+    if (!open) {
+      modulesAnimated = false;
+      return;
+    }
+    if (loading) return;
+    if (modulesAnimated) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      modulesAnimated = true;
+      return;
+    }
+    const gsap = globalThis.gsap;
+    if (!gsap) {
+      modulesAnimated = true;
+      return;
+    }
+    tick().then(() => {
+      modulesAnimated = true;
+      const modules = document.querySelectorAll(
+        '#svelte-libraryView .dashboard-section[data-section="continueWatch"], #svelte-libraryView .status-section'
+      );
+      if (!modules.length) return;
+      gsap.killTweensOf(modules);
+      gsap.fromTo(
+        modules,
+        { autoAlpha: 0, y: 16 },
+        { autoAlpha: 1, y: 0, duration: 0.5, ease: 'power2.out', stagger: 0.1, clearProps: 'transform,opacity' }
+      );
+    });
+  });
+
+  // ─── 卡片级：状态网格卡片 ScrollTrigger 视口渐显（替换原 cardReveal）───
+  // 适配动态网格（auto-fit 列数/卡片数不定）：每个网格建一个 ScrollTrigger，
+  // 网格进入视口时卡片交错渐显（once:true）。数据重载/排序后先 kill 旧触发器再重建。
+  let cardTriggers = [];
+  $effect(() => {
+    void statusGrids;
+    if (loading) return;
+    const gsap = globalThis.gsap;
+    if (!gsap || !gsap.ScrollTrigger) return;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    tick().then(() => {
+      // 清理旧触发器，避免重复触发/泄漏
+      cardTriggers.forEach((t) => t.kill());
+      cardTriggers = [];
+      if (reduce) return; // 减少动态效果：跳过动画，卡片直接显示
+      const scroller = document.querySelector('.main-content');
+      if (!scroller) return;
+      for (const cfg of statusGrids) {
+        const grid = document.querySelector(`#svelte-libraryGrid-${cfg.status}`);
+        if (!grid) continue;
+        const cards = grid.querySelectorAll('.anime-card');
+        if (!cards.length) continue;
+        const tween = gsap.fromTo(
+          cards,
+          { autoAlpha: 0, y: 24 },
+          {
+            autoAlpha: 1,
+            y: 0,
+            duration: 0.5,
+            ease: 'power2.out',
+            stagger: 0.05,
+            scrollTrigger: { trigger: grid, start: 'top 92%', once: true, scroller },
+          }
+        );
+        if (tween.scrollTrigger) cardTriggers.push(tween.scrollTrigger);
+      }
+    });
+  });
+
+  // ─── 视图关闭时清理卡片 ScrollTrigger ───
+  $effect(() => {
+    if ($libraryOpen) return;
+    if (!cardTriggers.length) return;
+    cardTriggers.forEach((t) => t.kill());
+    cardTriggers = [];
+  });
 
   // ─── 卡片 HTML（复用全局 renderAnimeCard，视觉一致）───
   function cardHtml(a) {
@@ -346,31 +503,33 @@
             <div class="dashboard-section-header"><span class="dashboard-section-title">{tr('library.continueWatching', '继续观看')}</span></div>
             <div class="dashboard-section-body">
               {#if continueItems.length > 0}
-                <div class="dashboard-continue-scroll">
-                  {#each continueItems as a (a.id)}
-                    <div
-                      class="dashboard-continue-card"
-                      onclick={(e) => navigateToDetailWithPlay(a.id, e.currentTarget)}
-                      oncontextmenu={(e) => openContextMenu(e, a.id)}
-                    >
-                      <div class="dashboard-continue-bg" style="background-image:url('{continueBg(a)}')"></div>
-                      <div class="dashboard-continue-overlay"></div>
-                      <div class="dashboard-continue-content">
-                        <div class="dashboard-continue-info">
-                          <div class="dashboard-continue-label">{tr('library.continuePlay', '继续播放')}</div>
-                          <div class="dashboard-continue-title">{a.bangumiTitle || a.title}</div>
+                {#key continueItems}
+                  <div class="dashboard-continue-scroll">
+                    {#each continueItems as a (a.id)}
+                      <div
+                        class="dashboard-continue-card"
+                        onclick={(e) => navigateToDetailWithPlay(a.id, e.currentTarget)}
+                        oncontextmenu={(e) => openContextMenu(e, a.id)}
+                      >
+                        <div class="dashboard-continue-bg" style="background-image:url('{continueBg(a)}')"></div>
+                        <div class="dashboard-continue-overlay"></div>
+                        <div class="dashboard-continue-content">
+                          <div class="dashboard-continue-info">
+                            <div class="dashboard-continue-label">{tr('library.continuePlay', '继续播放')}</div>
+                            <div class="dashboard-continue-title">{a.bangumiTitle || a.title}</div>
+                          </div>
+                        </div>
+                        <div class="dashboard-continue-play" onclick={(e) => { e.stopPropagation(); navigateToDetailWithPlay(a.id, e.currentTarget); }}>
+                          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><polygon points="8 5 19 12 8 19 8 5"/></svg>
+                        </div>
+                        <div class="dashboard-continue-progress-bar-wrap">
+                          <div class="dashboard-continue-progress-bar"><div class="dashboard-continue-progress-fill" style="width:{continueProgress(a)}%"></div></div>
+                          <span class="dashboard-continue-progress-label">{continueLabel(a)}</span>
                         </div>
                       </div>
-                      <div class="dashboard-continue-play" onclick={(e) => { e.stopPropagation(); navigateToDetailWithPlay(a.id, e.currentTarget); }}>
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><polygon points="8 5 19 12 8 19 8 5"/></svg>
-                      </div>
-                      <div class="dashboard-continue-progress-bar-wrap">
-                        <div class="dashboard-continue-progress-bar"><div class="dashboard-continue-progress-fill" style="width:{continueProgress(a)}%"></div></div>
-                        <span class="dashboard-continue-progress-label">{continueLabel(a)}</span>
-                      </div>
-                    </div>
-                  {/each}
-                </div>
+                    {/each}
+                  </div>
+                {/key}
               {/if}
             </div>
           </div>

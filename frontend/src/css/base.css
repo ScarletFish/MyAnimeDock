@@ -37,7 +37,7 @@ html {
 .main-content {
   flex: 1;
   overflow-y: auto;
-  overflow-anchor: auto;
+  overflow-anchor: none;
   scrollbar-width: none;
   -ms-overflow-style: none;
 }

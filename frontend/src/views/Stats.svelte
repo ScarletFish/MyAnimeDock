@@ -98,23 +98,23 @@
   }
 
   // ─── Word Cloud ───
-  async function loadStats() {
-    wordcloudLoading = true;
-    wordcloudEmpty = false;
-    wordcloudLoaded = false;
+  async function loadStats(silent = false) {
+    if (!silent) {
+      wordcloudLoading = true;
+      wordcloudEmpty = false;
+      wordcloudLoaded = false;
+    }
     try {
       const data = await api.get('/api/stats/tags');
       if (!data.tags || Object.keys(data.tags).length === 0) {
-        wordcloudLoading = false;
-        wordcloudEmpty = true;
+        if (!silent) { wordcloudLoading = false; wordcloudEmpty = true; }
         return;
       }
       const entries = Object.entries(data.tags)
         .sort((a, b) => b[1] - a[1])
         .slice(0, WORDCLOUD_MAX_WORDS);
       if (entries.length === 0) {
-        wordcloudLoading = false;
-        wordcloudEmpty = true;
+        if (!silent) { wordcloudLoading = false; wordcloudEmpty = true; }
         return;
       }
       const maxCount = entries[0][1];
@@ -126,13 +126,11 @@
         const weight = 18 + ((count - minCount) / range) * 25;
         return [word, Math.round(weight)];
       });
-      wordcloudLoading = false;
-      wordcloudLoaded = true;
+      if (!silent) { wordcloudLoading = false; wordcloudLoaded = true; }
       await tick();
       renderWordCloud(list);
     } catch (err) {
-      wordcloudLoading = false;
-      wordcloudEmpty = true;
+      if (!silent) { wordcloudLoading = false; wordcloudEmpty = true; }
       console.error('Stats load error:', err);
     }
   }
@@ -203,24 +201,24 @@
   }
 
   // ─── Watch Activity (D3 Area Chart) ───
-  async function loadActivityChart() {
-    activityLoading = true;
-    activityEmpty = false;
+  async function loadActivityChart(silent = false) {
+    if (!silent) {
+      activityLoading = true;
+      activityEmpty = false;
+    }
     try {
       const data = await api.get('/api/stats/watch-activity');
       const months = data.months || [];
       const totalMinutes = months.reduce((s, m) => s + m.minutes, 0);
       if (totalMinutes === 0) {
-        activityLoading = false;
-        activityEmpty = true;
+        if (!silent) { activityLoading = false; activityEmpty = true; }
         return;
       }
-      activityLoading = false;
+      if (!silent) activityLoading = false;
       await tick();
       renderActivityChart(months);
     } catch (err) {
-      activityLoading = false;
-      activityEmpty = true;
+      if (!silent) { activityLoading = false; activityEmpty = true; }
       console.error('Activity chart load error:', err);
     }
   }
@@ -347,24 +345,24 @@
   }
 
   // ─── Rating Distribution ───
-  async function loadRatingChart() {
-    ratingLoading = true;
-    ratingEmpty = false;
-    ratingData = null;
+  async function loadRatingChart(silent = false) {
+    if (!silent) {
+      ratingLoading = true;
+      ratingEmpty = false;
+      ratingData = null;
+    }
     try {
       const data = await api.get('/api/stats/ratings');
       const bins = data.bins || [];
       const total = bins.reduce((s, v) => s + v, 0);
       if (total === 0) {
-        ratingLoading = false;
-        ratingEmpty = true;
+        if (!silent) { ratingLoading = false; ratingEmpty = true; }
         return;
       }
-      ratingLoading = false;
+      if (!silent) ratingLoading = false;
       buildRatingData(data.labels || [], bins, total);
     } catch (err) {
-      ratingLoading = false;
-      ratingEmpty = true;
+      if (!silent) { ratingLoading = false; ratingEmpty = true; }
       console.error('Rating chart load error:', err);
     }
   }
@@ -401,10 +399,12 @@
   }
 
   // ─── Season Distribution (Donut + Legend) ───
-  async function loadSeasonChart() {
-    seasonLoading = true;
-    seasonEmpty = false;
-    seasonData = null;
+  async function loadSeasonChart(silent = false) {
+    if (!silent) {
+      seasonLoading = true;
+      seasonEmpty = false;
+      seasonData = null;
+    }
     try {
       const data = await api.get('/api/stats/seasons');
       const seasons = data.seasons || {};
@@ -417,17 +417,15 @@
       const items = entries.map(e => ({ ...e, count: seasons[e.key] || 0 }));
       const total = items.reduce((s, v) => s + v.count, 0) + (seasons.unknown || 0);
       if (total === 0) {
-        seasonLoading = false;
-        seasonEmpty = true;
+        if (!silent) { seasonLoading = false; seasonEmpty = true; }
         return;
       }
-      seasonLoading = false;
+      if (!silent) seasonLoading = false;
       seasonData = { items, unknown: seasons.unknown || 0, total };
       await tick();
       renderSeasonDonut();
     } catch (err) {
-      seasonLoading = false;
-      seasonEmpty = true;
+      if (!silent) { seasonLoading = false; seasonEmpty = true; }
       console.error('Season chart load error:', err);
     }
   }
@@ -505,24 +503,24 @@
   }
 
   // ─── Tag Co-occurrence (D3 Chord Diagram) ───
-  async function loadChordChart() {
-    chordLoading = true;
-    chordEmpty = false;
+  async function loadChordChart(silent = false) {
+    if (!silent) {
+      chordLoading = true;
+      chordEmpty = false;
+    }
     try {
       const data = await api.get('/api/stats/tag-cooccurrence');
       const tags = data.tags || [];
       const matrix = data.matrix || [];
       if (tags.length < 2 || matrix.length < 2) {
-        chordLoading = false;
-        chordEmpty = true;
+        if (!silent) { chordLoading = false; chordEmpty = true; }
         return;
       }
-      chordLoading = false;
+      if (!silent) chordLoading = false;
       await tick();
       renderChordChart(tags, matrix);
     } catch (err) {
-      chordLoading = false;
-      chordEmpty = true;
+      if (!silent) { chordLoading = false; chordEmpty = true; }
       console.error('Chord chart load error:', err);
     }
   }
@@ -631,13 +629,14 @@
       .text(d => tagZh(tags[d.index]));
   }
 
-  // ─── 打开时全部加载 + 主题切换重绘 ───
-  async function loadAll() {
-    loadStats();
-    loadActivityChart();
-    loadRatingChart();
-    loadSeasonChart();
-    loadChordChart();
+  // ─── 打开时全部加载 + 主题切换静默重绘 ───
+  // silent=true：切主题时只重绘颜色，不重置 loading（容器不塌缩，滚动位置不跳）。
+  async function loadAll(silent = false) {
+    loadStats(silent);
+    loadActivityChart(silent);
+    loadRatingChart(silent);
+    loadSeasonChart(silent);
+    loadChordChart(silent);
   }
 
   $effect(() => {
@@ -646,7 +645,7 @@
 
   onMount(() => {
     const onThemeChanged = () => {
-      if ($statsOpen) loadAll();
+      if ($statsOpen) loadAll(true);
     };
     document.addEventListener('themechanged', onThemeChanged);
     return () => {

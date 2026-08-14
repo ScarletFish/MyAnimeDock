@@ -9,10 +9,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Source files in load order (mirrors src/main.js)
 const JS_FILES = [
-  'i18n-zh.js', 'i18n.js', 'tag-data.js', 'state.js', 'debug.js', 'ui.js', 'api.js', 'components.js',
-  'utils.js', 'discovery.js', 'library.js', 'detail-pagination.js', 'detail-stats.js',
-  'detail-nav.js', 'detail.js', 'mylist.js', 'metamatch.js', 'stats.js',
-  'titlebar.js', 'toast.js', 'theme.js', 'db-manager.js', 'dashboard-layout.js',
+  'i18n-zh.js', 'i18n.js', 'tag-data.js', 'state.js', 'debug.js', 'ui.js', 'api.js',
+  'utils.js', 'detail-pagination.js', 'detail-stats.js',
+  'detail.js', 'metamatch.js',
+  'titlebar.js', 'toast.js', 'theme.js', 'dashboard-layout.js',
   'settings.js', 'app.js', 'search.js', 'onboarding.js', 'keyboard.js',
 ].map(f => resolve(__dirname, 'src/js', f));
 

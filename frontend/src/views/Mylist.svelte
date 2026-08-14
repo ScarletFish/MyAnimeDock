@@ -17,6 +17,7 @@
   import ContextMenu from '../components/ContextMenu.svelte';
   import { STATUS_LABELS, MYLIST_STATUS_ORDER, ANIME_SORT_OPTIONS, sortAnimeItems } from '../lib/sort.js';
   import { calcGridCols, readScale } from '../lib/grid.js';
+  import { Select } from 'bits-ui';
 
   // ─── i18n 辅助（复用全局 t()，回退文案）───
   function tr(key, fallback, options) {
@@ -50,7 +51,6 @@
   let mylistData = $state([]);
   let mylistFilter = $state('all');
   let sortMode = $state(localStorage.getItem('mylistSort') || 'name');
-  let sortOpen = $state(false);
   let loading = $state(false);
 
   // 状态弹窗
@@ -95,14 +95,9 @@
   });
 
   onMount(() => {
-    function onDocClick(e) {
-      if (sortOpen && !e.target.closest('.mylist-sort-bar')) sortOpen = false;
-    }
-    document.addEventListener('click', onDocClick);
     // 桥接：vanilla 流程调裸 loadMyList() 时，main.js 的 window.loadMyList 路由到这里刷新。
     window.loadMyListSvelte = () => loadMyList();
     return () => {
-      document.removeEventListener('click', onDocClick);
       delete window.loadMyListSvelte;
     };
   });
@@ -132,11 +127,10 @@
   }
 
   // ─── 排序 ───
-  function switchSort(mode) {
-    sortMode = mode;
-    sortOpen = false;
-    localStorage.setItem('mylistSort', mode);
-  }
+  // bits-ui Select 内部管理 open/键盘导航/焦点；这里仅持久化选择。
+  $effect(() => {
+    localStorage.setItem('mylistSort', sortMode);
+  });
 
   // ─── 过滤 ───
   function setFilter(filter) {
@@ -418,14 +412,20 @@
     <div class="view-header">
       <h1>{tr('mylist.title', '我的列表')}</h1>
       <div class="mylist-sort-bar" id="svelte-mylistSortDropdown">
-        <button class="library-sort-trigger" class:open={sortOpen} onclick={() => (sortOpen = !sortOpen)} aria-label={tr('mylist.sort', '排序')}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M6 12h12M9 18h6"/></svg>
-        </button>
-        <div class="library-sort-menu" class:open={sortOpen}>
-          {#each ANIME_SORT_OPTIONS as o}
-            <div class="library-sort-option" class:active={o.key === sortMode} onclick={() => switchSort(o.key)}>{o.label}</div>
-          {/each}
-        </div>
+        <Select.Root type="single" bind:value={sortMode}>
+          <Select.Trigger class="library-sort-trigger" aria-label={tr('mylist.sort', '排序')}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M6 12h12M9 18h6"/></svg>
+          </Select.Trigger>
+          <Select.Content class="library-sort-menu" align="end">
+            {#each ANIME_SORT_OPTIONS as o (o.key)}
+              <Select.Item value={o.key}>
+                {#snippet child(p)}
+                  <div {...p.props} class="library-sort-option" class:active={p.selected}>{o.label}</div>
+                {/snippet}
+              </Select.Item>
+            {/each}
+          </Select.Content>
+        </Select.Root>
       </div>
     </div>
 

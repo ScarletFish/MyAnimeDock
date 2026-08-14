@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import * as crypto from 'crypto';
 import { jsonResp, readBody, serveImage } from '../lib/utils';
 import { saveScannedTree, DATA_DIR } from '../lib/config';
+import { enrichAnime } from '../lib/enrich';
 import type { ServerState } from '../types';
 
 // Shared helper: resolve folder parsed for structural folders
@@ -49,16 +50,7 @@ export function handleGetLibrary(req: any, res: any, state: ServerState) {
     } catch (_) {
       a.pinyinTitle = '';
     }
-    const myItem = (data.myList || []).find((m: any) => m.animeId === a.id);
-    a.myListStatus = myItem ? myItem.status : null;
-    // Derive last played episode from play sessions (no DB field needed)
-    const animeSessions = (data.playSessions || [])
-      .filter((s: any) => s.animeId === a.id)
-      .sort((a: any, b: any) => (new Date(b.startTime) as any) - (new Date(a.startTime) as any));
-    if (animeSessions.length > 0) {
-      a.lastPlayedEp = animeSessions[0].episodeNumber;
-      a.lastPlayedAt = animeSessions[0].startTime;
-    }
+    enrichAnime(a, data);
   });
   jsonResp(res, 200, data.library.filter((a: any) => a.downloaded !== false));
 }
@@ -69,14 +61,7 @@ export function handleGetAnimeDetail(req: any, res: any, state: ServerState) {
   const anime = data.library.find((a: any) => a.id === id);
   if (!anime) { jsonResp(res, 404, { error: 'Anime not found' }); return; }
   anime.downloaded = fs.existsSync(anime.folderPath);
-  // Derive last played episode from play sessions
-  const animeSessions = (data.playSessions || [])
-    .filter((s: any) => s.animeId === id)
-    .sort((a: any, b: any) => (new Date(b.startTime) as any) - (new Date(a.startTime) as any));
-  if (animeSessions.length > 0) {
-    anime.lastPlayedEp = animeSessions[0].episodeNumber;
-    anime.lastPlayedAt = animeSessions[0].startTime;
-  }
+  enrichAnime(anime, data);
   jsonResp(res, 200, anime);
 
   // 后台预生成缩略图（详情页查看时插队到队列最前）

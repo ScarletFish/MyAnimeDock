@@ -1,20 +1,16 @@
 // server/routes/mylist.ts — MyList、Wishlist 路由
 import { jsonResp, readBody } from '../lib/utils';
+import { enrichAnime } from '../lib/enrich';
 import type { ServerState } from '../types';
 
 function handleGetMyList(req: any, res: any, state: ServerState) {
   const { data } = state;
   const merged: any[] = [];
   const animeMap = new Map(data.library.map((a: any) => [a.id, a]));
-  // 每部动画最早一次播放的开始时间（状态弹窗预填"开始日期"用，避免用户回忆）
-  const firstPlayedMap = new Map();
-  for (const s of data.playSessions || []) {
-    const cur = firstPlayedMap.get(s.animeId);
-    if (!cur || new Date(s.startTime) < new Date(cur)) firstPlayedMap.set(s.animeId, s.startTime);
-  }
   for (const item of data.myList || []) {
     if (item.animeId) {
       const anime: any = animeMap.get(item.animeId);
+      if (anime) enrichAnime(anime, data);
       merged.push({
         id: item.id || item.animeId, animeId: item.animeId,
         bangumiId: anime ? anime.bangumiId : item.bangumiId,
@@ -29,7 +25,8 @@ function handleGetMyList(req: any, res: any, state: ServerState) {
         rating: anime ? (anime.rating || null) : item.rating,
         userRating: item.rating, thoughts: item.thoughts, notes: item.notes,
         progress: item.progress, startedAt: item.startedAt, completedAt: item.completedAt,
-        firstPlayedAt: firstPlayedMap.get(item.animeId) || null,
+        firstPlayedAt: anime ? (anime.firstPlayedAt || null) : null,
+        lastPlayedAt: anime ? (anime.lastPlayedAt || null) : null,
         importedAt: anime ? anime.importedAt : null,
         status: item.status,
         episodeCount: anime ? anime.episodes.length : 0,

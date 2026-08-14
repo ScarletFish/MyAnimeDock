@@ -47,12 +47,14 @@ frontend/
 - [ ] 验证：`npm run check:frontend` 通过，dev server 能跑
 
 ### Phase 1 — 组件库骨架（用户指定先行）
-- [ ] Toast 组件（替换 `toast.js` 的 showToast/dismissToast）
-- [ ] Modal 组件（替换 `ui.js` 的 openModal + `app.js` 的 showConfirm）
-- [ ] Dropdown 组件（替换 `components.js` 的 createDropdown）
-- [ ] Card 组件（替换 `ui.js` 的 renderAnimeCard）
-- [ ] 复杂组件用 melt-ui 拿逻辑（日期选择器等）
-- [ ] 验证：组件在 App 中可用，样式与现有 CSS 一致
+- [x] Toast 组件（`components/Toast.svelte`，替换 `toast.js` 的 showToast/dismissToast）
+- [x] Modal 组件（`components/Modal.svelte`，替换 `ui.js` 的 openModal + `app.js` 的 showConfirm）
+- [x] Dropdown 组件（改用 **bits-ui `Select`**，替换 `components.js` 的 createDropdown；Mylist/LocalAnimeSection/StatusModal 已用）
+- [x] Card 组件（`components/AnimeCard.svelte`，替换 `ui.js` 的 renderAnimeCard）
+- [x] 复杂组件用 **bits-ui** 拿逻辑（状态下拉等；日期用三段式 + 校验，未引入完整日历）
+- [x] 验证：组件在 App 中可用，样式与现有 CSS 一致
+
+> **决策修正（2026-08-14）**：headless 库从 melt-ui 改为 **bits-ui**（`^2.18.1`，Svelte 5 官方推荐）。StatusModal 组件库（状态下拉/评分 stepper/进度/日期三段式）已完成，`enrichAnime` 统一三接口预填数据。
 
 ### Phase 2 — 视图渐进迁移
 - [ ] 按依赖顺序逐视图转 Svelte：settings → discovery → library → detail → mylist → stats

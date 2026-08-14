@@ -1,11 +1,12 @@
 <script>
   // ─── LocalAnimeSection（Svelte 迁移 Chunk C）───
   // Library 的「本地动漫模块」投影组件。只认 props，不查全局数组。
-  import { onMount, onDestroy, tick } from 'svelte';
+  import { onDestroy, tick } from 'svelte';
   import StatusSection from '../components/StatusSection.svelte';
   import AnimeCard from '../components/AnimeCard.svelte';
   import { STATUS_LABELS, ANIME_SORT_OPTIONS, sortAnimeItems } from '../lib/sort.js';
   import { STATUS_SECTIONS_LIBRARY, getCardTitleVisible, navigateToDetail } from '../lib/anime-utils.js';
+  import { Select } from 'bits-ui';
 
   let {
     items,
@@ -22,21 +23,10 @@
 
   // ─── 排序 ───
   let sortMode = $state(localStorage.getItem('librarySort') || 'name');
-  let sortOpen = $state(false);
-
-  function toggleSort() {
-    sortOpen = !sortOpen;
-  }
-
-  function selectSort(key) {
-    sortMode = key;
-    localStorage.setItem('librarySort', key);
-    sortOpen = false;
-  }
-
-  function onDocClick(e) {
-    if (sortOpen && !e.target.closest('.library-sort-bar')) sortOpen = false;
-  }
+  // bits-ui Select 内部管理 open/键盘导航/焦点；这里仅持久化选择。
+  $effect(() => {
+    localStorage.setItem('librarySort', sortMode);
+  });
 
   // ─── 状态分区 ───
   const sections = $derived(
@@ -87,11 +77,7 @@
     });
   });
 
-  onMount(() => {
-    document.addEventListener('click', onDocClick);
-  });
   onDestroy(() => {
-    document.removeEventListener('click', onDocClick);
     cardTriggers.forEach((t) => t.kill());
     cardTriggers = [];
   });
@@ -101,16 +87,20 @@
   <div class="dashboard-section-header">
     <span class="dashboard-section-title">{tr('library.localAnime', '本地动漫')}</span>
     <div class="library-sort-bar">
-      <button class="library-sort-trigger" class:open={sortOpen} onclick={toggleSort} aria-label={tr('mylist.sort', '排序')}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M6 12h12M9 18h6"/></svg>
-      </button>
-      {#if sortOpen}
-        <div class="library-sort-menu open">
+      <Select.Root type="single" bind:value={sortMode}>
+        <Select.Trigger class="library-sort-trigger" aria-label={tr('mylist.sort', '排序')}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M6 12h12M9 18h6"/></svg>
+        </Select.Trigger>
+        <Select.Content class="library-sort-menu" align="end">
           {#each ANIME_SORT_OPTIONS as o (o.key)}
-            <div class="library-sort-option" class:active={o.key === sortMode} onclick={() => selectSort(o.key)}>{o.label}</div>
+            <Select.Item value={o.key}>
+              {#snippet child(p)}
+                <div {...p.props} class="library-sort-option" class:active={p.selected}>{o.label}</div>
+              {/snippet}
+            </Select.Item>
           {/each}
-        </div>
-      {/if}
+        </Select.Content>
+      </Select.Root>
     </div>
   </div>
   <div class="dashboard-section-body">

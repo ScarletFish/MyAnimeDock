@@ -1233,6 +1233,19 @@
     setTimeout(initToggleChecks, 300);
     setTimeout(initToggleChecks, 600);
 
+    // Banner background：宽图（ratio>2.5）上移让脸部可见；加载失败时降级 no-banner 布局
+    const bannerImg = document.querySelector('#svelte-detailView .detail-banner-bg-img');
+    if (bannerImg) {
+      bannerImg.onload = () => {
+        if (bannerImg.naturalWidth / bannerImg.naturalHeight > 2.5) bannerImg.style.objectPosition = 'center 25%';
+      };
+      bannerImg.onerror = () => {
+        const bg = bannerImg.closest('.detail-banner-bg');
+        if (bg) bg.remove();
+        noBanner = true;
+      };
+    }
+
     // Episode grid
     const grid = document.getElementById('svelte-episodeHeatmapGrid');
     if (grid) {

@@ -1,5 +1,6 @@
 /* ─── Detail View ─── */
-#detailView.view {
+#detailView.view,
+#svelte-detailView.view {
   padding: 0;
   position: relative;
 }
@@ -236,14 +237,16 @@
 }
 
 /* ─── Gray cover placeholder ─── */
-#detailCover .gray-cover {
+#detailCover .gray-cover,
+#svelte-detailCover .gray-cover {
   width: 100%; height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   background: var(--bg-elevated);
 }
-#detailCover .gray-cover-text {
+#detailCover .gray-cover-text,
+#svelte-detailCover .gray-cover-text {
   font-family: var(--font-display);
   font-size: calc(3.125rem * var(--scale));
   font-weight: var(--fw-bold);
@@ -254,39 +257,59 @@
 }
 
 /* ─── Hero transition animation ─── */
-#detailView.detail-enter-active { animation: none; }
+/* 详情视图入场完全由 enter-active/show-content 流程驱动（含 GSAP 滑入），
+   不再依赖 .view 的 fadeSlideUp 挂载动画。若保留它，resetDetailEnter 移除
+   enter-active 时 animation 在 none ↔ fadeSlideUp 间切换会被浏览器强制重播，
+   造成左右切换瞬间整页闪一下（页面刷新感）。故对详情 section 永久禁用。 */
+#detailView.view,
+#svelte-detailView.view { animation: none; }
 .detail-enter-active .detail-cover-wrap { opacity: 0; }
+.detail-enter-active .detail-banner-bg {
+  opacity: 0;
+  transition: opacity 0.25s ease-out;
+}
 .detail-enter-active .detail-banner-right > *,
 .detail-enter-active #episodeHeatmap,
+.detail-enter-active #svelte-episodeHeatmap,
 .detail-enter-active .detail-char-card,
-.detail-enter-active #watchStats {
+.detail-enter-active #watchStats,
+.detail-enter-active #svelte-watchStats {
   opacity: 0;
   transform: translateY(12px);
   transition: opacity 0.25s ease-out, transform 0.25s ease-out;
 }
 .detail-enter-active.show-content .detail-cover-wrap { opacity: 1; }
+.detail-enter-active.show-content .detail-banner-bg { opacity: 1; }
 .detail-enter-active.show-content .detail-banner-right > *,
 .detail-enter-active.show-content #episodeHeatmap,
+.detail-enter-active.show-content #svelte-episodeHeatmap,
 .detail-enter-active.show-content .detail-char-card,
-.detail-enter-active.show-content #watchStats {
+.detail-enter-active.show-content #watchStats,
+.detail-enter-active.show-content #svelte-watchStats {
   opacity: 1;
   transform: translateY(0);
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .detail-enter-active .detail-banner-bg,
   .detail-enter-active .detail-banner-right > *,
   .detail-enter-active #episodeHeatmap,
+  .detail-enter-active #svelte-episodeHeatmap,
   .detail-enter-active .detail-char-card,
-  .detail-enter-active #watchStats {
+  .detail-enter-active #watchStats,
+  .detail-enter-active #svelte-watchStats {
     opacity: 1 !important;
     transform: none !important;
     transition: none !important;
   }
 }
+html[data-reduce-motion="true"] .detail-enter-active .detail-banner-bg,
 html[data-reduce-motion="true"] .detail-enter-active .detail-banner-right > *,
 html[data-reduce-motion="true"] .detail-enter-active #episodeHeatmap,
+html[data-reduce-motion="true"] .detail-enter-active #svelte-episodeHeatmap,
 html[data-reduce-motion="true"] .detail-enter-active .detail-char-card,
-html[data-reduce-motion="true"] .detail-enter-active #watchStats {
+html[data-reduce-motion="true"] .detail-enter-active #watchStats,
+html[data-reduce-motion="true"] .detail-enter-active #svelte-watchStats {
   opacity: 1 !important;
   transform: none !important;
   transition: none !important;

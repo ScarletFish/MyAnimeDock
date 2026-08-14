@@ -118,6 +118,8 @@
     loading = true;
     try {
       mylistData = await api.get('/api/mylist');
+      // 桥接：同步到 window，供 Detail.svelte 的 goPrev/goNext/findCurrentLibraryIndex 读取
+      window.mylistData = mylistData;
       loading = false;
       // 等 DOM 渲染完成后恢复滚动（重渲染会重置 scrollTop）
       await tick();

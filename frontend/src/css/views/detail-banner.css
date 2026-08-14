@@ -131,13 +131,17 @@
 
 /* ─── Relations / Recommendations ─── */
 #detailRelations,
-#detailRecommendations {
+#detailRecommendations,
+#svelte-detailRelations,
+#svelte-detailRecommendations {
   @apply section-card;
   padding: var(--space-5) var(--space-6);
   margin-top: var(--space-6);
 }
 #detailRelations .detail-section-header,
-#detailRecommendations .detail-section-header {
+#detailRecommendations .detail-section-header,
+#svelte-detailRelations .detail-section-header,
+#svelte-detailRecommendations .detail-section-header {
   margin-bottom: var(--space-2);
 }
 
@@ -147,7 +151,8 @@
   padding: var(--space-1) 0 var(--space-2) 0;
 }
 
-#detailRelations, #detailRecommendations {
+#detailRelations, #detailRecommendations,
+#svelte-detailRelations, #svelte-detailRecommendations {
   --cols: 7;
   --gap: var(--space-3);
 }
@@ -160,7 +165,8 @@
   overflow: hidden;
 }
 @media (max-width: 1439px) {
-  #detailRelations, #detailRecommendations { --cols: 5; }
+  #detailRelations, #detailRecommendations,
+  #svelte-detailRelations, #svelte-detailRecommendations { --cols: 5; }
 }
 .relation-card:hover { transform: translateY(-3px); }
 .relation-card:active { transform: translateY(-1px); }

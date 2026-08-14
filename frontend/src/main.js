@@ -98,14 +98,10 @@ const vanillaShowDetail = window.showDetail;
 window.showDetail = (id, fromRect, fromSrc, sourceView) => {
   if (window.SVELTE_VIEWS?.detail && typeof window.openDetail === 'function') {
     window.openDetail(id, fromRect, fromSrc, sourceView);
-    // Svelte 版 openDetail 只设 detailOpen，不调 showView('detail')。
-    // 需同步所有视图 store（libraryOpen/mylistOpen 等置 false）避免视图重叠，
-    // 设 currentView 使 Detail.svelte 的键盘/鼠标事件（检查 currentView==='detail'）生效，
-    // 并滚动 .main-content 到顶（等价 vanilla showView('detail') 的 mc.scrollTop=0）。
-    if (window.__svelteViewSync) window.__svelteViewSync('detail');
-    window.currentView = 'detail';
-    const mc = document.querySelector('.main-content');
-    if (mc) mc.scrollTop = 0;
+    // 委托 showView('detail') 统一处理：__svelteViewSync + 词法 currentView + scrollTop=0
+    // （app.js showView 对 'detail' 无 vanilla 依赖，SVELTE_VIEWS.detail=true 跳过 vanilla toggle）。
+    // 同时修复 B6：showView 内同步 window.currentView，使播放结束回调（app.js:46）能触发。
+    window.showView('detail');
     return;
   }
   if (typeof vanillaShowDetail === 'function') return vanillaShowDetail(id, fromRect, fromSrc, sourceView);

@@ -224,7 +224,8 @@
     filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.15));
     stroke: var(--fg-secondary);
   }
-  #detailCover .gray-cover { background: var(--bg-surface); }
+  #detailCover .gray-cover,
+  #svelte-detailCover .gray-cover { background: var(--bg-surface); }
   .detail-cover-wrap {
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
   }

@@ -112,6 +112,8 @@
     try {
       const newData = await api.get('/api/library');
       libraryData = newData;
+      // 桥接：同步到 window，供 Detail.svelte 的 goPrev/goNext/findCurrentLibraryIndex 读取
+      window.libraryData = newData;
       const getLayout = g('getDashboardLayout');
       layout = getLayout ? getLayout() : defaultLayout();
       await loadStats();

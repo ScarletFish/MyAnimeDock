@@ -82,6 +82,9 @@ function showView(view) {
   document.getElementById('btnMyList').classList.toggle('active', view === 'mylist');
 
   currentView = view;
+  // 桥接：同步到 window，供 Svelte Detail 的键盘/鼠标事件闸门（检查 window.currentView==='detail'）
+  // 与播放结束回调（app.js:46 检查词法 currentView）统一使用同一份当前视图。
+  window.currentView = view;
   __debug.snapshot(currentView + ' (after toggle)');
 
   // Scroll to top when entering detail view

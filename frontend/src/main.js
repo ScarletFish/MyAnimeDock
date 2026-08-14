@@ -20,7 +20,7 @@ window.SVELTE_VIEWS = {
   library: true,
   stats: true,
   mylist: true,
-  detail: false,
+  detail: true,
 };
 
 const openStores = {
@@ -90,7 +90,25 @@ window.loadMyList = () => {
   return false;
 };
 
-// Detail 接管时启用：window.showDetail = window.openDetail（签名兼容）
-// 当前 detail 未接管（SVELTE_VIEWS.detail=false），暂不桥接，避免与 vanilla showDetail 冲突。
+// Detail 接管：window.showDetail = window.openDetail（签名兼容）
+// 所有调用方（vanilla library.js/mylist.js/search.js/detail.js + Svelte Mylist.svelte/anime-utils.js）
+// 都调 window.showDetail(id, rect, imgSrc, sourceView)，桥接到 Svelte 版 openDetail。
+// 保存 vanilla 引用回退，避免与 vanilla showDetail 冲突。
+const vanillaShowDetail = window.showDetail;
+window.showDetail = (id, fromRect, fromSrc, sourceView) => {
+  if (window.SVELTE_VIEWS?.detail && typeof window.openDetail === 'function') {
+    window.openDetail(id, fromRect, fromSrc, sourceView);
+    // Svelte 版 openDetail 只设 detailOpen，不调 showView('detail')。
+    // 需同步所有视图 store（libraryOpen/mylistOpen 等置 false）避免视图重叠，
+    // 设 currentView 使 Detail.svelte 的键盘/鼠标事件（检查 currentView==='detail'）生效，
+    // 并滚动 .main-content 到顶（等价 vanilla showView('detail') 的 mc.scrollTop=0）。
+    if (window.__svelteViewSync) window.__svelteViewSync('detail');
+    window.currentView = 'detail';
+    const mc = document.querySelector('.main-content');
+    if (mc) mc.scrollTop = 0;
+    return;
+  }
+  if (typeof vanillaShowDetail === 'function') return vanillaShowDetail(id, fromRect, fromSrc, sourceView);
+};
 
 export default app;

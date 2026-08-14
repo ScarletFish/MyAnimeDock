@@ -18,6 +18,7 @@
   import ContextMenu from '../components/ContextMenu.svelte';
   import LocalAnimeSection from './LocalAnimeSection.svelte';
   import { calcGridCols, readScale } from '../lib/grid.js';
+  import { initScrollDots } from '../lib/scroll-dots.js';
 
   // ─── Grid 列公式（原 library.js GRID_CARD_MIN/MAX）───
   const GRID_CARD_MIN = 200;
@@ -242,9 +243,7 @@
       if (!scrollEl) return;
       const section = scrollEl.closest('.dashboard-section');
       const header = section ? section.querySelector('.dashboard-section-header') : null;
-      const init = window.initScrollDots;
-      if (typeof init !== 'function') return;
-      init({
+      initScrollDots({
         scroll: scrollEl,
         cardSelector: '.dashboard-continue-card',
         total: scrollEl.querySelectorAll('.dashboard-continue-card').length,

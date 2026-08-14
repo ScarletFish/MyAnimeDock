@@ -27,6 +27,7 @@
 <script>
   import { onMount } from 'svelte';
   import { showToast } from '../components/Toast.svelte';
+  import { initScrollDots } from '../lib/scroll-dots.js';
 
   // ─── i18n 辅助（复用全局 t()，回退文案）───
   function tr(key, fallback, options) {
@@ -156,7 +157,8 @@
   // ─── 打开时加载 ───
   $effect(() => {
     if ($detailOpen && pendingOpen) {
-      const { id, fromRect, fromSrc } = pendingOpen;
+      const { id, fromRect, fromSrc, sourceView } = pendingOpen;
+      detailSourceView = sourceView || 'library';
       loadAndShow(id, fromRect, fromSrc);
     }
   });
@@ -1217,69 +1219,6 @@
       img.complete ? Promise.resolve() : new Promise((r) => { img.onload = r; img.onerror = r; })
     ));
     return Promise.race([loadAll, timeout]);
-  }
-
-  // ─── 分页圆点（detail-pagination.js 迁移）───
-  function initScrollDots(opts) {
-    const { scroll, cardSelector, total, dotsParent, initialIndex } = opts;
-    if (!scroll || !dotsParent || total === 0) return;
-    function getVisibleCount() {
-      const card = scroll.querySelector(cardSelector);
-      if (!card) return 4;
-      const cs = getComputedStyle(scroll);
-      const gap = parseFloat(cs.gap) || parseFloat(cs.columnGap) || 12;
-      return Math.round(scroll.clientWidth / (card.offsetWidth + gap)) || 4;
-    }
-    let VISIBLE_COUNT = getVisibleCount();
-    let dotsEl = dotsParent.querySelector('.scroll-dots');
-    if (!dotsEl) {
-      dotsEl = document.createElement('div');
-      dotsEl.className = 'scroll-dots';
-      dotsParent.appendChild(dotsEl);
-    }
-    let dotCount = 0;
-    function rebuildDots() {
-      const newCount = Math.max(1, total - VISIBLE_COUNT + 1);
-      if (newCount === dotCount) return;
-      dotCount = newCount;
-      if (dotCount <= 1) dotsEl.innerHTML = '';
-      else dotsEl.innerHTML = Array.from({ length: dotCount }, (_, i) => `<button class="scroll-dot${i === 0 ? ' active' : ''}" data-index="${i}"></button>`).join('');
-    }
-    rebuildDots();
-    function getCardStep() {
-      const card = scroll.querySelector(cardSelector);
-      if (!card) return 300;
-      const cs = getComputedStyle(scroll);
-      const gap = parseFloat(cs.gap) || parseFloat(cs.columnGap) || 12;
-      return card.offsetWidth + gap;
-    }
-    let ticking = false;
-    function updateActiveDot() {
-      const newCount = getVisibleCount();
-      if (newCount !== VISIBLE_COUNT) { VISIBLE_COUNT = newCount; rebuildDots(); }
-      if (dotCount <= 1) return;
-      const step = getCardStep();
-      if (!step) return;
-      const nearestIdx = Math.round(scroll.scrollLeft / step);
-      const clampedIdx = Math.max(0, Math.min(dotCount - 1, nearestIdx));
-      dotsEl.querySelectorAll('.scroll-dot').forEach((d) => d.classList.toggle('active', parseInt(d.dataset.index) === clampedIdx));
-    }
-    scroll.addEventListener('scroll', () => {
-      if (!ticking) { requestAnimationFrame(() => { updateActiveDot(); ticking = false; }); ticking = true; }
-    }, { passive: true });
-    dotsEl.addEventListener('click', (e) => {
-      const dot = e.target.closest('.scroll-dot');
-      if (!dot) return;
-      const idx = parseInt(dot.dataset.index);
-      const step = getCardStep();
-      scroll.scrollTo({ left: idx * step, behavior: 'smooth' });
-      dotsEl.querySelectorAll('.scroll-dot').forEach((d) => d.classList.toggle('active', parseInt(d.dataset.index) === idx));
-    });
-    if (initialIndex != null) {
-      const step = getCardStep();
-      scroll.scrollLeft = Math.max(0, initialIndex * step);
-    }
-    requestAnimationFrame(updateActiveDot);
   }
 
   // ─── 渲染后 DOM 操作 ───

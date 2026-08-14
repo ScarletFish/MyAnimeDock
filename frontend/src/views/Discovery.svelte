@@ -180,10 +180,25 @@
       const cards = document.querySelectorAll('#svelte-discoveryView .discovery-card');
       if (!cards.length) return;
       gsap.killTweensOf(cards);
-      // fromTo 显式终点 opacity:1，避免 from() 在元素当前 opacity 已为 0 时 0→0 卡死不可见
+      // 目标透明度按卡片状态 class 推导（已导入 0.5/排除 0.6/普通 1），与 CSS 规则一致。
+      // 从 0 淡入到各自真实值，避免统一淡到 1 后 clearProps 瞬间回落到 CSS 值造成「白→浅白」跳变。
+      // 不用 getComputedStyle：切换筛选时上一轮动画可能被 kill 中断，卡片残留 inline opacity
+      // （中间值甚至 0），读取计算样式会得到残留值导致目标透明度错误（0→0 卡死不可见）。
+      const targetOpacities = Array.from(cards).map((c) =>
+        c.classList.contains('discovery-card--imported') ? 0.5
+        : c.classList.contains('discovery-card--excluded') ? 0.6
+        : 1
+      );
       gsap.fromTo(cards,
         { opacity: 0, y: 12 },
-        { opacity: 1, y: 0, stagger: 0.03, duration: 0.3, ease: 'power2.out', clearProps: 'opacity,transform' }
+        {
+          opacity: (i) => targetOpacities[i],
+          y: 0,
+          stagger: 0.03,
+          duration: 0.3,
+          ease: 'power2.out',
+          clearProps: 'transform',
+        }
       );
     });
   });

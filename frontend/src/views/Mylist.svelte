@@ -84,6 +84,8 @@
   // 避免双层位移叠加过重。{#if} 渲染视图：tick() 等 section 进入 DOM 后再动画。
   $effect(() => {
     if (!$mylistOpen) return;
+    // 从详情页返回：跳过容器淡入（showView 已置 __skipViewEnter 标记，此标记每次 showView 重算）
+    if (window.__skipViewEnter) return;
     tick().then(() => {
       const el = document.getElementById('svelte-mylistView');
       if (!el || typeof globalThis.gsap !== 'function') return;
@@ -324,6 +326,12 @@
     }
     if (loading) return;
     if (modulesAnimated) return;
+    // 从详情页返回：跳过本次打开的模块级 fade（标记每次 showView 重算；置 modulesAnimated
+    // 避免后续 effect 重跑时重播，与 reduce-motion 分支行为一致）
+    if (window.__skipViewEnter) {
+      modulesAnimated = true;
+      return;
+    }
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       modulesAnimated = true;
       return;

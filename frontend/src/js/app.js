@@ -67,6 +67,13 @@ function onGlobalMpvStatus(active, payload) {
 function showView(view) {
   const mc = document.querySelector('.main-content');
 
+  // 识别「从详情页返回」：起点是 detail、目标是 library/mylist 时置一次性标记，
+  // 供 Svelte 视图的入场动画（容器淡入/模块级 fade）跳过——返回时不重播入场。
+  // 标记在每次 showView 调用时按当前切换重算（天然覆盖旧值），消费侧无需清除，
+  // 也不存在多个 effect 竞争清除的顺序问题；其余切换（library↔mylist 等）恒为 false。
+  const prevView = currentView;
+  window.__skipViewEnter = prevView === 'detail' && (view === 'library' || view === 'mylist');
+
   // Save library scroll BEFORE toggling view visibility
   // At this point library view is still visible, so mc.scrollTop is in
   // the library content coordinate system — the only correct moment to save.

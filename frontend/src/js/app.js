@@ -6,6 +6,16 @@ let mylistScrollTop = 0;
 let _libraryChangingView = false; // set by showView to skip scroll-save in loadLibrary
 let _mylistChangingView = false;
 
+// 播放器关闭后自动将 App 窗口带回前台（Windows 前台锁限制时系统会闪烁任务栏兜底）。
+// 浏览器环境（无 Tauri API）直接无操作。
+function focusAppWindow() {
+  if (!(window.__TAURI__ && window.__TAURI__.window)) return;
+  try {
+    var win = window.__TAURI__.window.getCurrentWindow();
+    win.unminimize().then(function () { return win.setFocus(); }).catch(function () {});
+  } catch (_) {}
+}
+
 // 暴露给 Svelte Library：showView 离开 library 时已把正确滚动位置存进 libraryScrollTop
 // （此时 library 仍可见，mc.scrollTop 处于 library 坐标系）。Svelte 版重渲染后据此恢复。
 window.__getLibraryScrollTop = () => libraryScrollTop;
@@ -93,8 +103,6 @@ function showView(view) {
   }
 
   if (view !== 'detail') {
-    resetDetailEnter();
-    if (typeof window.stopDetailRefresh === 'function') window.stopDetailRefresh();
     // Reset title bar to brand text
     if (typeof window.setTitlebarContext === 'function') window.setTitlebarContext('default');
   }
@@ -122,7 +130,6 @@ function showView(view) {
 }
 
 function goBack() {
-  if (typeof stopDetailRefresh === 'function') stopDetailRefresh();
   const target = AppState.get('detailSourceView') || 'library';
   showView(target);
 }

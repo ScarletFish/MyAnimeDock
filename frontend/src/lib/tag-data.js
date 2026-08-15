@@ -4,7 +4,7 @@
 // 用法：const d = ANILIST_TAG_DATA[t.name]; const name = d?.zh || t.name;
 // 维护：zh/descZh 由用户手动填写。词库为官方固定词库，几乎不变。
 // ⚠ = 剧透 tag（isGeneralSpoiler），运行时过滤，可不用翻译。
-window.ANILIST_TAG_DATA = {
+export const ANILIST_TAG_DATA = {
   // ── Technical ──
   '4-koma': { zh: '四格漫画', descEn: 'A manga in the \'yonkoma\' format, which consists of four equal-sized panels arranged in a vertical strip.', descZh: '采用"四格漫画"（yonkoma）形式的漫画，由四个等大的格子垂直排列组成。' },
   'Achromatic': { zh: '黑白', descEn: 'Contains animation that is primarily done in black and white.', descZh: '包含主要以黑白绘制的动画。' },

@@ -32,6 +32,7 @@
   import RelationList from '../components/detail/RelationList.svelte';
   import SyncModal from '../components/detail/SyncModal.svelte';
   import FinishConfirmModal from '../components/detail/FinishConfirmModal.svelte';
+  import { ANILIST_TAG_DATA } from '../lib/tag-data.js';
 
   // ─── i18n 辅助（复用全局 t()，回退文案）───
   function tr(key, fallback, options) {
@@ -108,7 +109,7 @@
     return (anime?.anilistTags || [])
       .filter((t) => !t.isGeneralSpoiler)
       .map((t) => {
-        const d = (globalThis.ANILIST_TAG_DATA || {})[t.name];
+        const d = ANILIST_TAG_DATA[t.name];
         return { name: d?.zh || t.name, desc: d?.descZh || d?.descEn || '', rank: t.rank };
       })
       .sort((x, y) => y.rank - x.rank);

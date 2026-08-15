@@ -5,7 +5,7 @@
 //           stats / metamatch）
 // 插值用 {{var}} 语法，如 '共 {{n}} 集'。
 // 说明：本文件由 i18n 提取工作维护，新增/修改文案只改这里。
-window.I18N_ZH = {
+export const I18N_ZH = {
   // ── 通用 ──
   'common.save': '保存',
   'common.cancel': '取消',

@@ -11,6 +11,7 @@
 
 <script>
   import { onMount, tick } from 'svelte';
+  import { ANILIST_TAG_DATA } from '../lib/tag-data.js';
 
   // ─── i18n 辅助（复用全局 t()，回退文案）───
   function tr(key, fallback, options) {
@@ -121,7 +122,7 @@
       const minCount = entries[entries.length - 1][1];
       const range = Math.max(maxCount - minCount, 1);
       const list = entries.map(([name, count]) => {
-        const d = window.ANILIST_TAG_DATA && window.ANILIST_TAG_DATA[name];
+        const d = ANILIST_TAG_DATA[name];
         const word = (d && d.zh) || name;
         const weight = 18 + ((count - minCount) / range) * 25;
         return [word, Math.round(weight)];
@@ -526,7 +527,7 @@
   }
 
   function tagZh(name) {
-    const d = window.ANILIST_TAG_DATA && window.ANILIST_TAG_DATA[name];
+    const d = ANILIST_TAG_DATA[name];
     return (d && d.zh) || name;
   }
 

@@ -14,6 +14,10 @@ import { showToast } from './components/Toast.svelte';
 import { loadTheme, loadReduceMotion, applyZoom, applyDetailTitleBg } from './lib/theme.js';
 import { showView } from './lib/router.js';
 import { startGlobalMpvStatus } from './lib/mpv-status.js';
+import { initI18n, bindDom } from './lib/i18n.js';
+
+// ─── i18n 初始化（必须在其他模块使用 t() 之前）───
+initI18n();
 
 const app = mount(App, {
   target: document.getElementById('app'),
@@ -24,6 +28,9 @@ const app = mount(App, {
 mount(Chrome, {
   target: document.getElementById('chrome'),
 });
+
+// ─── i18n DOM 绑定（替换 [data-i18n] 和 [data-i18n-attr]）───
+bindDom();
 
 // ─── 桥接：vanilla app.js/detail.js 仍调用 window.setTitlebarContext(mode, title) ───
 // 路由到 Svelte 版 Titlebar 的 titlebarContext store（驱动品牌/详情上下文切换）。

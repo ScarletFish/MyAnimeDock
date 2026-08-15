@@ -12,7 +12,7 @@
 </script>
 
 {#if panelVisible}
-  <div class="mm-panel open" transition:slide={{ axis: 'x', duration: 350 }}>
+  <div class="mm-panel open" transition:slide={{ axis: 'x', duration: 180 }}>
     {#if syncLogVisible}
       <div class="mm-panel-synclog">
         <div class="mm-panel-synclog-header">

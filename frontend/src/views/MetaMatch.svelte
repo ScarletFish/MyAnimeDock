@@ -576,6 +576,7 @@
       if (e.target.closest('.mm-row')) return;
       if (e.target.closest('.modal-m-filterbar')) return;
       if (e.target.closest('.modal-m-topbar')) return;
+      if (syncInProgress) return;
       if (panelVisible) deselectPanel();
       if (selectedIds.length > 0) clearSelection();
     }

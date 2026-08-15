@@ -151,57 +151,6 @@
 <main class="main-content">
 
 <!-- MetaMatch Modal -->
-<div class="modal-overlay modal-overlay--metamatch" id="metaMatchModal">
-  <div class="modal modal--metamatch">
-    <div class="modal-m-topbar">
-      <h2 data-i18n="metamatch.title">批量元数据匹配</h2>
-      <div class="modal-m-badges">
-        <span class="stat-badge"><span class="num" id="mmStatTotal">0</span><span data-i18n="common.all">全部</span></span>
-        <span class="stat-badge pending"><span class="num" id="mmStatPending">0</span><span data-i18n="metamatch.statusPending">待处理</span></span>
-        <span class="stat-badge failed"><span class="num" id="mmStatFailed">0</span><span data-i18n="common.failed">失败</span></span>
-        <span class="stat-badge matched"><span class="num" id="mmStatMatched">0</span><span data-i18n="metamatch.statusMatched">已匹配</span></span>
-        <span class="stat-badge matching"><span class="num" id="mmStatMatching">0</span><span data-i18n="metamatch.statusMatching">匹配中</span></span>
-      </div>
-      <button class="modal-close-btn" onclick="closeModal('metaMatchModal')" aria-label="关闭" data-i18n-attr="common.close:aria-label">✕</button>
-    </div>
-    <div class="modal-m-progress"><div class="fill" id="mmModalProgress" style="width:0%"></div></div>
-    <div class="modal-m-filterbar">
-      <button class="btn btn-outline" id="mmMainActionBtn" onclick="mmMainAction()" data-i18n="metamatch.autoMatchAll">自动匹配全部</button>
-      <span class="mm-shift-tip" id="mmShiftTip" style="display:none" data-i18n="metamatch.shiftMultiSelect">Shift+点击 多选</span>
-      <div class="spacer"></div>
-      <button class="mm-filter-dot mm-filter-dot--active" data-mmfilter="all" onclick="mmSetFilter('all')"><span class="dot dot-all"></span></button>
-      <button class="mm-filter-dot" data-mmfilter="pending" onclick="mmSetFilter('pending')"><span class="dot dot-pending"></span></button>
-      <button class="mm-filter-dot" data-mmfilter="failed" onclick="mmSetFilter('failed')"><span class="dot dot-failed"></span></button>
-      <button class="mm-filter-dot" data-mmfilter="matched" onclick="mmSetFilter('matched')"><span class="dot dot-matched"></span></button>
-      <div class="mm-list-search">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        <input type="text" id="mmGridSearch" placeholder="搜索条目..." oninput="mmFilterGrid()" data-i18n-attr="metamatch.searchEntry:placeholder">
-      </div>
-      <button class="btn btn-sm btn-ghost" id="mmCancelBtn" onclick="mmCancelSync()" style="display:none" data-i18n="common.stop">停止</button>
-    </div>
-    <div class="modal-m-body">
-      <div class="mm-left">
-        <div class="mm-list" id="mmGrid"></div>
-        <div class="mm-list-empty" id="mmEmpty" style="display:none">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <p data-i18n="metamatch.noPendingItems">没有需要匹配的条目</p>
-          <p class="empty-hint" data-i18n="metamatch.noMatchHint">所有条目已有元数据，或动漫库为空</p>
-        </div>
-      </div>
-      <div class="mm-panel" id="mmPanel">
-        <div class="mm-panel-content" id="mmPanelContent" style="display:none"></div>
-        <div class="mm-panel-synclog" id="mmPanelSyncLog" style="display:none">
-          <div class="mm-panel-synclog-header">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-            <span data-i18n="metamatch.syncLog">同步日志</span>
-          </div>
-          <div class="mm-panel-synclog-entries" id="mmSyncLogEntries"></div>
-          <div class="mm-panel-synclog-summary" id="mmSyncLogSummary" style="display:none"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
 
 <!-- Status Modal -->
 <div class="modal-overlay" id="statusModal" onclick="if(event.target===this)closeModal('statusModal')">
@@ -393,7 +342,6 @@
 <script src="/src/js/ui.js"></script>
 <script src="/src/js/api.js"></script>
 <script src="/src/js/utils.js"></script>
-<script src="/src/js/metamatch.js"></script>
 <script src="/src/js/titlebar.js"></script>
 <script src="/src/js/toast.js"></script>
 <script src="/src/js/theme.js"></script>

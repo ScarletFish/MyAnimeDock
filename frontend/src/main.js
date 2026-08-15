@@ -6,6 +6,7 @@ import { libraryOpen } from './views/Library.svelte';
 import { mylistOpen } from './views/Mylist.svelte';
 import { statsOpen } from './views/Stats.svelte';
 import { detailOpen, openDetail } from './views/Detail.svelte';
+import { metaMatchOpen } from './views/MetaMatch.svelte';
 
 const app = mount(App, {
   target: document.getElementById('app'),
@@ -116,6 +117,12 @@ window.showDetail = (id, fromRect, fromSrc, sourceView) => {
     return;
   }
   if (typeof vanillaShowDetail === 'function') return vanillaShowDetail(id, fromRect, fromSrc, sourceView);
+};
+
+// ─── 桥接：Library.svelte 的 openBatchMatch 仍调用 window.mmOpenModal() ───
+// 使库页「批量匹配」按钮打开 Svelte 版 MetaMatch 组件。
+window.mmOpenModal = () => {
+  metaMatchOpen.set(true);
 };
 
 export default app;

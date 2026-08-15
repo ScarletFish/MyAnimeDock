@@ -11,6 +11,7 @@
   import Mylist from './views/Mylist.svelte';
   import Stats from './views/Stats.svelte';
   import Detail from './views/Detail.svelte';
+  import MetaMatch from './views/MetaMatch.svelte';
 </script>
 
 <!--
@@ -28,4 +29,5 @@
   <Mylist />
   <Stats />
   <Detail />
+  <MetaMatch />
 </div>

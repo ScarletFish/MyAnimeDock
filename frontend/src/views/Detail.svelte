@@ -83,7 +83,7 @@
   // 非响应式内部状态
   let _dismissedFinishConfirm = new Set();
   let isSliding = false;
-  let episodeHeatmapRef; // 组件实例引用（bind:this），非响应式
+  let episodeHeatmapRef = $state(null); // 组件实例引用（bind:this）
 
   // ─── 派生状态（声明式渲染，替代 renderDetail 字符串拼接）───
 

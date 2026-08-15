@@ -233,10 +233,10 @@
     const height = 220 - margin.top - margin.bottom;
 
     container.innerHTML = '';
-    const svgEl = d3.select(container).append('svg')
+    const svg = d3.select(container).append('svg')
       .attr('width', width + margin.left + margin.right)
-      .attr('height', height + margin.top + margin.bottom);
-    const svg = svgEl.append('g')
+      .attr('height', height + margin.top + margin.bottom)
+      .append('g')
       .attr('transform', `translate(${margin.left},${margin.top})`);
 
     const x = d3.scaleBand()
@@ -257,13 +257,20 @@
     svg.selectAll('.grid .domain').remove();
 
     const gradientId = 'activityGrad';
-    const defs = svgEl.append('defs');
-    const gradient = defs.append('linearGradient')
+    svg.append('linearGradient')
       .attr('id', gradientId)
-      .attr('x1', '0').attr('y1', '0')
-      .attr('x2', '0').attr('y2', '1');
-    gradient.append('stop').attr('offset', '0%').attr('stop-color', tc.accent).attr('stop-opacity', 0.55);
-    gradient.append('stop').attr('offset', '100%').attr('stop-color', tc.accent).attr('stop-opacity', 0.08);
+      .attr('gradientUnits', 'userSpaceOnUse')
+      .attr('x1', 0).attr('y1', y(0))
+      .attr('x2', 0).attr('y2', y(d3.max(months, d => d.minutes) || 1))
+      .selectAll('stop')
+      .data([
+        { offset: '0%', opacity: 0.55 },
+        { offset: '100%', opacity: 0.08 }
+      ])
+      .join('stop')
+      .attr('offset', d => d.offset)
+      .attr('stop-color', tc.accent)
+      .attr('stop-opacity', d => d.opacity);
 
     const area = d3.area()
       .x(d => x(d.label) + x.bandwidth() / 2)

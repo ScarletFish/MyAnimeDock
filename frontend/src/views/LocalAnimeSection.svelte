@@ -4,7 +4,7 @@
   import { onDestroy, tick } from 'svelte';
   import StatusSection from '../components/StatusSection.svelte';
   import AnimeCard from '../components/AnimeCard.svelte';
-  import { STATUS_LABELS, ANIME_SORT_OPTIONS, sortAnimeItems } from '../lib/sort.js';
+  import { getStatusLabels, getAnimeSortOptions, sortAnimeItems } from '../lib/sort.js';
   import { STATUS_SECTIONS_LIBRARY, getCardTitleVisible, navigateToDetail } from '../lib/anime-utils.js';
   import { Select } from 'bits-ui';
 
@@ -30,7 +30,7 @@
   const sections = $derived(
     STATUS_SECTIONS_LIBRARY.map((status) => ({
       status,
-      label: STATUS_LABELS[status] || status,
+      label: getStatusLabels()[status] || status,
       items: sortAnimeItems(
         items.filter((a) => (a.myListStatus || 'wish') === status),
         sortMode
@@ -90,7 +90,7 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M6 12h12M9 18h6"/></svg>
         </Select.Trigger>
         <Select.Content class="library-sort-menu" align="end">
-          {#each ANIME_SORT_OPTIONS as o (o.key)}
+          {#each getAnimeSortOptions() as o (o.key)}
             <Select.Item value={o.key}>
               {#snippet child(p)}
                 <div {...p.props} class="library-sort-option" class:active={p.selected}>{o.label}</div>

@@ -2,7 +2,9 @@
 // 纯逻辑抽取：从 Library.svelte / Mylist.svelte 抽出可复用积木。
 
 // i18n 辅助（复用全局 t()）
-export function tr(key, options) { return globalThis.t(key, options); }
+export function tr(key, options) {
+  return typeof globalThis.t === 'function' ? globalThis.t(key, options) : key;
+}
 
 // API 辅助（自包含，不复用全局 API）
 export const api = {

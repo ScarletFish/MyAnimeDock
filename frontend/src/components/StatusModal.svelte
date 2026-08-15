@@ -3,7 +3,7 @@
   // 基于 Mylist.svelte 的组件内状态弹窗（逻辑 + 模板），不基于 vanilla mylist.js。
   // 只认 props，不 fetch、不查 window.libraryData/mylistData。
   import { tr, api, coverSrc, localDateStr, todayStr } from '../lib/anime-utils.js';
-  import { STATUS_LABELS } from '../lib/sort.js';
+  import { getStatusLabels } from '../lib/sort.js';
   import { showToast } from './Toast.svelte';
   import { Select } from 'bits-ui';
 
@@ -259,7 +259,7 @@
               <div class="status-dd" id="svelte-statusDd" class:is-open={statusDdOpen}>
                 <Select.Root type="single" bind:value={status} bind:open={statusDdOpen}>
                   <Select.Trigger class="status-dd-trigger" id="svelte-statusDdTrigger">
-                    <span class="status-dd-text" id="svelte-statusDdText">{STATUS_LABELS[status] || tr('common.wish')}</span>
+                    <span class="status-dd-text" id="svelte-statusDdText">{getStatusLabels()[status] || tr('common.wish')}</span>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="status-dd-chevron"><polyline points="6 9 12 15 18 9"/></svg>
                   </Select.Trigger>
                   <Select.Content class="status-dd-menu" id="svelte-statusDdMenu" align="start" style="width: var(--bits-floating-anchor-width)">

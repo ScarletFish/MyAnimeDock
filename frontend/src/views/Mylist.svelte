@@ -16,7 +16,7 @@
   import StatusSection from '../components/StatusSection.svelte';
   import StatusModal from '../components/StatusModal.svelte';
   import ContextMenu from '../components/ContextMenu.svelte';
-  import { STATUS_LABELS, MYLIST_STATUS_ORDER, ANIME_SORT_OPTIONS, sortAnimeItems } from '../lib/sort.js';
+  import { getStatusLabels, MYLIST_STATUS_ORDER, getAnimeSortOptions, sortAnimeItems } from '../lib/sort.js';
   import { calcGridCols, readScale } from '../lib/grid.js';
   import { Select } from 'bits-ui';
 
@@ -407,7 +407,7 @@
         <div
           class="mylist-status-item" class:active={mylistFilter === s}
           data-status={s} onclick={() => setFilter(s)}
-        ><b>{statusCounts[s] || 0}</b>{STATUS_LABELS[s] || s}</div>
+        ><b>{statusCounts[s] || 0}</b>{getStatusLabels()[s] || s}</div>
       {/each}
     </div>
 
@@ -419,7 +419,7 @@
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M6 12h12M9 18h6"/></svg>
           </Select.Trigger>
           <Select.Content class="library-sort-menu" align="end">
-            {#each ANIME_SORT_OPTIONS as o (o.key)}
+            {#each getAnimeSortOptions() as o (o.key)}
               <Select.Item value={o.key}>
                 {#snippet child(p)}
                   <div {...p.props} class="library-sort-option" class:active={p.selected}>{o.label}</div>
@@ -442,7 +442,7 @@
             <rect x="3" y="14" width="7" height="7" rx="1"></rect>
             <rect x="14" y="14" width="7" height="7" rx="1"></rect>
           </svg>
-          <p>{mylistFilter === 'all' ? tr('common.empty') : tr('mylist.emptyFiltered', { label: STATUS_LABELS[mylistFilter] || '' })}</p>
+          <p>{mylistFilter === 'all' ? tr('common.empty') : tr('mylist.emptyFiltered', { label: getStatusLabels()[mylistFilter] || '' })}</p>
         </div>
       {:else if mylistFilter === 'all'}
         {#each MYLIST_STATUS_ORDER as status}
@@ -450,7 +450,7 @@
           {#if group && group.length > 0}
             <StatusSection
               variant="mylist"
-              label={STATUS_LABELS[status]}
+              label={getStatusLabels()[status]}
               items={group}
               gridCols={gridCols}
             >
@@ -470,7 +470,7 @@
       {:else}
         <StatusSection
           variant="mylist"
-          label={STATUS_LABELS[mylistFilter] || mylistFilter}
+          label={getStatusLabels()[mylistFilter] || mylistFilter}
           items={filtered}
           gridCols={gridCols}
         >

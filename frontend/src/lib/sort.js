@@ -2,23 +2,36 @@
 // 从 Mylist.svelte 逐字节抽取，禁止优化，保持行为一致。
 import { tr } from './anime-utils.js';
 
-export const STATUS_LABELS = {
-  watching: tr('common.watching'),
-  wish: tr('common.wish'),
-  completed: tr('common.completed'),
-  on_hold: tr('common.on_hold'),
-  dropped: tr('common.dropped'),
-};
+// Lazy: computed after initI18n() sets globalThis.t
+let _statusLabels = null;
+export function getStatusLabels() {
+  if (!_statusLabels) {
+    _statusLabels = {
+      watching: tr('common.watching'),
+      wish: tr('common.wish'),
+      completed: tr('common.completed'),
+      on_hold: tr('common.on_hold'),
+      dropped: tr('common.dropped'),
+    };
+  }
+  return _statusLabels;
+}
 
 export const MYLIST_STATUS_ORDER = ['watching', 'wish', 'completed', 'on_hold', 'dropped'];
 
-export const ANIME_SORT_OPTIONS = [
-  { key: 'name', label: tr('mylist.sortName') },
-  { key: 'recent', label: tr('mylist.sortRecent') },
-  { key: 'updated', label: tr('mylist.sortUpdated') },
-  { key: 'rating', label: tr('common.rating') },
-  { key: 'imported', label: tr('mylist.sortImported') },
-];
+let _sortOptions = null;
+export function getAnimeSortOptions() {
+  if (!_sortOptions) {
+    _sortOptions = [
+      { key: 'name', label: tr('mylist.sortName') },
+      { key: 'recent', label: tr('mylist.sortRecent') },
+      { key: 'updated', label: tr('mylist.sortUpdated') },
+      { key: 'rating', label: tr('common.rating') },
+      { key: 'imported', label: tr('mylist.sortImported') },
+    ];
+  }
+  return _sortOptions;
+}
 
 export function sortAnimeItems(items, sortMode) {
   var FORMAT_RANK = { TV: 0, OVA: 1, SP: 2, MOVIE: 3 };

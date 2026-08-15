@@ -134,7 +134,7 @@
           <button class="onb-field__browse" id="onbBrowseDir" onclick={browseDir}>{tr('common.browse')}</button>
         </div>
         <div class="onb-field__foot">
-          <a href="#" class="onb-field__skip" id="onbSkipDir" onclick={skipDir}>{tr('onboarding.skipForNow')}</a>
+          <button type="button" class="onb-field__skip" id="onbSkipDir" onclick={skipDir}>{tr('onboarding.skipForNow')}</button>
         </div>
       </div>
       <div class="onb-field" id="onbMpvGroup" class:onb-field--skipped={mpvSkipped}>
@@ -144,7 +144,7 @@
           <button class="onb-field__browse" id="onbBrowseMpv" onclick={browseMpv}>{tr('common.browse')}</button>
         </div>
         <div class="onb-field__foot">
-          <a href="#" class="onb-field__skip" id="onbSkipMpv" onclick={skipMpv}>{tr('onboarding.skipForNow')}</a>
+          <button type="button" class="onb-field__skip" id="onbSkipMpv" onclick={skipMpv}>{tr('onboarding.skipForNow')}</button>
         </div>
       </div>
       <div class="onb-error" id="onbError" class:hidden={!errorMsg}>{errorMsg}</div>

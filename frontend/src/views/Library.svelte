@@ -20,6 +20,7 @@
   import LocalAnimeSection from './LocalAnimeSection.svelte';
   import { calcGridCols, readScale } from '../lib/grid.js';
   import { initScrollDots } from '../lib/scroll-dots.js';
+  import { getDashboardLayout } from '../lib/dashboard-layout.js';
 
   // ─── Grid 列公式（原 library.js GRID_CARD_MIN/MAX）───
   const GRID_CARD_MIN = 200;
@@ -117,8 +118,7 @@
       libraryData = newData;
       // 桥接：同步到 window，供 Detail.svelte 的 goPrev/goNext/findCurrentLibraryIndex 读取
       window.libraryData = newData;
-      const getLayout = g('getDashboardLayout');
-      layout = getLayout ? getLayout() : defaultLayout();
+      layout = getDashboardLayout();
       await loadStats();
       loading = false;
       // 等 DOM 渲染完成后恢复滚动（重渲染会重置 scrollTop）

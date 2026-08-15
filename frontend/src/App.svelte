@@ -13,6 +13,7 @@
   import Mylist from './views/Mylist.svelte';
   import Stats from './views/Stats.svelte';
   import Detail from './views/Detail.svelte';
+  import ThemeDock from './components/ThemeDock.svelte';
   import MetaMatch from './views/MetaMatch.svelte';
 </script>
 
@@ -27,6 +28,7 @@
   <Modal />
   <ConfirmDialog />
   <Onboarding />
+  <ThemeDock />
   <Settings />
   <Discovery />
   <Library />

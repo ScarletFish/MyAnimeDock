@@ -6,6 +6,46 @@ let mylistScrollTop = 0;
 let _libraryChangingView = false; // set by showView to skip scroll-save in loadLibrary
 let _mylistChangingView = false;
 
+// ─── Theme init functions (consolidated from theme.js) ───
+
+function loadTheme() {
+  const theme = localStorage.getItem('theme') || configCache?.theme || 'default';
+  const themeMode = localStorage.getItem('themeMode') || configCache?.themeMode || 'dark';
+  const isOldFormat = theme === 'dark' || theme === 'light';
+  const resolvedTheme = isOldFormat ? 'default' : theme;
+  const resolvedMode = isOldFormat ? theme : themeMode;
+  setThemeAttributes(resolvedTheme, resolvedMode);
+  localStorage.setItem('theme', resolvedTheme);
+  localStorage.setItem('themeMode', resolvedMode);
+}
+
+function setThemeAttributes(theme, themeMode) {
+  if (theme === 'default') {
+    document.documentElement.setAttribute('data-theme', themeMode);
+  } else {
+    document.documentElement.setAttribute('data-theme', theme);
+  }
+  document.documentElement.setAttribute('data-theme-mode', themeMode);
+}
+
+function applyZoom(factor) {
+  const s = parseFloat(factor) || 1;
+  document.documentElement.style.setProperty('--scale', s);
+  if (typeof applyGridColumns === 'function') applyGridColumns();
+}
+
+function loadReduceMotion() {
+  const reduced = localStorage.getItem('reduceMotion') === '1' || configCache?.reduceMotion === true;
+  if (reduced) {
+    document.documentElement.setAttribute('data-reduce-motion', 'true');
+  }
+}
+
+function applyDetailTitleBg() {
+  var on = localStorage.getItem('myAnimDock_detailTitleBg') === 'on';
+  document.documentElement.setAttribute('data-detail-title-bg', on ? 'on' : '');
+}
+
 // 播放器关闭后自动将 App 窗口带回前台（Windows 前台锁限制时系统会闪烁任务栏兜底）。
 // 浏览器环境（无 Tauri API）直接无操作。
 function focusAppWindow() {

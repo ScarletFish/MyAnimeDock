@@ -73,52 +73,6 @@
   <div class="sidebar-tooltip-text" id="sidebarTooltipText"></div>
 </div>
 
-<!-- Theme Dock Overlay -->
-<div class="theme-dock-overlay" id="themeDockOverlay" onclick="closeThemeDock()"></div>
-
-<!-- Theme Dock -->
-<div class="theme-dock" id="themeDock">
-  <div class="theme-dock-inner">
-    <div class="theme-dock-section">
-      <span class="theme-dock-label" data-i18n="nav.themeColors">主题色系</span>
-      <div class="theme-picker">
-        <button class="theme-option theme-option--default" data-theme="default" onclick="selectTheme(this, 'default')" data-tooltip="默认" data-i18n-attr="common.default:data-tooltip"></button>
-        <button class="theme-option theme-option--amber" data-theme="amber" onclick="selectTheme(this, 'amber')" data-tooltip="琥珀" data-i18n-attr="nav.amber:data-tooltip"></button>
-        <button class="theme-option theme-option--ocean" data-theme="ocean" onclick="selectTheme(this, 'ocean')" data-tooltip="海洋" data-i18n-attr="nav.ocean:data-tooltip"></button>
-        <button class="theme-option theme-option--sakura" data-theme="sakura" onclick="selectTheme(this, 'sakura')" data-tooltip="樱花" data-i18n-attr="nav.sakura:data-tooltip"></button>
-        <button class="theme-option theme-option--emerald" data-theme="emerald" onclick="selectTheme(this, 'emerald')" data-tooltip="翡翠" data-i18n-attr="nav.emerald:data-tooltip"></button>
-        <button class="theme-option theme-option--violet" data-theme="violet" onclick="selectTheme(this, 'violet')" data-tooltip="紫罗兰" data-i18n-attr="nav.violet:data-tooltip"></button>
-      </div>
-    </div>
-    <div class="theme-dock-separator"></div>
-    <div class="theme-dock-section">
-      <div class="theme-mode-toggle mt-0">
-        <span class="theme-toggle-label theme-toggle-label--active" id="dockLabelDark" data-i18n="common.dark">深色</span>
-        <label class="toggle-switch">
-          <input type="checkbox" id="dockThemeMode" onchange="handleDockThemeModeToggle(this)">
-          <span class="toggle-slider"></span>
-        </label>
-        <span class="theme-toggle-label theme-toggle-label--inactive" id="dockLabelLight" data-i18n="common.light">浅色</span>
-      </div>
-    </div>
-    <div class="theme-dock-separator"></div>
-    <div class="theme-dock-section theme-dock-section--zoom">
-      <span class="theme-dock-label" data-i18n="nav.zoom">缩放</span>
-      <input type="range" id="dockZoom" min="75" max="125" step="5" value="100" oninput="handleDockZoom(this)">
-      <span class="theme-dock-zoom-value" id="dockZoomLabel">100%</span>
-    </div>
-    <div class="theme-dock-separator"></div>
-    <div class="theme-dock-section">
-      <span class="theme-dock-label" data-i18n="nav.reduceMotion">减少动画</span>
-      <label class="toggle-switch">
-        <input type="checkbox" id="dockReduceMotion" onchange="handleReduceMotionToggle(this)">
-        <span class="toggle-slider"></span>
-      </label>
-    </div>
-  </div>
-  <button class="theme-dock-close" onclick="closeThemeDock()" data-tooltip="关闭" data-i18n-attr="common.close:data-tooltip">✕</button>
-</div>
-
 <!-- Main Content -->
 <main class="main-content">
 
@@ -271,10 +225,10 @@
 <script src="/src/js/api.js"></script>
 <script src="/src/js/utils.js"></script>
 <script type="module" src="/src/js/toast.js"></script>
-<script src="/src/js/theme.js"></script>
-<script src="/src/js/dashboard-layout.js"></script>
 <script src="/src/js/app.js"></script>
 <script type="module" src="/src/js/keyboard.js"></script>
+<script type="module" src="/src/lib/tooltip.js"></script>
+<script type="module" src="/src/lib/tauri-dialog.js"></script>
 <script type="module" src="/src/main.js"></script>
 </body>
 </html>

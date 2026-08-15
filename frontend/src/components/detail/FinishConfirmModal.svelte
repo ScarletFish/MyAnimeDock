@@ -5,9 +5,7 @@
 
   let { confirm = null, anime = null, onResolve } = $props();
 
-  function tr(key, fallback, options) {
-    return typeof globalThis.t === 'function' ? globalThis.t(key, options) : fallback;
-  }
+  function tr(key, options) { return globalThis.t(key, options); }
 
   // 打开时聚焦确认按钮
   $effect(() => {

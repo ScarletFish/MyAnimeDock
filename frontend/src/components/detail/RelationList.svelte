@@ -29,9 +29,7 @@
   const endpoint = $derived(isRecs ? 'recommendations' : 'relations');
   const badgeColors = { SEQUEL: '#22c55e', PREQUEL: '#f59e0b', SIDE_STORY: '#6366f1', SPIN_OFF: '#ec4899' };
 
-  function tr(key, fallback, options) {
-    return typeof globalThis.t === 'function' ? globalThis.t(key, options) : fallback;
-  }
+  function tr(key, options) { return globalThis.t(key, options); }
 
   const api = {
     async get(url) {

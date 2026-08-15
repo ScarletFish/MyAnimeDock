@@ -10,9 +10,7 @@
   let watchStatsVersion = 0;
   let _wsTooltip = null;
 
-  function tr(key, fallback, options) {
-    return typeof globalThis.t === 'function' ? globalThis.t(key, options) : fallback;
-  }
+  function tr(key, options) { return globalThis.t(key, options); }
 
   const api = {
     async get(url) {

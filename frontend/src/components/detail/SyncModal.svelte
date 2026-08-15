@@ -10,9 +10,7 @@
   let state = $state('idle'); // idle | searching | fetching | results | empty | failed
   let results = $state([]);
 
-  function tr(key, fallback, options) {
-    return typeof globalThis.t === 'function' ? globalThis.t(key, options) : fallback;
-  }
+  function tr(key, options) { return globalThis.t(key, options); }
 
   const api = {
     async post(url, data) {

@@ -13,9 +13,7 @@
   import { showToast } from './Toast.svelte';
 
   // i18n 辅助：现有全局 t() 可用则用之，否则回退文案
-  function tr(key, fallback) {
-    return typeof globalThis.t === 'function' ? globalThis.t(key) : fallback;
-  }
+  function tr(key) { return globalThis.t(key); }
 
   // ─── 自包含 API 封装（不复用全局 API）───
   const api = {

@@ -21,9 +21,7 @@
   const timers = new Map();
 
   // i18n 辅助：现有全局 t() 可用则用之，否则回退文案
-  function tr(key, fallback) {
-    return typeof globalThis.t === 'function' ? globalThis.t(key) : fallback;
-  }
+  function tr(key) { return globalThis.t(key); }
 
   // ─── showToast(msg, type, opts) ───
   //   msg  – string，或 { title, desc? }

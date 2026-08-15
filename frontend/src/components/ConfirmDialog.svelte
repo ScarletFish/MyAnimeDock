@@ -5,9 +5,7 @@
   const confirmStore = writable(null);
 
   // i18n 辅助
-  function tr(key, fallback) {
-    return typeof globalThis.t === 'function' ? globalThis.t(key) : fallback;
-  }
+  function tr(key) { return globalThis.t(key); }
 
   /**
    * 显示确认弹窗，返回 Promise<boolean>

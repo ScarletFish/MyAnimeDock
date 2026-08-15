@@ -35,9 +35,7 @@
   import { ANILIST_TAG_DATA } from '../lib/tag-data.js';
 
   // ─── i18n 辅助（复用全局 t()，回退文案）───
-  function tr(key, fallback, options) {
-    return typeof globalThis.t === 'function' ? globalThis.t(key, options) : fallback;
-  }
+  function tr(key, options) { return globalThis.t(key, options); }
 
   // ─── API 辅助（自包含，不复用全局 API）───
   const api = {

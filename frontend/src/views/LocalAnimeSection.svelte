@@ -17,9 +17,7 @@
   } = $props();
 
   // ─── i18n 辅助（复用全局 t()，回退文案）───
-  function tr(key, fallback, options) {
-    return typeof globalThis.t === 'function' ? globalThis.t(key, options) : fallback;
-  }
+  function tr(key, options) { return globalThis.t(key, options); }
 
   // ─── 排序 ───
   let sortMode = $state(localStorage.getItem('librarySort') || 'name');

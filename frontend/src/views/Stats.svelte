@@ -252,7 +252,7 @@
       .range([height, 0]);
 
     svg.append('g')
-      .attr('class')
+      .attr('class', 'grid')
       .call(d3.axisLeft(y).ticks(5).tickSize(-width).tickFormat(''))
       .selectAll('line')
       .attr('stroke', tc.gridLine);
@@ -262,10 +262,10 @@
     const defs = svg.append('defs');
     const gradient = defs.append('linearGradient')
       .attr('id', gradientId)
-      .attr('x1').attr('y1')
-      .attr('x2').attr('y2');
-    gradient.append('stop').attr('offset').attr('stop-color', tc.accent).attr('stop-opacity', 0.4);
-    gradient.append('stop').attr('offset').attr('stop-color', tc.accent).attr('stop-opacity', 0.05);
+      .attr('x1', '0%').attr('y1', '0%')
+      .attr('x2', '100%').attr('y2', '0%');
+    gradient.append('stop').attr('offset', '0%').attr('stop-color', tc.accent).attr('stop-opacity', 0.4);
+    gradient.append('stop').attr('offset', '100%').attr('stop-color', tc.accent).attr('stop-opacity', 0.05);
 
     const area = d3.area()
       .x(d => x(d.label) + x.bandwidth() / 2)
@@ -285,7 +285,6 @@
 
     svg.append('path')
       .datum(months)
-      .attr('fill')
       .attr('stroke', tc.accent)
       .attr('stroke-width', 2.5)
       .attr('d', line);
@@ -293,7 +292,7 @@
     svg.selectAll('.bar')
       .data(months)
       .join('rect')
-      .attr('class')
+      .attr('class', 'bar')
       .attr('x', d => x(d.label))
       .attr('y', d => y(d.minutes))
       .attr('width', x.bandwidth())
@@ -319,7 +318,7 @@
       .attr('y', 0)
       .attr('width', x.bandwidth())
       .attr('height', height)
-      .attr('fill')
+      .attr('fill', 'transparent')
       .on('mousemove', (evt, d) => {
         const hours = (d.minutes / 60).toFixed(1);
         showTooltip(evt, `<b>${d.label}</b><br>${tr('stats.hours', { hours })}`);
@@ -332,8 +331,8 @@
       .selectAll('text')
       .attr('fill', tc.muted)
       .attr('font-family', tc.fontBody)
-      .attr('font-size')
-      .attr('dy');
+      .attr('font-size', '11px')
+      .attr('dy', '0.71em');
     svg.selectAll('.domain').attr('stroke', tc.border);
 
     svg.append('g')
@@ -341,7 +340,7 @@
       .selectAll('text')
       .attr('fill', tc.muted)
       .attr('font-family', tc.fontMono)
-      .attr('font-size');
+      .attr('font-size', '11px');
     svg.selectAll('.domain').attr('stroke', tc.border);
   }
 
@@ -487,19 +486,19 @@
       .on('mouseleave', hideTooltip);
 
     svg.append('text')
-      .attr('text-anchor')
-      .attr('dy')
+      .attr('text-anchor', 'middle')
+      .attr('dy', '0.35em')
       .attr('fill', tc.text)
       .attr('font-family', tc.fontMono)
-      .attr('font-size')
-      .attr('font-weight')
+      .attr('font-size', '12px')
+      .attr('font-weight', '600')
       .text(total);
     svg.append('text')
-      .attr('text-anchor')
-      .attr('dy')
+      .attr('text-anchor', 'middle')
+      .attr('dy', '0.35em')
       .attr('fill', tc.muted)
       .attr('font-family', tc.fontBody)
-      .attr('font-size')
+      .attr('font-size', '12px')
       .text(tr('stats.total'));
   }
 
@@ -620,13 +619,13 @@
 
     group.append('text')
       .each(d => { d.angle = (d.startAngle + d.endAngle) / 2; })
-      .attr('dy')
+      .attr('dy', '0.35em')
       .attr('transform', d => `rotate(${(d.angle * 180 / Math.PI - 90)}) translate(${outerRadius + 12})` + (d.angle > Math.PI ? ' rotate(180)' : ''))
       .attr('text-anchor', d => d.angle > Math.PI ? 'end' : 'start')
       .attr('fill', tc.text)
       .attr('font-family', tc.fontBody)
-      .attr('font-size')
-      .attr('font-weight')
+      .attr('font-size', '12px')
+      .attr('font-weight', '600')
       .text(d => tagZh(tags[d.index]));
   }
 

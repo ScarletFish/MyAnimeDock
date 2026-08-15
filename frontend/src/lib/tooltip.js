@@ -85,3 +85,50 @@
     el.style.top = top + 'px';
   }
 })();
+
+// ─── Sidebar floating tooltip ───
+(function() {
+  var tip = document.getElementById('sidebarTooltip');
+  if (!tip) return;
+  var textEl = document.getElementById('sidebarTooltipText');
+  var btns = document.querySelectorAll('.sidebar-brand, .sidebar-nav .nav-btn, .sidebar-bottom .nav-btn');
+  var hideTimer = null;
+  var showTimer = null;
+
+  function showTip(btn) {
+    if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+    var label = btn.getAttribute('data-tip');
+    if (!label) return;
+    textEl.textContent = label;
+    var br = btn.getBoundingClientRect();
+    tip.style.top = (br.top + br.height / 2) + 'px';
+    tip.classList.add('is-visible');
+  }
+
+  function scheduleShow(btn) {
+    if (showTimer) clearTimeout(showTimer);
+    showTimer = setTimeout(function() { showTip(btn); }, 400);
+  }
+
+  function cancelShow() {
+    if (showTimer) { clearTimeout(showTimer); showTimer = null; }
+  }
+
+  function hideTip() {
+    cancelShow();
+    hideTimer = setTimeout(function() {
+      tip.classList.remove('is-visible');
+    }, 120);
+  }
+
+  btns.forEach(function(btn) {
+    btn.addEventListener('mouseenter', function() { scheduleShow(btn); });
+    btn.addEventListener('mouseleave', hideTip);
+  });
+
+  tip.addEventListener('mouseenter', function() {
+    cancelShow();
+    if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+  });
+  tip.addEventListener('mouseleave', hideTip);
+})();

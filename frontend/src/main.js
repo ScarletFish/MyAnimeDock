@@ -10,6 +10,10 @@ import { mylistOpen } from './views/Mylist.svelte';
 import { statsOpen } from './views/Stats.svelte';
 import { detailOpen, openDetail } from './views/Detail.svelte';
 import { metaMatchOpen } from './views/MetaMatch.svelte';
+import { showToast } from './components/Toast.svelte';
+import { loadTheme, loadReduceMotion, applyZoom, applyDetailTitleBg } from './lib/theme.js';
+import { showView } from './lib/router.js';
+import { startGlobalMpvStatus } from './lib/mpv-status.js';
 
 const app = mount(App, {
   target: document.getElementById('app'),
@@ -145,5 +149,62 @@ window.showDetail = (id, fromRect, fromSrc, sourceView) => {
 window.mmOpenModal = () => {
   metaMatchOpen.set(true);
 };
+
+// ─── Init (DOM already ready — modules are deferred) ───
+(async () => {
+  let configCache = null;
+  const onServerOrigin = window.location.origin.startsWith('http');
+  if (onServerOrigin) {
+    try {
+      configCache = await API.get('/api/config');
+      const ai = configCache?.autoImport || {};
+      if (ai.count > 0) {
+        showToast(ai.message, 'success');
+      } else if (!ai.done) {
+        (async function pollStartupNotifs() {
+          for (let i = 0; i < 8; i++) {
+            await new Promise(r => setTimeout(r, 1500));
+            try {
+              const resp = await API.get('/api/notifications');
+              const notifs = resp.notifications || [];
+              for (const n of notifs) {
+                if (n.type === 'auto_import') {
+                  showToast(n.message, 'success');
+                  return;
+                }
+              }
+            } catch (_) { return; }
+          }
+        })();
+      }
+    } catch (_) {}
+  }
+  loadTheme(configCache);
+  loadReduceMotion(configCache);
+  applyZoom(configCache?.uiScale || 1);
+  applyDetailTitleBg();
+  showView('library');
+  startGlobalMpvStatus();
+
+  if (configCache?.firstRun) {
+    if (typeof window.showOnboarding === 'function') window.showOnboarding();
+  }
+
+  // Handle Bangumi OAuth redirect result
+  const params = new URLSearchParams(window.location.search);
+  const authResult = params.get('bangumi_auth');
+  if (authResult === 'success') {
+    showToast(t('app.bangumiBindSuccessRedirect'), 'success');
+    if (typeof refreshBangumiAuthStatus === 'function') refreshBangumiAuthStatus();
+    window.history.replaceState({}, '', window.location.pathname);
+  } else if (authResult === 'denied') {
+    showToast(t('app.bangumiAuthDenied'), 'error');
+    window.history.replaceState({}, '', window.location.pathname);
+  } else if (authResult === 'error') {
+    const errMsg = params.get('bangumi_auth_msg') || t('app.authRedirectMsgError');
+    showToast(t('app.bangumiBindFailed', { error: errMsg }), 'error');
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+})();
 
 export default app;

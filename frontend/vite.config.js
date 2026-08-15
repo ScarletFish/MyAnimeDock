@@ -11,7 +11,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const JS_FILES = [
   'i18n-zh.js', 'i18n.js', 'tag-data.js', 'state.js', 'debug.js', 'ui.js', 'api.js',
   'utils.js', 'toast.js',
-  'app.js', 'keyboard.js',
+  'keyboard.js',
 ].map(f => resolve(__dirname, 'src/js', f));
 
 function concatJsPlugin() {

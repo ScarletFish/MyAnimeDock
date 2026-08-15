@@ -90,58 +90,57 @@ function serveImage(filePath: string, url: string, res: any, noCache = false): v
   const w = parseInt(params.get('w') ?? '');
   const q = parseInt(params.get('q') ?? '') || 75;
   const cacheCtrl = noCache ? 'no-cache' : 'public, max-age=86400';
-  if (w && ffmpegPath && fs.existsSync(ffmpegPath) && fs.existsSync(filePath)) {
+  if (w && ffmpegPath && fs.existsSync(ffmpegPath)) {
     const ext = path.extname(filePath) || '.jpg';
     const cacheDir = path.join(path.dirname(filePath), '.resized');
     const cacheName = `thumb_${w}_q${q}_${path.basename(filePath)}`;
     const cachePath = path.join(cacheDir, cacheName);
 
-    if (fs.existsSync(cachePath)) {
-      fs.readFile(cachePath, (e2, d2) => {
-        if (e2) { serveRaw(filePath, res, noCache); return; }
+    const onCacheHit = () => {
+      const stream = fs.createReadStream(cachePath);
+      stream.on('error', () => serveRaw(filePath, res, noCache));
+      stream.on('open', () => {
         res.writeHead(200, {
           'Content-Type': mime[ext] || 'application/octet-stream',
           'Cache-Control': cacheCtrl,
         });
-        res.end(d2);
       });
-      return;
-    }
+      stream.on('data', (chunk: Buffer) => { res.write(chunk); });
+      stream.on('end', () => { res.end(); });
+    };
 
-    if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
-    const ffq = Math.max(2, Math.min(31, Math.round(2 + (31 - 2) * (100 - q) / 100)));
-    let done = false;
-    try {
-      const ff = spawn(ffmpegPath, [
-        '-i', filePath,
-        '-vf', `scale=${w}:-1`,
-        '-q:v', String(ffq),
-        '-y', cachePath,
-        '-loglevel', 'error',
-      ]);
-      ff.on('close', (code) => {
-        if (done) return; done = true;
-        if (code === 0 && fs.existsSync(cachePath)) {
-          fs.readFile(cachePath, (e2, d2) => {
-            if (e2) { serveRaw(filePath, res, noCache); return; }
-            res.writeHead(200, {
-              'Content-Type': mime[ext] || 'application/octet-stream',
-              'Cache-Control': cacheCtrl,
-            });
-            res.end(d2);
+    fs.stat(cachePath, (statErr) => {
+      if (!statErr) { onCacheHit(); return; }
+
+      fs.mkdir(cacheDir, { recursive: true }, () => {
+        const ffq = Math.max(2, Math.min(31, Math.round(2 + (31 - 2) * (100 - q) / 100)));
+        let done = false;
+        try {
+          const ff = spawn(ffmpegPath, [
+            '-i', filePath,
+            '-vf', `scale=${w}:-1`,
+            '-q:v', String(ffq),
+            '-y', cachePath,
+            '-loglevel', 'error',
+          ]);
+          ff.on('close', (code) => {
+            if (done) return; done = true;
+            if (code === 0) {
+              onCacheHit();
+            } else {
+              serveRaw(filePath, res, noCache);
+            }
           });
-        } else {
+          ff.on('error', () => {
+            if (done) return; done = true;
+            serveRaw(filePath, res, noCache);
+          });
+        } catch (e) {
+          if (done) return; done = true;
           serveRaw(filePath, res, noCache);
         }
       });
-      ff.on('error', () => {
-        if (done) return; done = true;
-        serveRaw(filePath, res, noCache);
-      });
-    } catch (e) {
-      if (done) return; done = true;
-      serveRaw(filePath, res, noCache);
-    }
+    });
     return;
   }
 
@@ -149,14 +148,19 @@ function serveImage(filePath: string, url: string, res: any, noCache = false): v
 }
 
 function serveRaw(filePath: string, res: any, noCache = false): void {
-  fs.readFile(filePath, (e, d) => {
-    if (e) { res.writeHead(404); res.end('Not found'); return; }
+  const stream = fs.createReadStream(filePath);
+  stream.on('error', () => {
+    res.writeHead(404);
+    res.end('Not found');
+  });
+  stream.on('open', () => {
     res.writeHead(200, {
       'Content-Type': mime[path.extname(filePath).toLowerCase()] || 'application/octet-stream',
       'Cache-Control': noCache ? 'no-cache' : 'public, max-age=86400',
     });
-    res.end(d);
   });
+  stream.on('data', (chunk: Buffer) => { res.write(chunk); });
+  stream.on('end', () => { res.end(); });
 }
 
 // --- JSON body parser ---

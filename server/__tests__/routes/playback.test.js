@@ -323,7 +323,7 @@ describe('playback route handlers', () => {
       try {
         const state = mockState();
         const req = mockReq({ url: '/api/thumbnail?path=' + encodeURIComponent(tmpFile) + '&time=mid' });
-        const rawRes = { _status: null, _body: null, writeHead(s) { this._status = s; }, end(b) { this._body = b; } };
+        const rawRes = { _status: null, _body: null, _chunks: [], writeHead(s) { this._status = s; }, write(c) { this._chunks.push(c); return true; }, end(b) { if (b !== undefined && b !== null) this._body = b; else if (this._chunks.length) this._body = Buffer.concat(this._chunks.map(c => typeof c === 'string' ? Buffer.from(c) : c)); } };
         playback.handleThumbnail(req, rawRes, state);
         await new Promise(r => setTimeout(r, 50));
         assert.strictEqual(rawRes._status, 200);

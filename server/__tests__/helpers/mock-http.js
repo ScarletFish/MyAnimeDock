@@ -11,6 +11,8 @@
  *   res._headers — response headers object
  */
 function mockRes() {
+  const chunks = [];
+  const _listeners = {};
   return {
     _status: null,
     _body: null,
@@ -20,8 +22,29 @@ function mockRes() {
       this._headers = headers;
       return this;
     },
+    write(chunk) {
+      chunks.push(chunk);
+      return true;
+    },
+    on(event, fn) {
+      if (!_listeners[event]) _listeners[event] = [];
+      _listeners[event].push(fn);
+      return this;
+    },
+    emit(event, ...args) {
+      for (const fn of (_listeners[event] || [])) fn(...args);
+    },
     end(body) {
-      this._body = body ? JSON.parse(body) : null;
+      if (body !== undefined && body !== null) {
+        if (typeof body === 'string') {
+          try { this._body = JSON.parse(body); } catch { this._body = body; }
+        } else {
+          this._body = body;
+        }
+      } else if (chunks.length > 0) {
+        const buf = Buffer.concat(chunks.map(c => typeof c === 'string' ? Buffer.from(c) : c));
+        try { this._body = JSON.parse(buf.toString()); } catch { this._body = buf; }
+      }
       return this;
     },
   };

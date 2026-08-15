@@ -39,7 +39,7 @@
   let coverSrc = $derived.by(() => {
     const coverPath = item?.meta?.localCover || item?.localCover || item?.coverUrl;
     if (!coverPath) return '';
-    return coverPath.startsWith('http') ? coverPath : '/covers/' + basename(coverPath);
+    return coverPath.startsWith('http') ? coverPath : '/covers/' + basename(coverPath) + '?w=400&q=75';
   });
   let coverAlt = $derived(item?.meta?.bangumiTitle || item?.title || tr('metamatch.coverAlt', '作品封面'));
   let coverInitial = $derived((item?.title || '?')[0].toUpperCase());

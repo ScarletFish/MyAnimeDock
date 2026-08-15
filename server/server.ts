@@ -146,9 +146,17 @@ function handleCoverImage(req: any, res: any, _state: any) {
 function handleBannerImage(req: any, res: any, _state: any) {
   const urlPath = new URL(req.url, 'http://localhost').pathname;
   const bannerPath = path.join(DATA_DIR, decodeURIComponent(urlPath));
-  console.log(`[BANNER] req=${req.url} → path=${bannerPath} exists=${fs.existsSync(bannerPath)}`);
-  // no-cache：banner 可能被重新下载修复，避免浏览器缓存损坏图
-  serveImage(bannerPath, req.url, res, true);
+  fs.stat(bannerPath, (err, stats) => {
+    if (err) { serveImage(bannerPath, req.url, res, true); return; }
+    const etag = `"${stats.size}-${stats.mtimeMs}"`;
+    if (req.headers['if-none-match'] === etag) {
+      res.writeHead(304);
+      res.end();
+      return;
+    }
+    res.setHeader('ETag', etag);
+    serveImage(bannerPath, req.url, res, true);
+  });
 }
 
 // ── SSE: mpv-status 事件推送 ──

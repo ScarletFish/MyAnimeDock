@@ -74,6 +74,7 @@
   let detailSourceView = $state('library');
   let enterActive = $state(false);
   let showContent = $state(false);
+  let detailReady = $state(false); // 数据+DOM就绪后才 true，控制视图可见性
   let bannerFailed = $state(false);
   let coverFailed = $state(false);
   let tagsExpanded = $state(false);
@@ -184,11 +185,17 @@
       coverFailed = false;
       tagsExpanded = false;
       enterActive = true;
-      await tick(); // 让浏览器绘制 opacity:0 中间态，且子组件内容已进 DOM
-      await nextFrame(); // 确保 opacity:0 已真实绘制（tick 不保证 paint），transition 才有 before-change
+      await tick(); // Svelte 渲染 DOM，img 进 DOM 开始加载
+      detailReady = true; // DOM 就绪，显示视图（与旧版 showView 时序一致）
+      await tick(); // 等 detailReady 的 DOM 更新 flush，Flip.getState 才能拿到正确布局
       if (fromRect) {
+        // 从卡片点击进入：hero flip 动画接管 cover 可见性
         animateHeroCoverFlip(fromRect, fromSrc);
       } else {
+        // 直接进入（仪表盘/搜索等）：cover 立即可见（内联样式覆盖 CSS class 的 opacity:0），
+        // 与旧版 renderDetail 行为一致——先看到内容，图片后台渐进加载。
+        const wrap = document.getElementById('svelte-detailCover');
+        if (wrap) { wrap.style.opacity = '1'; wrap.style.transform = 'scale(1)'; }
         setEntranceDelays(0.04, 0);
         showContent = true;
       }
@@ -492,18 +499,19 @@
 
     // 入场：新内容从反方向滑入，与原有分波淡入叠加
     enterActive = true;
-    await tick(); // 绘制 opacity:0 中间态 + 子组件内容进 DOM
+    await tick(); // Svelte 渲染 DOM，img 进 DOM 开始加载
+    detailReady = true; // DOM 就绪，显示视图（slideToAnime 是切番，页面本来就是可见的）
+    // cover 立即可见（内联样式覆盖 CSS class 的 opacity:0），与旧版行为一致
+    const wrap = document.getElementById('svelte-detailCover');
+    if (wrap) { wrap.style.opacity = '1'; wrap.style.transform = 'scale(1)'; }
     const incoming = Array.from(document.querySelectorAll('.detail-content, .detail-banner-bg'));
     const fromX = direction === 'prev' ? -40 : 40;
     if (gsap && !reduceMotion && incoming.length) {
-      // from 态必须在绘制前设置：隔帧后再 reveal，CSS transition 才有 before-change
       gsap.set(incoming, {
         x: (i, el) => el.classList.contains('detail-banner-bg') ? fromX * 0.6 : fromX,
       });
     }
-    await nextFrame(); // 双 rAF：确保隐藏态（含 GSAP 偏移）已真实绘制，transition 才有 before-change
-    // 恢复 section 可见性，与 reveal 同一同步块：此刻新内容仍处隐藏态（enter-active），
-    // 下一帧起 gsap.to + showContent 同步播放入场，中间不会出现「可见态」帧。
+    // 恢复 section 可见性
     if (detailSection) detailSection.style.visibility = '';
     if (gsap && !reduceMotion && incoming.length) {
       gsap.to(incoming, { x: 0, duration: 0.28, ease: 'power2.out' });
@@ -554,6 +562,7 @@
       .forEach((el) => { el.style.transition = 'none'; el.style.transitionDelay = ''; });
     enterActive = false;
     showContent = false;
+    detailReady = false;
     const hero = document.getElementById('svelte-heroCover');
     if (hero) hero.remove();
     const wrap = document.getElementById('svelte-detailCover');
@@ -695,7 +704,7 @@
 <section
   class="view"
   id="svelte-detailView"
-  class:hidden={!$detailOpen}
+  class:hidden={!$detailOpen || !detailReady}
   class:detail-enter-active={enterActive}
   class:show-content={showContent}
   class:detail-no-banner={noBanner}

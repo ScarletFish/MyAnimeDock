@@ -1,13 +1,12 @@
 <script module>
-  // ─── Svelte 版 Toast（复用现有 toast.css 类名，视觉与 vanilla 版一致）───
-  // 迁移期间与 frontend/src/js/toast.js 共存；后续视图迁移后替换。
+  // ─── Svelte 版 Toast（复用现有 toast.css 类名）───
   import { writable } from 'svelte/store';
 
   // 共享 toast 列表（跨组件通信）
   export const toasts = writable([]);
   let idCounter = 0;
 
-  // SVG 图标（与 toast.js 一致）
+  // SVG 图标
   const TOAST_ICONS = {
     success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>',
     error:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',

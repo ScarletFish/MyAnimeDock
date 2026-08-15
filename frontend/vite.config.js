@@ -9,8 +9,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Source files in load order (mirrors src/main.js)
 const JS_FILES = [
-  'state.js', 'debug.js', 'ui.js', 'api.js',
-  'utils.js', 'toast.js',
+  'state.js', 'debug.js', 'api.js',
+  'utils.js',
   'keyboard.js',
 ].map(f => resolve(__dirname, 'src/js', f));
 

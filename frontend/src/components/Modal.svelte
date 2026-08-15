@@ -1,6 +1,5 @@
 <script>
-  // ─── Svelte 版 Modal（复用现有 modals.css 类名，视觉与 vanilla 版一致）───
-  // 迁移期间与 frontend/src/js/ui.js 的 openModal/closeModal 共存。
+  // ─── Svelte 版 Modal（复用现有 modals.css 类名）───
   let {
     open = $bindable(false),   // 受控开关（父组件 bind:open）
     title = '',                // 可选标题（渲染 modal-header）

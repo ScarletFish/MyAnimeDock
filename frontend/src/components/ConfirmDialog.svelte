@@ -1,5 +1,5 @@
 <script module>
-  // ─── 独立确认弹窗（替代 toast.js 的 showConfirm + 各视图桥接函数）───
+  // ─── 独立确认弹窗 ───
   import { writable, get } from 'svelte/store';
 
   const confirmStore = writable(null);

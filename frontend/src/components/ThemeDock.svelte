@@ -105,7 +105,7 @@
   // ─── Bridge for Settings.svelte ───
   window.openVisualDock = () => {
     // Close settings modal first, then open dock
-    if (typeof window.closeModal === 'function') window.closeModal('settingsModal');
+    if (typeof window.closeSettings === 'function') window.closeSettings();
     openDock();
   };
 </script>

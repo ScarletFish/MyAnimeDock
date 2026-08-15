@@ -80,6 +80,10 @@ window.openSettings = () => {
   return Promise.resolve();
 };
 
+window.closeSettings = () => {
+  settingsOpen.set(false);
+};
+
 // ─── 桥接：search.js 仍调用 switchSettingsTab(btn, tab) 打开指定标签页 ───
 // 兼容旧签名（btn 参数忽略），路由到 Svelte 版 Settings 的 settingsTab store。
 window.switchSettingsTab = (btn, tab) => {

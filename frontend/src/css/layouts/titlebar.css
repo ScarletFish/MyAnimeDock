@@ -1,4 +1,10 @@
 /* ─── Title Bar ─── */
+/* #chrome 是 titlebar 的 Svelte 挂载外层：titlebar 包一层后 flex item 变成 #chrome，
+   不加 flex-shrink:0 高度会被压塌。 */
+#chrome {
+  flex-shrink: 0;
+}
+
 #titlebar {
   position: relative;
   z-index: 200;

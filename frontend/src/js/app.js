@@ -177,9 +177,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   showView('library');
   startGlobalMpvStatus();
 
-  // First-run: show onboarding overlay (defined in onboarding.js)
+  // First-run: show onboarding overlay (Svelte Chrome 组件)
   if (configCache?.firstRun) {
-    if (typeof showOnboarding === 'function') showOnboarding();
+    if (typeof window.showOnboarding === 'function') window.showOnboarding();
   }
 
   // Handle Bangumi OAuth redirect result

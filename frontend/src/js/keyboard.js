@@ -1,8 +1,8 @@
 // Global keyboard navigation — number keys, /, ?, Esc
 // ES module：模块级副作用在 import 时执行（等价原 IIFE 自初始化）。
+import { focusSearch } from '../components/chrome/SearchBar.svelte';
 
 const helpOverlay = document.getElementById('kbdHelpOverlay');
-const searchInput = document.getElementById('globalSearchInput');
 
 export function toggleHelp() {
   if (!helpOverlay) return;
@@ -53,7 +53,7 @@ document.addEventListener('keydown', function (e) {
       // Only activate when not already typing in an input
       if (tag !== 'INPUT' && tag !== 'TEXTAREA') {
         e.preventDefault();
-        if (searchInput) { searchInput.focus(); searchInput.select(); }
+        focusSearch();
       }
       break;
     case '?':

@@ -1,5 +1,8 @@
 import { mount } from 'svelte';
 import App from './App.svelte';
+import Chrome from './components/chrome/Chrome.svelte';
+import { titlebarContext } from './components/chrome/Titlebar.svelte';
+import { onboardingOpen } from './components/chrome/Onboarding.svelte';
 import { settingsOpen, settingsTab } from './views/Settings.svelte';
 import { discoveryOpen } from './views/Discovery.svelte';
 import { libraryOpen } from './views/Library.svelte';
@@ -11,6 +14,24 @@ import { metaMatchOpen } from './views/MetaMatch.svelte';
 const app = mount(App, {
   target: document.getElementById('app'),
 });
+
+// ─── Chrome 挂载：titlebar + onboarding（body 第一个子级 #chrome）───
+// 与 App 并列，独立挂载点，互不影响。
+mount(Chrome, {
+  target: document.getElementById('chrome'),
+});
+
+// ─── 桥接：vanilla app.js/detail.js 仍调用 window.setTitlebarContext(mode, title) ───
+// 路由到 Svelte 版 Titlebar 的 titlebarContext store（驱动品牌/详情上下文切换）。
+window.setTitlebarContext = (mode, title) => {
+  titlebarContext.set({ mode, title });
+};
+
+// ─── 桥接：vanilla app.js 首启检测调用 window.showOnboarding() ───
+// 路由到 Svelte 版 Onboarding 的 onboardingOpen store。
+window.showOnboarding = () => {
+  onboardingOpen.set(true);
+};
 
 // ─── 渐进迁移路由表 ───
 // SVELTE_VIEWS[v] = true 表示该视图已由 Svelte 接管（vanilla 不再渲染/切换它）。

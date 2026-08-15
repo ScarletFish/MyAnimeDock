@@ -1,33 +1,28 @@
-/**
- * Pure utility functions for testing.
- * These are extracted from ui.js and other modules for unit testing.
- */
-
 // ─── XSS 防护 ───
 
-function escHtml(s) {
+export function escHtml(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-function escAttr(s) {
+export function escAttr(s) {
   return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 // ─── 路径工具 ───
 
-function basename(p) {
+export function basename(p) {
   if (!p) return '';
   return p.split(/[\\/]/).pop();
 }
 
-function dirname(p) {
+export function dirname(p) {
   if (!p) return '';
   const parts = p.split(/[\\/]/);
   parts.pop();
   return parts.join('/') || parts.join('\\') || '.';
 }
 
-function extname(p) {
+export function extname(p) {
   if (!p) return '';
   const base = basename(p);
   const dotIndex = base.lastIndexOf('.');
@@ -36,33 +31,33 @@ function extname(p) {
 
 // ─── 字符串工具 ───
 
-function normalizeSearchText(text) {
+export function normalizeSearchText(text) {
   return String(text)
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // Remove diacritics
+    .replace(/[\u0300-\u036f]/g, '')
     .trim();
 }
 
-function truncate(str, maxLength, suffix = '...') {
+export function truncate(str, maxLength, suffix = '...') {
   if (!str || str.length <= maxLength) return str || '';
   return str.slice(0, maxLength - suffix.length) + suffix;
 }
 
 // ─── 数字工具 ───
 
-function clamp(value, min, max) {
+export function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
 
-function formatFileSize(bytes) {
+export function formatFileSize(bytes) {
   if (bytes === 0) return '0 B';
   const units = ['B', 'KB', 'MB', 'GB', 'TB'];
   const i = Math.floor(Math.log(bytes) / Math.log(1024));
   return (bytes / Math.pow(1024, i)).toFixed(1) + ' ' + units[i];
 }
 
-function formatDuration(seconds) {
+export function formatDuration(seconds) {
   if (!seconds || seconds < 0) return '0:00';
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
@@ -75,14 +70,14 @@ function formatDuration(seconds) {
 
 // ─── 日期工具 ───
 
-function formatDate(date) {
+export function formatDate(date) {
   if (!date) return '';
   const d = new Date(date);
   if (isNaN(d.getTime())) return '';
   return d.toISOString().split('T')[0];
 }
 
-function formatDateTime(date) {
+export function formatDateTime(date) {
   if (!date) return '';
   const d = new Date(date);
   if (isNaN(d.getTime())) return '';
@@ -97,7 +92,7 @@ function formatDateTime(date) {
  * @param {string} dateStr - Date string in YYYY-MM-DD or YYYY/MM/DD format
  * @returns {'spring'|'summer'|'autumn'|'winter'|null}
  */
-function getAnimeSeason(dateStr) {
+export function getAnimeSeason(dateStr) {
   if (!dateStr || typeof dateStr !== 'string') return null;
   const match = dateStr.match(/^(\d{4})[-/](\d{1,2})/);
   if (!match) return null;
@@ -116,7 +111,7 @@ function getAnimeSeason(dateStr) {
  * @param {number} ttlMs - 过期时间（毫秒）
  * @returns {{ get: () => any, set: (data: any) => void, clear: () => void }}
  */
-function createTimedCache(ttlMs) {
+export function createTimedCache(ttlMs) {
   let _data = null, _ts = 0;
   return {
     get() { return (Date.now() - _ts < ttlMs) ? _data : null; },
@@ -131,7 +126,7 @@ function createTimedCache(ttlMs) {
  * @param {number} ttlMs - 过期时间（毫秒）
  * @returns {{ get: (key: string) => any, set: (key: string, data: any) => void, clear: (key?: string) => void }}
  */
-function createTimedCacheMap(ttlMs) {
+export function createTimedCacheMap(ttlMs) {
   const _map = new Map();
   return {
     get(key) {
@@ -141,27 +136,5 @@ function createTimedCacheMap(ttlMs) {
     },
     set(key, data) { _map.set(key, { data, ts: Date.now() }); },
     clear(key) { if (key) _map.delete(key); else _map.clear(); },
-  };
-}
-
-// ─── 导出（用于测试） ───
-
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = {
-    escHtml,
-    escAttr,
-    basename,
-    dirname,
-    extname,
-    normalizeSearchText,
-    truncate,
-    clamp,
-    formatFileSize,
-    formatDuration,
-    formatDate,
-    formatDateTime,
-    getAnimeSeason,
-    createTimedCache,
-    createTimedCacheMap,
   };
 }

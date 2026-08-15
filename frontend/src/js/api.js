@@ -1,5 +1,5 @@
 // API helper functions
-const API = {
+export const API = {
   async get(url) {
     const res = await fetch(url);
     if (!res.ok) throw new Error(await res.text());

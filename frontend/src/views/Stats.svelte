@@ -260,10 +260,10 @@
     const defs = svg.append('defs');
     const gradient = defs.append('linearGradient')
       .attr('id', gradientId)
-      .attr('x1', '0%').attr('y1', '0%')
-      .attr('x2', '100%').attr('y2', '0%');
-    gradient.append('stop').attr('offset', '0%').attr('stop-color', tc.accent).attr('stop-opacity', 0.4);
-    gradient.append('stop').attr('offset', '100%').attr('stop-color', tc.accent).attr('stop-opacity', 0.05);
+      .attr('x1', '0').attr('y1', '0')
+      .attr('x2', '0').attr('y2', '1');
+    gradient.append('stop').attr('offset', '0%').attr('stop-color', tc.accent).attr('stop-opacity', 0.35);
+    gradient.append('stop').attr('offset', '100%').attr('stop-color', tc.accent).attr('stop-opacity', 0.12);
 
     const area = d3.area()
       .x(d => x(d.label) + x.bandwidth() / 2)
@@ -485,18 +485,18 @@
 
     svg.append('text')
       .attr('text-anchor', 'middle')
-      .attr('dy', '0.35em')
+      .attr('dy', '-0.15em')
       .attr('fill', tc.text)
       .attr('font-family', tc.fontMono)
-      .attr('font-size', '12px')
-      .attr('font-weight', '600')
+      .attr('font-size', '1.5rem')
+      .attr('font-weight', '700')
       .text(total);
     svg.append('text')
       .attr('text-anchor', 'middle')
-      .attr('dy', '0.35em')
+      .attr('dy', '1.5em')
       .attr('fill', tc.muted)
       .attr('font-family', tc.fontBody)
-      .attr('font-size', '12px')
+      .attr('font-size', '0.938rem')
       .text(tr('stats.total'));
   }
 

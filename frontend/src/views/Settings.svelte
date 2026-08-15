@@ -13,6 +13,7 @@
 <script>
   import { onMount } from 'svelte';
   import { showToast } from '../components/Toast.svelte';
+  import { showConfirm } from '../components/ConfirmDialog.svelte';
 
   // ─── i18n 辅助（复用全局 t()，回退文案）───
   function tr(key, fallback, options) {
@@ -579,7 +580,7 @@
   async function dbRestore(input) {
     const file = input.files[0];
     if (!file) return;
-    const confirmed = await globalThis.showConfirm(tr('app.confirmRestoreBackup', '确认恢复该备份？'));
+    const confirmed = await showConfirm(tr('app.confirmRestoreBackup', '确认恢复该备份？'));
     if (!confirmed) {
       input.value = '';
       return;
@@ -610,7 +611,7 @@
   }
 
   async function dbClearSessions() {
-    const confirmed = await globalThis.showConfirm(tr('app.confirmClearSessions', '确认清除所有播放记录？'));
+    const confirmed = await showConfirm(tr('app.confirmClearSessions', '确认清除所有播放记录？'));
     if (!confirmed) return;
     try {
       const res = await api.post('/api/db/clear-sessions', {});
@@ -624,7 +625,7 @@
   }
 
   async function dbVacuum() {
-    const confirmed = await globalThis.showConfirm(tr('app.confirmVacuum', '确认优化数据库？'));
+    const confirmed = await showConfirm(tr('app.confirmVacuum', '确认优化数据库？'));
     if (!confirmed) return;
     try {
       const res = await api.post('/api/db/vacuum', {});
@@ -639,9 +640,9 @@
   }
 
   async function dbReset() {
-    const step1 = await globalThis.showConfirm(tr('app.confirmResetDbStep1', '确认重置数据库？此操作不可撤销。'));
+    const step1 = await showConfirm(tr('app.confirmResetDbStep1', '确认重置数据库？此操作不可撤销。'));
     if (!step1) return;
-    const step2 = await globalThis.showConfirm(tr('app.confirmResetDbStep2', '再次确认：将清空所有动漫数据、播放记录和列表。'));
+    const step2 = await showConfirm(tr('app.confirmResetDbStep2', '再次确认：将清空所有动漫数据、播放记录和列表。'));
     if (!step2) return;
     try {
       const res = await api.post('/api/db/reset', {});
@@ -658,7 +659,7 @@
 
   async function dbClearCache(target) {
     const label = { thumbs: tr('app.cacheLabelThumbs', '缩略图'), covers: tr('app.cacheLabelCovers', '封面'), banners: tr('app.cacheLabelBanners', '横幅'), all: tr('app.cacheLabelAll', '全部') }[target] || target;
-    const confirmed = await globalThis.showConfirm(tr('app.confirmClearCache', '确认清除{label}缓存？', { label }));
+    const confirmed = await showConfirm(tr('app.confirmClearCache', '确认清除{label}缓存？', { label }));
     if (!confirmed) return;
     try {
       const res = await api.post('/api/db/clear-cache', { target: target === 'all' ? undefined : target });

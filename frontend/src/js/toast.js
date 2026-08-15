@@ -1,40 +1,5 @@
 // Toast + confirm (搬移自 app.js —— 零逻辑改动)
 
-// ─── Modal confirm (replaces window.confirm, works in Tauri too) ───
-function showConfirm(message) {
-  return new Promise(resolve => {
-    const overlay = document.createElement('div');
-    overlay.className = 'modal-overlay';
-    overlay.style.zIndex = '9999';
-    overlay.innerHTML = `
-      <div class="modal" style="max-width:380px;padding:var(--space-6) var(--space-8) var(--space-5)">
-        <p style="margin:0 0 18px;line-height:1.7;font-size:15px;text-align:left" class="text-content">${message}</p>
-        <div class="modal-actions flex items-center justify-between">
-          <button class="btn btn-ghost confirm-cancel min-w-[80px]">${t('common.cancel')}</button>
-          <button class="btn btn-danger confirm-ok min-w-[80px]">${t('common.confirm')}</button>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(overlay);
-
-    // Trigger show transition
-    requestAnimationFrame(() => overlay.classList.add('show'));
-
-    const close = (result) => {
-      overlay.classList.remove('show');
-      setTimeout(() => overlay.remove(), 200);
-      resolve(result);
-    };
-
-    overlay.addEventListener('click', e => {
-      if (e.target === overlay) close(false);
-    });
-    overlay.querySelector('.confirm-cancel').addEventListener('click', () => close(false));
-    overlay.querySelector('.confirm-ok').addEventListener('click', () => close(true));
-    overlay.querySelector('.confirm-ok').focus();
-  });
-}
-
 // ─── Toast: SVG Icons ───
 const TOAST_ICONS = {
   success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>',
@@ -135,5 +100,4 @@ function formatSize(bytes) {
 
 // ─── ESM exports for cross-module utilities ───
 window.showToast = showToast;
-window.showConfirm = showConfirm;
 window.dismissToast = dismissToast;

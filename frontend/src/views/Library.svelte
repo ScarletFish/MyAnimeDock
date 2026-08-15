@@ -14,6 +14,7 @@
   // 跨视图副作用（showDetail/openStatusModal/showView/mmOpenModal 等）通过 window 桥接现有全局。
   import { onMount, tick } from 'svelte';
   import { showToast } from '../components/Toast.svelte';
+  import { showConfirm } from '../components/ConfirmDialog.svelte';
   import StatusModal from '../components/StatusModal.svelte';
   import ContextMenu from '../components/ContextMenu.svelte';
   import LocalAnimeSection from './LocalAnimeSection.svelte';
@@ -408,11 +409,6 @@
     } catch (e) {
       showToast(tr('mylist.removeFailed', '移除失败：{message}', { message: e.message }), 'error');
     }
-  }
-
-  async function showConfirm(message) {
-    if (typeof window.showConfirm === 'function') return await window.showConfirm(message);
-    return window.confirm(message);
   }
 
   function goDiscovery() {

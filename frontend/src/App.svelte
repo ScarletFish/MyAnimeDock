@@ -5,6 +5,7 @@
   // 视图可见性由 main.js 的 __svelteViewSync 按 SVELTE_VIEWS 路由表驱动。
   import Toast from './components/Toast.svelte';
   import Modal from './components/Modal.svelte';
+  import ConfirmDialog from './components/ConfirmDialog.svelte';
   import Settings from './views/Settings.svelte';
   import Discovery from './views/Discovery.svelte';
   import Library from './views/Library.svelte';
@@ -23,6 +24,7 @@
 <div id="svelte-root" class="svelte-root">
   <Toast />
   <Modal />
+  <ConfirmDialog />
   <Settings />
   <Discovery />
   <Library />

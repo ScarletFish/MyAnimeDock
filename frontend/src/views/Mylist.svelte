@@ -11,6 +11,7 @@
 <script>
   import { onMount, tick } from 'svelte';
   import { showToast } from '../components/Toast.svelte';
+  import { showConfirm } from '../components/ConfirmDialog.svelte';
   import AnimeCard from '../components/AnimeCard.svelte';
   import StatusSection from '../components/StatusSection.svelte';
   import StatusModal from '../components/StatusModal.svelte';
@@ -284,11 +285,6 @@
     } catch (e) {
       showToast(tr('mylist.removeFailed', '移除失败：{message}', { message: e.message }), 'error');
     }
-  }
-
-  async function showConfirm(message) {
-    if (typeof window.showConfirm === 'function') return await window.showConfirm(message);
-    return window.confirm(message);
   }
 
   // ─── 状态弹窗 ───

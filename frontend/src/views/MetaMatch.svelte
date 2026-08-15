@@ -11,6 +11,7 @@
 <script>
   import { onMount } from 'svelte';
   import { showToast } from '../components/Toast.svelte';
+  import { showConfirm } from '../components/ConfirmDialog.svelte';
   import { tr } from '../lib/anime-utils.js';
   import { createSyncStream } from '../lib/sync-stream.js';
   import MetaMatchToolbar from '../components/metamatch/MetaMatchToolbar.svelte';
@@ -34,12 +35,6 @@
       return res.json();
     },
   };
-
-  // ─── 确认弹窗（桥接全局 showConfirm，回退 true）───
-  function showConfirm(message) {
-    if (typeof window.showConfirm === 'function') return window.showConfirm(message);
-    return Promise.resolve(true);
-  }
 
   // ─── 共享状态（$state runes）───
   let items = $state([]);

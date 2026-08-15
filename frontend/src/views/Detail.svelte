@@ -25,6 +25,7 @@
 <script>
   import { onMount, tick } from 'svelte';
   import { showToast } from '../components/Toast.svelte';
+  import { showConfirm } from '../components/ConfirmDialog.svelte';
   import EpisodeHeatmap from '../components/detail/EpisodeHeatmap.svelte';
   import Characters from '../components/detail/Characters.svelte';
   import WatchStats from '../components/detail/WatchStats.svelte';
@@ -61,12 +62,6 @@
   };
 
   const path = { basename(p) { return p ? p.split(/[\\/]/).pop() : ''; } };
-
-  // ─── 确认弹窗（桥接全局 showConfirm，回退 true）───
-  function showConfirm(message) {
-    if (typeof window.showConfirm === 'function') return window.showConfirm(message);
-    return Promise.resolve(true);
-  }
 
   // ─── 状态 ───
   let anime = $state(null);

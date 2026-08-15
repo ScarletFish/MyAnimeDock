@@ -1,6 +1,6 @@
 import { mount } from 'svelte';
 import App from './App.svelte';
-import { settingsOpen } from './views/Settings.svelte';
+import { settingsOpen, settingsTab } from './views/Settings.svelte';
 import { discoveryOpen } from './views/Discovery.svelte';
 import { libraryOpen } from './views/Library.svelte';
 import { mylistOpen } from './views/Mylist.svelte';
@@ -40,8 +40,19 @@ window.__svelteViewSync = (view) => {
 
 // ─── 桥接：index.html 内联 onclick 仍调用 openSettings() ───
 // main.js 是 module（延迟执行），晚于 vanilla 同步脚本，故此处赋值覆盖 vanilla 的 window.openSettings。
-// 使导航栏/库页的「设置」按钮打开 Svelte 版 Settings 组件（vanilla 版保留共存，后续清理）。
-window.openSettings = () => settingsOpen.set(true);
+// 使导航栏/库页的「设置」按钮打开 Svelte 版 Settings 组件。
+// 返回 Promise 以兼容 search.js 的 openSettings().then(...) 调用链。
+window.openSettings = () => {
+  settingsOpen.set(true);
+  return Promise.resolve();
+};
+
+// ─── 桥接：search.js 仍调用 switchSettingsTab(btn, tab) 打开指定标签页 ───
+// 兼容旧签名（btn 参数忽略），路由到 Svelte 版 Settings 的 settingsTab store。
+window.switchSettingsTab = (btn, tab) => {
+  settingsOpen.set(true);
+  settingsTab.set(tab);
+};
 
 // ─── 桥接外部刷新入口到 Svelte discovery ───
 // 保存设置（Settings.svelte:195）和删除动漫（detail.js:998）后调用 refreshDiscovery/loadDiscovery。

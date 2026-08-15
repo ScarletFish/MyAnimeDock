@@ -6,6 +6,8 @@
 
   // 跨组件打开开关：main.js 桥接 window.openSettings → settingsOpen.set(true)
   export const settingsOpen = writable(false);
+  // 跨组件指定初始标签页：main.js 桥接 window.switchSettingsTab → settingsTab.set(tab)
+  export const settingsTab = writable(null);
 </script>
 
 <script>
@@ -86,6 +88,14 @@
       loadSettings();
     } else {
       document.body.style.overflow = '';
+    }
+  });
+
+  // ─── 外部指定初始标签页（search.js 桥接 window.switchSettingsTab）───
+  $effect(() => {
+    if ($settingsTab) {
+      activeTab = $settingsTab;
+      settingsTab.set(null);
     }
   });
 

@@ -10,8 +10,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // Source files in load order (mirrors src/main.js)
 const JS_FILES = [
   'i18n-zh.js', 'i18n.js', 'tag-data.js', 'state.js', 'debug.js', 'ui.js', 'api.js',
-  'utils.js', 'titlebar.js', 'toast.js', 'theme.js', 'dashboard-layout.js',
-  'app.js', 'search.js', 'onboarding.js', 'keyboard.js',
+  'utils.js', 'toast.js', 'theme.js', 'dashboard-layout.js',
+  'app.js', 'keyboard.js',
 ].map(f => resolve(__dirname, 'src/js', f));
 
 function concatJsPlugin() {

@@ -126,7 +126,7 @@
 {#if visible}
   <div class="detail-characters" id="detailCharacters">
     <div class="detail-section-header">
-      <h3>{tr('detail.characters', '角色·声优')}</h3>
+      <h3>{tr('detail.characters')}</h3>
     </div>
     <div class="detail-char-wrap" id="svelte-detailCharWrap" class:expanded={expanded} bind:this={wrapEl}>
       <div class="detail-char-grid" id="svelte-detailCharGrid" bind:this={gridEl}>

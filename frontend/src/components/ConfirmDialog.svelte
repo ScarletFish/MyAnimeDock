@@ -46,10 +46,10 @@
       </p>
       <div class="modal-actions flex items-center justify-between">
         <button class="btn btn-ghost confirm-cancel min-w-[80px]" onclick={() => resolveConfirm(false)}>
-          {tr('common.cancel', '取消')}
+          {tr('common.cancel')}
         </button>
         <button class="btn btn-danger confirm-ok min-w-[80px]" onclick={() => resolveConfirm(true)}>
-          {tr('common.confirm', '确认')}
+          {tr('common.confirm')}
         </button>
       </div>
     </div>

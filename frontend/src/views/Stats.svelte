@@ -252,7 +252,7 @@
       .range([height, 0]);
 
     svg.append('g')
-      .attr('class', 'grid')
+      .attr('class')
       .call(d3.axisLeft(y).ticks(5).tickSize(-width).tickFormat(''))
       .selectAll('line')
       .attr('stroke', tc.gridLine);
@@ -262,10 +262,10 @@
     const defs = svg.append('defs');
     const gradient = defs.append('linearGradient')
       .attr('id', gradientId)
-      .attr('x1', '0').attr('y1', '0')
-      .attr('x2', '0').attr('y2', '1');
-    gradient.append('stop').attr('offset', '0%').attr('stop-color', tc.accent).attr('stop-opacity', 0.4);
-    gradient.append('stop').attr('offset', '100%').attr('stop-color', tc.accent).attr('stop-opacity', 0.05);
+      .attr('x1').attr('y1')
+      .attr('x2').attr('y2');
+    gradient.append('stop').attr('offset').attr('stop-color', tc.accent).attr('stop-opacity', 0.4);
+    gradient.append('stop').attr('offset').attr('stop-color', tc.accent).attr('stop-opacity', 0.05);
 
     const area = d3.area()
       .x(d => x(d.label) + x.bandwidth() / 2)
@@ -285,7 +285,7 @@
 
     svg.append('path')
       .datum(months)
-      .attr('fill', 'none')
+      .attr('fill')
       .attr('stroke', tc.accent)
       .attr('stroke-width', 2.5)
       .attr('d', line);
@@ -293,7 +293,7 @@
     svg.selectAll('.bar')
       .data(months)
       .join('rect')
-      .attr('class', 'bar')
+      .attr('class')
       .attr('x', d => x(d.label))
       .attr('y', d => y(d.minutes))
       .attr('width', x.bandwidth())
@@ -319,10 +319,10 @@
       .attr('y', 0)
       .attr('width', x.bandwidth())
       .attr('height', height)
-      .attr('fill', 'transparent')
+      .attr('fill')
       .on('mousemove', (evt, d) => {
         const hours = (d.minutes / 60).toFixed(1);
-        showTooltip(evt, `<b>${d.label}</b><br>${tr('stats.hours', '{hours} 小时', { hours })}`);
+        showTooltip(evt, `<b>${d.label}</b><br>${tr('stats.hours', { hours })}`);
       })
       .on('mouseleave', hideTooltip);
 
@@ -332,8 +332,8 @@
       .selectAll('text')
       .attr('fill', tc.muted)
       .attr('font-family', tc.fontBody)
-      .attr('font-size', '0.938rem')
-      .attr('dy', '1em');
+      .attr('font-size')
+      .attr('dy');
     svg.selectAll('.domain').attr('stroke', tc.border);
 
     svg.append('g')
@@ -341,7 +341,7 @@
       .selectAll('text')
       .attr('fill', tc.muted)
       .attr('font-family', tc.fontMono)
-      .attr('font-size', '0.938rem');
+      .attr('font-size');
     svg.selectAll('.domain').attr('stroke', tc.border);
   }
 
@@ -410,10 +410,10 @@
       const data = await api.get('/api/stats/seasons');
       const seasons = data.seasons || {};
       const entries = [
-        { key: 'spring', label: tr('stats.spring', '春'), color: '#4ade80' },
-        { key: 'summer', label: tr('stats.summer', '夏'), color: '#facc15' },
-        { key: 'autumn', label: tr('stats.autumn', '秋'), color: '#f97316' },
-        { key: 'winter', label: tr('stats.winter', '冬'), color: '#60a5fa' }
+        { key: 'spring', label: tr('stats.spring'), color: '#4ade80' },
+        { key: 'summer', label: tr('stats.summer'), color: '#facc15' },
+        { key: 'autumn', label: tr('stats.autumn'), color: '#f97316' },
+        { key: 'winter', label: tr('stats.winter'), color: '#60a5fa' }
       ];
       const items = entries.map(e => ({ ...e, count: seasons[e.key] || 0 }));
       const total = items.reduce((s, v) => s + v.count, 0) + (seasons.unknown || 0);
@@ -432,7 +432,7 @@
   }
 
   function seasonLabel(d) {
-    return d.key === 'unknown' ? tr('common.unknown', '未知') : tr('stats.seasonLabel', '{name}季', { name: d.label });
+    return d.key === 'unknown' ? tr('common.unknown') : tr('stats.seasonLabel', { name: d.label });
   }
 
   // season legend derived data（模板专用，依赖 seasonData）
@@ -440,7 +440,7 @@
     if (!seasonData) return [];
     const items = [...seasonData.items];
     if (seasonData.unknown > 0) {
-      items.push({ key: 'unknown', label: tr('common.unknown', '未知'), color: 'var(--fg-muted)', count: seasonData.unknown });
+      items.push({ key: 'unknown', label: tr('common.unknown'), color: 'var(--fg-muted)', count: seasonData.unknown });
     }
     return items.map(d => ({ key: d.key, label: seasonLabel(d), color: d.color, count: d.count }));
   }
@@ -454,7 +454,7 @@
     const data = [...seasonData.items];
     const total = seasonData.total;
     if (seasonData.unknown > 0) {
-      data.push({ key: 'unknown', label: tr('common.unknown', '未知'), color: tc.muted, count: seasonData.unknown });
+      data.push({ key: 'unknown', label: tr('common.unknown'), color: tc.muted, count: seasonData.unknown });
     }
 
     container.innerHTML = '';
@@ -482,25 +482,25 @@
       .style('cursor', 'pointer')
       .on('mousemove', (evt, d) => {
         const pct = total > 0 ? ((d.data.count / total) * 100).toFixed(1) : '0';
-        showTooltip(evt, `<b>${seasonLabel(d.data)}</b><br>${tr('stats.titleCount', '{count} 部 ({pct}%)', { count: d.data.count, pct })}`);
+        showTooltip(evt, `<b>${seasonLabel(d.data)}</b><br>${tr('stats.titleCount', { count: d.data.count, pct })}`);
       })
       .on('mouseleave', hideTooltip);
 
     svg.append('text')
-      .attr('text-anchor', 'middle')
-      .attr('dy', '-0.15em')
+      .attr('text-anchor')
+      .attr('dy')
       .attr('fill', tc.text)
       .attr('font-family', tc.fontMono)
-      .attr('font-size', '1.5rem')
-      .attr('font-weight', '700')
+      .attr('font-size')
+      .attr('font-weight')
       .text(total);
     svg.append('text')
-      .attr('text-anchor', 'middle')
-      .attr('dy', '1.5em')
+      .attr('text-anchor')
+      .attr('dy')
       .attr('fill', tc.muted)
       .attr('font-family', tc.fontBody)
-      .attr('font-size', '0.938rem')
-      .text(tr('stats.total', '总数'));
+      .attr('font-size')
+      .text(tr('stats.total'));
   }
 
   // ─── Tag Co-occurrence (D3 Chord Diagram) ───
@@ -594,7 +594,7 @@
       .on('mousemove', (evt, d) => {
         const a = tagZh(tags[d.source.index]);
         const b = tagZh(tags[d.target.index]);
-        showTooltip(evt, `<b>${a} × ${b}</b><br>${tr('stats.chordPair', '{count} 部同时包含', { count: d.source.value })}`);
+        showTooltip(evt, `<b>${a} × ${b}</b><br>${tr('stats.chordPair', { count: d.source.value })}`);
       })
       .on('mouseleave', hideTooltip);
 
@@ -614,19 +614,19 @@
       .attr('stroke-width', 1.5)
       .style('cursor', 'pointer')
       .on('mousemove', (evt, d) => {
-        showTooltip(evt, `<b>${tagZh(tags[d.index])}</b><br>${tr('stats.chordCooccur', '共现 {count} 次', { count: d.value })}`);
+        showTooltip(evt, `<b>${tagZh(tags[d.index])}</b><br>${tr('stats.chordCooccur', { count: d.value })}`);
       })
       .on('mouseleave', hideTooltip);
 
     group.append('text')
       .each(d => { d.angle = (d.startAngle + d.endAngle) / 2; })
-      .attr('dy', '.35em')
+      .attr('dy')
       .attr('transform', d => `rotate(${(d.angle * 180 / Math.PI - 90)}) translate(${outerRadius + 12})` + (d.angle > Math.PI ? ' rotate(180)' : ''))
       .attr('text-anchor', d => d.angle > Math.PI ? 'end' : 'start')
       .attr('fill', tc.text)
       .attr('font-family', tc.fontBody)
-      .attr('font-size', '0.938rem')
-      .attr('font-weight', '600')
+      .attr('font-size')
+      .attr('font-weight')
       .text(d => tagZh(tags[d.index]));
   }
 
@@ -660,15 +660,15 @@
 {#if $statsOpen}
   <section class="view" id="svelte-statsView">
     <div class="view-header">
-      <h1>{tr('stats.title', '统计')}</h1>
+      <h1>{tr('stats.title')}</h1>
     </div>
     <div class="stats-grid" id="svelte-statsGrid">
       <!-- Card 1: Word Cloud -->
       <div class="stats-card stats-card--wordcloud" id="svelte-statsWordCloudCard">
         <div class="stats-card-header">
-          <h2>{tr('stats.wordCloud', '分类词云')}</h2>
-          <span class="stats-card-subtitle">{tr('stats.wordCloudSubtitle', 'Bangumi 类型标签聚合')}</span>
-          <button class="stats-refresh-btn" onclick={loadStats} data-tooltip={tr('stats.refreshWordCloud', '刷新词云')} aria-label={tr('stats.refreshWordCloud', '刷新词云')}>
+          <h2>{tr('stats.wordCloud')}</h2>
+          <span class="stats-card-subtitle">{tr('stats.wordCloudSubtitle')}</span>
+          <button class="stats-refresh-btn" onclick={loadStats} data-tooltip={tr('stats.refreshWordCloud')} aria-label={tr('stats.refreshWordCloud')}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
           </button>
         </div>
@@ -676,13 +676,13 @@
           {#if wordcloudLoading}
             <div class="stats-loading" id="svelte-statsLoading">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-              <span>{tr('common.loading', '加载中…')}</span>
+              <span>{tr('common.loading')}</span>
             </div>
           {:else if wordcloudEmpty}
             <div class="stats-empty" id="svelte-statsEmpty">
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
-              <p>{tr('stats.noTags', '暂无标签数据')}</p>
-              <p class="empty-hint">{tr('stats.noTagsHint', '导入动漫并获取元数据后，标签词云将在此展示')}</p>
+              <p>{tr('stats.noTags')}</p>
+              <p class="empty-hint">{tr('stats.noTagsHint')}</p>
             </div>
           {:else}
             <canvas bind:this={wordCloudCanvas} id="svelte-wordCloudCanvas" width="800" height="400"></canvas>
@@ -693,9 +693,9 @@
       <!-- Card 2: Tag Co-occurrence (Chord) -->
       <div class="stats-card stats-card--chord" id="svelte-statsChordCard">
         <div class="stats-card-header">
-          <h2>{tr('stats.chord', '类型交叉')}</h2>
-          <span class="stats-card-subtitle">{tr('stats.chordSubtitle', '标签共现关系')}</span>
-          <button class="stats-refresh-btn" onclick={loadChordChart} data-tooltip={tr('stats.refreshChart', '刷新图表')} aria-label={tr('stats.refreshChart', '刷新图表')}>
+          <h2>{tr('stats.chord')}</h2>
+          <span class="stats-card-subtitle">{tr('stats.chordSubtitle')}</span>
+          <button class="stats-refresh-btn" onclick={loadChordChart} data-tooltip={tr('stats.refreshChart')} aria-label={tr('stats.refreshChart')}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
           </button>
         </div>
@@ -703,13 +703,13 @@
           {#if chordLoading}
             <div class="stats-loading" id="svelte-chordLoading">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-              <span>{tr('common.loading', '加载中…')}</span>
+              <span>{tr('common.loading')}</span>
             </div>
           {:else if chordEmpty}
             <div class="stats-empty" id="svelte-chordEmpty">
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
-              <p>{tr('stats.noChord', '暂无交叉数据')}</p>
-              <p class="empty-hint">{tr('stats.noChordHint', '导入动漫并获取元数据后，标签交叉关系将在此展示')}</p>
+              <p>{tr('stats.noChord')}</p>
+              <p class="empty-hint">{tr('stats.noChordHint')}</p>
             </div>
           {:else}
             <div bind:this={chordContainer} id="svelte-chordChartContainer"></div>
@@ -720,9 +720,9 @@
       <!-- Card 3: Watch Activity -->
       <div class="stats-card stats-card--activity" id="svelte-statsActivityCard">
         <div class="stats-card-header">
-          <h2>{tr('stats.activity', '观看活跃度')}</h2>
-          <span class="stats-card-subtitle">{tr('stats.activitySubtitle', '最近 6 个月观看时长趋势')}</span>
-          <button class="stats-refresh-btn" onclick={loadActivityChart} data-tooltip={tr('stats.refreshChart', '刷新图表')} aria-label={tr('stats.refreshChart', '刷新图表')}>
+          <h2>{tr('stats.activity')}</h2>
+          <span class="stats-card-subtitle">{tr('stats.activitySubtitle')}</span>
+          <button class="stats-refresh-btn" onclick={loadActivityChart} data-tooltip={tr('stats.refreshChart')} aria-label={tr('stats.refreshChart')}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
           </button>
         </div>
@@ -730,13 +730,13 @@
           {#if activityLoading}
             <div class="stats-loading" id="svelte-activityLoading">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-              <span>{tr('common.loading', '加载中…')}</span>
+              <span>{tr('common.loading')}</span>
             </div>
           {:else if activityEmpty}
             <div class="stats-empty" id="svelte-activityEmpty">
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
-              <p>{tr('stats.noActivity', '暂无播放记录')}</p>
-              <p class="empty-hint">{tr('stats.noActivityHint', '使用 mpv 播放视频后，活跃度趋势将在此展示')}</p>
+              <p>{tr('stats.noActivity')}</p>
+              <p class="empty-hint">{tr('stats.noActivityHint')}</p>
             </div>
           {:else}
             <div bind:this={activityContainer} id="svelte-activityChartContainer"></div>
@@ -747,9 +747,9 @@
       <!-- Card 4: Rating Distribution -->
       <div class="stats-card stats-card--rating" id="svelte-statsRatingCard">
         <div class="stats-card-header">
-          <h2>{tr('stats.rating', '评分分布')}</h2>
-          <span class="stats-card-subtitle">{tr('stats.ratingSubtitle', 'Bangumi 评分偏好一览')}</span>
-          <button class="stats-refresh-btn" onclick={loadRatingChart} data-tooltip={tr('stats.refreshChart', '刷新图表')} aria-label={tr('stats.refreshChart', '刷新图表')}>
+          <h2>{tr('stats.rating')}</h2>
+          <span class="stats-card-subtitle">{tr('stats.ratingSubtitle')}</span>
+          <button class="stats-refresh-btn" onclick={loadRatingChart} data-tooltip={tr('stats.refreshChart')} aria-label={tr('stats.refreshChart')}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
           </button>
         </div>
@@ -757,27 +757,27 @@
           {#if ratingLoading}
             <div class="stats-loading" id="svelte-ratingLoading">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-              <span>{tr('common.loading', '加载中…')}</span>
+              <span>{tr('common.loading')}</span>
             </div>
           {:else if ratingEmpty}
             <div class="stats-empty" id="svelte-ratingEmpty">
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
-              <p>{tr('stats.noRating', '暂无评分数据')}</p>
-              <p class="empty-hint">{tr('stats.noRatingHint', '导入动漫并获取元数据后，评分分布将在此展示')}</p>
+              <p>{tr('stats.noRating')}</p>
+              <p class="empty-hint">{tr('stats.noRatingHint')}</p>
             </div>
           {:else if ratingData}
             <div class="rating-chart">
               <div class="rating-chart-head">
                 <span class="rating-chart-badge">★</span>
                 <span class="rating-chart-avg">{ratingData.avg.toFixed(1)}</span>
-                <span class="rating-chart-avg-label">{tr('stats.avgRating', '平均分')}</span>
+                <span class="rating-chart-avg-label">{tr('stats.avgRating')}</span>
               </div>
               <div class="rating-chart-rows">
                 {#each ratingData.rows as row (row.score)}
                   <div
                     class="rating-row"
                     class:rating-row--mode={row.isMode}
-                    onmousemove={(e) => showTooltip(e, `<b>${row.score} ${tr('stats.scoreUnit', '分')}</b><br>${tr('stats.titleCount', '{count} 部 ({pct}%)', { count: row.count, pct: row.pct.toFixed(1) })}`)}
+                    onmousemove={(e) => showTooltip(e, `<b>${row.score} ${tr('stats.scoreUnit')}</b><br>${tr('stats.titleCount', { count: row.count, pct: row.pct.toFixed(1) })}`)}
                     onmouseleave={hideTooltip}
                   >
                     <span class="rating-row-score">★ {row.score}</span>
@@ -794,9 +794,9 @@
       <!-- Card 5: Season Distribution -->
       <div class="stats-card stats-card--season" id="svelte-statsSeasonCard">
         <div class="stats-card-header">
-          <h2>{tr('stats.season', '季度分布')}</h2>
-          <span class="stats-card-subtitle">{tr('stats.seasonSubtitle', '所看番剧在哪个季度最突出')}</span>
-          <button class="stats-refresh-btn" onclick={loadSeasonChart} data-tooltip={tr('stats.refreshChart', '刷新图表')} aria-label={tr('stats.refreshChart', '刷新图表')}>
+          <h2>{tr('stats.season')}</h2>
+          <span class="stats-card-subtitle">{tr('stats.seasonSubtitle')}</span>
+          <button class="stats-refresh-btn" onclick={loadSeasonChart} data-tooltip={tr('stats.refreshChart')} aria-label={tr('stats.refreshChart')}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
           </button>
         </div>
@@ -804,13 +804,13 @@
           {#if seasonLoading}
             <div class="stats-loading" id="svelte-seasonChartLoading">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-              <span>{tr('common.loading', '加载中…')}</span>
+              <span>{tr('common.loading')}</span>
             </div>
           {:else if seasonEmpty}
             <div class="stats-empty" id="svelte-seasonChartEmpty">
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
-              <p>{tr('stats.noSeason', '暂无季度数据')}</p>
-              <p class="empty-hint">{tr('stats.noSeasonHint', '导入动漫并获取元数据后，季度分布将在此展示')}</p>
+              <p>{tr('stats.noSeason')}</p>
+              <p class="empty-hint">{tr('stats.noSeasonHint')}</p>
             </div>
           {:else if seasonData}
             <div class="season-chart">
@@ -827,7 +827,7 @@
                 </div>
               </div>
               {#if seasonData.unknown > 0}
-                <div class="season-chart-hint">{tr('stats.unknownSeason', '另有 {count} 部未知季度', { count: seasonData.unknown })}</div>
+                <div class="season-chart-hint">{tr('stats.unknownSeason', { count: seasonData.unknown })}</div>
               {/if}
             </div>
           {/if}

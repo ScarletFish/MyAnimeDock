@@ -73,8 +73,8 @@
   function copyToast(toast) {
     const text = toast.title + (toast.desc ? '\n' + toast.desc : '');
     navigator.clipboard.writeText(text)
-      .then(() => showToast(tr('app.copied', '已复制'), 'success', { duration: 1500 }))
-      .catch(() => showToast(tr('app.copyFailed', '复制失败'), 'error'));
+      .then(() => showToast(tr('app.copied'), 'success', { duration: 1500 }))
+      .catch(() => showToast(tr('app.copyFailed'), 'error'));
   }
 </script>
 

@@ -128,8 +128,8 @@
     const localCount = anime.episodes.length;
     const totalCount = anime.totalEpisodes || anime.eps;
     return totalCount
-      ? tr('detail.episodeCountTotal', '{localCount}/{totalCount}', { localCount, totalCount })
-      : tr('detail.episodeCountLocal', '共 {localCount} 集', { localCount });
+      ? tr('detail.episodeCountTotal', { localCount, totalCount })
+      : tr('detail.episodeCountLocal', { localCount });
   });
 
   // 模块可见性
@@ -147,9 +147,9 @@
     const allWatched = result.allWatched;
     const hasViewHistory = anime.episodes.some((e) => e.watched || e.progress > 0);
     let text;
-    if (allWatched) text = tr('detail.replay', '重新播放');
-    else if (targetEp.progress > 0 || hasViewHistory) text = tr('detail.continue', '继续播放');
-    else text = tr('detail.startPlay', '开始播放');
+    if (allWatched) text = tr('detail.replay');
+    else if (targetEp.progress > 0 || hasViewHistory) text = tr('detail.continue');
+    else text = tr('detail.startPlay');
     return { text, path: targetEp.filePath, pos: targetEp.progress || 0, epIdx: anime.episodes.indexOf(targetEp) };
   });
 
@@ -205,13 +205,13 @@
         if (ep) setTimeout(() => playEpisode(ep.filePath, ep.progress), 400);
       }
     } catch (e) {
-      showToast(tr('detail.loadFailed', '加载失败：{error}', { error: e.message }), 'error');
+      showToast(tr('detail.loadFailed', { error: e.message }), 'error');
     }
   }
 
   // ─── 摘要处理 ───
   function renderSummaryText(a) {
-    if (!a) return tr('detail.noSummary', '暂无简介');
+    if (!a) return tr('detail.noSummary');
     let text = a.summary || '';
     if (text && /[\u4e00-\u9fff]/.test(text)) {
       const parts = text.split(/\[?简介原文\]?/);
@@ -238,7 +238,7 @@
         }
       }
     }
-    return text || tr('detail.noSummary', '暂无简介');
+    return text || tr('detail.noSummary');
   }
 
   // ─── 播放按钮 ───
@@ -261,9 +261,9 @@
   async function playEpisode(filePath, position = 0) {
     try {
       await api.post('/api/play', { filePath, position });
-      showToast(tr('detail.playing', '正在播放'), 'info');
+      showToast(tr('detail.playing'), 'info');
     } catch (e) {
-      showToast(tr('detail.playFailed', '播放失败：{error}', { error: e.message }), 'error');
+      showToast(tr('detail.playFailed', { error: e.message }), 'error');
     }
   }
 
@@ -311,9 +311,9 @@
       await api.post('/api/progress', { animeId: a.id, episodeNumber: ep.number, watched: true, progress: 0 });
       anime = await api.get('/api/anime/' + encodeURIComponent(a.id));
       scrollToNextUnwatched(anime, ep.number);
-      showToast(tr('detail.markedWatched', '已标记第 {number} 集看完', { number: ep.number }), 'success');
+      showToast(tr('detail.markedWatched', { number: ep.number }), 'success');
     } catch (e) {
-      showToast(tr('detail.markFailed', '标记失败：{error}', { error: e.message }), 'error');
+      showToast(tr('detail.markFailed', { error: e.message }), 'error');
     }
   }
 
@@ -328,7 +328,7 @@
       const ep = anime.episodes.find((e) => e.number === epNumber);
       if (ep) { ep.watched = result.episode.watched; ep.progress = result.episode.progress; }
     } catch (e) {
-      showToast(tr('detail.actionFailed', '操作失败：{error}', { error: e.message }), 'error');
+      showToast(tr('detail.actionFailed', { error: e.message }), 'error');
     }
   }
 
@@ -345,17 +345,17 @@
   // ─── 删除 ───
   async function deleteAnime() {
     if (!anime) return;
-    const ok = await showConfirm(tr('detail.deleteConfirm', '确定移除「{title}」？', { title: anime.title }));
+    const ok = await showConfirm(tr('detail.deleteConfirm', { title: anime.title }));
     if (!ok) return;
     try {
       await api.del('/api/anime/' + encodeURIComponent(anime.id));
-      showToast(tr('detail.deleted', '已移除'), 'success');
+      showToast(tr('detail.deleted'), 'success');
       goBack();
       if (typeof window.loadLibrary === 'function') window.loadLibrary();
       if (typeof window.loadDiscovery === 'function') window.loadDiscovery();
       if (typeof window.loadMyList === 'function') window.loadMyList();
     } catch (e) {
-      showToast(tr('detail.deleteFailed', '移除失败：{error}', { error: e.message }), 'error');
+      showToast(tr('detail.deleteFailed', { error: e.message }), 'error');
     }
   }
 
@@ -436,7 +436,7 @@
       }
       return { wishlist: false, data: await api.get('/api/anime/' + encodeURIComponent(id)) };
     } catch (e) {
-      showToast(tr('detail.loadFailed', '加载失败：{error}', { error: e.message }), 'error');
+      showToast(tr('detail.loadFailed', { error: e.message }), 'error');
       isSliding = false;
       const navOverlay = document.getElementById('svelte-detailNavOverlay');
       if (navOverlay) navOverlay.style.pointerEvents = '';
@@ -659,10 +659,10 @@
       checkAndShowFinishConfirm(anime);
       const allDone = anime.episodes && anime.episodes.length > 0 && anime.episodes.every((e) => e.watched);
       if (allDone && anime.myListStatus === 'completed') {
-        showToast(tr('detail.playEndedAllWatched', '全部剧集已看完'), 'success');
+        showToast(tr('detail.playEndedAllWatched'), 'success');
         return;
       }
-      showToast(tr('detail.playEndedUpdated', '观看进度已更新'), 'success');
+      showToast(tr('detail.playEndedUpdated'), 'success');
     });
     return true;
   };
@@ -732,8 +732,8 @@
             </div>
             <div class="detail-actions">
               <button class="btn btn-outline" id="btnPlayAnime" style:display={playBtn ? 'inline-flex' : 'none'} onclick={playEpisodeFromCover}><span id="btnPlayText">{playBtn?.text}</span></button>
-              <button class="btn btn-ghost" id="btnFetchBangumi" style:display={fetchBtnVisible ? 'inline-flex' : 'none'} onclick={syncBangumiMetadata}>{tr('common.sync', '同步')}</button>
-              <button class="btn btn-danger" id="btnDeleteAnime" style:display={deleteBtnVisible ? 'inline-flex' : 'none'} onclick={deleteAnime}>{tr('common.remove', '移除')}</button>
+              <button class="btn btn-ghost" id="btnFetchBangumi" style:display={fetchBtnVisible ? 'inline-flex' : 'none'} onclick={syncBangumiMetadata}>{tr('common.sync')}</button>
+              <button class="btn btn-danger" id="btnDeleteAnime" style:display={deleteBtnVisible ? 'inline-flex' : 'none'} onclick={deleteAnime}>{tr('common.remove')}</button>
             </div>
           </div>
           <div class="detail-banner-right">
@@ -744,7 +744,7 @@
                 <span class="info-left">
                   {#if anime.rating}<span class="info-rating-num">★ {anime.rating}</span>{/if}
                   {#if anime.ratingRank}<span class="info-rating-sub">#{anime.ratingRank}</span>{/if}
-                  {#if anime.ratingTotal}<span class="info-rating-sub">{tr('detail.ratingPeople', '{count} 人评分', { count: anime.ratingTotal })}</span>{/if}
+                  {#if anime.ratingTotal}<span class="info-rating-sub">{tr('detail.ratingPeople', { count: anime.ratingTotal })}</span>{/if}
                 </span>
               {/if}
               {#if hasInfoRight}
@@ -759,7 +759,7 @@
             </div>
             <div class="detail-tags" id="svelte-detailTags" style:display={tagsVisible ? '' : 'none'}>
               <div class="detail-tags-list">
-                {#if studio}<span class="tag-pill tag-pill--studio">{tr('detail.studioLabel', '制作')} {studio}</span>{/if}
+                {#if studio}<span class="tag-pill tag-pill--studio">{tr('detail.studioLabel')} {studio}</span>{/if}
                 {#each shownTags as tag}
                   {#if tag.desc}
                     <span class="tag-pill" data-tooltip={tag.desc} data-tooltip-rich>{tag.name}</span>
@@ -778,7 +778,7 @@
         <div class="episode-list-section hscroll-section" id="svelte-episodeHeatmap" style:display={episodeHeatmapVisible ? '' : 'none'}>
           <div class="episode-list-header">
             <div class="episode-header-left">
-              <h3>{tr('detail.episodeList', '剧集列表')}</h3>
+              <h3>{tr('detail.episodeList')}</h3>
               <span class="episode-count" id="episodeCount">{episodeCount}</span>
             </div>
           </div>
@@ -789,7 +789,7 @@
         {/if}
         {#if watchStatsVisible}
           <div class="watch-stats" id="svelte-watchStats">
-            <div class="ws-header"><h3>{tr('detail.watchStats', '观看统计')}</h3></div>
+            <div class="ws-header"><h3>{tr('detail.watchStats')}</h3></div>
             <WatchStats anime={anime} />
           </div>
         {/if}
@@ -797,18 +797,18 @@
         <RelationList animeId={anime.id} kind="recommendations" />
         <div class="archive-magazine" id="archiveDetail" style:display={archiveVisible ? '' : 'none'}>
           <div class="archive-magazine-essay">
-            <div class="archive-magazine-thoughts text-sm text-content leading-[1.7]">{tr('detail.wishlistNoLocal', '该条目暂无本地文件')}</div>
+            <div class="archive-magazine-thoughts text-sm text-content leading-[1.7]">{tr('detail.wishlistNoLocal')}</div>
           </div>
           <div class="archive-magazine-meta">
             {#if anime.rating}
-              <div class="archive-magazine-stat"><span class="archive-magazine-stat-value">★ {anime.rating}</span><span class="archive-magazine-stat-label">{tr('detail.ratingLabel', '评分')}</span></div>
+              <div class="archive-magazine-stat"><span class="archive-magazine-stat-value">★ {anime.rating}</span><span class="archive-magazine-stat-label">{tr('detail.ratingLabel')}</span></div>
             {/if}
-            <div class="archive-magazine-stat"><span class="archive-magazine-stat-value">{tr('detail.wishlistLabel', '心愿单')}</span><span class="archive-magazine-stat-label">{tr('detail.sourceLabel', '来源')}</span></div>
+            <div class="archive-magazine-stat"><span class="archive-magazine-stat-value">{tr('detail.wishlistLabel')}</span><span class="archive-magazine-stat-label">{tr('detail.sourceLabel')}</span></div>
           </div>
           <div class="wishlist-detail-actions mt-4">
             <a class="btn btn-primary" href={bgmUrl + '/subject/' + anime.bangumiId} target="_blank" rel="noopener">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-              {tr('detail.openInBangumi', '在 Bangumi 打开')}
+              {tr('detail.openInBangumi')}
             </a>
           </div>
         </div>

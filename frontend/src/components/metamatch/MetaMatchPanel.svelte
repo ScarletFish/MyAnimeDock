@@ -17,7 +17,7 @@
       <div class="mm-panel-synclog">
         <div class="mm-panel-synclog-header">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-          <span>{tr('metamatch.syncLog', '同步日志')}</span>
+          <span>{tr('metamatch.syncLog')}</span>
         </div>
         <MetaMatchSyncLog entries={syncLog} summary={syncSummary} />
       </div>

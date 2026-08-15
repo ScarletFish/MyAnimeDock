@@ -44,14 +44,14 @@
   let filter = $state('all');
 
   // 视图可见性/文案
-  let mediaDir = $state(tr('discovery.notConfigured', '未配置媒体目录'));
+  let mediaDir = $state(tr('discovery.notConfigured'));
   let emptyVisible = $state(false);
-  let emptyText = $state(tr('discovery.notFound', '未找到媒体目录'));
-  let emptyHint = $state(tr('discovery.configureHint', '请先在设置中配置媒体目录路径'));
+  let emptyText = $state(tr('discovery.notFound'));
+  let emptyHint = $state(tr('discovery.configureHint'));
   let statsVisible = $state(false);
   let actionsVisible = $state(false);
   let scanBtnVisible = $state(true);
-  let scanBtnText = $state(tr('discovery.scanDir', '扫描目录'));
+  let scanBtnText = $state(tr('discovery.scanDir'));
   let scanBtnDisabled = $state(false);
 
   // 统计（派生）
@@ -107,7 +107,7 @@
   let selectAllLabel = $derived.by(() => {
     const candidates = displayData.filter((n) => !n.alreadyImported && !n.excluded);
     const allChecked = candidates.length > 0 && candidates.every((n) => checkedPaths.has(n.path));
-    return allChecked ? tr('discovery.unselectAll', '取消全选') : tr('discovery.selectAll', '全选');
+    return allChecked ? tr('discovery.unselectAll') : tr('discovery.selectAll');
   });
 
   // 清理失效的勾选路径
@@ -227,19 +227,19 @@
     statsVisible = false;
     actionsVisible = false;
     scanBtnVisible = true;
-    scanBtnText = tr('discovery.scanDir', '扫描目录');
+    scanBtnText = tr('discovery.scanDir');
     scanBtnDisabled = false;
     // 重置空状态文案，避免陈旧默认值（configureHint）泄漏
-    emptyText = tr('discovery.notFound', '未找到媒体目录');
-    emptyHint = tr('discovery.configureHint', '请先在设置中配置媒体目录路径');
+    emptyText = tr('discovery.notFound');
+    emptyHint = tr('discovery.configureHint');
 
     try {
       const config = await api.get('/api/config');
       if (!config.dirValid) {
-        mediaDir = tr('discovery.noMediaDir', '未配置媒体目录');
+        mediaDir = tr('discovery.noMediaDir');
         emptyVisible = true;
-        emptyText = tr('discovery.notFound', '未找到媒体目录');
-        emptyHint = tr('discovery.configureHint', '请先在设置中配置媒体目录路径');
+        emptyText = tr('discovery.notFound');
+        emptyHint = tr('discovery.configureHint');
         scanBtnVisible = false;
         return;
       }
@@ -251,8 +251,8 @@
 
       if (discoveryData.length === 0) {
         emptyVisible = true;
-        emptyText = tr('discovery.notScanned', '尚未扫描媒体目录');
-        emptyHint = tr('discovery.clickScanToStart', '点击右上角扫描目录按钮开始');
+        emptyText = tr('discovery.notScanned');
+        emptyHint = tr('discovery.clickScanToStart');
         statsVisible = false;
         actionsVisible = false;
         return;
@@ -262,7 +262,7 @@
     } catch (e) {
       // Tauri 初始加载时静默失败
       if (!window.location.origin.startsWith('http')) return;
-      showToast(tr('discovery.loadFailed', '加载失败：{message}', { message: e.message }), 'error');
+      showToast(tr('discovery.loadFailed', { message: e.message }), 'error');
     }
   }
 
@@ -270,7 +270,7 @@
     // 用原始数据判断空状态（对齐 vanilla discovery.js:123），避免过滤后为空时误判
     if (discoveryData.length === 0) {
       emptyVisible = true;
-      emptyText = tr('discovery.noAnimeFound', '媒体目录中未发现动漫');
+      emptyText = tr('discovery.noAnimeFound');
       statsVisible = false;
       actionsVisible = false;
       return;
@@ -286,7 +286,7 @@
     if (isScanning) return;
     isScanning = true;
     scanBtnDisabled = true;
-    scanBtnText = tr('discovery.scanning', '扫描中...');
+    scanBtnText = tr('discovery.scanning');
     emptyVisible = false;
     statsVisible = false;
     actionsVisible = false;
@@ -306,20 +306,20 @@
           if (!line.startsWith('data: ')) continue;
           const msg = JSON.parse(line.slice(6));
           if (msg.type === 'progress') {
-            scanBtnText = tr('discovery.scanProgress', '扫描 {current}/{total}', { current: msg.current, total: msg.total });
+            scanBtnText = tr('discovery.scanProgress', { current: msg.current, total: msg.total });
           } else if (msg.type === 'done') {
             loadDiscovery();
           } else if (msg.type === 'error') {
-            showToast(tr('discovery.scanFailed', '扫描失败：{message}', { message: msg.message }), 'error');
+            showToast(tr('discovery.scanFailed', { message: msg.message }), 'error');
           }
         }
       }
     } catch (e) {
-      showToast(tr('discovery.scanFailed', '扫描失败：{message}', { message: e.message }), 'error');
+      showToast(tr('discovery.scanFailed', { message: e.message }), 'error');
     }
 
     scanBtnDisabled = false;
-    scanBtnText = tr('discovery.rescan', '重新扫描');
+    scanBtnText = tr('discovery.rescan');
     isScanning = false;
   }
 
@@ -380,17 +380,17 @@ function setFilter(f) {
         specialSuffix: n.specialSuffix,
       }));
     if (items.length === 0) {
-      showToast(tr('discovery.selectFirst', '请先选择要导入的动漫'), 'warning');
+      showToast(tr('discovery.selectFirst'), 'warning');
       return;
     }
     try {
       const result = await api.post('/api/import', { items });
-      showToast(tr('discovery.importedCount', '已导入 {count} 部动漫', { count: result.imported.length }), 'success');
-      showToast(tr('discovery.autoAddedToMylist', '已自动添加到我的列表'), 'silent');
+      showToast(tr('discovery.importedCount', { count: result.imported.length }), 'success');
+      showToast(tr('discovery.autoAddedToMylist'), 'silent');
       loadDiscovery();
       if (typeof window.loadLibrary === 'function') window.loadLibrary();
     } catch (e) {
-      showToast(tr('discovery.importFailed', '导入失败：{message}', { message: e.message }), 'error');
+      showToast(tr('discovery.importFailed', { message: e.message }), 'error');
     }
   }
 
@@ -398,34 +398,34 @@ function setFilter(f) {
   async function unlinkSingle(path) {
     try {
       await api.post('/api/discovery/unlink', { path });
-      showToast(tr('discovery.unlinked', '已解除关联'), 'info');
+      showToast(tr('discovery.unlinked'), 'info');
       const s = new Set(checkedPaths);
       s.delete(path);
       checkedPaths = s;
       loadDiscovery();
       if (typeof window.loadLibrary === 'function') window.loadLibrary();
     } catch (e) {
-      showToast(tr('discovery.unlinkFailed', '解除关联失败：{message}', { message: e.message }), 'error');
+      showToast(tr('discovery.unlinkFailed', { message: e.message }), 'error');
     }
   }
 
   async function excludeSingle(path) {
     try {
       await api.post('/api/discovery/exclude', { path });
-      showToast(tr('discovery.excludedScan', '已排除扫描'), 'info');
+      showToast(tr('discovery.excludedScan'), 'info');
       loadDiscovery();
     } catch (e) {
-      showToast(tr('discovery.excludeFailed', '排除失败：{message}', { message: e.message }), 'error');
+      showToast(tr('discovery.excludeFailed', { message: e.message }), 'error');
     }
   }
 
   async function includeSingle(path) {
     try {
       await api.post('/api/discovery/include', { path });
-      showToast(tr('discovery.unexcluded', '已取消排除'), 'info');
+      showToast(tr('discovery.unexcluded'), 'info');
       loadDiscovery();
     } catch (e) {
-      showToast(tr('discovery.unexcludeFailed', '取消排除失败：{message}', { message: e.message }), 'error');
+      showToast(tr('discovery.unexcludeFailed', { message: e.message }), 'error');
     }
   }
 </script>
@@ -470,33 +470,33 @@ function setFilter(f) {
             <span class="discovery-card-title" class:discovery-card-title--imported={node.alreadyImported} class:discovery-card-title--excluded={excluded}>{node.parsedTitle}{seasonText}</span>
             <div class="discovery-card-row-actions">
               {#if node.alreadyImported}
-                <button class="discovery-card-action discovery-card-unlink" onclick={(e) => { e.preventDefault(); e.stopPropagation(); unlinkSingle(node.path); }} data-tooltip={tr('discovery.unlink', '解除关联')}>
+                <button class="discovery-card-action discovery-card-unlink" onclick={(e) => { e.preventDefault(); e.stopPropagation(); unlinkSingle(node.path); }} data-tooltip={tr('discovery.unlink')}>
                   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/></svg>
-                  {tr('discovery.unlink', '解除关联')}
+                  {tr('discovery.unlink')}
                 </button>
               {/if}
               {#if !node.alreadyImported && !excluded}
-                <button class="discovery-card-action discovery-card-exclude" onclick={(e) => { e.preventDefault(); e.stopPropagation(); excludeSingle(node.path); }} data-tooltip={tr('discovery.excludeScan', '排除扫描')}>
+                <button class="discovery-card-action discovery-card-exclude" onclick={(e) => { e.preventDefault(); e.stopPropagation(); excludeSingle(node.path); }} data-tooltip={tr('discovery.excludeScan')}>
                   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
-                  {tr('discovery.exclude', '排除')}
+                  {tr('discovery.exclude')}
                 </button>
               {/if}
               {#if excluded}
-                <button class="discovery-card-action discovery-card-unexclude" onclick={(e) => { e.preventDefault(); e.stopPropagation(); includeSingle(node.path); }} data-tooltip={tr('discovery.unexclude', '取消排除')}>
+                <button class="discovery-card-action discovery-card-unexclude" onclick={(e) => { e.preventDefault(); e.stopPropagation(); includeSingle(node.path); }} data-tooltip={tr('discovery.unexclude')}>
                   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
-                  {tr('discovery.unexclude', '取消排除')}
+                  {tr('discovery.unexclude')}
                 </button>
               {/if}
             </div>
           </div>
-          <span class="discovery-card-meta">{tr('discovery.meta', '{count} 个视频 · {size} MB', { count: node.videoCount, size: sizeMB })}</span>
+          <span class="discovery-card-meta">{tr('discovery.meta', { count: node.videoCount, size: sizeMB })}</span>
         </div>
         {#if excluded}
-          <span class="discovery-badge discovery-badge--excluded">{tr('discovery.excluded', '已排除')}</span>
+          <span class="discovery-badge discovery-badge--excluded">{tr('discovery.excluded')}</span>
         {:else if node.alreadyImported}
-          <span class="discovery-badge discovery-badge--imported">{tr('discovery.imported', '已导入')}</span>
+          <span class="discovery-badge discovery-badge--imported">{tr('discovery.imported')}</span>
         {:else}
-          <span class="discovery-badge discovery-badge--new">{tr('discovery.new', '新')}</span>
+          <span class="discovery-badge discovery-badge--new">{tr('discovery.new')}</span>
         {/if}
       </label>
     </div>
@@ -529,13 +529,13 @@ function setFilter(f) {
 <section class="view" class:hidden={!$discoveryOpen} id="svelte-discoveryView">
   <div class="view-header" id="svelte-discoveryHero">
     <div>
-      <h1>{tr('discovery.mediaDir', '媒体目录')}</h1>
+      <h1>{tr('discovery.mediaDir')}</h1>
       <p class="discovery-hero-path" id="svelte-discoveryPath">{mediaDir}</p>
     </div>
     <div class="view-header-right">
       <div class="discovery-stats-pills" id="svelte-discoveryStats" style:display={statsVisible ? '' : 'none'}>
-        <span class="stat-pill"><span id="svelte-statAnime">{statAnime}</span><span>{tr('discovery.animeCountUnit', '部动漫')}</span></span>
-        <span class="stat-pill"><span id="svelte-statImported">{statImported}</span><span>{tr('discovery.importedCountUnit', '已导入')}</span></span>
+        <span class="stat-pill"><span id="svelte-statAnime">{statAnime}</span><span>{tr('discovery.animeCountUnit')}</span></span>
+        <span class="stat-pill"><span id="svelte-statImported">{statImported}</span><span>{tr('discovery.importedCountUnit')}</span></span>
       </div>
       <button class="btn btn-outline discovery-scan-btn" id="svelte-discoveryScanBtn" style:display={scanBtnVisible ? '' : 'none'} disabled={scanBtnDisabled} onclick={startScan}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -555,18 +555,18 @@ function setFilter(f) {
       </button>
       <button class="btn btn-outline" onclick={importSelected}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
-        <span>{tr('discovery.importSelected', '导入选中')}</span> (<span id="svelte-importCount">{importCount}</span>)
+        <span>{tr('discovery.importSelected')}</span> (<span id="svelte-importCount">{importCount}</span>)
       </button>
     </div>
     <div class="discovery-actions-right">
       <div class="filter-group">
-        <button class="filter-btn" class:filter-btn--active={filter === 'all'} data-filter="all" onclick={() => setFilter('all')}>{tr('common.all', '全部')}</button>
-        <button class="filter-btn" class:filter-btn--active={filter === 'unimported'} data-filter="unimported" onclick={() => setFilter('unimported')}>{tr('discovery.unimported', '未导入')}</button>
-        <button class="filter-btn" class:filter-btn--active={filter === 'excluded'} data-filter="excluded" onclick={() => setFilter('excluded')}>{tr('discovery.excluded', '已排除')}</button>
+        <button class="filter-btn" class:filter-btn--active={filter === 'all'} data-filter="all" onclick={() => setFilter('all')}>{tr('common.all')}</button>
+        <button class="filter-btn" class:filter-btn--active={filter === 'unimported'} data-filter="unimported" onclick={() => setFilter('unimported')}>{tr('discovery.unimported')}</button>
+        <button class="filter-btn" class:filter-btn--active={filter === 'excluded'} data-filter="excluded" onclick={() => setFilter('excluded')}>{tr('discovery.excluded')}</button>
       </div>
       <div class="filter-group">
-        <button class="filter-btn" onclick={expandAll}>{tr('discovery.expandAll', '展开全部')}</button>
-        <button class="filter-btn" onclick={collapseAll}>{tr('discovery.collapseAll', '折叠全部')}</button>
+        <button class="filter-btn" onclick={expandAll}>{tr('discovery.expandAll')}</button>
+        <button class="filter-btn" onclick={collapseAll}>{tr('discovery.collapseAll')}</button>
       </div>
     </div>
   </div>

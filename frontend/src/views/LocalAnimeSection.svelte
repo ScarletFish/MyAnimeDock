@@ -85,10 +85,10 @@
 
 <div class="dashboard-section" data-section="localLibrary">
   <div class="dashboard-section-header">
-    <span class="dashboard-section-title">{tr('library.localAnime', '本地动漫')}</span>
+    <span class="dashboard-section-title">{tr('library.localAnime')}</span>
     <div class="library-sort-bar">
       <Select.Root type="single" bind:value={sortMode}>
-        <Select.Trigger class="library-sort-trigger" aria-label={tr('mylist.sort', '排序')}>
+        <Select.Trigger class="library-sort-trigger" aria-label={tr('mylist.sort')}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M6 12h12M9 18h6"/></svg>
         </Select.Trigger>
         <Select.Content class="library-sort-menu" align="end">

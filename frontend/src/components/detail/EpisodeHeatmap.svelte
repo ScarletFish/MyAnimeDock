@@ -79,10 +79,10 @@
 
 <div class="episode-list-scroll" id="svelte-episodeHeatmapGrid" bind:this={gridEl}>
   {#if episodes.length === 0}
-    <p class="text-content-muted p-4 text-center">{tr('detail.noEpisodeInfo', '暂无剧集信息')}</p>
+    <p class="text-content-muted p-4 text-center">{tr('detail.noEpisodeInfo')}</p>
   {:else}
     {#each episodes as ep, idx (ep.number)}
-      {@const epTitle = ep.fileName || tr('detail.episodeNumber', '第 {number} 集', { number: ep.number })}
+      {@const epTitle = ep.fileName || tr('detail.episodeNumber', { number: ep.number })}
       {@const thumbUrl = '/api/thumbnail?path=' + encodeURIComponent(ep.filePath) + '&time=mid'}
       {@const epNum = String(ep.number).padStart(2, '0')}
       <div

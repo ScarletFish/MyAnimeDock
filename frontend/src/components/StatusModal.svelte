@@ -35,7 +35,7 @@
     status = it.status ?? it.myListStatus ?? 'wish';
     statusDdOpen = false;
 
-    statusModalTitle = src.bangumiTitle || src.title || tr('mylist.markStatus', '标记状态');
+    statusModalTitle = src.bangumiTitle || src.title || tr('mylist.markStatus');
     statusModalBg = coverSrc(src, 600);
 
     const rating = it.userRating != null ? it.userRating : '';
@@ -212,7 +212,7 @@
         const firstEmpty = [...segs.querySelectorAll('.date-seg')].find((inp) => !inp.value.trim());
         (firstEmpty || segs.querySelector('.date-seg'))?.focus();
       }
-      showToast(tr('mylist.invalidDate', '日期不合法，请检查 YYYY/MM/DD'), 'error');
+      showToast(tr('mylist.invalidDate'), 'error');
       return;
     }
 
@@ -230,11 +230,11 @@
 
     try {
       await api.put('/api/mylist/' + encodeURIComponent(id), data);
-      showToast(tr('mylist.saved', '已保存'), 'success');
+      showToast(tr('mylist.saved'), 'success');
       open = false;
       if (onSaved) onSaved();
     } catch (e) {
-      showToast(tr('mylist.saveFailed', '保存失败：{message}', { message: e.message }), 'error');
+      showToast(tr('mylist.saveFailed', { message: e.message }), 'error');
     }
   }
 </script>
@@ -247,7 +247,7 @@
         <div class="status-modal-overlay"></div>
         <div class="status-modal-glass"></div>
       </div>
-      <button class="status-modal-close" onclick={() => (open = false)} aria-label={tr('common.close', '关闭')}>
+      <button class="status-modal-close" onclick={() => (open = false)} aria-label={tr('common.close')}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
       <div class="status-modal-inner">
@@ -255,11 +255,11 @@
         <div class="status-modal-body">
           <div class="field-row">
             <div class="field-cell">
-              <label class="field-label">{tr('common.status', '状态')}</label>
+              <label class="field-label">{tr('common.status')}</label>
               <div class="status-dd" id="svelte-statusDd" class:is-open={statusDdOpen}>
                 <Select.Root type="single" bind:value={status} bind:open={statusDdOpen}>
                   <Select.Trigger class="status-dd-trigger" id="svelte-statusDdTrigger">
-                    <span class="status-dd-text" id="svelte-statusDdText">{STATUS_LABELS[status] || tr('common.wish', '计划中')}</span>
+                    <span class="status-dd-text" id="svelte-statusDdText">{STATUS_LABELS[status] || tr('common.wish')}</span>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="status-dd-chevron"><polyline points="6 9 12 15 18 9"/></svg>
                   </Select.Trigger>
                   <Select.Content class="status-dd-menu" id="svelte-statusDdMenu" align="start" style="width: var(--bits-floating-anchor-width)">
@@ -267,7 +267,7 @@
                       {#snippet child(p)}
                         <div {...p.props} class="status-dd-opt" class:is-selected={p.selected}>
                           <svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="9"/></svg>
-                          <span>{tr('common.watching', '进行中')}</span>
+                          <span>{tr('common.watching')}</span>
                           <svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                         </div>
                       {/snippet}
@@ -276,7 +276,7 @@
                       {#snippet child(p)}
                         <div {...p.props} class="status-dd-opt" class:is-selected={p.selected}>
                           <svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                          <span>{tr('common.wish', '计划中')}</span>
+                          <span>{tr('common.wish')}</span>
                           <svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                         </div>
                       {/snippet}
@@ -285,7 +285,7 @@
                       {#snippet child(p)}
                         <div {...p.props} class="status-dd-opt" class:is-selected={p.selected}>
                           <svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                          <span>{tr('common.completed', '已完成')}</span>
+                          <span>{tr('common.completed')}</span>
                           <svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                         </div>
                       {/snippet}
@@ -294,7 +294,7 @@
                       {#snippet child(p)}
                         <div {...p.props} class="status-dd-opt" class:is-selected={p.selected}>
                           <svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
-                          <span>{tr('common.on_hold', '搁置')}</span>
+                          <span>{tr('common.on_hold')}</span>
                           <svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                         </div>
                       {/snippet}
@@ -303,7 +303,7 @@
                       {#snippet child(p)}
                         <div {...p.props} class="status-dd-opt" class:is-selected={p.selected}>
                           <svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                          <span>{tr('common.dropped', '抛弃')}</span>
+                          <span>{tr('common.dropped')}</span>
                           <svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                         </div>
                       {/snippet}
@@ -313,7 +313,7 @@
               </div>
             </div>
             <div class="field-cell">
-              <label class="field-label">{tr('common.rating', '评分')}</label>
+              <label class="field-label">{tr('common.rating')}</label>
               <div class="num-stepper" id="svelte-ratingStepper" data-min="0" data-max="10" data-step="0.1">
                 <button type="button" class="num-stepper-btn" onclick={() => stepperChange('ratingVal', -0.1, 0, 10, 0.1)}>−</button>
                 <input
@@ -324,14 +324,14 @@
                   value={ratingVal}
                   oninput={(e) => onRatingInput(e)}
                   onblur={(e) => onRatingBlur(e)}
-                  aria-label={tr('common.rating', '评分')}
+                  aria-label={tr('common.rating')}
                   style="border:none;background:transparent;outline:none;text-align:center;min-width:0;flex:1"
                 />
                 <button type="button" class="num-stepper-btn" onclick={() => stepperChange('ratingVal', 0.1, 0, 10, 0.1)}>+</button>
               </div>
             </div>
             <div class="field-cell">
-              <label class="field-label">{tr('mylist.progressEpisodes', '进度 (集)')}</label>
+              <label class="field-label">{tr('mylist.progressEpisodes')}</label>
               <div class="num-stepper" id="svelte-progressStepper" data-min="0" data-max={progressMax} data-step="1">
                 <button type="button" class="num-stepper-btn" onclick={() => stepperChange('progressVal', -1, 0, progressMax, 1)}>−</button>
                 <input
@@ -342,7 +342,7 @@
                   value={progressVal}
                   oninput={(e) => onProgressInput(e)}
                   onblur={(e) => onProgressBlur(e)}
-                  aria-label={tr('mylist.progressEpisodes', '进度 (集)')}
+                  aria-label={tr('mylist.progressEpisodes')}
                   style="border:none;background:transparent;outline:none;text-align:center;min-width:0;flex:1"
                 />
                 <button type="button" class="num-stepper-btn" onclick={() => stepperChange('progressVal', 1, 0, progressMax, 1)}>+</button>
@@ -351,33 +351,33 @@
           </div>
           <div class="field-row">
             <div class="field-cell">
-              <label class="field-label">{tr('common.startDate', '开始日期')}</label>
+              <label class="field-label">{tr('common.startDate')}</label>
               <div class="date-segments" data-date="startedAt">
-                <input type="text" class="date-seg date-seg--y" maxlength="4" placeholder="YYYY" inputmode="numeric" value={startSeg.y} oninput={(e) => segAutoTab(e, startSeg, 'y')} onkeydown={segBackspace} aria-label={tr('mylist.startDateYear', '开始日期-年')}>
+                <input type="text" class="date-seg date-seg--y" maxlength="4" placeholder="YYYY" inputmode="numeric" value={startSeg.y} oninput={(e) => segAutoTab(e, startSeg, 'y')} onkeydown={segBackspace} aria-label={tr('mylist.startDateYear')}>
                 <span class="date-sep">/</span>
-                <input type="text" class="date-seg date-seg--m" maxlength="2" placeholder="MM" inputmode="numeric" value={startSeg.m} oninput={(e) => segAutoTab(e, startSeg, 'm')} onkeydown={segBackspace} aria-label={tr('mylist.startDateMonth', '开始日期-月')}>
+                <input type="text" class="date-seg date-seg--m" maxlength="2" placeholder="MM" inputmode="numeric" value={startSeg.m} oninput={(e) => segAutoTab(e, startSeg, 'm')} onkeydown={segBackspace} aria-label={tr('mylist.startDateMonth')}>
                 <span class="date-sep">/</span>
-                <input type="text" class="date-seg date-seg--d" maxlength="2" placeholder="DD" inputmode="numeric" value={startSeg.d} oninput={(e) => segAutoTab(e, startSeg, 'd')} onkeydown={segBackspace} aria-label={tr('mylist.startDateDay', '开始日期-日')}>
+                <input type="text" class="date-seg date-seg--d" maxlength="2" placeholder="DD" inputmode="numeric" value={startSeg.d} oninput={(e) => segAutoTab(e, startSeg, 'd')} onkeydown={segBackspace} aria-label={tr('mylist.startDateDay')}>
               </div>
             </div>
             <div class="field-cell">
-              <label class="field-label">{tr('common.endDate', '结束日期')}</label>
+              <label class="field-label">{tr('common.endDate')}</label>
               <div class="date-segments" data-date="completedAt">
-                <input type="text" class="date-seg date-seg--y" maxlength="4" placeholder="YYYY" inputmode="numeric" value={endSeg.y} oninput={(e) => segAutoTab(e, endSeg, 'y')} onkeydown={segBackspace} aria-label={tr('mylist.endDateYear', '结束日期-年')}>
+                <input type="text" class="date-seg date-seg--y" maxlength="4" placeholder="YYYY" inputmode="numeric" value={endSeg.y} oninput={(e) => segAutoTab(e, endSeg, 'y')} onkeydown={segBackspace} aria-label={tr('mylist.endDateYear')}>
                 <span class="date-sep">/</span>
-                <input type="text" class="date-seg date-seg--m" maxlength="2" placeholder="MM" inputmode="numeric" value={endSeg.m} oninput={(e) => segAutoTab(e, endSeg, 'm')} onkeydown={segBackspace} aria-label={tr('mylist.endDateMonth', '结束日期-月')}>
+                <input type="text" class="date-seg date-seg--m" maxlength="2" placeholder="MM" inputmode="numeric" value={endSeg.m} oninput={(e) => segAutoTab(e, endSeg, 'm')} onkeydown={segBackspace} aria-label={tr('mylist.endDateMonth')}>
                 <span class="date-sep">/</span>
-                <input type="text" class="date-seg date-seg--d" maxlength="2" placeholder="DD" inputmode="numeric" value={endSeg.d} oninput={(e) => segAutoTab(e, endSeg, 'd')} onkeydown={segBackspace} aria-label={tr('mylist.endDateDay', '结束日期-日')}>
+                <input type="text" class="date-seg date-seg--d" maxlength="2" placeholder="DD" inputmode="numeric" value={endSeg.d} oninput={(e) => segAutoTab(e, endSeg, 'd')} onkeydown={segBackspace} aria-label={tr('mylist.endDateDay')}>
               </div>
             </div>
             <div class="field-cell">
-              <label class="field-label">{tr('common.notes', '笔记')}</label>
-              <input type="text" id="svelte-notesInput" class="notes-input" placeholder={tr('mylist.notesPlaceholder', '简短记录...')} maxlength="200" bind:value={notes}>
+              <label class="field-label">{tr('common.notes')}</label>
+              <input type="text" id="svelte-notesInput" class="notes-input" placeholder={tr('mylist.notesPlaceholder')} maxlength="200" bind:value={notes}>
             </div>
           </div>
         </div>
         <div class="status-modal-footer">
-          <button class="btn btn-primary" onclick={saveStatusModal}>{tr('common.save', '保存')}</button>
+          <button class="btn btn-primary" onclick={saveStatusModal}>{tr('common.save')}</button>
         </div>
       </div>
     </div>

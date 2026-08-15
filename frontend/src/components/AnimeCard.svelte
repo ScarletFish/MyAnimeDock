@@ -37,7 +37,7 @@
     <div class="gray-cover"><span class="gray-cover-text">{(title || '?')[0].toUpperCase()}</span></div>
   {/if}
   {#if showMoreBtn && !isWish}
-    <div class="card-more-btn" data-tooltip={tr('ui.setStatusTooltip', '设置状态')} onclick={handleMore}>
+    <div class="card-more-btn" data-tooltip={tr('ui.setStatusTooltip')} onclick={handleMore}>
       <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
         <circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/>
       </svg>
@@ -54,7 +54,7 @@
     <div class="meta">
       {#if item.rating}<span class="rating-badge">★ {item.rating}</span>{/if}
       {#if item.season && !isWish}<span class="season-badge">S{item.season}</span>{/if}
-      {#if isWish}<span class="wishlist-badge">{tr('ui.wishlistBadge', '愿望单')}</span>{/if}
+      {#if isWish}<span class="wishlist-badge">{tr('ui.wishlistBadge')}</span>{/if}
     </div>
   </div>
 </div>

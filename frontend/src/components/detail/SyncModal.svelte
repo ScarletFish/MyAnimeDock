@@ -44,7 +44,7 @@
   async function search() {
     if (!anime) return;
     const kw = keyword.trim();
-    if (!kw) { showToast(tr('detail.enterKeyword', '请输入搜索关键词'), 'warning'); return; }
+    if (!kw) { showToast(tr('detail.enterKeyword'), 'warning'); return; }
     state = 'searching';
     try {
       const result = await api.post('/api/bangumi/search', { keyword: kw });
@@ -55,7 +55,7 @@
         state = 'empty';
       }
     } catch (e) {
-      showToast(tr('detail.searchFailed', '搜索失败：{error}', { error: e.message }), 'error');
+      showToast(tr('detail.searchFailed', { error: e.message }), 'error');
       state = 'failed';
     }
   }
@@ -67,9 +67,9 @@
       const result = await api.post('/api/bangumi/fetch', { animeId: anime.id, subjectId });
       onAttached?.(result.anime);
       if (typeof window.loadLibrary === 'function') window.loadLibrary();
-      showToast(tr('detail.metadataSuccess', '元数据同步成功'), 'success');
+      showToast(tr('detail.metadataSuccess'), 'success');
     } catch (e) {
-      showToast(tr('detail.fetchFailed', '获取失败：{error}', { error: e.message }), 'error');
+      showToast(tr('detail.fetchFailed', { error: e.message }), 'error');
       state = 'idle';
     }
   }
@@ -78,25 +78,25 @@
 {#if open}
   <div class="modal-overlay show" id="svelte-syncModal" onclick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}>
     <div class="modal modal--large">
-      <h2>{tr('detail.syncMetadata', '同步元数据')}</h2>
+      <h2>{tr('detail.syncMetadata')}</h2>
       <div class="form-group">
-        <label for="syncKeyword">{tr('detail.searchKeyword', '搜索关键词')}</label>
+        <label for="syncKeyword">{tr('detail.searchKeyword')}</label>
         <div class="flex gap-2">
-          <input type="text" id="syncKeyword" placeholder={tr('detail.searchPlaceholder', '输入搜索词...')} class="flex-1 min-w-0" bind:value={keyword}>
-          <button class="btn btn-primary" onclick={search}>{tr('common.search', '搜索')}</button>
+          <input type="text" id="syncKeyword" placeholder={tr('detail.searchPlaceholder')} class="flex-1 min-w-0" bind:value={keyword}>
+          <button class="btn btn-primary" onclick={search}>{tr('common.search')}</button>
         </div>
       </div>
       <div class="bangumi-search-results" id="syncSearchResults">
         {#if state === 'searching'}
-          <p class="text-center p-4 text-content">{tr('detail.searching', '搜索中...')}</p>
+          <p class="text-center p-4 text-content">{tr('detail.searching')}</p>
         {:else if state === 'fetching'}
-          <p class="text-center p-4 text-content">{tr('detail.fetchingMetadata', '正在获取元数据...')}</p>
+          <p class="text-center p-4 text-content">{tr('detail.fetchingMetadata')}</p>
         {:else if state === 'empty'}
-          <p class="search-result-empty">{tr('detail.noSearchResults', '没有找到相关结果')}</p>
+          <p class="search-result-empty">{tr('detail.noSearchResults')}</p>
         {:else if state === 'failed'}
-          <p class="search-result-empty">{tr('detail.searchFailedEmpty', '搜索失败')}</p>
+          <p class="search-result-empty">{tr('detail.searchFailedEmpty')}</p>
         {:else if state === 'results'}
-          <h4 class="m-0 mb-3 text-content">{tr('detail.selectSubject', '选择条目')}</h4>
+          <h4 class="m-0 mb-3 text-content">{tr('detail.selectSubject')}</h4>
           {#each results as r}
             <div class="search-result-item" onclick={() => attach(r.id)}>
               <img class="search-result-cover" src={r.images?.small || r.images?.grid || ''} alt="" loading="lazy" decoding="async" onerror={(e) => (e.currentTarget.style.display = 'none')}>
@@ -105,7 +105,7 @@
                 <div class="search-result-subtitle">{r.name}</div>
                 <div class="search-result-meta">{r.date || ''}{r.rating?.score ? ' · ★' + r.rating.score.toFixed(1) : ''}</div>
               </div>
-              <button class="btn btn-primary search-result-btn">{tr('detail.select', '选择')}</button>
+              <button class="btn btn-primary search-result-btn">{tr('detail.select')}</button>
             </div>
           {/each}
         {/if}

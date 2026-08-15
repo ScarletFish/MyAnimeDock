@@ -93,7 +93,7 @@
     <div class="titlebar__detail-context" id="titlebarDetailContext" class:hidden={$titlebarContext.mode !== 'detail'}>
       <button class="titlebar__back" id="titlebarBack" onclick={onBack}>
         <svg viewBox="0 0 16 16"><polyline points="10 4 6 8 10 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span>{tr('common.back', '返回')}</span>
+        <span>{tr('common.back')}</span>
       </button>
     </div>
   </div>
@@ -101,17 +101,17 @@
   <SearchBar />
 
   <div class="titlebar__controls">
-    <button class="titlebar__btn" id="titlebarMinimize" onclick={onMinimize} data-tooltip={tr('nav.minimize', '最小化')}>
+    <button class="titlebar__btn" id="titlebarMinimize" onclick={onMinimize} data-tooltip={tr('nav.minimize')}>
       <svg viewBox="0 0 14 14"><line x1="3" y1="7" x2="11" y2="7" stroke="currentColor" stroke-width="1.5"/></svg>
     </button>
-    <button class="titlebar__btn" id="titlebarMaximize" onclick={onToggleMaximize} data-tooltip={maximized ? tr('nav.restore', '还原') : tr('nav.maximize', '最大化')}>
+    <button class="titlebar__btn" id="titlebarMaximize" onclick={onToggleMaximize} data-tooltip={maximized ? tr('nav.restore') : tr('nav.maximize')}>
       {#if maximized}
         <svg viewBox="0 0 14 14"><rect x="4.5" y="5.5" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M2 2.5h7.5v1H3v6.5H2V2.5z" fill="currentColor"/></svg>
       {:else}
         <svg viewBox="0 0 14 14"><rect x="3" y="3" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>
       {/if}
     </button>
-    <button class="titlebar__btn titlebar__btn--close" id="titlebarClose" onclick={onClose} data-tooltip={tr('common.close', '关闭')}>
+    <button class="titlebar__btn titlebar__btn--close" id="titlebarClose" onclick={onClose} data-tooltip={tr('common.close')}>
       <svg viewBox="0 0 14 14"><line x1="4" y1="4" x2="10" y2="10" stroke="currentColor" stroke-width="1.5"/><line x1="10" y1="4" x2="4" y2="10" stroke="currentColor" stroke-width="1.5"/></svg>
     </button>
   </div>

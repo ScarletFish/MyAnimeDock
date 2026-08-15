@@ -6,19 +6,19 @@
   let { filteredItems, selectedId, selectedIds, syncInProgress, totalCount, filter, emptyMsg, onRowClick } = $props();
 
   const badgeLabels = {
-    matched: tr('metamatch.statusMatched', '已匹配'),
-    failed: tr('metamatch.statusFailed', '失败'),
-    matching: tr('metamatch.statusMatching', '匹配中'),
-    pending: tr('metamatch.statusPending', '待处理'),
+    matched: tr('metamatch.statusMatched'),
+    failed: tr('metamatch.statusFailed'),
+    matching: tr('metamatch.statusMatching'),
+    pending: tr('metamatch.statusPending'),
   };
 
   // 空状态文案（对应 vanilla mmRenderList 195-208）
   let emptyText = $derived.by(() => {
     if (emptyMsg) return emptyMsg;
-    if (totalCount === 0) return tr('metamatch.libraryEmpty', '动漫库为空');
-    if (filter === 'all') return tr('metamatch.noItems', '没有条目');
-    const label = { matched: tr('metamatch.statusMatched', '已匹配'), failed: tr('metamatch.statusFailed', '失败'), pending: tr('metamatch.statusPending', '待处理') }[filter] || '';
-    return tr('metamatch.noItemsForFilter', '没有 {{filter}} 的条目', { filter: label });
+    if (totalCount === 0) return tr('metamatch.libraryEmpty');
+    if (filter === 'all') return tr('metamatch.noItems');
+    const label = { matched: tr('metamatch.statusMatched'), failed: tr('metamatch.statusFailed'), pending: tr('metamatch.statusPending') }[filter] || '';
+    return tr('metamatch.noItemsForFilter', { filter: label });
   });
 </script>
 
@@ -26,7 +26,7 @@
   <div class="mm-list-empty">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
     <p>{emptyText}</p>
-    <p class="empty-hint">{tr('metamatch.noMatchHint', '所有条目已有元数据，或动漫库为空')}</p>
+    <p class="empty-hint">{tr('metamatch.noMatchHint')}</p>
   </div>
 {:else}
   <div class="mm-list">
@@ -46,7 +46,7 @@
             {#if item.parsedSeason || item.episodeCount}
               {#if item.parsedSeason}S{item.parsedSeason}{/if}
               {#if item.parsedSeason && item.episodeCount} · {/if}
-              {#if item.episodeCount}{tr('metamatch.episodeCount', '{{n}} 集', { n: item.episodeCount })}{/if}
+              {#if item.episodeCount}{tr('metamatch.episodeCount', { n: item.episodeCount })}{/if}
             {:else}—{/if}
             {#if item.matchedSeason != null && item.matchedSeason > 1}
               {@const seasonMismatch = item.parsedSeason && item.matchedSeason !== item.parsedSeason}
@@ -66,11 +66,11 @@
             {/if}
           </div>
         {:else if item.status === 'failed'}
-          <div class="mm-row-match mm-row-match--error">{item.error || tr('metamatch.matchFailed', '匹配失败')}</div>
+          <div class="mm-row-match mm-row-match--error">{item.error || tr('metamatch.matchFailed')}</div>
         {:else if item.status === 'matching'}
-          <div class="mm-row-match mm-row-match--pending">{tr('metamatch.matchingDots', '匹配中...')}</div>
+          <div class="mm-row-match mm-row-match--pending">{tr('metamatch.matchingDots')}</div>
         {:else}
-          <div class="mm-row-match mm-row-match--pending">{tr('metamatch.pendingMatch', '待匹配')}</div>
+          <div class="mm-row-match mm-row-match--pending">{tr('metamatch.pendingMatch')}</div>
         {/if}
         <span class="mm-row-badge mm-row-badge--{item.status}">{badgeLabels[item.status]}</span>
       </div>

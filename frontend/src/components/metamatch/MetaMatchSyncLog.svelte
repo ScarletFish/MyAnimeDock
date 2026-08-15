@@ -36,21 +36,21 @@
       {#if summary.matched > 0}
         <div class="mm-panel-synclog-summary-stat mm-panel-synclog-summary-stat--matched">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-          {tr('metamatch.matchedLabel', '匹配')} <span class="num">{summary.matched}</span>
+          {tr('metamatch.matchedLabel')} <span class="num">{summary.matched}</span>
         </div>
       {/if}
       {#if summary.failed > 0}
         <div class="mm-panel-synclog-summary-stat mm-panel-synclog-summary-stat--failed">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          {tr('metamatch.statusFailed', '失败')} <span class="num">{summary.failed}</span>
+          {tr('metamatch.statusFailed')} <span class="num">{summary.failed}</span>
         </div>
       {/if}
       <div class="mm-panel-synclog-summary-stat mm-panel-synclog-summary-stat--total">
-        {tr('metamatch.totalLabel', '总计')} <span class="num">{summary.total}</span>
+        {tr('metamatch.totalLabel')} <span class="num">{summary.total}</span>
       </div>
     </div>
     <div class="mm-panel-synclog-summary-msg">
-      {summary.failed === 0 ? tr('metamatch.allMatchedMsg', '所有条目均已成功匹配') : tr('metamatch.retryFailedHint', '失败的条目可点击下方「仅重试失败项」重新匹配')}
+      {summary.failed === 0 ? tr('metamatch.allMatchedMsg') : tr('metamatch.retryFailedHint')}
     </div>
   </div>
 {/if}

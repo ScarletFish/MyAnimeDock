@@ -125,7 +125,7 @@
     } catch (e) {
       loading = false;
       if (!window.location.origin.startsWith('http')) return;
-      showToast(tr('mylist.loadFailed', '加载失败：{message}', { message: e.message }), 'error');
+      showToast(tr('mylist.loadFailed', { message: e.message }), 'error');
     }
   }
 
@@ -238,9 +238,9 @@
     closeCtx();
     try {
       await navigator.clipboard.writeText(title);
-      showToast(tr('mylist.copied', '已复制'), 'success');
+      showToast(tr('mylist.copied'), 'success');
     } catch (e) {
-      showToast(tr('mylist.copyFailed', '复制失败'), 'error');
+      showToast(tr('mylist.copyFailed'), 'error');
     }
   }
 
@@ -261,14 +261,14 @@
     closeCtx();
     if (!item) return;
     const name = item.bangumiTitle || item.title || item.id;
-    const confirmed = await showConfirm(tr('mylist.confirmRemove', '确认从我的列表移除「{name}」？', { name }));
+    const confirmed = await showConfirm(tr('mylist.confirmRemove', { name }));
     if (!confirmed) return;
     try {
       await api.del('/api/mylist/' + encodeURIComponent(item.id));
-      showToast(tr('mylist.removed', '已移除'), 'info');
+      showToast(tr('mylist.removed'), 'info');
       loadMyList();
     } catch (e) {
-      showToast(tr('mylist.removeFailed', '移除失败：{message}', { message: e.message }), 'error');
+      showToast(tr('mylist.removeFailed', { message: e.message }), 'error');
     }
   }
 
@@ -276,14 +276,14 @@
     const item = ctxItem;
     closeCtx();
     if (!item) return;
-    const confirmed = await showConfirm(tr('mylist.confirmRemoveFromWishlist', '确认从愿望单移除？'));
+    const confirmed = await showConfirm(tr('mylist.confirmRemoveFromWishlist'));
     if (!confirmed) return;
     try {
       await api.del('/api/wishlist/' + encodeURIComponent(item.id));
-      showToast(tr('mylist.removed', '已移除'), 'info');
+      showToast(tr('mylist.removed'), 'info');
       loadMyList();
     } catch (e) {
-      showToast(tr('mylist.removeFailed', '移除失败：{message}', { message: e.message }), 'error');
+      showToast(tr('mylist.removeFailed', { message: e.message }), 'error');
     }
   }
 
@@ -301,12 +301,12 @@
   async function setMyListItemStatus(id, status) {
     try {
       await api.put('/api/mylist/' + encodeURIComponent(id) + '/status', { status });
-      showToast(tr('mylist.statusUpdated', '状态已更新'), 'success');
+      showToast(tr('mylist.statusUpdated'), 'success');
       closeCtx();
       loadMyList();
       if (typeof window.loadLibrary === 'function') window.loadLibrary();
     } catch (e) {
-      showToast(tr('mylist.updateFailed', '更新失败：{message}', { message: e.message }), 'error');
+      showToast(tr('mylist.updateFailed', { message: e.message }), 'error');
     }
   }
 
@@ -404,7 +404,7 @@
       <div
         class="mylist-status-item" class:active={mylistFilter === 'all'}
         data-status="all" onclick={() => setFilter('all')}
-      ><b>{statusCounts.all}</b>{tr('common.all', '全部')}</div>
+      ><b>{statusCounts.all}</b>{tr('common.all')}</div>
       {#each MYLIST_STATUS_ORDER as s}
         <div
           class="mylist-status-item" class:active={mylistFilter === s}
@@ -414,10 +414,10 @@
     </div>
 
     <div class="view-header">
-      <h1>{tr('mylist.title', '我的列表')}</h1>
+      <h1>{tr('mylist.title')}</h1>
       <div class="mylist-sort-bar" id="svelte-mylistSortDropdown">
         <Select.Root type="single" bind:value={sortMode}>
-          <Select.Trigger class="library-sort-trigger" aria-label={tr('mylist.sort', '排序')}>
+          <Select.Trigger class="library-sort-trigger" aria-label={tr('mylist.sort')}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M6 12h12M9 18h6"/></svg>
           </Select.Trigger>
           <Select.Content class="library-sort-menu" align="end">
@@ -435,7 +435,7 @@
 
     <div id="svelte-mylistGrid" class="mylist-grid">
       {#if loading}
-        <p class="form-hint">{tr('common.loading', '加载中...')}</p>
+        <p class="form-hint">{tr('common.loading')}</p>
       {:else if filtered.length === 0}
         <div class="empty-state" id="svelte-mylistEmpty" style="display:flex">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -444,7 +444,7 @@
             <rect x="3" y="14" width="7" height="7" rx="1"></rect>
             <rect x="14" y="14" width="7" height="7" rx="1"></rect>
           </svg>
-          <p>{mylistFilter === 'all' ? tr('common.empty', '暂无内容') : tr('mylist.emptyFiltered', '暂无{label}', { label: STATUS_LABELS[mylistFilter] || '' })}</p>
+          <p>{mylistFilter === 'all' ? tr('common.empty') : tr('mylist.emptyFiltered', { label: STATUS_LABELS[mylistFilter] || '' })}</p>
         </div>
       {:else if mylistFilter === 'all'}
         {#each MYLIST_STATUS_ORDER as status}
@@ -494,25 +494,25 @@
   <!-- 右键菜单 -->
   <ContextMenu bind:open={ctxOpen} bind:x={ctxX} bind:y={ctxY}>
     {#if ctxItem?.source === 'wishlist'}
-      <div class="context-menu-item context-menu-danger" onclick={deleteWishlistItem}>{tr('mylist.removeFromWishlist', '从愿望单移除')}</div>
+      <div class="context-menu-item context-menu-danger" onclick={deleteWishlistItem}>{tr('mylist.removeFromWishlist')}</div>
     {:else if ctxItem}
       <div class="context-menu-item" onclick={copyTitle}>
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-        <span>{tr('mylist.copyTitle', '复制标题')}</span>
+        <span>{tr('mylist.copyTitle')}</span>
       </div>
       <div class="context-menu-item" onclick={openInBgm}>
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-        <span>{tr('mylist.openInBgm', '在 Bangumi 打开')}</span>
+        <span>{tr('mylist.openInBgm')}</span>
       </div>
       <div class="context-menu-divider"></div>
       <div class="context-menu-item" onclick={() => { const it = ctxItem; closeCtx(); openStatusModal(it); }}>
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        <span>{tr('mylist.markStatus', '标记状态')}</span>
+        <span>{tr('mylist.markStatus')}</span>
       </div>
       <div class="context-menu-divider"></div>
       <div class="context-menu-item context-menu-danger" onclick={removeMyListItem}>
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-        <span>{tr('common.remove', '移除')}</span>
+        <span>{tr('common.remove')}</span>
       </div>
     {/if}
   </ContextMenu>
@@ -537,9 +537,9 @@
         <div class="wishlist-detail-actions">
           <a class="btn btn-primary" href={`${getBangumiFrontendUrl()}/subject/${wishItem.bangumiId}`} target="_blank" rel="noopener">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-            {tr('mylist.openInBgmFull', '在 Bangumi 打开')}
+            {tr('mylist.openInBgmFull')}
           </a>
-          <button class="btn btn-ghost" onclick={() => (wishItem = null)}>{tr('common.close', '关闭')}</button>
+          <button class="btn btn-ghost" onclick={() => (wishItem = null)}>{tr('common.close')}</button>
         </div>
         <button class="modal-close-btn" onclick={() => (wishItem = null)}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>

@@ -23,19 +23,19 @@
 
   // ─── 设置搜索映射 ───
   const SETTINGS_MAP = [
-    { label: tr('search.mediaDirPath', '媒体目录'), tab: 'basic', keywords: '媒体目录 媒体文件夹 目录路径 存储 根目录' },
-    { label: tr('search.mpvPlayerPath', 'mpv 播放器'), tab: 'playback', keywords: 'mpv 播放器 可执行文件 路径' },
-    { label: tr('search.autoMarkWatched', '自动标记已观看'), tab: 'playback', keywords: '自动标记 已观看 播放 进度 前序' },
-    { label: tr('search.bangumiApiUrl', 'Bangumi API 地址'), tab: 'scraper', keywords: 'bangumi api 刮削 元数据 地址 镜像' },
-    { label: tr('search.anilistIntegration', 'AniList 集成'), tab: 'scraper', keywords: 'anilist 罗马音 标题搜索 可选' },
-    { label: tr('search.libraryModuleLayout', '库页模块布局'), tab: 'dashboard', keywords: '模块 统计 继续观看 本地动漫 布局 排序' },
+    { label: tr('search.mediaDirPath'), tab: 'basic', keywords: '媒体目录 媒体文件夹 目录路径 存储 根目录' },
+    { label: tr('search.mpvPlayerPath'), tab: 'playback', keywords: 'mpv 播放器 可执行文件 路径' },
+    { label: tr('search.autoMarkWatched'), tab: 'playback', keywords: '自动标记 已观看 播放 进度 前序' },
+    { label: tr('search.bangumiApiUrl'), tab: 'scraper', keywords: 'bangumi api 刮削 元数据 地址 镜像' },
+    { label: tr('search.anilistIntegration'), tab: 'scraper', keywords: 'anilist 罗马音 标题搜索 可选' },
+    { label: tr('search.libraryModuleLayout'), tab: 'dashboard', keywords: '模块 统计 继续观看 本地动漫 布局 排序' },
   ];
 
   const TAB_NAMES = {
-    basic: tr('search.tab.basic', '基础'),
-    playback: tr('search.tab.playback', '播放'),
-    scraper: tr('search.tab.scraper', '刮削'),
-    dashboard: tr('search.tab.dashboard', '仪表盘'),
+    basic: tr('search.tab.basic'),
+    playback: tr('search.tab.playback'),
+    scraper: tr('search.tab.scraper'),
+    dashboard: tr('search.tab.dashboard'),
   };
 
   // ─── 状态 ───
@@ -77,7 +77,7 @@
     const settingsResults = [];
     for (const tabKey in TAB_NAMES) {
       if (TAB_NAMES[tabKey].toLowerCase().indexOf(queryStr) !== -1) {
-        settingsResults.push({ type: 'settings', tab: tabKey, label: TAB_NAMES[tabKey], sublabel: tr('search.settingsPage', '设置') });
+        settingsResults.push({ type: 'settings', tab: tabKey, label: TAB_NAMES[tabKey], sublabel: tr('search.settingsPage') });
         break;
       }
     }
@@ -208,17 +208,17 @@
       bind:value={query}
       oninput={onInput}
       onkeydown={onKeydown}
-      placeholder={tr('nav.searchPlaceholder', '搜索…')}
+      placeholder={tr('nav.searchPlaceholder')}
       autocomplete="off"
       spellcheck="false"
     />
   </div>
   <div class="titlebar__search-results" id="globalSearchResults" class:hidden={!open}>
     {#if filtered.anime.length === 0 && filtered.settings.length === 0}
-      <div class="titlebar__search-empty">{tr('search.noResults', '无结果')}</div>
+      <div class="titlebar__search-empty">{tr('search.noResults')}</div>
     {:else}
       {#if filtered.anime.length}
-        <div class="titlebar__search-group">{tr('search.group.anime', '动漫')}</div>
+        <div class="titlebar__search-group">{tr('search.group.anime')}</div>
         {#each filtered.anime as r, i}
           <div class="titlebar__search-item" class:highlighted={highlighted === i} onclick={() => navigateTo(r)}>
             <svg class="titlebar__search-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
@@ -230,7 +230,7 @@
         {/each}
       {/if}
       {#if filtered.settings.length}
-        <div class="titlebar__search-group">{tr('common.settings', '设置')}</div>
+        <div class="titlebar__search-group">{tr('common.settings')}</div>
         {#each filtered.settings as s, i}
           <div class="titlebar__search-item" class:highlighted={highlighted === filtered.anime.length + i} onclick={() => navigateTo(s)}>
             <svg class="titlebar__search-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>

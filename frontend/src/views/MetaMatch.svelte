@@ -107,16 +107,16 @@
     const hasPending = items.some((i) => i.status === 'pending');
     const hasFailed = items.some((i) => i.status === 'failed');
     if (!hasPending && !hasFailed) {
-      return { text: tr('metamatch.allMatched', '全部已匹配'), disabled: true, className: 'btn' };
+      return { text: tr('metamatch.allMatched'), disabled: true, className: 'btn' };
     }
     if (hasSelection) {
-      return { text: tr('metamatch.syncSelected', '同步选中 ({{n}})', { n: selectedIds.length }), disabled: false, className: 'btn btn-outline' };
+      return { text: tr('metamatch.syncSelected', { n: selectedIds.length }), disabled: false, className: 'btn btn-outline' };
     }
     if (hasFailed && !hasPending) {
       const cnt = items.filter((i) => i.status === 'failed').length;
-      return { text: tr('metamatch.retryFailed', '重试失败 ({{n}})', { n: cnt }), disabled: false, className: 'btn btn-outline' };
+      return { text: tr('metamatch.retryFailed', { n: cnt }), disabled: false, className: 'btn btn-outline' };
     }
-    return { text: tr('metamatch.autoMatchAll', '自动匹配全部'), disabled: false, className: 'btn btn-outline' };
+    return { text: tr('metamatch.autoMatchAll'), disabled: false, className: 'btn btn-outline' };
   });
 
   // 当前选中条目
@@ -145,13 +145,13 @@
 
       const libData = await api.get('/api/library');
       if (!libData || libData.length === 0) {
-        emptyMsg = tr('metamatch.emptyLibraryImport', '动漫库为空，请先导入动漫');
+        emptyMsg = tr('metamatch.emptyLibraryImport');
         return;
       }
 
       items = libData.map((a) => ({
         animeId: a.id,
-        title: a.title || a.folderName || a.bangumiTitle || tr('metamatch.unknown', '未知'),
+        title: a.title || a.folderName || a.bangumiTitle || tr('metamatch.unknown'),
         folderName: a.folderName || a.title || '',
         specialSuffix: a.specialSuffix || null,
         parsedSeason: a.matchedSeason || a.season || (a.specialSuffix ? null : 1),
@@ -184,8 +184,8 @@
       }));
     } catch (e) {
       if (!window.location.origin.startsWith('http')) return;
-      showToast(tr('metamatch.loadLibraryFailed', '加载动漫库失败: {{error}}', { error: e.message }), 'error');
-      emptyMsg = tr('metamatch.loadLibraryFailedHint', '加载动漫库失败: {{error}} · 请检查服务器是否运行', { error: e.message });
+      showToast(tr('metamatch.loadLibraryFailed', { error: e.message }), 'error');
+      emptyMsg = tr('metamatch.loadLibraryFailedHint', { error: e.message });
     }
   }
 
@@ -301,7 +301,7 @@
     }
 
     if (itemsToSync.length === 0) {
-      showToast(tr('metamatch.noPendingItems', '没有需要匹配的条目'), 'info');
+      showToast(tr('metamatch.noPendingItems'), 'info');
       return;
     }
 
@@ -323,7 +323,7 @@
       if (syncCancelled) return;
       try {
         const data = JSON.parse(e.data);
-        if (!simplified) addSyncLogEntry(data.animeId, data.searchTerm, 'searching', tr('metamatch.searchingMatch', '正在搜索匹配…'));
+        if (!simplified) addSyncLogEntry(data.animeId, data.searchTerm, 'searching', tr('metamatch.searchingMatch'));
       } catch (_) {}
     });
 
@@ -346,11 +346,11 @@
           if (data.anilistTitleEn != null) item.anilistTitleEn = data.anilistTitleEn;
           if (data.anilistTags != null) item.anilistTags = data.anilistTags;
           if (data.anilistCover != null) item.anilistCover = data.anilistCover;
-          addSyncLogEntry(data.animeId, null, 'matched', data.meta?.bangumiTitle || data.meta?.title || tr('metamatch.matched', '匹配成功'));
+          addSyncLogEntry(data.animeId, null, 'matched', data.meta?.bangumiTitle || data.meta?.title || tr('metamatch.matched'));
         } else {
           item.status = 'failed';
-          item.error = data.error || tr('metamatch.unknownError', '未知错误');
-          addSyncLogEntry(data.animeId, null, 'failed', data.error || tr('metamatch.unknownError', '未知错误'));
+          item.error = data.error || tr('metamatch.unknownError');
+          addSyncLogEntry(data.animeId, null, 'failed', data.error || tr('metamatch.unknownError'));
         }
       } catch (_) {}
     });
@@ -360,12 +360,12 @@
       try {
         const data = JSON.parse(e.data);
         const sourceLabels = {
-          anilist: tr('metamatch.sourceAnilist', '正在通过 AniList 补充信息…'),
-          season: tr('metamatch.sourceSeason', '正在推算作品季度…'),
+          anilist: tr('metamatch.sourceAnilist'),
+          season: tr('metamatch.sourceSeason'),
         };
-        const detail = sourceLabels[data.matchSource] || tr('metamatch.fetchingMetadataSource', '正在获取元数据（{{source}}）', { source: data.matchSource || '?' });
+        const detail = sourceLabels[data.matchSource] || tr('metamatch.fetchingMetadataSource', { source: data.matchSource || '?' });
         if (simplified) {
-          addSyncLogEntry(data.animeId, data.searchTerm || tr('metamatch.matchedLabel', '匹配'), 'fetching', detail);
+          addSyncLogEntry(data.animeId, data.searchTerm || tr('metamatch.matchedLabel'), 'fetching', detail);
         } else {
           const existing = syncLog.find((entry) => entry.animeId === data.animeId);
           if (existing) { existing.status = 'fetching'; existing.detail = detail; }
@@ -377,12 +377,12 @@
       if (syncCancelled) return;
       try {
         const data = JSON.parse(e.data);
-        const msg = data.message || tr('metamatch.finalizing', '正在完成收尾工作…');
+        const msg = data.message || tr('metamatch.finalizing');
         const existing = syncLog.find((entry) => entry.animeId === '__finalizing__');
         if (existing) {
           existing.detail = msg;
         } else {
-          syncLog.push({ animeId: '__finalizing__', searchTerm: tr('metamatch.finalizingShort', '收尾'), status: 'fetching', detail: msg });
+          syncLog.push({ animeId: '__finalizing__', searchTerm: tr('metamatch.finalizingShort'), status: 'fetching', detail: msg });
         }
       } catch (_) {}
     });
@@ -397,19 +397,19 @@
         // 取消：matching → pending，searching/fetching → failed(cancelled)
         items.forEach((i) => { if (i.status === 'matching') i.status = 'pending'; });
         syncLog.forEach((e) => {
-          if (e.status === 'searching' || e.status === 'fetching') { e.status = 'failed'; e.detail = tr('metamatch.cancelled', '已取消'); }
+          if (e.status === 'searching' || e.status === 'fetching') { e.status = 'failed'; e.detail = tr('metamatch.cancelled'); }
         });
       } else {
         // 连接丢失：matching → failed
         items.forEach((i) => {
-          if (i.status === 'matching') { i.status = 'failed'; i.error = i.error || tr('metamatch.connectionLost', '连接断开，匹配中断'); }
+          if (i.status === 'matching') { i.status = 'failed'; i.error = i.error || tr('metamatch.connectionLost'); }
         });
         syncLog.forEach((e) => {
-          if (e.status === 'searching' || e.status === 'fetching') { e.status = 'failed'; e.detail = tr('metamatch.connectionLost', '连接断开，匹配中断'); }
+          if (e.status === 'searching' || e.status === 'fetching') { e.status = 'failed'; e.detail = tr('metamatch.connectionLost'); }
         });
       }
     } catch (e) {
-      if (!syncCancelled) showToast(tr('metamatch.syncFailed', '同步失败: {{error}}', { error: e.message }), 'error');
+      if (!syncCancelled) showToast(tr('metamatch.syncFailed', { error: e.message }), 'error');
       items.forEach((i) => { if (i.status === 'matching') i.status = 'pending'; });
     }
 
@@ -461,8 +461,8 @@
     syncLogVisible = true;
     panelVisible = true;
 
-    const title = result.name_cn || result.name || result.title || tr('metamatch.unknown', '未知');
-    addSyncLogEntry(item.animeId, title, 'fetching', tr('metamatch.fetchingMetadata', '正在获取元数据…'));
+    const title = result.name_cn || result.name || result.title || tr('metamatch.unknown');
+    addSyncLogEntry(item.animeId, title, 'fetching', tr('metamatch.fetchingMetadata'));
     item.status = 'matching';
 
     try {
@@ -497,14 +497,14 @@
         addSyncLogEntry(item.animeId, null, 'matched', a.bangumiTitle || title);
       } else {
         item.status = 'failed';
-        item.error = tr('metamatch.emptyFetchResult', '获取元数据返回空');
-        addSyncLogEntry(item.animeId, null, 'failed', tr('metamatch.emptyFetchResult', '获取元数据返回空'));
+        item.error = tr('metamatch.emptyFetchResult');
+        addSyncLogEntry(item.animeId, null, 'failed', tr('metamatch.emptyFetchResult'));
       }
     } catch (e) {
       item.status = 'failed';
       item.error = e.message;
       addSyncLogEntry(item.animeId, null, 'failed', e.message);
-      showToast(tr('metamatch.applyMatchFailed', '应用匹配失败: {{error}}', { error: e.message }), 'error');
+      showToast(tr('metamatch.applyMatchFailed', { error: e.message }), 'error');
     }
 
     syncInProgress = false;
@@ -526,7 +526,7 @@
   function closeModal() {
     // 同步中关闭弹窗 → 确认对话框（vanilla 28-52）
     if (syncInProgress) {
-      showConfirm(tr('metamatch.confirmAbort', '匹配尚未完成，退出将中断正在进行的匹配。\n已匹配的条目数据不会丢失，未完成的条目可重新匹配。\n\n确定退出？')).then((ok) => {
+      showConfirm(tr('metamatch.confirmAbort')).then((ok) => {
         if (!ok) return; // 用户取消关闭
         doClose();
       });
@@ -544,7 +544,7 @@
     syncLog = [];
     if (syncStream) { syncStream.cancel(); syncStream = null; } // 关 SSE
     if (wasSyncing) {
-      showToast(tr('metamatch.matchInterrupted', '匹配已中断，未完成的条目可重新匹配'), 'warning');
+      showToast(tr('metamatch.matchInterrupted'), 'warning');
     }
     if (needsRefresh && typeof window.loadLibrary === 'function') {
       needsRefresh = false;

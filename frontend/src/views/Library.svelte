@@ -127,7 +127,7 @@
     } catch (e) {
       loading = false;
       if (!window.location.origin.startsWith('http')) return;
-      showToast(tr('library.loadFailed', '加载失败：{message}', { message: e.message }), 'error');
+      showToast(tr('library.loadFailed', { message: e.message }), 'error');
     }
   }
 
@@ -206,7 +206,7 @@
   function continueLabel(a) {
     const ep = findContinueEpisode(a);
     const total = a.episodes ? a.episodes.length : 0;
-    return tr('library.episodeProgress', '第 {current}/{total} 集', { current: ep ? ep.number : '?', total });
+    return tr('library.episodeProgress', { current: ep ? ep.number : '?', total });
   }
 
   // ─── 继续观看：GSAP 交错入场（对齐 vanilla library.js renderContinueSectionFull animate=true）
@@ -372,9 +372,9 @@
     closeCtx();
     try {
       await navigator.clipboard.writeText(title);
-      showToast(tr('mylist.copied', '已复制'), 'success');
+      showToast(tr('mylist.copied'), 'success');
     } catch (e) {
-      showToast(tr('mylist.copyFailed', '复制失败'), 'error');
+      showToast(tr('mylist.copyFailed'), 'error');
     }
   }
 
@@ -400,14 +400,14 @@
     closeCtx();
     if (!item) return;
     const name = item.bangumiTitle || item.title || item.id;
-    const confirmed = await showConfirm(tr('mylist.confirmRemove', '确认从我的列表移除「{name}」？', { name }));
+    const confirmed = await showConfirm(tr('mylist.confirmRemove', { name }));
     if (!confirmed) return;
     try {
       await api.del('/api/mylist/' + encodeURIComponent(item.id));
-      showToast(tr('mylist.removed', '已移除'), 'info');
+      showToast(tr('mylist.removed'), 'info');
       loadLibrary(false);
     } catch (e) {
-      showToast(tr('mylist.removeFailed', '移除失败：{message}', { message: e.message }), 'error');
+      showToast(tr('mylist.removeFailed', { message: e.message }), 'error');
     }
   }
 
@@ -429,18 +429,18 @@
 
 <section class="view" id="svelte-libraryView" class:hidden={!$libraryOpen}>
   <div class="view-header">
-    <h1>{tr('library.title', '动漫库')}</h1>
+    <h1>{tr('library.title')}</h1>
     <div class="view-header-right">
       <button class="btn btn-outline" onclick={openBatchMatch}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="mr-1"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-        <span>{tr('library.batchMatch', '批量匹配')}</span>
+        <span>{tr('library.batchMatch')}</span>
       </button>
     </div>
   </div>
 
   <div class="dashboard" id="svelte-libraryDashboard">
     {#if loading}
-      <div class="dashboard-stats-loading">{tr('common.loading', '加载中…')}</div>
+      <div class="dashboard-stats-loading">{tr('common.loading')}</div>
     {:else if libraryData.length === 0}
       <!-- 空状态 -->
       <div class="library-empty-state">
@@ -454,16 +454,16 @@
             <path d="M38 40l4-2v4l-4-2z" fill="currentColor" fill-opacity="0.3" stroke="none"/>
           </svg>
         </div>
-        <h2 class="library-empty-title">{tr('library.emptyTitle', '动漫库是空的')}</h2>
-        <p class="library-empty-desc">{tr('library.emptyDesc1', '还没有导入任何动漫。')}<br>{tr('library.emptyDesc2', '去发现页扫描媒体目录，或先设置媒体目录路径。')}</p>
+        <h2 class="library-empty-title">{tr('library.emptyTitle')}</h2>
+        <p class="library-empty-desc">{tr('library.emptyDesc1')}<br>{tr('library.emptyDesc2')}</p>
         <div class="library-empty-actions">
           <button class="btn btn-primary" onclick={goDiscovery}>
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-            {tr('library.goDiscovery', '去发现')}
+            {tr('library.goDiscovery')}
           </button>
           <button class="btn" onclick={openSettings}>
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-            {tr('library.setMediaDir', '设置媒体目录')}
+            {tr('library.setMediaDir')}
           </button>
         </div>
       </div>
@@ -471,24 +471,24 @@
       {#each layout as s (s.id)}
         {#if s.enabled && s.id === 'stats'}
           <div class="dashboard-section" data-section="stats">
-            <div class="dashboard-section-header"><span class="dashboard-section-title">{tr('library.statsOverview', '统计概览')}</span></div>
+            <div class="dashboard-section-header"><span class="dashboard-section-title">{tr('library.statsOverview')}</span></div>
             <div class="dashboard-section-body">
               {#if stats}
                 <div class="dashboard-stats">
-                  <div class="dashboard-stats-item"><b>{fmtSize(stats.totalFileSize || 0)}</b>{tr('library.statSize', '总大小')}</div>
-                  <div class="dashboard-stats-item"><b>{stats.totalFileCount}</b>{tr('library.statFiles', '文件数')}</div>
-                  <div class="dashboard-stats-item"><b>{stats.watching}</b>{tr('library.statWatching', '在看')}</div>
-                  <div class="dashboard-stats-item"><b>{stats.completed}</b>{tr('library.statCompleted', '看过')}</div>
-                  <div class="dashboard-stats-item"><b>{stats.total}</b>{tr('library.statLocal', '本地')}</div>
-                  <div class="dashboard-stats-item"><b>{stats.totalEpWatched}</b>{tr('library.statEpisodeCount', '已看集数')}</div>
-                  <div class="dashboard-stats-item"><b>{fmtTime(stats.totalWatchSeconds || 0)}</b>{tr('library.statDuration', '观看时长')}</div>
+                  <div class="dashboard-stats-item"><b>{fmtSize(stats.totalFileSize || 0)}</b>{tr('library.statSize')}</div>
+                  <div class="dashboard-stats-item"><b>{stats.totalFileCount}</b>{tr('library.statFiles')}</div>
+                  <div class="dashboard-stats-item"><b>{stats.watching}</b>{tr('library.statWatching')}</div>
+                  <div class="dashboard-stats-item"><b>{stats.completed}</b>{tr('library.statCompleted')}</div>
+                  <div class="dashboard-stats-item"><b>{stats.total}</b>{tr('library.statLocal')}</div>
+                  <div class="dashboard-stats-item"><b>{stats.totalEpWatched}</b>{tr('library.statEpisodeCount')}</div>
+                  <div class="dashboard-stats-item"><b>{fmtTime(stats.totalWatchSeconds || 0)}</b>{tr('library.statDuration')}</div>
                 </div>
               {/if}
             </div>
           </div>
         {:else if s.enabled && s.id === 'continueWatch'}
           <div class="dashboard-section hscroll-section" data-section="continueWatch">
-            <div class="dashboard-section-header"><span class="dashboard-section-title">{tr('library.continueWatching', '继续观看')}</span></div>
+            <div class="dashboard-section-header"><span class="dashboard-section-title">{tr('library.continueWatching')}</span></div>
             <div class="dashboard-section-body">
               {#if continueItems.length > 0}
                 {#key continueItems}
@@ -503,7 +503,7 @@
                         <div class="dashboard-continue-overlay"></div>
                         <div class="dashboard-continue-content">
                           <div class="dashboard-continue-info">
-                            <div class="dashboard-continue-label">{tr('library.continuePlay', '继续播放')}</div>
+                            <div class="dashboard-continue-label">{tr('library.continuePlay')}</div>
                             <div class="dashboard-continue-title">{a.bangumiTitle || a.title}</div>
                           </div>
                         </div>
@@ -538,21 +538,21 @@
     {#if ctxItem}
       <div class="context-menu-item" onclick={copyTitle}>
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-        <span>{tr('mylist.copyTitle', '复制标题')}</span>
+        <span>{tr('mylist.copyTitle')}</span>
       </div>
       <div class="context-menu-item" onclick={openInBgm}>
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-        <span>{tr('mylist.openInBgm', '在 Bangumi 打开')}</span>
+        <span>{tr('mylist.openInBgm')}</span>
       </div>
       <div class="context-menu-divider"></div>
       <div class="context-menu-item" onclick={() => { const it = ctxItem; closeCtx(); openStatus(it, null); }}>
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        <span>{tr('mylist.markStatus', '标记状态')}</span>
+        <span>{tr('mylist.markStatus')}</span>
       </div>
       <div class="context-menu-divider"></div>
       <div class="context-menu-item context-menu-danger" onclick={removeLibraryItem}>
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-        <span>{tr('common.remove', '移除')}</span>
+        <span>{tr('common.remove')}</span>
       </div>
     {/if}
   </ContextMenu>

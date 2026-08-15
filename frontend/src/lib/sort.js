@@ -3,21 +3,21 @@
 import { tr } from './anime-utils.js';
 
 export const STATUS_LABELS = {
-  watching: tr('common.watching', '进行中'),
-  wish: tr('common.wish', '计划中'),
-  completed: tr('common.completed', '已完成'),
-  on_hold: tr('common.on_hold', '搁置'),
-  dropped: tr('common.dropped', '抛弃'),
+  watching: tr('common.watching'),
+  wish: tr('common.wish'),
+  completed: tr('common.completed'),
+  on_hold: tr('common.on_hold'),
+  dropped: tr('common.dropped'),
 };
 
 export const MYLIST_STATUS_ORDER = ['watching', 'wish', 'completed', 'on_hold', 'dropped'];
 
 export const ANIME_SORT_OPTIONS = [
-  { key: 'name', label: tr('mylist.sortName', '名称') },
-  { key: 'recent', label: tr('mylist.sortRecent', '最近观看') },
-  { key: 'updated', label: tr('mylist.sortUpdated', '最近更新') },
-  { key: 'rating', label: tr('common.rating', '评分') },
-  { key: 'imported', label: tr('mylist.sortImported', '导入时间') },
+  { key: 'name', label: tr('mylist.sortName') },
+  { key: 'recent', label: tr('mylist.sortRecent') },
+  { key: 'updated', label: tr('mylist.sortUpdated') },
+  { key: 'rating', label: tr('common.rating') },
+  { key: 'imported', label: tr('mylist.sortImported') },
 ];
 
 export function sortAnimeItems(items, sortMode) {

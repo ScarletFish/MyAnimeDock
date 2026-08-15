@@ -1,6 +1,8 @@
 // Router — showView + scroll state + sidebar active state.
 // All 5 views are Svelte-owned, so showView is now a thin coordinator:
 // scroll-save, sidebar active state, window.currentView, __skipViewEnter, __svelteViewSync.
+import { AppState } from '../js/state.js';
+import { __debug } from '../js/debug.js';
 
 let currentView = 'library';
 let libraryScrollTop = 0;

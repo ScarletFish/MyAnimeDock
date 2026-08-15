@@ -15,6 +15,7 @@ import { loadTheme, loadReduceMotion, applyZoom, applyDetailTitleBg } from './li
 import { showView } from './lib/router.js';
 import { startGlobalMpvStatus } from './lib/mpv-status.js';
 import { initI18n, bindDom } from './lib/i18n.js';
+import { API } from './js/api.js';
 
 // ─── i18n 初始化（必须在其他模块使用 t() 之前）───
 initI18n();

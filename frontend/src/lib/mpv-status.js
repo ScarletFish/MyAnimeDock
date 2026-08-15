@@ -4,6 +4,7 @@
 // Side-effect module: importing starts the listener.
 
 import { showToast } from '../components/Toast.svelte';
+import { API } from '../js/api.js';
 
 let gMpvActive = false;
 let gMpvAnimeId = null;

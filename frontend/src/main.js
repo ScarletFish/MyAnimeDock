@@ -2,7 +2,7 @@ import { mount } from 'svelte';
 import App from './App.svelte';
 import Chrome from './components/chrome/Chrome.svelte';
 import { titlebarContext } from './components/chrome/Titlebar.svelte';
-import { onboardingOpen } from './components/chrome/Onboarding.svelte';
+import { onboardingOpen } from './components/Onboarding.svelte';
 import { settingsOpen, settingsTab } from './views/Settings.svelte';
 import { discoveryOpen } from './views/Discovery.svelte';
 import { libraryOpen } from './views/Library.svelte';

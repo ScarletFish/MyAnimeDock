@@ -10,7 +10,7 @@
   // ─── Onboarding（首启引导，fixed overlay）───
   // 由 vanilla onboarding.js 迁移而来，复用现有 onboarding.css 类名，视觉零变化。
   // 初始 class:hidden 避免首屏闪现；configCache 刷新已丢弃（无消费者）。
-  import { showToast } from '../Toast.svelte';
+  import { showToast } from './Toast.svelte';
 
   // i18n 辅助：现有全局 t() 可用则用之，否则回退文案
   function tr(key, fallback) {

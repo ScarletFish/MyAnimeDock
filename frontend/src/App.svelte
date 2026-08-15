@@ -6,7 +6,7 @@
   import Toast from './components/Toast.svelte';
   import Modal from './components/Modal.svelte';
   import ConfirmDialog from './components/ConfirmDialog.svelte';
-  import Onboarding from './components/chrome/Onboarding.svelte';
+  import Onboarding from './components/Onboarding.svelte';
   import Settings from './views/Settings.svelte';
   import Discovery from './views/Discovery.svelte';
   import Library from './views/Library.svelte';

@@ -116,6 +116,17 @@
   line-height: 1;
 }
 
+.titlebar__detail-title {
+  font-family: var(--font-body);
+  font-size: var(--text-compact-md);
+  color: var(--fg-primary);
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
 /* ─── Titlebar Global Search ─── */
 .titlebar__search {
   position: relative;

@@ -1,6 +1,6 @@
 <script module>
   // ─── Titlebar 上下文 store（跨组件通信）───
-  // mode: 'default' | 'detail'；title 预留（当前模板未展示，保留字段）。
+  // mode: 'default' | 'detail'；title 展示在返回按钮旁（详情页动画名）。
   // main.js 桥接 window.setTitlebarContext → titlebarContext.set(...)。
   import { writable } from 'svelte/store';
 
@@ -93,6 +93,7 @@
         <svg viewBox="0 0 16 16"><polyline points="10 4 6 8 10 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <span>{tr('common.back')}</span>
       </button>
+      <span class="titlebar__detail-title" id="titlebarDetailTitle">{ $titlebarContext.title || '' }</span>
     </div>
   </div>
 

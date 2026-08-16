@@ -39,12 +39,12 @@ frontend/
 ## 4. 分阶段执行
 
 ### Phase 0 — 构建系统地基
-- [ ] 安装 `svelte` + `@sveltejs/vite-plugin-svelte`
-- [ ] 建 `src/main.js` + `src/App.svelte` 入口
-- [ ] 改 `vite.config.js`：加 Svelte 插件，**移除 concat 插件**
-- [ ] 改 `index.html`：移除 28 个 script 标签，留单一入口
-- [ ] 处理内联 onclick（`onclick="showView(...)"` 等）→ 事件监听或组件内处理
-- [ ] 验证：`npm run check:frontend` 通过，dev server 能跑
+- [x] 安装 `svelte` + `@sveltejs/vite-plugin-svelte`
+- [x] 建 `src/main.js` + `src/App.svelte` 入口
+- [x] 改 `vite.config.js`：加 Svelte 插件，**移除 concat 插件**
+- [x] 改 `index.html`：移除 28 个 script 标签，留单一入口
+- [x] 处理内联 onclick（`onclick="showView(...)"` 等）→ 事件监听或组件内处理
+- [x] 验证：`npm run check:frontend` 通过，dev server 能跑
 
 ### Phase 1 — 组件库骨架（用户指定先行）
 - [x] Toast 组件（`components/Toast.svelte`，替换 `toast.js` 的 showToast/dismissToast）
@@ -57,15 +57,15 @@ frontend/
 > **决策修正（2026-08-14）**：headless 库从 melt-ui 改为 **bits-ui**（`^2.18.1`，Svelte 5 官方推荐）。StatusModal 组件库（状态下拉/评分 stepper/进度/日期三段式）已完成，`enrichAnime` 统一三接口预填数据。
 
 ### Phase 2 — 视图渐进迁移
-- [ ] 按依赖顺序逐视图转 Svelte：settings → discovery → library → detail → mylist → stats
-- [ ] 每个视图：HTML 模板 → Svelte 组件，全局函数 → 组件方法/模块导入
-- [ ] 每迁移一个视图跑 `npm run check:frontend` 验证
+- [x] 按依赖顺序逐视图转 Svelte：settings → discovery → library → detail → mylist → stats
+- [x] 每个视图：HTML 模板 → Svelte 组件，全局函数 → 组件方法/模块导入
+- [x] 每迁移一个视图跑 `npm run check:frontend` 验证
 
 ### Phase 3 — 清理
-- [ ] 删除 concat 插件相关代码
-- [ ] 删除已迁移的旧 vanilla JS 文件
-- [ ] 内联 onclick 全部清理
-- [ ] 全量 `npm run check:frontend` + `npm run typecheck`（后端不受影响）
+- [x] 删除 concat 插件相关代码
+- [x] 删除已迁移的旧 vanilla JS 文件
+- [x] 内联 onclick 全部清理
+- [x] 全量 `npm run check:frontend` + `npm run typecheck`（后端不受影响）
 
 ## 5. 关键技术决策
 
@@ -114,9 +114,9 @@ frontend/
 
 ## 8. 完成标准
 
-- [ ] concat 插件移除，Vite + Svelte 构建正常
-- [ ] Toast/Modal/Dropdown/Card 为 Svelte 组件
-- [ ] 所有视图为 Svelte 组件
-- [ ] 旧 vanilla JS 文件删除
-- [ ] `npm run check:frontend` 全绿
-- [ ] 功能与迁移前一致（GSAP/d3/i18next/播放/同步均正常）
+- [x] concat 插件移除，Vite + Svelte 构建正常
+- [x] Toast/Modal/Dropdown/Card 为 Svelte 组件
+- [x] 所有视图为 Svelte 组件
+- [x] 旧 vanilla JS 文件删除
+- [x] `npm run check:frontend` 全绿
+- [x] 功能与迁移前一致（GSAP/d3/i18next/播放/同步均正常）

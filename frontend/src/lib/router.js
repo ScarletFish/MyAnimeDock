@@ -34,13 +34,6 @@ export function showView(view) {
   }
   __debug.snapshot(currentView + ' → ' + view + ' (after save, before toggle)');
 
-  const views = ['discovery', 'library', 'stats', 'mylist', 'detail'];
-  for (const v of views) {
-    if (window.SVELTE_VIEWS?.[v]) continue;
-    const el = document.getElementById(v + 'View');
-    if (el) el.classList.toggle('hidden', v !== view);
-  }
-
   // Update sidebar active state
   document.getElementById('btnDiscovery').classList.toggle('active', view === 'discovery');
   document.getElementById('btnLibrary').classList.toggle('active', view === 'library');
@@ -60,23 +53,6 @@ export function showView(view) {
 
   if (view !== 'detail') {
     if (typeof window.setTitlebarContext === 'function') window.setTitlebarContext('default');
-  }
-
-  // Load data for view（Svelte 拥有的视图由组件自身加载，vanilla 不重复渲染）
-  if (view === 'discovery' && !window.SVELTE_VIEWS?.discovery) window.loadDiscovery();
-  if (view === 'library' && !window.SVELTE_VIEWS?.library) {
-    window._libraryChangingView = true;
-    window.loadLibrary(true);
-  }
-  if (view === 'mylist' && !window.SVELTE_VIEWS?.mylist) {
-    window.loadMyList();
-  }
-  if (view === 'stats' && !window.SVELTE_VIEWS?.stats) {
-    window.loadStats();
-    window.loadActivityChart();
-    window.loadRatingChart();
-    window.loadSeasonChart();
-    window.loadChordChart();
   }
 
   if (window.__svelteViewSync) window.__svelteViewSync(view);

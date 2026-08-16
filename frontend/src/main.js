@@ -55,17 +55,7 @@ window.showOnboarding = () => {
 };
 
 // ─── 渐进迁移路由表 ───
-// SVELTE_VIEWS[v] = true 表示该视图已由 Svelte 接管（vanilla 不再渲染/切换它）。
-// 逐视图翻转一个 flag 即可切换，一行回滚（改回 false）。
-// 未拥有的视图 store 恒 false，避免双份渲染。
-window.SVELTE_VIEWS = {
-  discovery: true,
-  library: true,
-  stats: true,
-  mylist: true,
-  detail: true,
-};
-
+// 所有视图已由 Svelte 接管，SVELTE_VIEWS 机制已移除。
 const openStores = {
   discovery: discoveryOpen,
   library: libraryOpen,
@@ -74,10 +64,10 @@ const openStores = {
   detail: detailOpen,
 };
 
-// 由 vanilla showView() 在末尾调用，同步 Svelte 视图可见性
+// 由 showView() 在末尾调用，同步 Svelte 视图可见性（所有视图已由 Svelte 接管）
 window.__svelteViewSync = (view) => {
   for (const [v, store] of Object.entries(openStores)) {
-    store.set(window.SVELTE_VIEWS[v] ? v === view : false);
+    store.set(v === view);
   }
 };
 
@@ -102,67 +92,34 @@ window.switchSettingsTab = (btn, tab) => {
 };
 
 // ─── 桥接外部刷新入口到 Svelte discovery ───
-// 保存设置（Settings.svelte:195）和删除动漫（detail.js:998）后调用 refreshDiscovery/loadDiscovery。
-// 当 discovery 由 Svelte 接管时路由到 Svelte 视图刷新；否则回退 vanilla。
-// 若不桥接，外部调用会渲染进隐藏的 vanilla #discoveryGrid，产生重复 dc- id 使勾选失灵。
-const vanillaRefreshDiscovery = window.refreshDiscovery;
-const vanillaLoadDiscovery = window.loadDiscovery;
-const svelteRefreshDiscovery = () => {
-  if (window.SVELTE_VIEWS?.discovery && typeof window.refreshDiscoverySvelte === 'function') {
-    window.refreshDiscoverySvelte();
-    return true;
-  }
-  return false;
-};
+// 保存设置（Settings.svelte）和删除动漫（Detail.svelte）后调用 refreshDiscovery/loadDiscovery。
+// 路由到 Svelte 版 Discovery 的刷新入口（Discovery.svelte 挂载时注册 window.refreshDiscoverySvelte）。
 window.refreshDiscovery = () => {
-  if (!svelteRefreshDiscovery() && typeof vanillaRefreshDiscovery === 'function') vanillaRefreshDiscovery();
+  if (typeof window.refreshDiscoverySvelte === 'function') window.refreshDiscoverySvelte();
 };
 window.loadDiscovery = () => {
-  if (!svelteRefreshDiscovery() && typeof vanillaLoadDiscovery === 'function') vanillaLoadDiscovery();
+  if (typeof window.refreshDiscoverySvelte === 'function') window.refreshDiscoverySvelte();
 };
 
 // ─── 桥接外部刷新入口到 Svelte library ───
-// 状态保存（mylist.js saveStatusModal）、详情页操作（detail.js:981/997）、
-// discovery/metamatch 等 vanilla 流程调用裸 loadLibrary()（经典脚本全局绑定 = window.loadLibrary）。
-// 当 library 由 Svelte 接管时路由到 Svelte 视图刷新；否则回退 vanilla。
-// 若不桥接，外部调用会渲染进隐藏的 vanilla #libraryDashboard，Svelte 库页收不到刷新信号。
-const vanillaLoadLibrary = window.loadLibrary;
-window.loadLibrary = (soft) => {
-  if (window.SVELTE_VIEWS?.library && typeof window.loadLibrarySvelte === 'function') {
-    window.loadLibrarySvelte();
-    return true;
-  }
-  if (typeof vanillaLoadLibrary === 'function') return vanillaLoadLibrary(soft);
-  return false;
+// 状态保存、详情页操作、discovery/metamatch 等流程调用裸 loadLibrary()。
+// 路由到 Svelte 版 Library 的刷新入口（Library.svelte 挂载时注册 window.loadLibrarySvelte）。
+window.loadLibrary = () => {
+  if (typeof window.loadLibrarySvelte === 'function') window.loadLibrarySvelte();
 };
 
 // ─── 桥接外部刷新入口到 Svelte mylist ───
-// 镜像 loadLibrary 桥接模式：当 mylist 由 Svelte 接管时路由到 Svelte 视图刷新；否则回退 vanilla。
-const vanillaLoadMyList = window.loadMyList;
+// 详情页操作等流程调用裸 loadMyList()。路由到 Svelte 版 Mylist 的刷新入口。
 window.loadMyList = () => {
-  if (window.SVELTE_VIEWS?.mylist && typeof window.loadMyListSvelte === 'function') {
-    window.loadMyListSvelte();
-    return true;
-  }
-  if (typeof vanillaLoadMyList === 'function') return vanillaLoadMyList();
-  return false;
+  if (typeof window.loadMyListSvelte === 'function') window.loadMyListSvelte();
 };
 
-// Detail 接管：window.showDetail = window.openDetail（签名兼容）
-// 所有调用方（vanilla library.js/mylist.js/search.js/detail.js + Svelte Mylist.svelte/anime-utils.js）
-// 都调 window.showDetail(id, rect, imgSrc, sourceView)，桥接到 Svelte 版 openDetail。
-// 保存 vanilla 引用回退，避免与 vanilla showDetail 冲突。
-const vanillaShowDetail = window.showDetail;
+// Detail 接管：window.showDetail = window.openDetail（签名兼容）。
+// 所有调用方（SearchBar/anime-utils/Library/Mylist）都调 window.showDetail(id, rect, imgSrc, sourceView)。
 window.showDetail = (id, fromRect, fromSrc, sourceView) => {
-  if (window.SVELTE_VIEWS?.detail && typeof window.openDetail === 'function') {
-    window.openDetail(id, fromRect, fromSrc, sourceView);
-    // 委托 showView('detail') 统一处理：__svelteViewSync + 词法 currentView + scrollTop=0
-    // （app.js showView 对 'detail' 无 vanilla 依赖，SVELTE_VIEWS.detail=true 跳过 vanilla toggle）。
-    // 同时修复 B6：showView 内同步 window.currentView，使播放结束回调（app.js:46）能触发。
-    window.showView('detail');
-    return;
-  }
-  if (typeof vanillaShowDetail === 'function') return vanillaShowDetail(id, fromRect, fromSrc, sourceView);
+  window.openDetail(id, fromRect, fromSrc, sourceView);
+  // 委托 showView('detail') 统一处理：__svelteViewSync + 词法 currentView + scrollTop=0。
+  window.showView('detail');
 };
 
 // ─── 桥接：Library.svelte 的 openBatchMatch 仍调用 window.mmOpenModal() ───

@@ -41,23 +41,6 @@
 
 </div> <!-- /body-wrapper -->
 
-<!-- Keyboard shortcuts help -->
-<div id="kbdHelpOverlay" class="kbd-help-overlay hidden">
-  <div class="kbd-help__card">
-    <h2 class="kbd-help__title" data-i18n="kbd.title">键盘快捷键</h2>
-    <div class="kbd-help__grid">
-      <div class="kbd-help__row"><kbd>1</kbd><span data-i18n="kbd.discovery">发现</span></div>
-      <div class="kbd-help__row"><kbd>2</kbd><span data-i18n="kbd.library">动漫库</span></div>
-      <div class="kbd-help__row"><kbd>3</kbd><span data-i18n="kbd.mylist">我的列表</span></div>
-      <div class="kbd-help__row"><kbd>4</kbd><span data-i18n="kbd.stats">统计</span></div>
-      <div class="kbd-help__row"><kbd>/</kbd><span data-i18n="common.search">搜索</span></div>
-      <div class="kbd-help__row"><kbd>?</kbd><span data-i18n="kbd.help">快捷键帮助</span></div>
-      <div class="kbd-help__row"><kbd>Esc</kbd><span data-i18n="kbd.closeBack">关闭弹窗 / 返回</span></div>
-    </div>
-    <p class="kbd-help__hint" data-i18n="kbd.clickToClose">点击任意位置关闭</p>
-  </div>
-</div>
-
 <!-- Vendor scripts (loaded before ESM entry) -->
 <script src="/vendor/d3/d3.min.js"></script>
 <script src="/vendor/wordcloud/wordcloud2.js"></script>
@@ -67,9 +50,6 @@
 <script src="/vendor/i18next/i18next.min.js"></script>
 
 <!-- Scripts loaded in dependency order (globals, not ESM) -->
-<script type="module" src="/src/js/keyboard.js"></script>
-<script type="module" src="/src/lib/tooltip.js"></script>
-<script type="module" src="/src/lib/tauri-dialog.js"></script>
 <script type="module" src="/src/main.js"></script>
 </body>
 </html>

@@ -1,26 +1,19 @@
 // Global keyboard navigation — number keys, /, ?, Esc
 // ES module：模块级副作用在 import 时执行（等价原 IIFE 自初始化）。
+import { get } from 'svelte/store';
 import { focusSearch } from '../components/chrome/SearchBar.svelte';
-
-const helpOverlay = document.getElementById('kbdHelpOverlay');
+import { kbdHelpOpen } from '../components/KbdHelp.svelte';
 
 export function toggleHelp() {
-  if (!helpOverlay) return;
-  if (helpOverlay.classList.contains('hidden')) {
-    showHelp();
-  } else {
-    hideHelp();
-  }
+  kbdHelpOpen.update((v) => !v);
 }
 
 export function showHelp() {
-  if (!helpOverlay) return;
-  helpOverlay.classList.remove('hidden');
+  kbdHelpOpen.set(true);
 }
 
 export function hideHelp() {
-  if (!helpOverlay) return;
-  helpOverlay.classList.add('hidden');
+  kbdHelpOpen.set(false);
 }
 
 document.addEventListener('keydown', function (e) {
@@ -61,17 +54,10 @@ document.addEventListener('keydown', function (e) {
       toggleHelp();
       break;
     case 'Escape':
-      if (helpOverlay && !helpOverlay.classList.contains('hidden')) {
+      if (get(kbdHelpOpen)) {
         e.preventDefault();
         hideHelp();
       }
       break;
   }
 });
-
-// Close help on overlay click
-if (helpOverlay) {
-  helpOverlay.addEventListener('click', function (e) {
-    if (e.target === helpOverlay) hideHelp();
-  });
-}

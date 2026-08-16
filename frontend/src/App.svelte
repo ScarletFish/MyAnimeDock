@@ -15,6 +15,7 @@
   import Detail from './views/Detail.svelte';
   import ThemeDock from './components/ThemeDock.svelte';
   import MetaMatch from './views/MetaMatch.svelte';
+  import KbdHelp from './components/KbdHelp.svelte';
 </script>
 
 <!--
@@ -29,6 +30,7 @@
   <ConfirmDialog />
   <Onboarding />
   <ThemeDock />
+  <KbdHelp />
   <Settings />
   <Discovery />
   <Library />

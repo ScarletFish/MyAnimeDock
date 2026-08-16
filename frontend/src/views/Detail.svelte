@@ -434,6 +434,7 @@
       }
       return { wishlist: false, data: await api.get('/api/anime/' + encodeURIComponent(id)) };
     } catch (e) {
+      console.error('[Detail] loadAnimeData failed for id=' + id + ':', e);
       showToast(tr('detail.loadFailed', { error: e.message }), 'error');
       isSliding = false;
       const navOverlay = document.getElementById('svelte-detailNavOverlay');
@@ -447,7 +448,7 @@
     isSliding = true;
     const navOverlay = document.getElementById('svelte-detailNavOverlay');
     if (navOverlay) navOverlay.style.pointerEvents = 'none';
-    resetDetailEnter();
+    resetDetailNav();
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
       document.documentElement.dataset.reduceMotion === 'true';
@@ -472,10 +473,18 @@
     const [result] = await Promise.all([loadAnimeData(id), exitPromise]);
     if (!result) {
       // fetch 失败：把被推离的旧内容恢复原位（isSliding/navOverlay 已在 loadAnimeData 内复位）
+      console.error('[Detail] slideToAnime loadAnimeData returned null (fetch failed)');
       if (gsap && exitTargets.length) {
         gsap.killTweensOf(exitTargets);
         gsap.set(exitTargets, { clearProps: 'transform,opacity' });
       }
+      // 恢复视图可见：resetDetailEnter 已把 detailReady 置 false → section display:none，
+      // 若不恢复会卡白屏（旧内容已复位但 section 仍隐藏）
+      const detailSection = document.getElementById('svelte-detailView');
+      if (detailSection) detailSection.style.visibility = '';
+      detailReady = true;
+      showContent = true;
+      enterActive = false;
       return;
     }
 
@@ -492,26 +501,36 @@
     tagsExpanded = false;
 
     // 入场：新内容从反方向滑入，与原有分波淡入叠加
-    enterActive = true;
-    await tick(); // Svelte 渲染 DOM，img 进 DOM 开始加载
-    detailReady = true; // DOM 就绪，显示视图（slideToAnime 是切番，页面本来就是可见的）
-    // cover 立即可见（内联样式覆盖 CSS class 的 opacity:0），与旧版行为一致
-    const wrap = document.getElementById('svelte-detailCover');
-    if (wrap) { wrap.style.opacity = '1'; wrap.style.transform = 'scale(1)'; }
-    const incoming = Array.from(document.querySelectorAll('.detail-content, .detail-banner-bg'));
-    const fromX = direction === 'prev' ? -40 : 40;
-    if (gsap && !reduceMotion && incoming.length) {
-      gsap.set(incoming, {
-        x: (i, el) => el.classList.contains('detail-banner-bg') ? fromX * 0.6 : fromX,
-      });
+    try {
+      enterActive = true;
+      await tick(); // Svelte 渲染 DOM，img 进 DOM 开始加载
+      detailReady = true; // DOM 就绪，显示视图（slideToAnime 是切番，页面本来就是可见的）
+      // cover 立即可见（内联样式覆盖 CSS class 的 opacity:0），与旧版行为一致
+      const wrap = document.getElementById('svelte-detailCover');
+      if (wrap) { wrap.style.opacity = '1'; wrap.style.transform = 'scale(1)'; }
+      const incoming = Array.from(document.querySelectorAll('.detail-content, .detail-banner-bg'));
+      const fromX = direction === 'prev' ? -40 : 40;
+      if (gsap && !reduceMotion && incoming.length) {
+        gsap.set(incoming, {
+          x: (i, el) => el.classList.contains('detail-banner-bg') ? fromX * 0.6 : fromX,
+        });
+      }
+      // 恢复 section 可见性
+      if (detailSection) detailSection.style.visibility = '';
+      if (gsap && !reduceMotion && incoming.length) {
+        gsap.to(incoming, { x: 0, duration: 0.28, ease: 'power2.out' });
+      }
+      setEntranceDelays(0.04, 0);
+      showContent = true;
+    } catch (err) {
+      // 调试：定位左右切换白屏根因（#key 重建期间子组件抛错会中断本流程）
+      console.error('[Detail] slideToAnime apply phase error:', err);
+      // 安全网：确保视图不卡在白屏（detailReady/showContent 未置位 → section 保持 display:none）
+      detailReady = true;
+      showContent = true;
+      enterActive = false;
+      if (detailSection) detailSection.style.visibility = '';
     }
-    // 恢复 section 可见性
-    if (detailSection) detailSection.style.visibility = '';
-    if (gsap && !reduceMotion && incoming.length) {
-      gsap.to(incoming, { x: 0, duration: 0.28, ease: 'power2.out' });
-    }
-    setEntranceDelays(0.04, 0);
-    showContent = true;
     isSliding = false;
     if (navOverlay) navOverlay.style.pointerEvents = '';
   }
@@ -557,6 +576,20 @@
     enterActive = false;
     showContent = false;
     detailReady = false;
+    const hero = document.getElementById('svelte-heroCover');
+    if (hero) hero.remove();
+    const wrap = document.getElementById('svelte-detailCover');
+    if (wrap) { wrap.style.opacity = ''; wrap.style.transform = ''; wrap.style.visibility = ''; }
+    document.querySelectorAll('.detail-ripple').forEach((el) => el.remove());
+  }
+
+  // 左右切换专用重置：只重置入场状态（enterActive/showContent/过渡延迟）并清理残留波纹，
+  // 不触碰 detailReady —— 保持 section 可见，避免切换期间视图被 display:none 隐藏导致白屏。
+  function resetDetailNav() {
+    document.querySelectorAll('.detail-banner-right > *, .detail-char-card, #svelte-episodeHeatmap, #svelte-watchStats')
+      .forEach((el) => { el.style.transition = 'none'; el.style.transitionDelay = ''; });
+    enterActive = false;
+    showContent = false;
     const hero = document.getElementById('svelte-heroCover');
     if (hero) hero.remove();
     const wrap = document.getElementById('svelte-detailCover');

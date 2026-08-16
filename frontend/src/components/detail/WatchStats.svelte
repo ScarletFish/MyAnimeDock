@@ -75,12 +75,12 @@
     const progressAngle = Math.min(pct * tau, tau);
     svg.append('path').attr('d', arc({ startAngle: -tau / 4, endAngle: -tau / 4 + progressAngle })).attr('fill', tc.accent);
     svg.append('filter').attr('id', 'wsGlow_' + version).append('feDropShadow')
-      .attr('dx').attr('dy').attr('stdDeviation')
-      .attr('flood-color', tc.accent).attr('flood-opacity');
-    svg.append('text').attr('text-anchor').attr('dy').attr('fill', tc.text)
-      .attr('font-size').attr('font-weight').text(watchedEp + '/' + totalEp);
-    svg.append('text').attr('text-anchor').attr('dy').attr('fill', tc.muted)
-      .attr('font-size').attr('id', 'wsDur_' + version).text('');
+      .attr('dx', '0').attr('dy', '1').attr('stdDeviation', '3')
+      .attr('flood-color', tc.accent).attr('flood-opacity', '0.25');
+    svg.append('text').attr('text-anchor', 'middle').attr('dy', '-0.15em').attr('fill', tc.text)
+      .attr('font-size', '1.4rem').attr('font-weight', '700').text(watchedEp + '/' + totalEp);
+    svg.append('text').attr('text-anchor', 'middle').attr('dy', '1.1em').attr('fill', tc.muted)
+      .attr('font-size', '0.95rem').attr('id', 'wsDur_' + version).text('');
   }
 
   function renderWsChart(container, weeks, version) {
@@ -96,14 +96,14 @@
       .append('g').attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
     const x = d3.scaleBand().domain(weeks.map((_, i) => i)).range([0, width]).padding(0.25);
     const y = d3.scaleLinear().domain([0, d3.max(weeks, (d) => d.minutes) || 1]).nice().range([height, 0]);
-    svg.append('g').attr('class').call(d3.axisLeft(y).ticks(2).tickSize(-width).tickFormat(''))
+    svg.append('g').attr('class', 'grid').call(d3.axisLeft(y).ticks(2).tickSize(-width).tickFormat(''))
       .selectAll('line').attr('stroke', tc.gridLine);
     svg.selectAll('.grid .domain').remove();
     const gradId = 'wsGrad_' + version;
     const defs = svg.append('defs');
-    const grad = defs.append('linearGradient').attr('id', gradId).attr('x1').attr('y1').attr('x2').attr('y2');
-    grad.append('stop').attr('offset').attr('stop-color', tc.accent).attr('stop-opacity', 0.35);
-    grad.append('stop').attr('offset').attr('stop-color', tc.accent).attr('stop-opacity', 0.04);
+    const grad = defs.append('linearGradient').attr('id', gradId).attr('x1', '0').attr('y1', '0').attr('x2', '0').attr('y2', '1');
+    grad.append('stop').attr('offset', '0%').attr('stop-color', tc.accent).attr('stop-opacity', 0.35);
+    grad.append('stop').attr('offset', '100%').attr('stop-color', tc.accent).attr('stop-opacity', 0.04);
     svg.selectAll('.bar').data(weeks).join('rect')
       .attr('x', (_, i) => x(i)).attr('y', (d) => y(d.minutes))
       .attr('width', x.bandwidth()).attr('height', (d) => height - y(d.minutes))
@@ -111,13 +111,13 @@
     const area = d3.area().x((_, i) => x(i) + x.bandwidth() / 2).y0(height).y1((d) => y(d.minutes)).curve(d3.curveMonotoneX);
     svg.append('path').datum(weeks).attr('fill', 'url(#' + gradId + ')').attr('d', area);
     const line = d3.line().x((_, i) => x(i) + x.bandwidth() / 2).y((d) => y(d.minutes)).curve(d3.curveMonotoneX);
-    svg.append('path').datum(weeks).attr('fill').attr('stroke', tc.accent).attr('stroke-width', 2).attr('d', line);
+    svg.append('path').datum(weeks).attr('fill', 'none').attr('stroke', tc.accent).attr('stroke-width', 2).attr('d', line);
     svg.selectAll('.dot').data(weeks).join('circle')
       .attr('cx', (_, i) => x(i) + x.bandwidth() / 2).attr('cy', (d) => y(d.minutes))
       .attr('r', 3).attr('fill', tc.accent).attr('stroke', tc.bg).attr('stroke-width', 2);
     svg.selectAll('.hz').data(weeks).join('rect')
       .attr('x', (_, i) => x(i)).attr('y', 0).attr('width', x.bandwidth()).attr('height', height)
-      .attr('fill')
+      .attr('fill', 'transparent')
       .on('mousemove', (evt, d) => {
         const tip = wsTooltip();
         tip.innerHTML = `<b>${(d.start.getMonth() + 1)}/${d.start.getDate()}</b><br>${tr('detail.minutes', { minutes: d.minutes })}`;
@@ -137,10 +137,10 @@
         if (i % labelInt === 0 || i === weeks.length - 1) return (weeks[i].start.getMonth() + 1) + '/' + weeks[i].start.getDate();
         return '';
       }))
-      .selectAll('text').attr('fill', tc.muted).attr('font-size').attr('dy');
+      .selectAll('text').attr('fill', tc.muted).attr('font-size', '0.7rem').attr('dy', '1em');
     svg.selectAll('.domain').attr('stroke', tc.border);
     svg.append('g').call(d3.axisLeft(y).ticks(3).tickFormat((d) => d >= 60 ? (d / 60).toFixed(0) + 'h' : d + 'm'))
-      .selectAll('text').attr('fill', tc.muted).attr('font-size');
+      .selectAll('text').attr('fill', tc.muted).attr('font-size', '0.7rem');
     svg.selectAll('.domain').attr('stroke', tc.border);
   }
 

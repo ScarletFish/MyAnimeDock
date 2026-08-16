@@ -5,7 +5,7 @@
   import StatusSection from '../components/StatusSection.svelte';
   import AnimeCard from '../components/AnimeCard.svelte';
   import { getStatusLabels, getAnimeSortOptions, sortAnimeItems } from '../lib/sort.js';
-  import { STATUS_SECTIONS_LIBRARY, getCardTitleVisible, navigateToDetail } from '../lib/anime-utils.js';
+  import { STATUS_SECTIONS_LIBRARY, getCardTitleVisible, navigateToDetail, tr } from '../lib/anime-utils.js';
   import { Select } from 'bits-ui';
 
   let {
@@ -15,9 +15,6 @@
     onOpenContextMenu,
     onOpenStatus,
   } = $props();
-
-  // ─── i18n 辅助（复用全局 t()，回退文案）───
-  function tr(key, options) { return globalThis.t(key, options); }
 
   // ─── 排序 ───
   let sortMode = $state(localStorage.getItem('librarySort') || 'name');

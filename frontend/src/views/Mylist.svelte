@@ -4,8 +4,15 @@
   // 复用现有 CSS 类名（视觉不变），与 vanilla 版共存（后续清理阶段再删 vanilla）。
   import { writable } from 'svelte/store';
 
-  // 跨组件打开开关：orchestrator 桥接 window.showView('mylist') → mylistOpen.set(true)
+  // 跨组件打开开关：router.js 的 showView 同步 mylistOpen store。
   export const mylistOpen = writable(false);
+
+  // 刷新入口：实例脚本挂载时注册，main.js / Detail / MetaMatch 等 import 调用。
+  let _loadMyList = null;
+  export function setLoadMyList(fn) { _loadMyList = fn; }
+  export function loadMyList(fromViewSwitch = false) {
+    if (_loadMyList) _loadMyList(fromViewSwitch);
+  }
 </script>
 
 <script>
@@ -18,10 +25,11 @@
   import ContextMenu from '../components/ContextMenu.svelte';
   import { getStatusLabels, MYLIST_STATUS_ORDER, getAnimeSortOptions, sortAnimeItems } from '../lib/sort.js';
   import { calcGridCols, readScale } from '../lib/grid.js';
+  import { tr } from '../lib/anime-utils.js';
+  import { mylistData } from '../lib/ui-state.js';
+  import { showDetail, getMyListScrollTop, __skipViewEnter } from '../lib/router.js';
+  import { loadLibrary } from './Library.svelte';
   import { Select } from 'bits-ui';
-
-  // ─── i18n 辅助（复用全局 t()，回退文案）───
-  function tr(key, options) { return globalThis.t(key, options); }
 
   // ─── API 辅助（自包含，不复用全局 API）───
   const api = {
@@ -47,7 +55,6 @@
   };
 
   // ─── 状态 ───
-  let mylistData = $state([]);
   let mylistFilter = $state('all');
   let sortMode = $state(localStorage.getItem('mylistSort') || 'name');
   let loading = $state(false);
@@ -74,7 +81,7 @@
   // ─── 打开时加载 ───
   $effect(() => {
     if ($mylistOpen) {
-      loadMyList(true);
+      loadMyListImpl(true);
     }
   });
 
@@ -84,7 +91,7 @@
   $effect(() => {
     if (!$mylistOpen) return;
     // 从详情页返回：跳过容器淡入（showView 已置 __skipViewEnter 标记，此标记每次 showView 重算）
-    if (window.__skipViewEnter) return;
+    if (__skipViewEnter) return;
     tick().then(() => {
       const el = document.getElementById('svelte-mylistView');
       if (!el || typeof globalThis.gsap !== 'function') return;
@@ -96,26 +103,22 @@
   });
 
   onMount(() => {
-    // 桥接：vanilla 流程调裸 loadMyList() 时，main.js 的 window.loadMyList 路由到这里刷新。
-    window.loadMyListSvelte = () => loadMyList();
-    return () => {
-      delete window.loadMyListSvelte;
-    };
+    // 外部流程（saveStatusModal/detail.js 等）调裸 loadMyList() 时，
+    // 路由到这里刷新 Svelte 我的列表页（in-place，保留当前滚动）。
+    setLoadMyList((fromViewSwitch) => loadMyListImpl(fromViewSwitch));
   });
 
   // ─── 数据加载 ───
-  // fromViewSwitch=true：视图切换进入（从详情/其他视图返回），恢复 vanilla 保存的滚动位置；
+  // fromViewSwitch=true：视图切换进入（从详情/其他视图返回），恢复 router 保存的滚动位置；
   // fromViewSwitch=false：就地刷新（状态变更等），保留当前滚动。
-  async function loadMyList(fromViewSwitch = false) {
+  async function loadMyListImpl(fromViewSwitch = false) {
     const mc = document.querySelector('.main-content');
     const restore = $mylistOpen && mc
-      ? (fromViewSwitch ? (window.__getMyListScrollTop?.() ?? 0) : mc.scrollTop)
+      ? (fromViewSwitch ? (getMyListScrollTop() ?? 0) : mc.scrollTop)
       : 0;
     loading = true;
     try {
-      mylistData = await api.get('/api/mylist');
-      // 桥接：同步到 window，供 Detail.svelte 的 goPrev/goNext/findCurrentLibraryIndex 读取
-      window.mylistData = mylistData;
+      mylistData.set(await api.get('/api/mylist'));
       loading = false;
       // 等 DOM 渲染完成后恢复滚动（重渲染会重置 scrollTop）
       await tick();
@@ -140,18 +143,18 @@
 
   // ─── 派生：过滤 + 排序后的数据 ───
   let filtered = $derived.by(() => {
-    let list = mylistData;
+    let list = $mylistData;
     if (mylistFilter !== 'all') {
-      list = mylistData.filter((item) => item.status === mylistFilter);
+      list = $mylistData.filter((item) => item.status === mylistFilter);
     }
     return sortAnimeItems(list, sortMode);
   });
 
   // 状态栏计数
   let statusCounts = $derived.by(() => {
-    const counts = { all: mylistData.length };
+    const counts = { all: $mylistData.length };
     MYLIST_STATUS_ORDER.forEach((s) => (counts[s] = 0));
-    mylistData.forEach((item) => {
+    $mylistData.forEach((item) => {
       const s = item.status || 'wish';
       if (counts[s] != null) counts[s]++;
     });
@@ -186,7 +189,6 @@
   }
 
   function getBangumiFrontendUrl() {
-    if (typeof window.getBangumiFrontendUrl === 'function') return window.getBangumiFrontendUrl();
     return 'https://bgm.tv';
   }
 
@@ -205,9 +207,7 @@
       if (rect.width && rect.height) imgSrc = img.currentSrc || img.src;
     }
     if (!rect) rect = cardEl.getBoundingClientRect();
-    if (typeof window.showDetail === 'function') {
-      window.showDetail(item.id, rect, imgSrc, 'mylist');
-    }
+    showDetail(item.id, rect, imgSrc, 'mylist');
   }
 
   // ─── 愿望单详情弹窗 ───
@@ -264,7 +264,7 @@
     try {
       await api.del('/api/mylist/' + encodeURIComponent(item.id));
       showToast(tr('mylist.removed'), 'info');
-      loadMyList();
+      loadMyListImpl();
     } catch (e) {
       showToast(tr('mylist.removeFailed', { message: e.message }), 'error');
     }
@@ -279,7 +279,7 @@
     try {
       await api.del('/api/wishlist/' + encodeURIComponent(item.id));
       showToast(tr('mylist.removed'), 'info');
-      loadMyList();
+      loadMyListImpl();
     } catch (e) {
       showToast(tr('mylist.removeFailed', { message: e.message }), 'error');
     }
@@ -292,8 +292,8 @@
   }
 
   function afterSave() {
-    loadMyList();
-    if (typeof window.loadLibrary === 'function') window.loadLibrary();
+    loadMyListImpl();
+    loadLibrary();
   }
 
   async function setMyListItemStatus(id, status) {
@@ -301,8 +301,8 @@
       await api.put('/api/mylist/' + encodeURIComponent(id) + '/status', { status });
       showToast(tr('mylist.statusUpdated'), 'success');
       closeCtx();
-      loadMyList();
-      if (typeof window.loadLibrary === 'function') window.loadLibrary();
+      loadMyListImpl();
+      loadLibrary();
     } catch (e) {
       showToast(tr('mylist.updateFailed', { message: e.message }), 'error');
     }
@@ -322,7 +322,7 @@
     if (modulesAnimated) return;
     // 从详情页返回：跳过本次打开的模块级 fade（标记每次 showView 重算；置 modulesAnimated
     // 避免后续 effect 重跑时重播，与 reduce-motion 分支行为一致）
-    if (window.__skipViewEnter) {
+    if (__skipViewEnter) {
       modulesAnimated = true;
       return;
     }

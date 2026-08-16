@@ -15,6 +15,8 @@
   // kind: 'relations' | 'recommendations'。根为 .hscroll（保留 id 契约）。
   import { onMount } from 'svelte';
   import { initScrollDots } from '../../lib/scroll-dots.js';
+  import { tr } from '../../lib/anime-utils.js';
+  import { openDetail } from '../../views/Detail.svelte';
 
   let { animeId = null, kind = 'relations' } = $props();
 
@@ -29,8 +31,6 @@
   const endpoint = $derived(isRecs ? 'recommendations' : 'relations');
   const badgeColors = { SEQUEL: '#22c55e', PREQUEL: '#f59e0b', SIDE_STORY: '#6366f1', SPIN_OFF: '#ec4899' };
 
-  function tr(key, options) { return globalThis.t(key, options); }
-
   const api = {
     async get(url) {
       const res = await fetch(url);
@@ -39,8 +39,8 @@
     },
   };
 
-  function openDetail(id) {
-    if (typeof window.openDetail === 'function') window.openDetail(id, null, null, 'library');
+  function openDetailFromCard(id) {
+    openDetail(id, null, null, 'library');
   }
   // AniList URL 按类型分段：漫画/小说（MANGA/NOVEL/ONE_SHOT）走 /manga/，其余走 /anime/。
   // 若硬拼 /anime/{id}，漫画类关联条目会 404。
@@ -93,7 +93,7 @@
       {#each items as r}
         {@const rTitle = r.title?.native || r.title?.romaji || r.title?.english || 'Unknown'}
         {@const cover = r.coverImage?.large || ''}
-        <div class="relation-card" onclick={r.inLibrary && r.localId ? () => openDetail(r.localId) : () => openExternalUrl(r)}>
+        <div class="relation-card" onclick={r.inLibrary && r.localId ? () => openDetailFromCard(r.localId) : () => openExternalUrl(r)}>
           <div class="relation-card-cover">
             <div class="relation-card-img" style={cover ? 'background-image:url("' + cover.replace(/"/g, '%22') + '")' : ''}></div>
             {#if isRecs}

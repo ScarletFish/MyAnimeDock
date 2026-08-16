@@ -5,12 +5,11 @@
   import { onMount } from 'svelte';
   import { initScrollDots } from '../../lib/scroll-dots.js';
   import { lazyBg } from '../../lib/lazy-bg.js';
+  import { tr } from '../../lib/anime-utils.js';
 
   let { anime = null, episodes = [], lastPlayedEp = null, onPlay, onToggleWatched } = $props();
 
   let gridEl = $state(null);
-
-  function tr(key, options) { return globalThis.t(key, options); }
 
   // 暴露给父组件：滚动到指定索引（playEpisodeFromCover 用）
   export function scrollToIndex(idx) {

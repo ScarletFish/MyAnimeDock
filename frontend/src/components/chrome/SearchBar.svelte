@@ -15,9 +15,10 @@
   // 由 vanilla search.js 迁移而来，复用现有 titlebar.css 类名，视觉零变化。
   // 下拉用 Svelte {#each} 渲染（自动转义），不再手动拼 HTML 字符串。
   import { onMount, onDestroy } from 'svelte';
-
-  // i18n 辅助：现有全局 t() 可用则用之，否则回退文案
-  function tr(key) { return globalThis.t(key); }
+  import { tr } from '../../lib/anime-utils.js';
+  import { libraryData } from '../../lib/ui-state.js';
+  import { showDetail } from '../../lib/router.js';
+  import { settingsOpen, settingsTab } from '../../views/Settings.svelte';
 
   // ─── 设置搜索映射 ───
   const SETTINGS_MAP = [
@@ -53,10 +54,10 @@
     const queryStr = q.toLowerCase().trim();
     if (!queryStr) return { anime: [], settings: [] };
 
-    // 动漫搜索 — libraryData 是 library.js 的全局 let
+    // 动漫搜索 — libraryData 是 ui-state 的共享 store
     const animeResults = [];
-    if (typeof window.libraryData !== 'undefined' && window.libraryData.length) {
-      for (const a of window.libraryData) {
+    if ($libraryData && $libraryData.length) {
+      for (const a of $libraryData) {
         const matchFields = [a.bangumiTitle, a.title, a.pinyinTitle]
           .filter(Boolean)
           .map((s) => s.toLowerCase());
@@ -95,22 +96,10 @@
     closeDropdown();
 
     if (item.type === 'anime' && item.id) {
-      if (typeof window.showDetail === 'function') {
-        window.showDetail(item.id, null, null, 'library');
-      }
+      showDetail(item.id, null, null, 'library');
     } else if (item.type === 'settings' && item.tab) {
-      if (typeof window.openSettings === 'function') {
-        window.openSettings()
-          .then(() => {
-            const btn = document.querySelector('.settings-tab[data-tab="' + item.tab + '"]');
-            if (btn && typeof window.switchSettingsTab === 'function') {
-              window.switchSettingsTab(btn, item.tab);
-            }
-          })
-          .catch(() => {
-            // 静默忽略 openSettings 失败
-          });
-      }
+      settingsOpen.set(true);
+      settingsTab.set(item.tab);
     }
   }
 

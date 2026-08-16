@@ -4,19 +4,25 @@
   // 复用现有 CSS 类名（视觉不变），与 vanilla 版共存（后续清理阶段再删 vanilla）。
   import { writable } from 'svelte/store';
 
-  // 跨组件打开开关：main.js 桥接 window.openSettings → settingsOpen.set(true)
+  // 跨组件打开开关：调用方直接 import settingsOpen 并 set(true)
   export const settingsOpen = writable(false);
-  // 跨组件指定初始标签页：main.js 桥接 window.switchSettingsTab → settingsTab.set(tab)
+  // 跨组件指定初始标签页：调用方直接 import settingsTab 并 set(tab)
   export const settingsTab = writable(null);
+
+  // Bangumi 授权状态刷新入口：实例脚本挂载时注册，main.js 的 OAuth 回调 import 调用。
+  let _refreshBangumiAuthStatus = null;
+  export function setRefreshBangumiAuthStatus(fn) { _refreshBangumiAuthStatus = fn; }
+  export function refreshBangumiAuthStatus() {
+    if (_refreshBangumiAuthStatus) _refreshBangumiAuthStatus();
+  }
 </script>
 
 <script>
   import { onMount } from 'svelte';
   import { showToast } from '../components/Toast.svelte';
   import { showConfirm } from '../components/ConfirmDialog.svelte';
-
-  // ─── i18n 辅助（复用全局 t()，回退文案）───
-  function tr(key, options) { return globalThis.t(key, options); }
+  import { openVisualDock } from '../components/ThemeDock.svelte';
+  import { tr } from '../lib/anime-utils.js';
 
   // ─── API 辅助（自包含，不复用全局 API）───
   const api = {
@@ -90,7 +96,7 @@
     }
   });
 
-  // ─── 外部指定初始标签页（search.js 桥接 window.switchSettingsTab）───
+  // ─── 外部指定初始标签页（调用方 import settingsTab 后 set）───
   $effect(() => {
     if ($settingsTab) {
       activeTab = $settingsTab;
@@ -99,6 +105,8 @@
   });
 
   onMount(() => {
+    // 注册 Bangumi 授权状态刷新入口：main.js 的 OAuth 回调处理 import 调用。
+    setRefreshBangumiAuthStatus(() => refreshBangumiAuthStatus());
     function onDocClick(e) {
       if (playerDdOpen && !e.target.closest('.player-dd')) playerDdOpen = false;
     }
@@ -684,7 +692,7 @@
           <h2>{tr('common.settings')}</h2>
           <button
             class="btn-icon visual-settings-btn"
-            onclick={() => { close(); window.openVisualDock(); }}
+            onclick={() => { close(); openVisualDock(); }}
             data-tooltip={tr('nav.themeVisual')}
             aria-label={tr('nav.themeVisual')}
           >

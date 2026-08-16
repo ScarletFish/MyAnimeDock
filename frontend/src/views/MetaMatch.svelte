@@ -4,7 +4,7 @@
   // 复用现有 CSS 类名（视觉不变），与 vanilla 版共存（后续清理阶段再删 vanilla）。
   import { writable } from 'svelte/store';
 
-  // 跨组件打开开关：main.js 桥接 window.mmOpenModal → metaMatchOpen.set(true)
+  // 跨组件打开开关：调用方直接 import metaMatchOpen 并 set(true)
   export const metaMatchOpen = writable(false);
 </script>
 
@@ -14,6 +14,7 @@
   import { showConfirm } from '../components/ConfirmDialog.svelte';
   import { tr } from '../lib/anime-utils.js';
   import { createSyncStream } from '../lib/sync-stream.js';
+  import { loadLibrary } from './Library.svelte';
   import MetaMatchToolbar from '../components/metamatch/MetaMatchToolbar.svelte';
   import MetaMatchList from '../components/metamatch/MetaMatchList.svelte';
   import MetaMatchPanel from '../components/metamatch/MetaMatchPanel.svelte';
@@ -418,9 +419,9 @@
 
     if (!syncCancelled) {
       const matched = syncLog.filter((e) => e.status === 'matched').length;
-      if (matched > 0 && typeof window.loadLibrary === 'function') {
+      if (matched > 0) {
         needsRefresh = true;
-        window.loadLibrary();
+        loadLibrary();
         // 刷新 MetaMatch 弹窗数据，确保 anilistId/banner 等字段更新
         const prevSelectedId = selectedId;
         await loadModalData();
@@ -510,8 +511,8 @@
     syncInProgress = false;
 
     const matched = syncLog.filter((e) => e.status === 'matched').length;
-    if (matched > 0 && typeof window.loadLibrary === 'function') {
-      window.loadLibrary();
+    if (matched > 0) {
+      loadLibrary();
       // 刷新 MetaMatch 弹窗数据，确保 anilistId/banner 等字段更新
       const prevSelectedId = selectedId;
       await loadModalData();
@@ -546,9 +547,9 @@
     if (wasSyncing) {
       showToast(tr('metamatch.matchInterrupted'), 'warning');
     }
-    if (needsRefresh && typeof window.loadLibrary === 'function') {
+    if (needsRefresh) {
       needsRefresh = false;
-      window.loadLibrary();
+      loadLibrary();
     }
     metaMatchOpen.set(false);
   }

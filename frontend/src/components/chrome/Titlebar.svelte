@@ -1,7 +1,7 @@
 <script module>
   // ─── Titlebar 上下文 store（跨组件通信）───
   // mode: 'default' | 'detail'；title 展示在返回按钮旁（详情页动画名）。
-  // main.js 桥接 window.setTitlebarContext → titlebarContext.set(...)。
+  // 调用方直接 import titlebarContext 并 set({ mode, title })。
   import { writable } from 'svelte/store';
 
   export const titlebarContext = writable({ mode: 'default', title: '' });
@@ -12,9 +12,8 @@
   // 由 vanilla titlebar.js 迁移而来，复用现有 titlebar.css 类名，视觉零变化。
   import { onMount, onDestroy } from 'svelte';
   import SearchBar from './SearchBar.svelte';
-
-  // i18n 辅助：现有全局 t() 可用则用之，否则回退文案
-  function tr(key) { return globalThis.t(key); }
+  import { tr } from '../../lib/anime-utils.js';
+  import { goBack } from '../../lib/router.js';
 
   // ── Tauri 窗口 API（浏览器环境无 __TAURI__ 时降级为 no-op）──
   let tauriWin = null;
@@ -67,7 +66,7 @@
 
   // ── 返回按钮（详情视图）──
   function onBack() {
-    if (typeof window.goBack === 'function') window.goBack();
+    goBack();
   }
 
   onMount(async () => {

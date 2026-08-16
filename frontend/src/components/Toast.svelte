@@ -1,6 +1,7 @@
 <script module>
   // ─── Svelte 版 Toast（复用现有 toast.css 类名）───
   import { writable } from 'svelte/store';
+  import { tr } from '../lib/anime-utils.js';
 
   // 共享 toast 列表（跨组件通信）
   export const toasts = writable([]);
@@ -19,9 +20,6 @@
 
   // 每个 toast 的计时器簿记（非响应式）
   const timers = new Map();
-
-  // i18n 辅助：现有全局 t() 可用则用之，否则回退文案
-  function tr(key) { return globalThis.t(key); }
 
   // ─── showToast(msg, type, opts) ───
   //   msg  – string，或 { title, desc? }

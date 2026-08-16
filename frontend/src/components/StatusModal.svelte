@@ -1,7 +1,7 @@
 <script>
   // ─── StatusModal（Svelte 迁移 Chunk B）───
   // 基于 Mylist.svelte 的组件内状态弹窗（逻辑 + 模板），不基于 vanilla mylist.js。
-  // 只认 props，不 fetch、不查 window.libraryData/mylistData。
+  // 只认 props，不 fetch、不查 libraryData/mylistData store。
   import { tr, api, coverSrc, localDateStr, todayStr } from '../lib/anime-utils.js';
   import { getStatusLabels } from '../lib/sort.js';
   import { showToast } from './Toast.svelte';

@@ -3,14 +3,14 @@
   // 根 id="svelte-watchStatsContent"。D3 直接 append SVG，且版本化 ID 防堆叠，
   // 主题重渲前需手动 container.innerHTML=''（豁免声明式，注释说明原因）。
   import { onMount } from 'svelte';
+  import { tr } from '../../lib/anime-utils.js';
+  import * as d3 from 'd3';
 
   let { anime = null } = $props();
 
   let containerEl = $state(null);
   let watchStatsVersion = 0;
   let _wsTooltip = null;
-
-  function tr(key, options) { return globalThis.t(key, options); }
 
   const api = {
     async get(url) {
@@ -57,7 +57,6 @@
   }
 
   function renderWsDonut(container, data, version) {
-    const d3 = globalThis.d3;
     const tc = getThemeColors();
     const { totalEp, watchedEp } = data;
     const pct = totalEp > 0 ? watchedEp / totalEp : 0;
@@ -84,7 +83,6 @@
   }
 
   function renderWsChart(container, weeks, version) {
-    const d3 = globalThis.d3;
     const tc = getThemeColors();
     const rect = container.getBoundingClientRect();
     const margin = { top: 10, right: 10, bottom: 26, left: 34 };
@@ -155,8 +153,7 @@
     const donutEl = document.getElementById('wsDonut_' + version);
     const rightCol = document.getElementById('wsRight_' + version);
     const chartInner = document.getElementById('wsChartInner_' + version);
-    const d3 = globalThis.d3;
-    if (donutEl && d3) renderWsDonut(donutEl, { totalEp, watchedEp }, version);
+    if (donutEl) renderWsDonut(donutEl, { totalEp, watchedEp }, version);
     api.get('/api/anime/' + encodeURIComponent(anime.id) + '/sessions').then((data) => {
       if (version !== watchStatsVersion) return;
       const dailyEntries = Object.entries(data);

@@ -1,9 +1,16 @@
 <script module>
   // ─── Library 视图（Svelte 迁移版）───
-  // 跨组件打开开关：main.js 桥接 window.openLibrary → libraryOpen.set(true)
+  // 跨组件打开开关：router.js 的 showView 同步 libraryOpen store。
   import { writable } from 'svelte/store';
 
   export const libraryOpen = writable(false);
+
+  // 刷新入口：实例脚本挂载时注册，main.js / Detail / MetaMatch / SyncModal 等 import 调用。
+  let _loadLibrary = null;
+  export function setLoadLibrary(fn) { _loadLibrary = fn; }
+  export function loadLibrary(fromViewSwitch = false) {
+    if (_loadLibrary) _loadLibrary(fromViewSwitch);
+  }
 </script>
 
 <script>
@@ -21,13 +28,15 @@
   import { calcGridCols, readScale } from '../lib/grid.js';
   import { initScrollDots } from '../lib/scroll-dots.js';
   import { getDashboardLayout } from '../lib/dashboard-layout.js';
+  import { tr } from '../lib/anime-utils.js';
+  import { libraryData, pendingAutoPlay } from '../lib/ui-state.js';
+  import { showView, showDetail, getLibraryScrollTop, __skipViewEnter } from '../lib/router.js';
+  import { settingsOpen } from './Settings.svelte';
+  import { metaMatchOpen } from './MetaMatch.svelte';
 
   // ─── Grid 列公式（原 library.js GRID_CARD_MIN/MAX）───
   const GRID_CARD_MIN = 200;
   const GRID_CARD_MAX = 277;
-
-  // ─── i18n 辅助（复用全局 t()，回退文案）───
-  function tr(key, options) { return globalThis.t(key, options); }
 
   // ─── API 辅助（自包含，不复用全局 API）───
   const api = {
@@ -38,13 +47,7 @@
     },
   };
 
-  // ─── 全局桥接（迁移期间共存）───
-  function g(name) {
-    return typeof window[name] === 'function' ? window[name] : null;
-  }
-
   // ─── 状态 ───
-  let libraryData = $state([]);
   let stats = $state(null);
   let layout = $state([]);
   let loading = $state(true);
@@ -71,19 +74,16 @@
 
   // ─── 挂载：暴露 Svelte 刷新入口 ───
   onMount(() => {
-    // 桥接：vanilla 流程（saveStatusModal/detail.js 等）调裸 loadLibrary() 时，
-    // main.js 的 window.loadLibrary 路由到这里刷新 Svelte 库页（in-place，保留当前滚动）。
-    window.loadLibrarySvelte = () => loadLibrary(false);
-    return () => {
-      delete window.loadLibrarySvelte;
-    };
+    // 外部流程（saveStatusModal/detail.js 等）调裸 loadLibrary() 时，
+    // 路由到这里刷新 Svelte 库页（in-place，保留当前滚动）。
+    setLoadLibrary((fromViewSwitch) => loadLibraryImpl(fromViewSwitch));
   });
 
   // ─── 打开时加载数据（避免启动时全量 fetch）───
   // fromViewSwitch=true：视图切换进入（从详情/其他视图返回），恢复 vanilla 保存的滚动位置；
   // fromViewSwitch=false：库页已显示时的就地刷新（状态变更等），保留当前滚动。
   $effect(() => {
-    if ($libraryOpen) loadLibrary(true);
+    if ($libraryOpen) loadLibraryImpl(true);
   });
 
   // ─── 视图切换入场：容器淡入（方案 B）───
@@ -92,7 +92,7 @@
   $effect(() => {
     if (!$libraryOpen) return;
     // 从详情页返回：跳过容器淡入（showView 已置 __skipViewEnter 标记，此标记每次 showView 重算）
-    if (window.__skipViewEnter) return;
+    if (__skipViewEnter) return;
     tick().then(() => {
       const el = document.getElementById('svelte-libraryView');
       if (!el || typeof globalThis.gsap !== 'function') return;
@@ -104,18 +104,16 @@
   });
 
   // ─── 加载 ───
-  async function loadLibrary(fromViewSwitch = false) {
+  async function loadLibraryImpl(fromViewSwitch = false) {
     const mc = document.querySelector('.main-content');
-    // 进入时先确定恢复目标：视图切换用 vanilla 保存值；就地刷新用当前滚动。
+    // 进入时先确定恢复目标：视图切换用 router 保存值；就地刷新用当前滚动。
     const restore = $libraryOpen && mc
-      ? (fromViewSwitch ? (window.__getLibraryScrollTop?.() ?? 0) : mc.scrollTop)
+      ? (fromViewSwitch ? (getLibraryScrollTop() ?? 0) : mc.scrollTop)
       : 0;
     loading = true;
     try {
       const newData = await api.get('/api/library');
-      libraryData = newData;
-      // 桥接：同步到 window，供 Detail.svelte 的 goPrev/goNext/findCurrentLibraryIndex 读取
-      window.libraryData = newData;
+      libraryData.set(newData);
       layout = getDashboardLayout();
       await loadStats();
       loading = false;
@@ -139,13 +137,13 @@
 
   // ─── Grid 列公式（响应 --scale）───
   $effect(() => {
-    void libraryData;
+    void $libraryData;
     gridCols = calcGridCols(readScale());
   });
 
   // ─── 继续观看（镜像 renderContinueSection）───
   const continueItems = $derived(
-    libraryData
+    $libraryData
       .filter((a) => {
         if (!a.episodes || a.episodes.length === 0) return false;
         const watchedCount = a.episodes.filter((e) => e.watched).length;
@@ -270,7 +268,7 @@
     if (modulesAnimated) return;
     // 从详情页返回：跳过本次打开的模块级 fade（标记每次 showView 重算；置 modulesAnimated
     // 避免后续 effect 重跑时重播，与 reduce-motion 分支行为一致）
-    if (window.__skipViewEnter) {
+    if (__skipViewEnter) {
       modulesAnimated = true;
       return;
     }
@@ -330,19 +328,18 @@
       else imgSrc = img.currentSrc || img.src;
     }
     if (!rect) rect = el.getBoundingClientRect();
-    const fn = g('showDetail');
-    if (fn) fn(id, rect, imgSrc, 'library');
+    showDetail(id, rect, imgSrc, 'library');
   }
 
   function navigateToDetailWithPlay(id, el) {
-    window.pendingAutoPlay = id;
+    pendingAutoPlay.set(id);
     navigateToDetail(id, el);
   }
 
   function openContextMenu(e, id) {
     e.preventDefault();
     e.stopPropagation();
-    const item = libraryData.find((a) => a.id === id);
+    const item = $libraryData.find((a) => a.id === id);
     if (!item) return;
     ctxItem = item;
     ctxX = e.clientX;
@@ -356,7 +353,7 @@
   }
 
   function afterSave() {
-    loadLibrary(false);
+    loadLibraryImpl(false);
   }
 
   function closeCtx() {
@@ -389,7 +386,6 @@
   }
 
   function getBangumiFrontendUrl() {
-    if (typeof window.getBangumiFrontendUrl === 'function') return window.getBangumiFrontendUrl();
     return 'https://bgm.tv';
   }
 
@@ -403,25 +399,22 @@
     try {
       await api.del('/api/mylist/' + encodeURIComponent(item.id));
       showToast(tr('mylist.removed'), 'info');
-      loadLibrary(false);
+      loadLibraryImpl(false);
     } catch (e) {
       showToast(tr('mylist.removeFailed', { message: e.message }), 'error');
     }
   }
 
   function goDiscovery() {
-    const fn = g('showView');
-    if (fn) fn('discovery');
+    showView('discovery');
   }
 
   function openSettings() {
-    const fn = g('openSettings');
-    if (fn) fn();
+    settingsOpen.set(true);
   }
 
   function openBatchMatch() {
-    const fn = g('mmOpenModal');
-    if (fn) fn();
+    metaMatchOpen.set(true);
   }
 </script>
 
@@ -439,7 +432,7 @@
   <div class="dashboard" id="svelte-libraryDashboard">
     {#if loading}
       <div class="dashboard-stats-loading">{tr('common.loading')}</div>
-    {:else if libraryData.length === 0}
+    {:else if $libraryData.length === 0}
       <!-- 空状态 -->
       <div class="library-empty-state">
         <div class="library-empty-icon">
@@ -521,7 +514,7 @@
           </div>
         {:else if s.enabled && s.id === 'localLibrary'}
           <LocalAnimeSection
-            items={libraryData}
+            items={$libraryData}
             {gridCols}
             onOpenContextMenu={(item, e) => openContextMenu(e, item.id)}
             onOpenStatus={openStatus}

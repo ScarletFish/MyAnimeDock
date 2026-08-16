@@ -4,6 +4,7 @@
   // 卡片 class="detail-char-card"（setEntranceDelays stagger 契约）。
   // 展开状态用 $state（随 {#key} 重挂载自然重置，替代 dataset.userToggled）。
   import { onMount } from 'svelte';
+  import { tr } from '../../lib/anime-utils.js';
 
   let { chars = [] } = $props();
 
@@ -14,8 +15,6 @@
   let wrapEl = $state(null);
   let resizeTimer = null;
   const MAX_GRID_HEIGHT = 10000;
-
-  function tr(key, options) { return globalThis.t(key, options); }
 
   function charAvatarFallback() {
     visible = false;

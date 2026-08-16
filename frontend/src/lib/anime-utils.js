@@ -1,6 +1,8 @@
 // ─── 共享动漫工具（Svelte 迁移 Chunk A）───
 // 纯逻辑抽取：从 Library.svelte / Mylist.svelte 抽出可复用积木。
 
+import { showDetail } from './router.js';
+
 // i18n 辅助（复用全局 t()）
 export function tr(key, options) {
   return typeof globalThis.t === 'function' ? globalThis.t(key, options) : key;
@@ -67,9 +69,7 @@ export function navigateToDetail(id, el, source) {
     if (rect.width && rect.height) imgSrc = img.currentSrc || img.src;
   }
   if (!rect) rect = el.getBoundingClientRect();
-  if (typeof window.showDetail === 'function') {
-    window.showDetail(id, rect, imgSrc, source);
-  }
+  showDetail(id, rect, imgSrc, source);
 }
 
 export const STATUS_SECTIONS_LIBRARY = ['watching', 'wish', 'completed'];

@@ -2,10 +2,9 @@
   // ─── 标记看完确认弹窗（Promise 模式，声明式）───
   // confirm = { ep, resolve } | null；onResolve(result) 由父组件 resolve 并清空。
   import { tick } from 'svelte';
+  import { tr } from '../../lib/anime-utils.js';
 
   let { confirm = null, anime = null, onResolve } = $props();
-
-  function tr(key, options) { return globalThis.t(key, options); }
 
   // 打开时聚焦确认按钮
   $effect(() => {

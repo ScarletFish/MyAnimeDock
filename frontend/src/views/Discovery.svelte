@@ -5,16 +5,22 @@
   // 挂载由 orchestrator 统一处理（不修改 App.svelte / main.js / index.html）。
   import { writable } from 'svelte/store';
 
-  // 跨组件可见性开关：orchestrator 桥接 window.openDiscovery → discoveryOpen.set(true)
+  // 跨组件可见性开关：router.js 的 showView 同步 discoveryOpen store。
   export const discoveryOpen = writable(false);
+
+  // 刷新入口：实例脚本挂载时注册，main.js / 其他视图 import 调用。
+  let _refreshDiscovery = null;
+  export function setRefreshDiscovery(fn) { _refreshDiscovery = fn; }
+  export function refreshDiscovery() {
+    if (_refreshDiscovery) _refreshDiscovery();
+  }
 </script>
 
 <script>
   import { onMount, tick } from 'svelte';
   import { showToast } from '../components/Toast.svelte';
-
-  // ─── i18n 辅助（复用全局 t()，回退文案）───
-  function tr(key, options) { return globalThis.t(key, options); }
+  import { tr } from '../lib/anime-utils.js';
+  import { loadLibrary } from './Library.svelte';
 
   // ─── API 辅助（自包含，不复用全局 API）───
   const api = {
@@ -211,11 +217,10 @@
   });
 
   onMount(() => {
-    // 桥接：允许外部（orchestrator/其他视图）触发刷新
-    window.refreshDiscoverySvelte = () => loadDiscovery();
+    // 允许外部（orchestrator/其他视图）触发刷新
+    setRefreshDiscovery(() => loadDiscovery());
     return () => {
       if (stickObserver) stickObserver.disconnect();
-      delete window.refreshDiscoverySvelte;
     };
   });
 
@@ -386,7 +391,7 @@ function setFilter(f) {
       showToast(tr('discovery.importedCount', { count: result.imported.length }), 'success');
       showToast(tr('discovery.autoAddedToMylist'), 'silent');
       loadDiscovery();
-      if (typeof window.loadLibrary === 'function') window.loadLibrary();
+      loadLibrary();
     } catch (e) {
       showToast(tr('discovery.importFailed', { message: e.message }), 'error');
     }
@@ -401,7 +406,7 @@ function setFilter(f) {
       s.delete(path);
       checkedPaths = s;
       loadDiscovery();
-      if (typeof window.loadLibrary === 'function') window.loadLibrary();
+      loadLibrary();
     } catch (e) {
       showToast(tr('discovery.unlinkFailed', { message: e.message }), 'error');
     }

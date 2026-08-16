@@ -1,9 +1,19 @@
-<script>
+<script module>
   // Theme Dock — self-contained visual settings panel.
-  // Mounted in App.svelte, opened from Settings.svelte via window.openVisualDock().
+  // Mounted in App.svelte, opened from Settings.svelte via openVisualDock().
+  // 打开入口：实例脚本挂载时注册，Settings.svelte import 调用。
+  let _openVisualDock = null;
+  export function setOpenVisualDock(fn) { _openVisualDock = fn; }
+  export function openVisualDock() {
+    if (_openVisualDock) _openVisualDock();
+  }
+</script>
+
+<script>
   import { onMount } from 'svelte';
   import { applyTheme, setThemeAttributes, applyZoom } from '../lib/theme.js';
   import { api } from '../lib/anime-utils.js';
+  import { settingsOpen } from '../views/Settings.svelte';
 
   let open = $state(false);
 
@@ -99,19 +109,18 @@
 
   onMount(() => {
     document.addEventListener('keydown', handleEsc);
+    // 注册打开入口：Settings.svelte 调 openVisualDock() 时路由到这里。
+    setOpenVisualDock(() => {
+      if (open) {
+        closeDock();
+        return;
+      }
+      // Close settings modal first, then open dock
+      settingsOpen.set(false);
+      openDock();
+    });
     return () => document.removeEventListener('keydown', handleEsc);
   });
-
-  // ─── Bridge for Settings.svelte ───
-  window.openVisualDock = () => {
-    if (open) {
-      closeDock();
-      return;
-    }
-    // Close settings modal first, then open dock
-    if (typeof window.closeSettings === 'function') window.closeSettings();
-    openDock();
-  };
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->

@@ -3,14 +3,14 @@
   // open 由父组件 syncOpen 驱动；body 锁 + input focus 随组件 $effect 管理。
   import { tick } from 'svelte';
   import { showToast } from '../Toast.svelte';
+  import { tr } from '../../lib/anime-utils.js';
+  import { loadLibrary } from '../../views/Library.svelte';
 
   let { open = false, anime = null, onAttached, onClose } = $props();
 
   let keyword = $state('');
   let state = $state('idle'); // idle | searching | fetching | results | empty | failed
   let results = $state([]);
-
-  function tr(key, options) { return globalThis.t(key, options); }
 
   const api = {
     async post(url, data) {
@@ -64,7 +64,7 @@
     try {
       const result = await api.post('/api/bangumi/fetch', { animeId: anime.id, subjectId });
       onAttached?.(result.anime);
-      if (typeof window.loadLibrary === 'function') window.loadLibrary();
+      loadLibrary();
       showToast(tr('detail.metadataSuccess'), 'success');
     } catch (e) {
       showToast(tr('detail.fetchFailed', { error: e.message }), 'error');

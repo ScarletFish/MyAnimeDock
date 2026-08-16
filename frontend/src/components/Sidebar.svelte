@@ -6,6 +6,8 @@
   // 因 Sidebar 由 Svelte 挂载（晚于 tooltip.js）而失效，故移入本组件 onMount 后绑定。
   import { onMount } from 'svelte';
   import { showView } from '../lib/router.js';
+  import { openVisualDock } from './ThemeDock.svelte';
+  import { settingsOpen } from '../views/Settings.svelte';
 
   let tipEl = null;
   let tipTextEl = null;
@@ -60,7 +62,7 @@
 </script>
 
 <aside class="sidebar">
-  <div class="sidebar-brand" onclick={() => window.openVisualDock?.()} onmouseenter={(e) => scheduleShow(e.currentTarget)} onmouseleave={hideTip} data-tip="主题与视觉设置" data-i18n-attr="nav.themeVisual:data-tip" role="button" tabindex="0">
+  <div class="sidebar-brand" onclick={() => openVisualDock()} onmouseenter={(e) => scheduleShow(e.currentTarget)} onmouseleave={hideTip} data-tip="主题与视觉设置" data-i18n-attr="nav.themeVisual:data-tip" role="button" tabindex="0">
     <div class="sidebar-brand-icon theme-indicator">
       <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="MyAnimeDock">
         <rect x="0" y="0" width="16" height="16" rx="3" fill="var(--accent)" stroke="var(--border)" stroke-width="0.5"/>
@@ -97,7 +99,7 @@
     </button>
   </nav>
   <div class="sidebar-bottom">
-    <button class="nav-btn" id="btnSettings" data-tip="设置" data-i18n-attr="common.settings:data-tip" onclick={() => window.openSettings?.()} onmouseenter={(e) => scheduleShow(e.currentTarget)} onmouseleave={hideTip}>
+    <button class="nav-btn" id="btnSettings" data-tip="设置" data-i18n-attr="common.settings:data-tip" onclick={() => settingsOpen.set(true)} onmouseenter={(e) => scheduleShow(e.currentTarget)} onmouseleave={hideTip}>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
         <circle cx="12" cy="12" r="3"></circle>

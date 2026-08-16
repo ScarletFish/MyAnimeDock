@@ -18,8 +18,12 @@
     detailOpen.set(true);
   }
 
-  // 桥接：让 index.html 内联 onclick 能打开 Svelte 版详情（迁移期间共存）。
-  if (typeof window !== 'undefined') window.openDetail = openDetail;
+  // 播放结束回调：实例脚本挂载时注册，mpv-status.js import 调用（避免 window 桥接）。
+  let _playbackEndedHandler = null;
+  export function setHandleDetailPlaybackEnded(fn) { _playbackEndedHandler = fn; }
+  export function handleDetailPlaybackEnded(endedAnimeId) {
+    return _playbackEndedHandler ? _playbackEndedHandler(endedAnimeId) : false;
+  }
 </script>
 
 <script>
@@ -33,9 +37,13 @@
   import SyncModal from '../components/detail/SyncModal.svelte';
   import FinishConfirmModal from '../components/detail/FinishConfirmModal.svelte';
   import { ANILIST_TAG_DATA } from '../lib/tag-data.js';
-
-  // ─── i18n 辅助（复用全局 t()，回退文案）───
-  function tr(key, options) { return globalThis.t(key, options); }
+  import { tr } from '../lib/anime-utils.js';
+  import { libraryData, mylistData, pendingAutoPlay, pendingFinishAnimeId } from '../lib/ui-state.js';
+  import { loadLibrary } from './Library.svelte';
+  import { refreshDiscovery } from './Discovery.svelte';
+  import { loadMyList } from './Mylist.svelte';
+  import { showView } from '../lib/router.js';
+  import { titlebarContext } from '../components/chrome/Titlebar.svelte';
 
   // ─── API 辅助（自包含，不复用全局 API）───
   const api = {
@@ -152,12 +160,12 @@
   });
 
   // 心愿单外部链接
-  let bgmUrl = $derived(typeof window.getBangumiFrontendUrl === 'function' ? window.getBangumiFrontendUrl() : 'https://bgm.tv');
+  let bgmUrl = $derived('https://bgm.tv');
 
   // ─── Titlebar 上下文 ───
   $effect(() => {
-    if (anime && typeof window.setTitlebarContext === 'function') {
-      window.setTitlebarContext('detail', anime.bangumiTitle || anime.title || '');
+    if (anime) {
+      titlebarContext.set({ mode: 'detail', title: anime.bangumiTitle || anime.title || '' });
     }
   });
 
@@ -193,12 +201,12 @@
         setEntranceDelays(0.04, 0);
         showContent = true;
       }
-      if (window.pendingFinishAnimeId === id) {
-        window.pendingFinishAnimeId = null;
+      if ($pendingFinishAnimeId === id) {
+        pendingFinishAnimeId.set(null);
         checkAndShowFinishConfirm(anime);
       }
-      if (globalThis.pendingAutoPlay === id) {
-        globalThis.pendingAutoPlay = null;
+      if ($pendingAutoPlay === id) {
+        pendingAutoPlay.set(null);
         const ep = findWatchEpisode(anime);
         if (ep) setTimeout(() => playEpisode(ep.filePath, ep.progress), 400);
       }
@@ -349,9 +357,9 @@
       await api.del('/api/anime/' + encodeURIComponent(anime.id));
       showToast(tr('detail.deleted'), 'success');
       goBack();
-      if (typeof window.loadLibrary === 'function') window.loadLibrary();
-      if (typeof window.loadDiscovery === 'function') window.loadDiscovery();
-      if (typeof window.loadMyList === 'function') window.loadMyList();
+      loadLibrary();
+      refreshDiscovery();
+      loadMyList();
     } catch (e) {
       showToast(tr('detail.deleteFailed', { error: e.message }), 'error');
     }
@@ -359,49 +367,48 @@
 
   // ─── 导航 ───
   function goBack() {
-    if (typeof window.stopDetailRefresh === 'function') window.stopDetailRefresh();
     const target = detailSourceView || 'library';
-    if (typeof window.showView === 'function') window.showView(target);
+    showView(target);
   }
 
   function findCurrentLibraryIndex() {
     if (!anime) return -1;
-    const ld = window.libraryData;
+    const ld = $libraryData;
     if (!ld || !ld.length) return -1;
     return ld.findIndex((a) => a.id === anime.id);
   }
 
   function goPrev() {
     if (isSliding) return;
-    if (detailSourceView === 'mylist' && window.mylistData && window.mylistData.length > 0) {
-      const idx = window.mylistData.findIndex((i) => i.id === anime.id);
+    if (detailSourceView === 'mylist' && $mylistData && $mylistData.length > 0) {
+      const idx = $mylistData.findIndex((i) => i.id === anime.id);
       if (idx === -1) return;
-      const prevIdx = idx === 0 ? window.mylistData.length - 1 : idx - 1;
-      const prev = window.mylistData[prevIdx];
+      const prevIdx = idx === 0 ? $mylistData.length - 1 : idx - 1;
+      const prev = $mylistData[prevIdx];
       if (prev) slideToAnime(prev.id, 'prev');
       return;
     }
     const idx = findCurrentLibraryIndex();
     if (idx === -1) return;
-    const prevIdx = idx === 0 ? window.libraryData.length - 1 : idx - 1;
-    const prev = window.libraryData[prevIdx];
+    const prevIdx = idx === 0 ? $libraryData.length - 1 : idx - 1;
+    const prev = $libraryData[prevIdx];
     if (prev) slideToAnime(prev.id, 'prev');
   }
 
   function goNext() {
     if (isSliding) return;
-    if (detailSourceView === 'mylist' && window.mylistData && window.mylistData.length > 0) {
-      const idx = window.mylistData.findIndex((i) => i.id === anime.id);
+    if (detailSourceView === 'mylist' && $mylistData && $mylistData.length > 0) {
+      const idx = $mylistData.findIndex((i) => i.id === anime.id);
       if (idx === -1) return;
-      const nextIdx = idx === window.mylistData.length - 1 ? 0 : idx + 1;
-      const next = window.mylistData[nextIdx];
+      const nextIdx = idx === $mylistData.length - 1 ? 0 : idx + 1;
+      const next = $mylistData[nextIdx];
       if (next) slideToAnime(next.id, 'next');
       return;
     }
     const idx = findCurrentLibraryIndex();
     if (idx === -1) return;
-    const nextIdx = idx === window.libraryData.length - 1 ? 0 : idx + 1;
-    const next = window.libraryData[nextIdx];
+    const nextIdx = idx === $libraryData.length - 1 ? 0 : idx + 1;
+    const next = $libraryData[nextIdx];
     if (next) slideToAnime(next.id, 'next');
   }
 
@@ -409,8 +416,8 @@
   // 否则 anime=... 会触发 #key 重建，把退出动画挂载的旧节点提前销毁。
   async function loadAnimeData(id) {
     try {
-      if (detailSourceView === 'mylist' && window.mylistData) {
-        const item = window.mylistData.find((i) => i.id === id);
+      if (detailSourceView === 'mylist' && $mylistData) {
+        const item = $mylistData.find((i) => i.id === id);
         if (!item) throw new Error('条目不存在');
         if (item.source === 'wishlist') {
           return {
@@ -678,8 +685,8 @@
   function onBannerError() { bannerFailed = true; }
   function onCoverError() { coverFailed = true; }
 
-  // ─── 全局播放结束回调（桥接 app.js）───
-  window.handleDetailPlaybackEnded = function (endedAnimeId) {
+  // ─── 全局播放结束回调（mpv-status.js import 调用）───
+  setHandleDetailPlaybackEnded(function (endedAnimeId) {
     if (!anime) return false;
     if (endedAnimeId && anime.id !== endedAnimeId) return false;
     api.get('/api/anime/' + encodeURIComponent(anime.id)).then((updated) => {
@@ -696,7 +703,7 @@
       showToast(tr('detail.playEndedUpdated'), 'success');
     });
     return true;
-  };
+  });
 
   // ─── 键盘 / 鼠标监听（角色 resize 已在 Characters 组件内处理）───
   onMount(() => {

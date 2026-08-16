@@ -12,9 +12,9 @@
 <script>
   import { onMount, tick } from 'svelte';
   import { ANILIST_TAG_DATA } from '../lib/tag-data.js';
-
-  // ─── i18n 辅助（复用全局 t()，回退文案）───
-  function tr(key, options) { return globalThis.t(key, options); }
+  import { tr } from '../lib/anime-utils.js';
+  import * as d3 from 'd3';
+  import WordCloud from 'wordcloud';
 
   // ─── API 辅助（自包含，不复用全局 API）───
   const api = {
@@ -136,7 +136,7 @@
 
   function renderWordCloud(list) {
     const canvas = wordCloudCanvas;
-    if (!canvas || typeof globalThis.WordCloud !== 'function') return;
+    if (!canvas) return;
 
     const style = getComputedStyle(document.documentElement);
     const accent = style.getPropertyValue('--accent').trim() || '#e9407a';
@@ -156,7 +156,7 @@
 
     const fontFamily = "'Noto Sans SC', 'Noto Sans JP', 'DM Sans', sans-serif";
 
-    globalThis.WordCloud(canvas, {
+    WordCloud(canvas, {
       list: list,
       fontFamily: fontFamily,
       fontWeight: '600',
@@ -224,8 +224,7 @@
 
   function renderActivityChart(months) {
     const container = activityContainer;
-    if (!container || typeof globalThis.d3 === 'undefined') return;
-    const d3 = globalThis.d3;
+    if (!container) return;
     const tc = getThemeColors();
     const rect = container.parentElement.getBoundingClientRect();
     const margin = { top: 20, right: 20, bottom: 40, left: 50 };
@@ -373,7 +372,7 @@
     const data = labels.map((label, i) => ({ label, score: i + 1, count: bins[i] || 0 }));
     const weighted = data.reduce((s, d) => s + d.score * d.count, 0);
     const avg = total > 0 ? weighted / total : 0;
-    const maxCount = globalThis.d3 ? globalThis.d3.max(data, d => d.count) || 0 : Math.max(...data.map(d => d.count), 0);
+    const maxCount = d3.max(data, d => d.count) || 0;
     const modeSet = new Set(data.filter(d => maxCount > 0 && d.count === maxCount).map(d => d.score));
 
     const rows = data.map(d => {
@@ -446,8 +445,7 @@
 
   function renderSeasonDonut() {
     const container = seasonDonutEl;
-    if (!container || !seasonData || typeof globalThis.d3 === 'undefined') return;
-    const d3 = globalThis.d3;
+    if (!container || !seasonData) return;
     const tc = getThemeColors();
 
     const data = [...seasonData.items];
@@ -532,8 +530,7 @@
 
   function renderChordChart(tags, matrix) {
     const container = chordContainer;
-    if (!container || typeof globalThis.d3 === 'undefined') return;
-    const d3 = globalThis.d3;
+    if (!container) return;
     const tc = getThemeColors();
     const rect = container.parentElement.getBoundingClientRect();
 

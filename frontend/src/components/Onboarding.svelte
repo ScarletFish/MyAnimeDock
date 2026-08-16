@@ -1,6 +1,6 @@
 <script module>
   // ─── Onboarding 打开开关 store（跨组件通信）───
-  // main.js 桥接 window.showOnboarding → onboardingOpen.set(true)。
+  // 调用方直接 import onboardingOpen 并 set(true)。
   import { writable } from 'svelte/store';
 
   export const onboardingOpen = writable(false);
@@ -11,9 +11,8 @@
   // 由 vanilla onboarding.js 迁移而来，复用现有 onboarding.css 类名，视觉零变化。
   // 初始 class:hidden 避免首屏闪现；configCache 刷新已丢弃（无消费者）。
   import { showToast } from './Toast.svelte';
-
-  // i18n 辅助：现有全局 t() 可用则用之，否则回退文案
-  function tr(key) { return globalThis.t(key); }
+  import { tr } from '../lib/anime-utils.js';
+  import { showView } from '../lib/router.js';
 
   // ─── 自包含 API 封装（不复用全局 API）───
   const api = {
@@ -103,7 +102,7 @@
       onboardingOpen.set(false);
 
       // 进入发现页进行首次扫描
-      if (typeof window.showView === 'function') window.showView('discovery');
+      showView('discovery');
     } catch (e) {
       errorMsg = e.message || tr('onboarding.saveConfigFailed');
       submitting = false;

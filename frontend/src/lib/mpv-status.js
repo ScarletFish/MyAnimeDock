@@ -5,6 +5,9 @@
 
 import { showToast } from '../components/Toast.svelte';
 import { API } from '../js/api.js';
+import { currentView } from './router.js';
+import { handleDetailPlaybackEnded } from '../views/Detail.svelte';
+import { pendingFinishAnimeId } from './ui-state.js';
 
 let gMpvActive = false;
 let gMpvAnimeId = null;
@@ -30,14 +33,12 @@ function onGlobalMpvStatus(active, payload) {
 
   focusAppWindow();
 
-  if (window.currentView === 'detail' &&
-      typeof window.handleDetailPlaybackEnded === 'function' &&
-      window.handleDetailPlaybackEnded(endedAnimeId)) {
+  if (currentView === 'detail' && handleDetailPlaybackEnded(endedAnimeId)) {
     return;
   }
 
   showToast(t('app.playbackEndedProgressUpdated'), 'success');
-  if (endedAnimeId) window.pendingFinishAnimeId = endedAnimeId;
+  if (endedAnimeId) pendingFinishAnimeId.set(endedAnimeId);
 }
 
 export function startGlobalMpvStatus() {

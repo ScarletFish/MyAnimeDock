@@ -1,6 +1,7 @@
 import { mount } from 'svelte';
 import App from './App.svelte';
 import Chrome from './components/chrome/Chrome.svelte';
+import Sidebar from './components/Sidebar.svelte';
 import { titlebarContext } from './components/chrome/Titlebar.svelte';
 import { onboardingOpen } from './components/Onboarding.svelte';
 import { settingsOpen, settingsTab } from './views/Settings.svelte';
@@ -28,6 +29,11 @@ const app = mount(App, {
 // 与 App 并列，独立挂载点，互不影响。
 mount(Chrome, {
   target: document.getElementById('chrome'),
+});
+
+// ─── Sidebar 挂载：body-wrapper 内 #sidebar 挂载点 ───
+mount(Sidebar, {
+  target: document.getElementById('sidebar'),
 });
 
 // ─── i18n DOM 绑定（替换 [data-i18n] 和 [data-i18n-attr]）───

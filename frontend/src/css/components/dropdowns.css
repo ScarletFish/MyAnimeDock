@@ -200,25 +200,29 @@
   cursor: pointer; transition: border-color 0.2s ease, background 0.2s ease;
   outline: none; -webkit-appearance: none;
 }
-.status-dd-trigger:hover { background: var(--overlay-glass-hover); }
-.status-dd-trigger:focus-visible { border-color: var(--overlay-light-soft); background: var(--overlay-glass-hover); }
+.status-dd-trigger:hover { background: var(--bg-elevated); }
+.status-dd-trigger:focus-visible {
+  background: var(--bg-elevated);
+  border-color: rgba(var(--accent-rgb), 0.4);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.07);
+}
 .status-dd-text { flex: 1; text-align: left; font-weight: var(--fw-medium); }
 .status-dd-chevron { flex-shrink: 0; color: var(--fg-muted); transition: transform 0.25s var(--ease-out); }
 .status-dd.is-open .status-dd-chevron { transform: rotate(180deg); }
 
 .status-dd-menu {
-  position: absolute; top: calc(100% + 4px); left: 0; right: 0;
   background: var(--bg-elevated); border: 1px solid var(--border);
   border-radius: var(--radius-md); padding: 4px;
-  opacity: 0; visibility: hidden;
-  transform: translateY(-6px) scale(0.96);
-  pointer-events: none;
-  transition: opacity 0.2s var(--ease-out), transform 0.2s var(--ease-out);
   box-shadow: var(--shadow-lg);
-  max-height: 280px; overflow-y: auto; z-index: 100;
+  max-height: 280px; overflow-y: auto; z-index: 300;
+  scrollbar-width: none; -ms-overflow-style: none;
+  transform-origin: top center;
+  animation: status-dd-in 0.18s var(--ease-out);
 }
-.status-dd.is-open .status-dd-menu {
-  opacity: 1; visibility: visible; transform: translateY(0) scale(1); pointer-events: auto;
+.status-dd-menu::-webkit-scrollbar { display: none; }
+@keyframes status-dd-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 .status-dd-opt {
   width: 100%; display: flex; align-items: center; gap: 0.625rem;
@@ -230,15 +234,15 @@
   cursor: pointer; transition: all 0.15s var(--ease-out); text-align: left;
 }
 .status-dd-opt:hover { background: var(--bg-surface); color: var(--fg-primary); }
-.status-dd-opt.is-selected { color: var(--fg-primary); background: var(--bg-canvas); }
+.status-dd-opt.is-selected { color: var(--accent); background: rgba(var(--accent-rgb), 0.12); }
 .status-dd-opt-icon { width: 16px; height: 16px; flex-shrink: 0; opacity: 0.5; color: currentColor; }
 .status-dd-opt:hover .status-dd-opt-icon { opacity: 0.8; }
-.status-dd-opt.is-selected .status-dd-opt-icon { opacity: 1; color: var(--fg-muted); }
+.status-dd-opt.is-selected .status-dd-opt-icon { opacity: 1; color: var(--accent); }
 .status-dd-opt span { flex: 1; }
 .status-dd-opt-check {
   width: 16px; height: 16px; flex-shrink: 0;
   opacity: 0; transition: opacity 0.15s var(--ease-out);
-  color: var(--fg-muted);
+  color: var(--accent);
 }
 .status-dd-opt.is-selected .status-dd-opt-check { opacity: 1; }
 

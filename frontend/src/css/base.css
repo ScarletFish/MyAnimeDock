@@ -280,6 +280,7 @@ html.theme-transitioning .theme-dock {
     transition-duration: 0.01ms !important;
     transform: none !important;
     opacity: 1 !important;
+    animation: none !important;
   }
   .heatmap-cell:hover { transform: none !important; }
   .heatmap-cell::after { transition-duration: 0.01ms !important; }
@@ -329,6 +330,7 @@ html[data-reduce-motion="true"] .status-dd-menu {
   transition-duration: 0.01ms !important;
   transform: none !important;
   opacity: 1 !important;
+  animation: none !important;
 }
 
 html[data-reduce-motion="true"] .heatmap-cell { animation: none !important; }

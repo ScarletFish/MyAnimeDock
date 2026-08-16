@@ -135,6 +135,8 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
   --accent-secondary: #c8404a;
   --accent-secondary-rgb: 200, 64, 74;
 
+  
+
   --accent-glow: transparent;
 
   --border: rgba(0, 0, 0, 0.12);
@@ -195,6 +197,8 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
   --accent-secondary: #a06020;
   --accent-secondary-rgb: 160, 96, 32;
 
+  
+
   --accent-glow: transparent;
 
   --border: rgba(0, 0, 0, 0.12);
@@ -254,6 +258,8 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
   --accent-secondary: #2563eb;
   --accent-secondary-rgb: 37, 99, 235;
 
+  
+
   --accent-glow: transparent;
 
   --border: rgba(0, 0, 0, 0.12);
@@ -311,6 +317,8 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
   --accent-gradient: linear-gradient(135deg, #d9468a, #ec4899);
   --accent-secondary: #db2777;
   --accent-secondary-rgb: 219, 39, 119;
+
+  
 
   --accent-glow: transparent;
 
@@ -370,6 +378,8 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
   --accent-secondary: #65a30d;
   --accent-secondary-rgb: 101, 163, 13;
 
+  
+
   --accent-glow: transparent;
 
   --border: rgba(0, 0, 0, 0.12);
@@ -428,6 +438,8 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
   --accent-gradient: linear-gradient(135deg, #6d28d9, #7c3aed);
   --accent-secondary: #6366f1;
   --accent-secondary-rgb: 99, 102, 241;
+
+  
 
   --accent-glow: transparent;
 

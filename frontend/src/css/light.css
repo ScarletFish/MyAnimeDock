@@ -373,27 +373,10 @@
 
   /* ─── Status Modal Light ─── */
   .status-modal {
-    background: rgba(255, 255, 255, 0.12);
     border-color: rgba(0, 0, 0, 0.08);
-    backdrop-filter: blur(40px) saturate(1.4);
-    -webkit-backdrop-filter: blur(40px) saturate(1.4);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
   }
-  .status-modal-bg {
-    background: linear-gradient(135deg, #f0ebe5, #e8e0d8);
-  }
-  .status-modal-glass {
-    background: rgba(255, 255, 255, 0.15);
-  }
-  .status-modal-overlay {
-    background: linear-gradient(
-      180deg,
-      rgba(245,240,234,0.40) 0%,
-      transparent 25%
-    );
-  }
   .status-modal-inner {
-    background: rgba(255, 255, 255, 0.25);
     border-color: rgba(0, 0, 0, 0.08);
   }
   .status-modal-close {
@@ -410,13 +393,10 @@
   .num-stepper,
   .date-segments,
   .notes-input {
-    background: rgba(255, 255, 255, 0.6);
     border-color: rgba(0, 0, 0, 0.1);
   }
   .status-dd-trigger:hover,
-  .num-stepper-btn:hover,
-  .date-seg:focus,
-  .notes-input:focus {
+  .num-stepper-btn:hover {
     background: rgba(0, 0, 0, 0.04);
     border-color: rgba(0, 0, 0, 0.18);
   }

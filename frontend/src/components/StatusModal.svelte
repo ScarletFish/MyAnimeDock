@@ -25,6 +25,7 @@
   let notes = $state('');
   let statusModalTitle = $state('');
   let statusModalBg = $state('');
+  let saving = $state(false);
 
   // open 变 true 时重初始化
   $effect(() => {
@@ -57,6 +58,13 @@
     setDateToSegments(endSeg, storedEnd ? storedEnd.substring(0, 10) : lastPlayed || todayStr());
 
     notes = it.notes || '';
+  });
+
+  // 打开时锁定 body 滚动，避免窗口滚动条出现导致布局左移
+  $effect(() => {
+    if (!open) return;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
   });
 
   function setDateToSegments(seg, dateStr) {
@@ -197,6 +205,7 @@
     const id = item && item.id;
     if (!id) return;
 
+    saving = true;
     const statusVal = status;
     const rating = ratingVal !== '—' ? parseFloat(ratingVal) : null;
     const progress = progressVal !== '—' ? parseInt(progressVal, 10) : null;
@@ -235,6 +244,8 @@
       if (onSaved) onSaved();
     } catch (e) {
       showToast(tr('mylist.saveFailed', { message: e.message }), 'error');
+    } finally {
+      saving = false;
     }
   }
 </script>
@@ -242,78 +253,77 @@
 {#if open}
   <div class="modal-overlay show" id="svelte-statusModal" onclick={(e) => { if (e.target === e.currentTarget) open = false; }}>
     <div class="modal status-modal">
-      <div class="status-modal-bg-wrap">
-        <div class="status-modal-bg" id="svelte-statusModalBg" style={statusModalBg ? `background-image:url(${statusModalBg})` : ''}></div>
-        <div class="status-modal-overlay"></div>
-        <div class="status-modal-glass"></div>
-      </div>
       <button class="status-modal-close" onclick={() => (open = false)} aria-label={tr('common.close')}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
       <div class="status-modal-inner">
-        <h2 class="status-modal-heading" id="svelte-statusModalTitle">{statusModalTitle}</h2>
+        <div class="status-modal-heading-row">
+          <h2 class="status-modal-heading" id="svelte-statusModalTitle">{statusModalTitle}</h2>
+        </div>
         <div class="status-modal-body">
           <div class="field-row">
             <div class="field-cell">
-              <label class="field-label">{tr('common.status')}</label>
+              <label class="field-label" for="svelte-statusDdTrigger">{tr('common.status')}</label>
               <div class="status-dd" id="svelte-statusDd" class:is-open={statusDdOpen}>
                 <Select.Root type="single" bind:value={status} bind:open={statusDdOpen}>
                   <Select.Trigger class="status-dd-trigger" id="svelte-statusDdTrigger">
                     <span class="status-dd-text" id="svelte-statusDdText">{getStatusLabels()[status] || tr('common.wish')}</span>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="status-dd-chevron"><polyline points="6 9 12 15 18 9"/></svg>
                   </Select.Trigger>
-                  <Select.Content class="status-dd-menu" id="svelte-statusDdMenu" align="start" style="width: var(--bits-floating-anchor-width)">
-                    <Select.Item value="watching">
-                      {#snippet child(p)}
-                        <div {...p.props} class="status-dd-opt" class:is-selected={p.selected}>
-                          <svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="9"/></svg>
-                          <span>{tr('common.watching')}</span>
-                          <svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                        </div>
-                      {/snippet}
-                    </Select.Item>
-                    <Select.Item value="wish">
-                      {#snippet child(p)}
-                        <div {...p.props} class="status-dd-opt" class:is-selected={p.selected}>
-                          <svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                          <span>{tr('common.wish')}</span>
-                          <svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                        </div>
-                      {/snippet}
-                    </Select.Item>
-                    <Select.Item value="completed">
-                      {#snippet child(p)}
-                        <div {...p.props} class="status-dd-opt" class:is-selected={p.selected}>
-                          <svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                          <span>{tr('common.completed')}</span>
-                          <svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                        </div>
-                      {/snippet}
-                    </Select.Item>
-                    <Select.Item value="on_hold">
-                      {#snippet child(p)}
-                        <div {...p.props} class="status-dd-opt" class:is-selected={p.selected}>
-                          <svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
-                          <span>{tr('common.on_hold')}</span>
-                          <svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                        </div>
-                      {/snippet}
-                    </Select.Item>
-                    <Select.Item value="dropped">
-                      {#snippet child(p)}
-                        <div {...p.props} class="status-dd-opt" class:is-selected={p.selected}>
-                          <svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                          <span>{tr('common.dropped')}</span>
-                          <svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                        </div>
-                      {/snippet}
-                    </Select.Item>
-                  </Select.Content>
+                  <Select.Portal>
+                    <Select.Content class="status-dd-menu" id="svelte-statusDdMenu" align="start" style="width: var(--bits-floating-anchor-width)">
+                      <Select.Item value="watching">
+                        {#snippet child(p)}
+                          <div {...p.props} class="status-dd-opt" class:is-selected={p.selected}>
+                            <svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="9"/></svg>
+                            <span>{tr('common.watching')}</span>
+                            <svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                          </div>
+                        {/snippet}
+                      </Select.Item>
+                      <Select.Item value="wish">
+                        {#snippet child(p)}
+                          <div {...p.props} class="status-dd-opt" class:is-selected={p.selected}>
+                            <svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                            <span>{tr('common.wish')}</span>
+                            <svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                          </div>
+                        {/snippet}
+                      </Select.Item>
+                      <Select.Item value="completed">
+                        {#snippet child(p)}
+                          <div {...p.props} class="status-dd-opt" class:is-selected={p.selected}>
+                            <svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                            <span>{tr('common.completed')}</span>
+                            <svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                          </div>
+                        {/snippet}
+                      </Select.Item>
+                      <Select.Item value="on_hold">
+                        {#snippet child(p)}
+                          <div {...p.props} class="status-dd-opt" class:is-selected={p.selected}>
+                            <svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                            <span>{tr('common.on_hold')}</span>
+                            <svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                          </div>
+                        {/snippet}
+                      </Select.Item>
+                      <Select.Item value="dropped">
+                        {#snippet child(p)}
+                          <div {...p.props} class="status-dd-opt" class:is-selected={p.selected}>
+                            <svg class="status-dd-opt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            <span>{tr('common.dropped')}</span>
+                            <svg class="status-dd-opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                          </div>
+                        {/snippet}
+                      </Select.Item>
+                    </Select.Content>
+                  </Select.Portal>
                 </Select.Root>
               </div>
             </div>
             <div class="field-cell">
-              <label class="field-label">{tr('common.rating')}</label>
+              <label class="field-label" for="svelte-ratingDisplay">{tr('common.rating')}</label>
               <div class="num-stepper" id="svelte-ratingStepper" data-min="0" data-max="10" data-step="0.1">
                 <button type="button" class="num-stepper-btn" onclick={() => stepperChange('ratingVal', -0.1, 0, 10, 0.1)}>−</button>
                 <input
@@ -331,7 +341,7 @@
               </div>
             </div>
             <div class="field-cell">
-              <label class="field-label">{tr('mylist.progressEpisodes')}</label>
+              <label class="field-label" for="svelte-progressDisplay">{tr('mylist.progressEpisodes')}</label>
               <div class="num-stepper" id="svelte-progressStepper" data-min="0" data-max={progressMax} data-step="1">
                 <button type="button" class="num-stepper-btn" onclick={() => stepperChange('progressVal', -1, 0, progressMax, 1)}>−</button>
                 <input
@@ -351,9 +361,9 @@
           </div>
           <div class="field-row">
             <div class="field-cell">
-              <label class="field-label">{tr('common.startDate')}</label>
+              <label class="field-label" for="svelte-startDateY">{tr('common.startDate')}</label>
               <div class="date-segments" data-date="startedAt">
-                <input type="text" class="date-seg date-seg--y" maxlength="4" placeholder="YYYY" inputmode="numeric" value={startSeg.y} oninput={(e) => segAutoTab(e, startSeg, 'y')} onkeydown={segBackspace} aria-label={tr('mylist.startDateYear')}>
+                <input type="text" class="date-seg date-seg--y" id="svelte-startDateY" maxlength="4" placeholder="YYYY" inputmode="numeric" value={startSeg.y} oninput={(e) => segAutoTab(e, startSeg, 'y')} onkeydown={segBackspace} aria-label={tr('mylist.startDateYear')}>
                 <span class="date-sep">/</span>
                 <input type="text" class="date-seg date-seg--m" maxlength="2" placeholder="MM" inputmode="numeric" value={startSeg.m} oninput={(e) => segAutoTab(e, startSeg, 'm')} onkeydown={segBackspace} aria-label={tr('mylist.startDateMonth')}>
                 <span class="date-sep">/</span>
@@ -361,9 +371,9 @@
               </div>
             </div>
             <div class="field-cell">
-              <label class="field-label">{tr('common.endDate')}</label>
+              <label class="field-label" for="svelte-endDateY">{tr('common.endDate')}</label>
               <div class="date-segments" data-date="completedAt">
-                <input type="text" class="date-seg date-seg--y" maxlength="4" placeholder="YYYY" inputmode="numeric" value={endSeg.y} oninput={(e) => segAutoTab(e, endSeg, 'y')} onkeydown={segBackspace} aria-label={tr('mylist.endDateYear')}>
+                <input type="text" class="date-seg date-seg--y" id="svelte-endDateY" maxlength="4" placeholder="YYYY" inputmode="numeric" value={endSeg.y} oninput={(e) => segAutoTab(e, endSeg, 'y')} onkeydown={segBackspace} aria-label={tr('mylist.endDateYear')}>
                 <span class="date-sep">/</span>
                 <input type="text" class="date-seg date-seg--m" maxlength="2" placeholder="MM" inputmode="numeric" value={endSeg.m} oninput={(e) => segAutoTab(e, endSeg, 'm')} onkeydown={segBackspace} aria-label={tr('mylist.endDateMonth')}>
                 <span class="date-sep">/</span>
@@ -371,13 +381,20 @@
               </div>
             </div>
             <div class="field-cell">
-              <label class="field-label">{tr('common.notes')}</label>
-              <input type="text" id="svelte-notesInput" class="notes-input" placeholder={tr('mylist.notesPlaceholder')} maxlength="200" bind:value={notes}>
+              <label class="field-label" for="svelte-notesInput">{tr('common.notes')}</label>
+              <input type="text" id="svelte-notesInput" class="notes-input" placeholder={tr('mylist.notesPlaceholder')} maxlength="200" bind:value={notes} aria-label={tr('common.notes')}>
             </div>
           </div>
         </div>
         <div class="status-modal-footer">
-          <button class="btn btn-primary" onclick={saveStatusModal}>{tr('common.save')}</button>
+          <button class="btn btn-primary" onclick={saveStatusModal} disabled={saving} aria-busy={saving}>
+            {#if saving}
+              <span class="btn-spinner spin" aria-hidden="true"></span>
+              {tr('common.save')}
+            {:else}
+              {tr('common.save')}
+            {/if}
+          </button>
         </div>
       </div>
     </div>

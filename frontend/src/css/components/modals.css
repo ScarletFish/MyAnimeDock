@@ -291,35 +291,11 @@
 
 /* ─── Status Modal ─── */
 .status-modal {
-  padding: 0 !important; overflow: visible; max-width: 680px;
-  background: rgba(0, 0, 0, 0.12);
-  -webkit-backdrop-filter: blur(40px) saturate(1.4);
-  backdrop-filter: blur(40px) saturate(1.4);
-  border: 1px solid rgba(var(--accent-rgb), 0.12);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(var(--accent-rgb), 0.06);
-}
-.status-modal-bg-wrap {
-  position: absolute; inset: 0; overflow: hidden;
-  border-radius: var(--radius-lg); pointer-events: none; z-index: 0;
-}
-.status-modal-bg {
-  position: absolute; inset: 0;
-  background: linear-gradient(135deg, #1a1a2e, #16213e);
-  background-size: cover; background-position: center 20%;
-  opacity: 0; transition: opacity 0.5s ease;
-}
-.status-modal-bg[style*="background-image"] { opacity: 1; }
-
-.status-modal-overlay {
-  position: absolute; inset: 0;
-  background: linear-gradient(180deg, rgba(15,12,9,0.40) 0%, transparent 25%);
-}
-.status-modal-glass {
-  position: absolute; inset: 0; z-index: 1;
-  -webkit-backdrop-filter: blur(40px) saturate(1.2);
-  backdrop-filter: blur(40px) saturate(1.2);
-  background: rgba(0, 0, 0, 0.25);
-  transition: background 0.3s ease;
+  padding: 0 !important; overflow: hidden; max-width: 680px; max-height: 80vh;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  position: relative;
 }
 .status-modal-close {
   position: absolute; top: 0.75rem; right: 0.75rem; z-index: 20;
@@ -333,33 +309,46 @@
 .status-modal-close svg { width: 16px; height: 16px; }
 
 .status-modal-inner {
-  position: relative; z-index: 2;
-  background: rgba(15, 12, 9, 0.25);
+  position: relative; z-index: 1;
+  background: transparent;
   border: 1px solid rgba(var(--accent-rgb), 0.06);
   padding: var(--space-6) var(--space-6) var(--space-5);
   border-radius: var(--radius-lg);
   color: var(--fg-secondary);
+  max-height: 80vh;
+  overflow-y: auto;
+}
+.status-modal-heading-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-5);
 }
 .status-modal-heading {
   font-family: var(--font-display);
   font-size: var(--text-xl); font-weight: var(--fw-bold);
   color: var(--accent-soft);
-  margin: 0 0 var(--space-5); padding: 0;
+  margin: 0; padding: 0;
   letter-spacing: -0.02em;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .status-modal-heading::before { display: none; }
 
 .status-modal .num-stepper,
 .status-modal .date-segments,
-.status-modal .notes-input {
-  background: var(--overlay-glass-border);
-  border-color: rgba(255, 255, 255, 0.1);
+.status-modal .notes-input,
+.status-modal .status-dd-trigger {
+  background: var(--bg-surface);
+  border-color: var(--border);
 }
 .status-modal .num-stepper-btn { color: inherit; }
 .status-modal .num-stepper-val { color: inherit; }
 .status-modal .notes-input { color: var(--fg-secondary); }
 .status-modal .num-stepper-btn:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--overlay-glass-hover);
   color: var(--fg-primary);
 }
 .status-modal .num-stepper-btn:active {
@@ -368,8 +357,19 @@
 .status-modal-close:hover {
   background: var(--overlay-glass-border);
 }
-.status-modal .date-seg:focus,
+.status-modal .num-stepper:focus-within,
+.status-modal .date-segments:focus-within,
 .status-modal .notes-input:focus {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: var(--overlay-light-soft);
+  background: var(--bg-elevated);
+  border-color: rgba(var(--accent-rgb), 0.4);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.07);
+}
+.status-modal .btn-spinner {
+  display: inline-block;
+  width: 14px; height: 14px;
+  margin-right: var(--space-2);
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  vertical-align: -2px;
 }

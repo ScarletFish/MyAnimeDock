@@ -331,8 +331,8 @@
       .selectAll('text')
       .attr('fill', tc.muted)
       .attr('font-family', tc.fontBody)
-      .attr('font-size', '11px')
-      .attr('dy', '0.71em');
+      .attr('font-size', '12px')
+      .attr('dy', '1.2em');
     svg.selectAll('.domain').attr('stroke', tc.border);
 
     svg.append('g')
@@ -340,7 +340,7 @@
       .selectAll('text')
       .attr('fill', tc.muted)
       .attr('font-family', tc.fontMono)
-      .attr('font-size', '11px');
+      .attr('font-size', '12px');
     svg.selectAll('.domain').attr('stroke', tc.border);
   }
 

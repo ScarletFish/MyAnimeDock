@@ -35,6 +35,9 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
     cssMinify: false,
+    // 桌面 SPA 本地加载无网络延迟，不做代码分割；主 bundle ~788kB (gzip 255kB)
+    // 超过 Vite 默认 500kB 阈值只是噪音警告，这里调高消除
+    chunkSizeWarningLimit: 800,
   },
   plugins: [tailwindcss(), svelte()],
 });

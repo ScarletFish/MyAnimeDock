@@ -1,10 +1,10 @@
 <script>
   // ─── 剧集横向滚动列表（声明式）───
   // 根元素保留 id="svelte-episodeHeatmapGrid"（CSS/选择器契约）。
-  // 懒加载背景用 lazyBg action（写 inline style，满足 detail-episodes.css:88 opacity 规则）。
+  // 缩略图全量预加载：首帧可见的立即加载，其余动画结束后（350ms）批量加载（见 loadVisibleThumbs）。
+  // 写 inline style，满足 detail-episodes.css:88 opacity 规则。
   import { onMount } from 'svelte';
   import { initScrollDots } from '../../lib/scroll-dots.js';
-  import { lazyBg } from '../../lib/lazy-bg.js';
   import { tr } from '../../lib/anime-utils.js';
 
   let { anime = null, episodes = [], lastPlayedEp = null, onPlay, onToggleWatched } = $props();
@@ -39,16 +39,16 @@
   // 滚动到目标剧集：lastPlayedEp 有进度→滚到它；已看完→滚到下一未观看；没有→不动
   // 暴露给父组件：数据刷新后重定位（vanilla renderEpisodeHeatmap 的对应行为）
   export function scrollToLastPosition() {
-    if (!gridEl) return;
+    if (!gridEl) return -1;
     let scrollEp = null;
     if (lastPlayedEp) {
       const lastEp = episodes.find((e) => e.number === lastPlayedEp);
       if (lastEp && (!lastEp.watched || lastEp.progress > 0)) scrollEp = lastEp;
       else if (lastEp) { for (let i = 0; i < episodes.length; i++) { if (!episodes[i].watched) { scrollEp = episodes[i]; break; } } }
     }
-    if (!scrollEp) return;
+    if (!scrollEp) return -1;
     const scrollIdx = episodes.indexOf(scrollEp);
-    if (scrollIdx === -1) return;
+    if (scrollIdx === -1) return -1;
     requestAnimationFrame(() => {
       if (!gridEl) return;
       const card = gridEl.querySelector('.episode-card[data-index="' + scrollIdx + '"]');
@@ -58,6 +58,7 @@
       const step = (gridEl.querySelector('.episode-card') || card).offsetWidth + gap;
       gridEl.scrollLeft = Math.max(0, scrollIdx * step);
     });
+    return scrollIdx;
   }
 
   onMount(() => {
@@ -70,8 +71,47 @@
       total: episodes.length,
       dotsParent: document.querySelector('#svelte-episodeHeatmap .episode-list-header'),
     });
-    scrollToLastPosition();
+    // 剧集列表是首屏模块：按当前集数索引优先加载视口内的缩略图，其余延迟到
+    // 封面入场动画结束后批量加载（本地缓存命中 4-22ms，滚动不再逐张等 IO 触发）。
+    const startIdx = scrollToLastPosition();
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        loadVisibleThumbs(startIdx);
+        setTimeout(loadAllThumbs, 350);
+      });
+    });
   });
+
+  // 按当前集数索引加载视口内卡片（最精准，不依赖几何测量）。
+  // startIdx 为 scrollToLastPosition 定位的目标索引；无观看记录时为 -1（视口在最左）。
+  function loadVisibleThumbs(startIdx) {
+    if (!gridEl) return;
+    const cards = Array.from(gridEl.querySelectorAll('.episode-card'));
+    if (cards.length === 0) return;
+    const cs = getComputedStyle(gridEl);
+    const gap = parseFloat(cs.gap) || parseFloat(cs.columnGap) || 14;
+    const step = cards[0].offsetWidth + gap;
+    const visibleCount = Math.max(1, Math.ceil(gridEl.clientWidth / step));
+    // 往前多包含一集，避免往回滚动时缺图
+    const from = Math.max(0, (startIdx >= 0 ? startIdx : 0) - 1);
+    const to = Math.min(cards.length, from + visibleCount + 1);
+    for (let i = from; i < to; i++) {
+      const bg = cards[i].querySelector('.episode-card-bg[data-src]');
+      if (bg) applyThumb(bg);
+    }
+  }
+
+  function loadAllThumbs() {
+    if (!gridEl) return;
+    gridEl.querySelectorAll('.episode-card-bg[data-src]').forEach((bg) => applyThumb(bg));
+  }
+
+  function applyThumb(el) {
+    const src = el.dataset.src;
+    if (!src) return;
+    el.style.backgroundImage = 'url("' + src + '")';
+    el.removeAttribute('data-src');
+  }
 </script>
 
 <div class="episode-list-scroll" id="svelte-episodeHeatmapGrid" bind:this={gridEl}>
@@ -90,7 +130,7 @@
         oncontextmenu={(e) => { e.preventDefault(); e.stopPropagation(); onToggleWatched(ep.number, !ep.watched); }}
       >
         <div class="episode-card-thumb">
-          <div class="episode-card-bg" data-src={thumbUrl} use:lazyBg></div>
+          <div class="episode-card-bg" data-src={thumbUrl}></div>
           <div class="episode-card-overlay"></div>
           <div class="episode-card-num">{epNum}</div>
           <button class="episode-card-play" onclick={(e) => { e.stopPropagation(); onPlay(ep.filePath, ep.progress || 0); }}>

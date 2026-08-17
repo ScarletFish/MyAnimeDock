@@ -34,6 +34,7 @@
   import Characters from '../components/detail/Characters.svelte';
   import WatchStats from '../components/detail/WatchStats.svelte';
   import RelationList from '../components/detail/RelationList.svelte';
+  import LazySection from '../components/detail/LazySection.svelte';
   import SyncModal from '../components/detail/SyncModal.svelte';
   import FinishConfirmModal from '../components/detail/FinishConfirmModal.svelte';
   import { ANILIST_TAG_DATA } from '../lib/tag-data.js';
@@ -189,9 +190,9 @@
       enterActive = true;
       await tick(); // Svelte 渲染 DOM，img 进 DOM 开始加载
       detailReady = true; // DOM 就绪，显示视图（与旧版 showView 时序一致）
-      await tick(); // 等 detailReady 的 DOM 更新 flush，Flip.getState 才能拿到正确布局
+      await tick(); // 等 detailReady 的 DOM 更新 flush，动画起点/终点 rect 才能拿到正确布局
       if (fromRect) {
-        // 从卡片点击进入：hero flip 动画接管 cover 可见性
+        // 从卡片点击进入：hero 封面展开动画接管 cover 可见性
         animateHeroCoverFlip(fromRect, fromSrc);
       } else {
         // 直接进入（仪表盘/搜索等）：cover 立即可见（内联样式覆盖 CSS class 的 opacity:0），
@@ -648,20 +649,23 @@
       hero.innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--bg-card);font-size:2rem;font-weight:700;color:var(--fg-muted)">' + (wrap?.textContent?.trim()?.[0] || '?') + '</div>';
     }
     document.body.appendChild(hero);
-    const Flip = globalThis.Flip;
     const gsap = globalThis.gsap;
-    if (Flip && gsap) {
-      const state = Flip.getState(hero);
-      hero.style.left = toRect.left + 'px';
-      hero.style.top = toRect.top + 'px';
-      hero.style.width = toRect.width + 'px';
-      hero.style.height = toRect.height + 'px';
+    if (gsap) {
+      // 一次测量 + transform 动画（替代原 Flip.from）。
+      // 原 Flip 每帧 getGlobalMatrix→getBoundingClientRect 强制同步布局，与首屏渲染抢帧；
+      // 本场景起点 fromRect / 终点 toRect 布局稳定、均已知，一次测量即可。
+      // transformOrigin 0 0 让 scale 以左上角为原点，translate 不受 scale 影响，终点精确对齐 toRect。
+      gsap.set(hero, { transformOrigin: '0 0' });
       setEntranceDelays(0.05, 0.04);
-      // Flip 刚读取了计算样式，reveal 必须隔一帧（csswg #10187：同帧读样式后切 class → transition 取消）
+      // 刚读取了计算样式，reveal 必须隔一帧（csswg #10187：同帧读样式后切 class → transition 取消）
       await nextFrame();
       showContent = true;
-      Flip.from(state, {
-        duration: 0.35, ease: 'power2.out', absolute: true,
+      gsap.to(hero, {
+        x: toRect.left - fromRect.left,
+        y: toRect.top - fromRect.top,
+        scaleX: toRect.width / fromRect.width,
+        scaleY: toRect.height / fromRect.height,
+        duration: 0.35, ease: 'power2.out',
         onComplete: () => {
           if (wrap) { wrap.style.visibility = ''; wrap.style.opacity = '1'; wrap.style.transform = ''; }
           hero.remove();
@@ -821,17 +825,25 @@
           </div>
           <EpisodeHeatmap bind:this={episodeHeatmapRef} anime={anime} episodes={anime.episodes} lastPlayedEp={anime.lastPlayedEp} onPlay={playEpisode} onToggleWatched={toggleWatched} />
         </div>
-        {#if !isWishlistMode}
-          <Characters chars={anime.characters} />
-        {/if}
-        {#if watchStatsVisible}
-          <div class="watch-stats" id="svelte-watchStats">
-            <div class="ws-header"><h3>{tr('detail.watchStats')}</h3></div>
-            <WatchStats anime={anime} />
-          </div>
-        {/if}
-        <RelationList animeId={anime.id} kind="relations" />
-        <RelationList animeId={anime.id} kind="recommendations" />
+        <LazySection delay={350}>
+          {#if !isWishlistMode}
+            <Characters chars={anime.characters} />
+          {/if}
+        </LazySection>
+        <LazySection delay={450}>
+          {#if watchStatsVisible}
+            <div class="watch-stats" id="svelte-watchStats">
+              <div class="ws-header"><h3>{tr('detail.watchStats')}</h3></div>
+              <WatchStats anime={anime} />
+            </div>
+          {/if}
+        </LazySection>
+        <LazySection delay={450}>
+          <RelationList animeId={anime.id} kind="relations" />
+        </LazySection>
+        <LazySection delay={450}>
+          <RelationList animeId={anime.id} kind="recommendations" />
+        </LazySection>
         <div class="archive-magazine" id="archiveDetail" style:display={archiveVisible ? '' : 'none'}>
           <div class="archive-magazine-essay">
             <div class="archive-magazine-thoughts text-sm text-content leading-[1.7]">{tr('detail.wishlistNoLocal')}</div>

@@ -170,7 +170,7 @@ async function handleBrowse(req: any, res: any, state: State) {
         return;
       }
       const { findVideos, isExtraVideo } = require('../scanner') as any;
-      const imported = [];
+      const imported: string[] = [];
       const allEpisodes: Array<{ filePath: string; duration: number | null }> = [];
       for (const item of items) {
         const { folderPath, folderName, parsedTitle, parsedSeason, specialSuffix } = item;
@@ -231,9 +231,7 @@ async function handleBrowse(req: any, res: any, state: State) {
           bangumiSync.pushStatusChange(anime.id, data);
         }
       }
-      // 批量探测剧集时长并写回 ep.duration（落盘前完成）
-      await _probeEpisodes(allEpisodes);
-      // 先存初始数据（暂无封面的条目）
+      // 先存初始数据（暂无封面的条目）——立即返回，不等待时长探测
       await db.saveLibrary(data, new Set(imported));
       await db.saveMyList(data);
       await saveScannedTree(data.scannedTree);
@@ -245,6 +243,12 @@ async function handleBrowse(req: any, res: any, state: State) {
           state.thumbnailQueue?.enqueue(anime);
         }
       });
+      // 后台批量探测剧集时长并写回 ep.duration（不阻塞导入响应）。
+      // _probeEpisodes 直接改 allEpisodes 里的对象引用（即 data.library 中 anime.episodes 的对象），
+      // 完成后增量落盘 duration。失败仅打日志，不影响导入结果。
+      _probeEpisodes(allEpisodes)
+        .then(() => db.saveLibrary(data, new Set(imported)))
+        .catch((e: any) => logger.warn('Episode duration probe/save error:', e?.message || e));
     } catch (e: any) {
       jsonResp(res, 400, { error: 'Invalid request body' });
     }

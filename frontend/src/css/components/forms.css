@@ -218,6 +218,12 @@ input[type="radio"] { accent-color: var(--accent); }
   font-weight: var(--fw-normal); font-variant-numeric: tabular-nums;
   min-width: 0;
 }
+.db-info-path {
+  font-size: var(--text-sm); font-family: var(--font-mono);
+  font-weight: var(--fw-normal); color: var(--fg-secondary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  flex: 1 1 auto; min-width: 0;
+}
 .db-action-row {
   display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-1);
 }

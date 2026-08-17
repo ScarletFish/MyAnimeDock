@@ -78,6 +78,11 @@ html {
   animation: fadeSlideUp 0.4s var(--ease-out);
 }
 
+/* 从视图中部返回（恢复滚动位置）时抑制 .view 的位移动画（容器淡入由 GSAP 提供） */
+.view--static {
+  animation: none;
+}
+
 .view.hidden { display: none; }
 
 .view-header {

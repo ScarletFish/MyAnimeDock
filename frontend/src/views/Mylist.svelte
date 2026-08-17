@@ -59,6 +59,9 @@
   let sortMode = $state(localStorage.getItem('mylistSort') || 'name');
   let loading = $state(false);
 
+  // 本次进入恢复的滚动位置 > 0（从视图中部返回）→ 模块纯淡入，抑制位移动画。
+  let returnedToPosition = $state(false);
+
   // 状态弹窗
   let statusModalItem = $state(null);
   let statusModalOpen = $state(false);
@@ -116,6 +119,9 @@
     const restore = $mylistOpen && mc
       ? (fromViewSwitch ? (getMyListScrollTop() ?? 0) : mc.scrollTop)
       : 0;
+    // 返回原位置（restore>0）→ 模块纯淡入；顶部进入 → 完整位移动画。
+    // 内容不足被浏览器钳回 0 时 restore>0 为假，自然走完整动画（可接受）。
+    returnedToPosition = fromViewSwitch && restore > 0;
     loading = true;
     try {
       mylistData.set(await api.get('/api/mylist'));
@@ -316,6 +322,7 @@
     const open = $mylistOpen;
     if (!open) {
       modulesAnimated = false;
+      returnedToPosition = false;
       return;
     }
     if (loading) return;
@@ -340,11 +347,12 @@
       const modules = document.querySelectorAll('#svelte-mylistView .mylist-section');
       if (!modules.length) return;
       gsap.killTweensOf(modules);
-      gsap.fromTo(
-        modules,
-        { autoAlpha: 0, y: 16 },
-        { autoAlpha: 1, y: 0, duration: 0.5, ease: 'power2.out', stagger: 0.1, clearProps: 'transform,opacity' }
-      );
+      // 返回原位置（restore>0）→ 纯淡入（y 偏移 0，无位移）；顶部进入 → 现有 y:16 完整动画。
+      const start = returnedToPosition ? { autoAlpha: 0 } : { autoAlpha: 0, y: 16 };
+      const end = returnedToPosition
+        ? { autoAlpha: 1, duration: 0.5, ease: 'power2.out', stagger: 0.1, clearProps: 'transform,opacity' }
+        : { autoAlpha: 1, y: 0, duration: 0.5, ease: 'power2.out', stagger: 0.1, clearProps: 'transform,opacity' };
+      gsap.fromTo(modules, start, end);
     });
   });
 
@@ -397,7 +405,7 @@
 </script>
 
 {#if $mylistOpen}
-  <section class="view" id="svelte-mylistView">
+  <section class="view" id="svelte-mylistView" class:view--static={returnedToPosition}>
     <div class="mylist-status-bar" id="svelte-mylistStatusBar">
       <div
         class="mylist-status-item" class:active={mylistFilter === 'all'}

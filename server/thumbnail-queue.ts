@@ -150,6 +150,28 @@ class ThumbnailQueue {
     return this._queue.length;
   }
 
+  /**
+   * 启动时全量校验：扫描整个 library，把缺失缩略图的剧集全部入后台队列补全。
+   * 队列本身不持久化（内存结构），服务重启后依赖此校验重建"待生成清单"，
+   * 保证缩略图缓存覆盖率随时间收敛到 100%，避免滚动到未缓存集时触发慢速按需生成。
+   * @param library - data.library 数组
+   * @returns 本次入队的缩略图数量
+   */
+  enqueueMissingForLibrary(library: any[]): number {
+    if (!Array.isArray(library)) return 0;
+    let enqueued = 0;
+    for (const anime of library) {
+      if (!anime?.episodes) continue;
+      const before = this._queue.length;
+      this.enqueue(anime);
+      enqueued += this._queue.length - before;
+    }
+    if (enqueued > 0) {
+      logger.info(`Startup thumb check: enqueued ${enqueued} missing thumbnails across ${library.length} anime`);
+    }
+    return enqueued;
+  }
+
   /** 是否正在处理 */
   get busy(): boolean {
     return this._processing;

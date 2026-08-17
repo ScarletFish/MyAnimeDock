@@ -455,6 +455,14 @@ async function init() {
   validateCovers(data).catch(e => logger.warn('Cover validation error:', e.message));
   validateBanners(data).catch(e => logger.warn('Banner validation error:', e.message));
 
+  // Phase 3.5: Thumbnail self-heal — 队列不持久化，重启后重建缺失缩略图的待生成清单
+  // （背景队列空闲时生成；已缓存的跳过，md5(filePath+v1) 命中即不重复入队）
+  try {
+    thumbnailQueue.enqueueMissingForLibrary(data.library || []);
+  } catch (e: any) {
+    logger.warn('Thumbnail startup enqueue error:', e?.message || e);
+  }
+
   // Phase 4: Start serving (try ports 3456→3460, fallback on EADDRINUSE)
   // BASE_PORT can be overridden via env (e.g. Vite dev on 3456 → backend on 3457)
   const PORT_RANGE = 5;

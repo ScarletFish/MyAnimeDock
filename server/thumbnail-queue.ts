@@ -1,5 +1,5 @@
 // server/thumbnail-queue.ts — 后台缩略图生成队列
-// 空闲时自动排队生成，mpv 播放时暂停，按需惰性生成兜底
+// 空闲时自动排队生成，mpv 播放时暂停（仅后台项），按需惰性生成兜底（single-flight）
 import { spawn } from 'child_process';
 import crypto from 'crypto';
 import fs from 'fs';
@@ -21,9 +21,18 @@ function _cleanupZeroByte(thumbPath: string): void {
 
 interface ThumbItem {
   filePath: string;
-  duration: number | null;
+  duration?: number | null;
+  /** 显式目标时间（ondemand 项用，直接作为 ffmpeg -ss 值） */
+  time?: number;
   animeId?: string;
   episodeNumber?: number;
+  /** 缓存键：mid 用 THUMB_HASH_SEED，自定义 time 用 String(time) */
+  cacheKey?: string;
+  /** 队列项类型：ondemand=按需（高优先级，mpv 播放时照常处理），background=后台预生成 */
+  type: 'ondemand' | 'background';
+  /** 等待方回调（仅 ondemand 项有） */
+  resolve?: (thumbPath: string) => void;
+  reject?: (err: Error) => void;
 }
 
 class ThumbnailQueue {
@@ -31,7 +40,11 @@ class ThumbnailQueue {
   _processing = false;
   _activePlays: Map<unknown, unknown>;
   _drainTimer: NodeJS.Timeout | null = null;
-  _concurrency = 3;
+  _concurrency = 4;
+  /** single-flight：thumbPath -> 进行中的 Promise，同 thumbPath 并发请求共享一次生成 */
+  _ongoing: Map<string, Promise<string>> = new Map();
+  /** 已入队（含生成中）的 thumbPath，用于入队去重 */
+  _enqueuedThumbs: Set<string> = new Set();
 
   /**
    * @param activePlays — server.js 的 activePlays Map，用于空闲检测
@@ -41,7 +54,7 @@ class ThumbnailQueue {
   }
 
   /**
-   * 把动画的所有 episode 加入缩略图队列
+   * 把动画的所有 episode 加入缩略图队列（后台预生成/详情页插队）
    * @param anime - anime 对象（含 episodes 数组）
    * @param prepend - 是否插队（详情页查看时插到最前）
    */
@@ -50,15 +63,19 @@ class ThumbnailQueue {
     const items: ThumbItem[] = [];
     for (const ep of anime.episodes) {
       if (!ep.filePath || !fs.existsSync(ep.filePath)) continue;
-      // 已缓存则跳过
-      const hash = this._thumbHash(ep.filePath);
-      const thumbPath = path.join(DATA_DIR, 'thumbs', hash + '.jpg');
+      const thumbPath = this._thumbPathFor(ep.filePath, THUMB_HASH_SEED);
+      // 已缓存 / 已在队列 / 已在生成中 → 跳过
       if (fs.existsSync(thumbPath)) continue;
+      if (this._enqueuedThumbs.has(thumbPath)) continue;
+      if (this._ongoing.has(thumbPath)) continue;
+      this._enqueuedThumbs.add(thumbPath);
       items.push({
         filePath: ep.filePath,
         duration: ep.duration || null,
         animeId: anime.id,
         episodeNumber: ep.number,
+        cacheKey: THUMB_HASH_SEED,
+        type: 'background',
       });
     }
     if (items.length === 0) return;
@@ -73,10 +90,53 @@ class ThumbnailQueue {
   }
 
   /**
+   * 按需生成缩略图（供按需端点调用）。缓存命中立即返回；否则 single-flight 去重后
+   * 以 ondemand 高优先级入队并立即 drain，返回带超时的 Promise。
+   * @param time - 显式目标时间（直接作为 ffmpeg -ss 值，不再做 mid 换算）
+   * @param cacheKey - mid 用 THUMB_HASH_SEED，自定义 time 用 String(time)
+   */
+  ensureGenerated(filePath: string, time: number, cacheKey: string, timeoutMs: number): Promise<string> {
+    const thumbPath = this._thumbPathFor(filePath, cacheKey);
+    if (fs.existsSync(thumbPath)) return Promise.resolve(thumbPath);
+
+    const existing = this._ongoing.get(thumbPath);
+    if (existing) return existing;
+
+    let resolveFn!: (thumbPath: string) => void;
+    let rejectFn!: (err: Error) => void;
+    const p = new Promise<string>((resolve, reject) => {
+      resolveFn = resolve;
+      rejectFn = reject;
+    });
+    this._ongoing.set(thumbPath, p);
+    this._enqueuedThumbs.add(thumbPath);
+
+    this._queue.unshift({
+      filePath,
+      time,
+      cacheKey,
+      type: 'ondemand',
+      resolve: resolveFn,
+      reject: rejectFn,
+    });
+    // 按需请求不走 200ms 延迟，立即 drain
+    this._drain();
+
+    const timer = setTimeout(() => {
+      this._ongoing.delete(thumbPath);
+      this._enqueuedThumbs.delete(thumbPath);
+      rejectFn(new Error('thumbnail generation timeout'));
+    }, timeoutMs);
+    p.then(() => clearTimeout(timer), () => clearTimeout(timer));
+    return p;
+  }
+
+  /**
    * 清空队列
    */
   clear(): void {
     this._queue = [];
+    this._enqueuedThumbs.clear();
     if (this._drainTimer) {
       clearTimeout(this._drainTimer);
       this._drainTimer = null;
@@ -99,6 +159,11 @@ class ThumbnailQueue {
     return crypto.createHash('md5').update(filePath + THUMB_HASH_SEED).digest('hex');
   }
 
+  _thumbPathFor(filePath: string, cacheKey: string): string {
+    const hash = crypto.createHash('md5').update(filePath + cacheKey).digest('hex');
+    return path.join(DATA_DIR, 'thumbs', hash + '.jpg');
+  }
+
   _scheduleDrain(): void {
     if (this._processing || this._drainTimer) return;
     // 小延迟让同一批 enqueue 调用合并
@@ -111,14 +176,26 @@ class ThumbnailQueue {
     this._processing = true;
     try {
       while (this._queue.length > 0) {
-        // mpv 运行时暂停，30s 后重试
-        if (this._activePlays.size > 0) {
-          logger.info('mpv active, pausing thumbnail queue');
-          this._drainTimer = setTimeout(() => this._drain(), 30000);
-          return;
+        const mpvActive = this._activePlays.size > 0;
+        let batch = this._queue.splice(0, this._concurrency);
+
+        if (mpvActive) {
+          const ondemand = batch.filter(i => i.type === 'ondemand');
+          if (ondemand.length === 0) {
+            // 批次全为后台项且 mpv 活跃 → 放回队列，30s 后重试
+            this._queue.unshift(...batch);
+            logger.info('mpv active, pausing background thumbnail queue');
+            this._drainTimer = setTimeout(() => this._drain(), 30000);
+            return;
+          }
+          // 保留 ondemand 项继续处理，后台项放回队列
+          this._queue.unshift(...batch.filter(i => i.type === 'background'));
+          batch = ondemand;
         }
 
-        const batch = this._queue.splice(0, this._concurrency);
+        for (const item of batch) {
+          this._enqueuedThumbs.delete(this._thumbPathFor(item.filePath, item.cacheKey ?? THUMB_HASH_SEED));
+        }
         await Promise.all(batch.map(item => this._generate(item)));
       }
     } finally {
@@ -127,36 +204,58 @@ class ThumbnailQueue {
     logger.info('Thumbnail queue drained');
   }
 
-  _generate({ filePath, duration }: ThumbItem): Promise<void> {
+  /** 生成完成/失败后统一结算：resolve/reject 等待方并清理去重集合 */
+  _settle(item: ThumbItem, thumbPath: string | null, err: Error | null): void {
+    const tp = thumbPath ?? this._thumbPathFor(item.filePath, item.cacheKey ?? THUMB_HASH_SEED);
+    this._ongoing.delete(tp);
+    this._enqueuedThumbs.delete(tp);
+    if (thumbPath) {
+      item.resolve?.(thumbPath);
+    } else {
+      item.reject?.(err ?? new Error('thumbnail generation failed'));
+    }
+  }
+
+  _generate(item: ThumbItem): Promise<void> {
+    const { filePath } = item;
     const ffmpegPath = getFfmpegPath();
-    if (!ffmpegPath) return Promise.resolve();
+    if (!ffmpegPath) {
+      this._settle(item, null, new Error('ffmpeg not available'));
+      return Promise.resolve();
+    }
 
     // 源文件可能在入队后被删除/移动
     if (!fs.existsSync(filePath)) {
       logger.warn(`Source file gone, skipping thumbnail: ${filePath}`);
+      this._settle(item, null, new Error('source file gone'));
       return Promise.resolve();
     }
 
-    // 取 50% 中点位置，与按需端点 time=mid 完全一致（共享缓存键）
-    let time = 60;
-    if (duration && duration > 0) {
-      time = Math.floor(duration / 2);
-    }
+    // ondemand 项用显式 time；background 项从 duration 取 50% 中点（与按需端点 time=mid 一致）
+    const time = item.time ?? (item.duration && item.duration > 0 ? Math.floor(item.duration / 2) : 60);
 
-    const hash = this._thumbHash(filePath);
+    const thumbPath = this._thumbPathFor(filePath, item.cacheKey ?? THUMB_HASH_SEED);
     const thumbDir = path.join(DATA_DIR, 'thumbs');
-    const thumbPath = path.join(thumbDir, hash + '.jpg');
 
-    if (fs.existsSync(thumbPath)) return Promise.resolve();
+    if (fs.existsSync(thumbPath)) {
+      this._settle(item, thumbPath, null);
+      return Promise.resolve();
+    }
     if (!fs.existsSync(thumbDir)) fs.mkdirSync(thumbDir, { recursive: true });
 
-    return new Promise((resolve) => {
+    return new Promise<void>((resolve) => {
       const ff = spawn(ffmpegPath, [
         '-ss', String(time), '-i', filePath,
-        '-vframes', '1', '-q:v', '5', '-y', thumbPath, '-loglevel', 'error',
+        '-skip_frame', 'nokey', '-threads', '2',
+        '-frames:v', '1', '-q:v', '5', '-y', thumbPath, '-loglevel', 'error',
       ]);
       let resolved = false;
-      const timeout = setTimeout(() => { ff.kill(); resolve(); resolved = true; }, 60000);
+      const timeout = setTimeout(() => {
+        ff.kill();
+        resolved = true;
+        this._settle(item, null, new Error('ffmpeg timeout'));
+        resolve();
+      }, 60000);
       ff.on('close', (code) => {
         if (resolved) return;
         resolved = true;
@@ -164,10 +263,12 @@ class ThumbnailQueue {
         if (code !== 0) {
           logger.warn(`ffmpeg exit code ${code} for ${filePath}`);
           _cleanupZeroByte(thumbPath);
+          this._settle(item, null, new Error(`ffmpeg exit code ${code}`));
           return resolve();
         }
         // 验证输出文件可用（非 0 字节）
         _cleanupZeroByte(thumbPath);
+        this._settle(item, thumbPath, null);
         resolve();
       });
       ff.on('error', (err) => {
@@ -175,6 +276,7 @@ class ThumbnailQueue {
         resolved = true;
         clearTimeout(timeout);
         logger.warn(`ffmpeg spawn error for ${filePath}: ${err.message}`);
+        this._settle(item, null, err);
         resolve();
       });
     });

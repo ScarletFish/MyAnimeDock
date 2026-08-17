@@ -48,43 +48,6 @@ function _thumbPath(videoPath: string, cacheKey: string): string {
   return path.join(DATA_DIR, 'thumbs', hash + '.jpg');
 }
 
-function _generateThumb(videoPath: string, time: number, cacheKey: string, req: any, res: any) {
-  const thumbPath = _thumbPath(videoPath, cacheKey);
-  if (fs.existsSync(thumbPath)) { logger.info(`[THUMB-DEBUG] cache hit ${thumbPath} size=${fs.statSync(thumbPath).size}`); serveImage(thumbPath, req.url, res); return; }
-  logger.info(`[THUMB-DEBUG] cache miss, spawning ffmpeg time=${time} -> ${thumbPath}`);
-  let responded = false;
-  try {
-    if (!fs.existsSync(path.dirname(thumbPath))) fs.mkdirSync(path.dirname(thumbPath), { recursive: true });
-    const ffmpegPath = getFfmpegPath();
-    if (!ffmpegPath) { jsonResp(res, 500, { error: 'ffmpeg not available' }); return; }
-    const ff = spawn(ffmpegPath, [
-      '-ss', String(time), '-i', videoPath,
-      '-vframes', '1', '-q:v', '5', '-y', thumbPath, '-loglevel', 'error',
-    ]);
-    const timeout = setTimeout(() => {
-      if (responded) return;
-      responded = true; ff.kill();
-      jsonResp(res, 500, { error: 'timeout' });
-    }, 60000);
-    ff.on('close', (code) => {
-      clearTimeout(timeout);
-      if (responded) return;
-      responded = true;
-      if (code === 0 && fs.existsSync(thumbPath)) { logger.info(`[THUMB-DEBUG] ffmpeg ok code=${code} size=${fs.statSync(thumbPath).size}`); serveImage(thumbPath, req.url, res); }
-      else { logger.info(`[THUMB-DEBUG] ffmpeg FAIL code=${code} exists=${fs.existsSync(thumbPath)}`); jsonResp(res, 500, { error: 'ffmpeg failed' }); }
-    });
-    ff.on('error', () => {
-      clearTimeout(timeout);
-      if (responded) return;
-      responded = true;
-      logger.info('[THUMB-DEBUG] ffmpeg spawn error');
-      jsonResp(res, 500, { error: 'ffmpeg not available' });
-    });
-  } catch (e: any) {
-    if (!responded) { responded = true; logger.info(`[THUMB-DEBUG] exception: ${e.message}`); jsonResp(res, 500, { error: e.message }); }
-  }
-}
-
 async function handlePlay(req: any, res: any, state: State) {
   const { data, config, db, activePlays, bangumiSync, logger, broadcastMpvStatus } = state;
   try {
@@ -259,15 +222,27 @@ function handleThumbnail(req: any, res: any, state: State) {
     const cached = _thumbPath(videoPath, THUMB_HASH_SEED);
     logger.info(`[THUMB-DEBUG] mid cached=${fs.existsSync(cached)} path=${cached}`);
     if (fs.existsSync(cached)) { serveImage(cached, req.url, res); return; }
+    // cache miss → 走统一队列（single-flight + 并发闸门），不再直连 spawn
     _probeDuration(videoPath, (dur) => {
       logger.info(`[THUMB-DEBUG] mid probed dur=${dur}`);
       const time = dur ? Math.floor(dur / 2) : 60;
-      _generateThumb(videoPath, time, THUMB_HASH_SEED, req, res);
+      if (!state.thumbnailQueue) { jsonResp(res, 500, { error: 'thumbnail generation failed' }); return; }
+      state.thumbnailQueue.ensureGenerated(videoPath, time, THUMB_HASH_SEED, 30000)
+        .then((thumbPath: string) => {
+          serveImage(thumbPath, req.url, res);
+        })
+        .catch(() => {
+          jsonResp(res, 500, { error: 'thumbnail generation failed' });
+        });
     });
   } else {
     const time = parseFloat(timeRaw ?? '') || 60;
     logger.info(`[THUMB-DEBUG] exit time=${time} cacheKey=${String(time)}`);
-    _generateThumb(videoPath, time, String(time), req, res);
+    // 自定义 time 也走统一队列（single-flight + 并发闸门），不再直连 spawn
+    if (!state.thumbnailQueue) { jsonResp(res, 500, { error: 'thumbnail generation failed' }); return; }
+    state.thumbnailQueue.ensureGenerated(videoPath, time, String(time), 30000)
+      .then((thumbPath: string) => serveImage(thumbPath, req.url, res))
+      .catch(() => jsonResp(res, 500, { error: 'thumbnail generation failed' }));
   }
 }
 

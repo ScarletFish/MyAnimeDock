@@ -84,6 +84,9 @@
 
   // 按当前集数索引加载视口内卡片（最精准，不依赖几何测量）。
   // startIdx 为 scrollToLastPosition 定位的目标索引；无观看记录时为 -1（视口在最左）。
+  // 加载 0..startIdx+视口 的全部前序：入场动画 / scrollToIndex 平滑滚动经过的卡片都有图，
+  // 杜绝空白占位。350ms 后的 loadAllThumbs 会跳过已加载项（data-src 已移除），
+  // 首帧提前发的请求只是时间提前，总量不变（本地缓存命中 4-22ms）。
   function loadVisibleThumbs(startIdx) {
     if (!gridEl) return;
     const cards = Array.from(gridEl.querySelectorAll('.episode-card'));
@@ -92,10 +95,8 @@
     const gap = parseFloat(cs.gap) || parseFloat(cs.columnGap) || 14;
     const step = cards[0].offsetWidth + gap;
     const visibleCount = Math.max(1, Math.ceil(gridEl.clientWidth / step));
-    // 往前多包含一集，避免往回滚动时缺图
-    const from = Math.max(0, (startIdx >= 0 ? startIdx : 0) - 1);
-    const to = Math.min(cards.length, from + visibleCount + 1);
-    for (let i = from; i < to; i++) {
+    const to = Math.min(cards.length, (startIdx >= 0 ? startIdx : 0) + visibleCount + 1);
+    for (let i = 0; i < to; i++) {
       const bg = cards[i].querySelector('.episode-card-bg[data-src]');
       if (bg) applyThumb(bg);
     }

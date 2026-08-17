@@ -195,7 +195,7 @@ class ThumbnailQueue {
     const ffmpegPath = getFfmpegPath();
     if (!ffmpegPath) return Promise.resolve(null);
     return new Promise((resolve) => {
-      const ff = spawn(ffmpegPath, ['-i', filePath, '-loglevel', 'error']);
+      const ff = spawn(ffmpegPath, ['-i', filePath]);
       let stderr = '';
       let done = false;
       ff.stderr.on('data', d => { stderr += d.toString(); });
@@ -264,7 +264,11 @@ class ThumbnailQueue {
     if (thumbPath) {
       item.resolve?.(thumbPath);
     } else {
-      item.reject?.(err ?? new Error('thumbnail generation failed'));
+      const reason = err ?? new Error('thumbnail generation failed');
+      // background 项没有 reject 等待方，失败曾静默丢弃（仅详情页 ondemand 项有 reject）。
+      // 这里统一打 warn，保证任何生成失败都在日志可见，不再无声吞掉。
+      logger.warn(`Thumbnail generation failed: ${item.filePath} — ${reason.message}`);
+      item.reject?.(reason);
     }
   }
 

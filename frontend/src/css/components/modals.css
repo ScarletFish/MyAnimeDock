@@ -20,6 +20,11 @@
   }
 }
 
+/* 确认弹窗：层级高于普通模态框（250），避免被设置等模态框遮挡 */
+@utility modal-overlay--confirm {
+  z-index: 260;
+}
+
 @utility modal {
   position: relative;
   background: var(--bg-elevated);

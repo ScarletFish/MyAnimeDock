@@ -29,7 +29,7 @@
 
 {#if $confirmStore}
   <div
-    class="modal-overlay"
+    class="modal-overlay show modal-overlay--confirm"
     role="dialog"
     tabindex="-1"
     aria-modal="true"

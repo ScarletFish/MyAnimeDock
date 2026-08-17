@@ -225,7 +225,8 @@ function handleThumbnail(req: any, res: any, state: State) {
     // cache miss → 走统一队列（single-flight + 并发闸门），不再直连 spawn
     _probeDuration(videoPath, (dur) => {
       logger.info(`[THUMB-DEBUG] mid probed dur=${dur}`);
-      const time = dur ? Math.floor(dur / 2) : 60;
+      if (!dur) { jsonResp(res, 500, { error: 'thumbnail generation failed' }); return; }
+      const time = Math.floor(dur / 2);
       if (!state.thumbnailQueue) { jsonResp(res, 500, { error: 'thumbnail generation failed' }); return; }
       state.thumbnailQueue.ensureGenerated(videoPath, time, THUMB_HASH_SEED, 30000)
         .then((thumbPath: string) => {
@@ -236,7 +237,8 @@ function handleThumbnail(req: any, res: any, state: State) {
         });
     });
   } else {
-    const time = parseFloat(timeRaw ?? '') || 60;
+    const time = parseFloat(timeRaw ?? '');
+    if (Number.isNaN(time)) { jsonResp(res, 400, { error: 'invalid time' }); return; }
     logger.info(`[THUMB-DEBUG] exit time=${time} cacheKey=${String(time)}`);
     // 自定义 time 也走统一队列（single-flight + 并发闸门），不再直连 spawn
     if (!state.thumbnailQueue) { jsonResp(res, 500, { error: 'thumbnail generation failed' }); return; }

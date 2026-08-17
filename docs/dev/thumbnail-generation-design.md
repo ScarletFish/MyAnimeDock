@@ -48,7 +48,7 @@
 2. **single-flight 去重**：`_ongoing: Map<thumbKey, Promise>`，同文件并发请求共享一次生成（thumbKey = 最终 thumbPath）
 3. 否则以 `ondemand` 类型高优先级入队 + 立即 drain + 返回带超时（30s）的 Promise
 
-**time 语义**：`_generate` 用 `item.time ?? (item.duration ? Math.floor(duration/2) : 60)`——ondemand 项用显式 time，background 项（`enqueue`）从 duration 取 mid。
+**time 语义**：`_generate` 用 `item.time ?? (item.duration ? Math.floor(duration/2) : 探测)`——ondemand 项用显式 time，background 项（`enqueue`）从 duration 取 mid。**duration 缺失（NULL）时先 `_probeDuration` 探测真实时长再取中点**；**探测失败直接报错（`duration unknown`），不兜底 60s**。探测结果缓存于 `_durCache`。
 
 **`enqueue(anime, prepend)` 保留**（后台预生成/详情页插队），增加**入队去重**：已在队列中或已在生成中的 thumbKey 跳过。
 
@@ -77,6 +77,7 @@
 | 加 `-skip_frame nokey` | 只解码关键帧，抽帧提速 |
 | 加 `-threads 2` | 限单进程线程数，避免单进程吃满多核 |
 | `-vframes 1` → `-frames:v 1` | 弃用参数替换 |
+| 加 `-vf scale=480:-2` | 降采样到最大宽 480（高度自动且偶数，适配 yuv420p），避免输出源分辨率（1080P） |
 
 ### 3.5 前端
 
@@ -107,3 +108,6 @@
 - 自定义 time 请求（Library 继续播放卡片）**纳入统一管线**（显式 time 参数），消除库页加载时最多 10 个并发直连 spawn
 - 按需 miss 采用阻塞等待（single-flight Promise），不引入 SSE 推送
 - 修复：`ensureGenerated` 参数语义为显式 `time`（非 duration），避免 mid 双半 bug
+- 修复：后台项 duration 为 NULL 时 `_probeDuration` 探测真实时长取中点（否则回退 60s 落在 OP 画面、多集重复）
+- 修复：ffmpeg 加 `-vf scale=480:-2` 降采样（卡片不需要 1080P）
+- 修复：扫描导入时批量探测时长写 DB（`_probeEpisodes`，4 并发，`ffmpeg -i` 解析 stderr，无 ffprobe）；缩略图生成时 duration null 再探测一次，**查不到直接报错，不兜底 60s**（on-demand mid 探测失败 500、自定义 time 解析失败 400）

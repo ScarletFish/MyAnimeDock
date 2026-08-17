@@ -45,6 +45,8 @@ class ThumbnailQueue {
   _ongoing: Map<string, Promise<string>> = new Map();
   /** 已入队（含生成中）的 thumbPath，用于入队去重 */
   _enqueuedThumbs: Set<string> = new Set();
+  /** 时长探测缓存：filePath -> 秒，避免重复探测 */
+  _durCache: Map<string, number> = new Map();
 
   /**
    * @param activePlays — server.js 的 activePlays Map，用于空闲检测
@@ -164,6 +166,34 @@ class ThumbnailQueue {
     return path.join(DATA_DIR, 'thumbs', hash + '.jpg');
   }
 
+  /** 探测视频时长（秒）。失败返回 null。结果缓存避免重复探测。 */
+  _probeDuration(filePath: string): Promise<number | null> {
+    const cached = this._durCache.get(filePath);
+    if (cached !== undefined) return Promise.resolve(cached);
+    const ffmpegPath = getFfmpegPath();
+    if (!ffmpegPath) return Promise.resolve(null);
+    return new Promise((resolve) => {
+      const ff = spawn(ffmpegPath, ['-i', filePath, '-loglevel', 'error']);
+      let stderr = '';
+      let done = false;
+      ff.stderr.on('data', d => { stderr += d.toString(); });
+      const finish = () => {
+        if (done) return; done = true;
+        const m = stderr.match(/Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/);
+        if (m) {
+          const secs = parseInt(m[1]) * 3600 + parseInt(m[2]) * 60 + parseFloat(m[3]);
+          this._durCache.set(filePath, secs);
+          resolve(secs);
+        } else {
+          resolve(null);
+        }
+      };
+      ff.on('close', finish);
+      ff.on('error', () => { if (!done) { done = true; resolve(null); } });
+      setTimeout(() => { if (!done) { done = true; ff.kill(); resolve(null); } }, 10000);
+    });
+  }
+
   _scheduleDrain(): void {
     if (this._processing || this._drainTimer) return;
     // 小延迟让同一批 enqueue 调用合并
@@ -216,30 +246,42 @@ class ThumbnailQueue {
     }
   }
 
-  _generate(item: ThumbItem): Promise<void> {
+  async _generate(item: ThumbItem): Promise<void> {
     const { filePath } = item;
     const ffmpegPath = getFfmpegPath();
     if (!ffmpegPath) {
       this._settle(item, null, new Error('ffmpeg not available'));
-      return Promise.resolve();
+      return;
     }
 
     // 源文件可能在入队后被删除/移动
     if (!fs.existsSync(filePath)) {
       logger.warn(`Source file gone, skipping thumbnail: ${filePath}`);
       this._settle(item, null, new Error('source file gone'));
-      return Promise.resolve();
+      return;
     }
 
-    // ondemand 项用显式 time；background 项从 duration 取 50% 中点（与按需端点 time=mid 一致）
-    const time = item.time ?? (item.duration && item.duration > 0 ? Math.floor(item.duration / 2) : 60);
+    // ondemand 项用显式 time；background 项从 duration 取 50% 中点（与按需端点 time=mid 一致）。
+    // duration 缺失时探测真实时长；探测失败直接报错，不兜底 60s。
+    let time = item.time;
+    if (time === undefined) {
+      let duration = item.duration && item.duration > 0 ? item.duration : null;
+      if (duration === null) {
+        duration = await this._probeDuration(filePath);
+      }
+      if (!duration || duration <= 0) {
+        this._settle(item, null, new Error('duration unknown'));
+        return;
+      }
+      time = Math.floor(duration / 2);
+    }
 
     const thumbPath = this._thumbPathFor(filePath, item.cacheKey ?? THUMB_HASH_SEED);
     const thumbDir = path.join(DATA_DIR, 'thumbs');
 
     if (fs.existsSync(thumbPath)) {
       this._settle(item, thumbPath, null);
-      return Promise.resolve();
+      return;
     }
     if (!fs.existsSync(thumbDir)) fs.mkdirSync(thumbDir, { recursive: true });
 
@@ -247,6 +289,7 @@ class ThumbnailQueue {
       const ff = spawn(ffmpegPath, [
         '-ss', String(time), '-i', filePath,
         '-skip_frame', 'nokey', '-threads', '2',
+        '-vf', 'scale=480:-2',
         '-frames:v', '1', '-q:v', '5', '-y', thumbPath, '-loglevel', 'error',
       ]);
       let resolved = false;

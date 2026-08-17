@@ -4,7 +4,7 @@
 // Side-effect module: importing starts the listener.
 
 import { showToast } from '../components/Toast.svelte';
-import { API } from '../js/api.js';
+import { API } from './api.js';
 import { currentView } from './router.js';
 import { handleDetailPlaybackEnded } from '../views/Detail.svelte';
 import { pendingFinishAnimeId } from './ui-state.js';

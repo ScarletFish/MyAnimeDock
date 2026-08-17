@@ -3,7 +3,7 @@
  * Frontend one-shot check: JS syntax + CSS token compliance + build.
  *
  * 串起改前端后必须做的三件事（漏任一都会出诡异问题）：
- *   1. node --check 全部 frontend/src/js/*.js   —— 语法检查（Vite concat 跳过校验）
+ *   1. node --check 全部 frontend/src/lib/*.js   —— 语法检查（Vite concat 跳过校验）
  *   2. npm run check:css -- --strict            —— CSS token 合规（违规即失败）
  *   3. npm run build:frontend                   —— 重建 dist/（生产模式从 dist/ 读）
  *
@@ -16,7 +16,7 @@ const { readdirSync } = require('node:fs');
 const { resolve, join } = require('node:path');
 
 const ROOT = resolve(__dirname, '..');
-const JS_DIR = join(ROOT, 'frontend', 'src', 'js');
+const JS_DIR = join(ROOT, 'frontend', 'src', 'lib');
 const FRONTEND_DIR = join(ROOT, 'frontend');
 const isWin = process.platform === 'win32';
 

@@ -1,5 +1,5 @@
 <script module>
-  // ─── Detail 视图（Svelte 声明式迁移版）───
+  // ─── Detail 视图
   // 挂载由 orchestrator 统一处理（本文件不修改 App.svelte）。
   import { writable } from 'svelte/store';
 
@@ -18,7 +18,7 @@
     detailOpen.set(true);
   }
 
-  // 播放结束回调：实例脚本挂载时注册，mpv-status.js import 调用（避免 window 桥接）。
+  // 播放结束回调：实例脚本挂载时注册，mpv-status.js import 调用。
   let _playbackEndedHandler = null;
   export function setHandleDetailPlaybackEnded(fn) { _playbackEndedHandler = fn; }
   export function handleDetailPlaybackEnded(endedAnimeId) {
@@ -195,7 +195,6 @@
         animateHeroCoverFlip(fromRect, fromSrc);
       } else {
         // 直接进入（仪表盘/搜索等）：cover 立即可见（内联样式覆盖 CSS class 的 opacity:0），
-        // 与旧版 renderDetail 行为一致——先看到内容，图片后台渐进加载。
         const wrap = document.getElementById('svelte-detailCover');
         if (wrap) { wrap.style.opacity = '1'; wrap.style.transform = 'scale(1)'; }
         setEntranceDelays(0.04, 0);

@@ -486,10 +486,10 @@
             </div>
           </div>
         {:else if s.enabled && s.id === 'continueWatch'}
-          <div class="dashboard-section hscroll-section" data-section="continueWatch">
-            <div class="dashboard-section-header"><span class="dashboard-section-title">{tr('library.continueWatching')}</span></div>
-            <div class="dashboard-section-body">
-              {#if continueItems.length > 0}
+          {#if continueItems.length > 0}
+            <div class="dashboard-section hscroll-section" data-section="continueWatch">
+              <div class="dashboard-section-header"><span class="dashboard-section-title">{tr('library.continueWatching')}</span></div>
+              <div class="dashboard-section-body">
                 {#key continueItems}
                   <div class="dashboard-continue-scroll">
                     {#each continueItems as a (a.id)}
@@ -517,9 +517,9 @@
                     {/each}
                   </div>
                 {/key}
-              {/if}
+              </div>
             </div>
-          </div>
+          {/if}
         {:else if s.enabled && s.id === 'localLibrary'}
           <LocalAnimeSection
             items={$libraryData}

@@ -212,16 +212,27 @@
   }
 
   // ─── 继续观看：GSAP 交错入场（对齐 vanilla library.js renderContinueSectionFull animate=true）
-  // 注意：vanilla 此动画没有 prefers-reduced-motion 守卫（library.js:345-356），这里同样不加，
-  // 否则系统开启减少动态效果时 vanilla 有动画、Svelte 无动画，行为不一致。
-  // 依赖 loading：libraryData 在 loadLibrary 中先于 loading=false 赋值，若 effect 只依赖
-  // continueItems，会在 loading 占位渲染（卡片未入 DOM）时触发并空返回，永不再跑。
+  // 与模块级 fade 行为一致：只在视图打开时播一次；从详情页返回（__skipViewEnter）跳过；
+  // 刷新/状态变更不重播（continueAnimated 标记，置位时机在视图关闭时复位）。
+  // 注意：vanilla 此动画没有 prefers-reduced-motion 守卫，这里同样不加。
+  let continueAnimated = false;
   $effect(() => {
+    const open = $libraryOpen;
     const items = continueItems;
+    if (!open) {
+      continueAnimated = false;
+      return;
+    }
     if (loading) return;
     if (items.length === 0) return;
+    if (__skipViewEnter) {
+      continueAnimated = true;
+      return;
+    }
+    if (continueAnimated) return;
     const gsap = globalThis.gsap;
     if (!gsap) return;
+    continueAnimated = true;
     tick().then(() => {
       const scrollEl = document.querySelector('#svelte-libraryView .dashboard-continue-scroll');
       if (!scrollEl) return;

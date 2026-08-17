@@ -104,9 +104,13 @@ describe('library route handlers', () => {
       const req = mockReq({ url: '/api/anime/anime-1', method: 'DELETE' });
       const res = mockRes();
       // handleDeleteAnime is NOT async — it chains .then() on Promise.all()
-      // So we wait for the promise chain via a small delay
+      // So we wait for the promise chain to settle by polling res._status
+      // (fixed setTimeout is flaky under full-suite load).
       lib.handleDeleteAnime(req, res, state);
-      await new Promise(r => setTimeout(r, 10));
+      const deadline = Date.now() + 2000;
+      while (res._status === null && Date.now() < deadline) {
+        await new Promise(r => setTimeout(r, 5));
+      }
       assert.strictEqual(res._status, 200);
       assert.strictEqual(state.data.library.length, 0);
       assert.strictEqual(state.data.myList.length, 0);

@@ -1,6 +1,6 @@
 # MyAnimeDock
 
-Vanilla JS SPA + Node.js HTTP server + Tauri v2 desktop shell. 自托管动漫媒体库管理器。
+Svelte 5 SPA + Node.js HTTP server + Tauri v2 desktop shell. 自托管动漫媒体库管理器。
 
 ## Workflow
 
@@ -50,7 +50,7 @@ cd server && npm test      # 测试（先自动跑 tsc）
 - **"先找后写"三步协议**: 新增 CSS 前先查已有组件和 token，禁止写死值。完成后跑 `npm run check:frontend` 验证（详见 `docs/dev/frontend.md` 必读章节）
 - **改前端后跑 `npm run check:frontend`**: 勿只跑其中一条，否则 dist 过期"改了没生效"
 - **CSS 子文件结构**: 勿改 `styles.css`（仅入口）；视图样式放 `views/*.css`，小组件用 `@utility` 放 `patterns.css`，主题特有放 `layouts/` 和 `components/`
-- **Grid 列公式**: 在 `library.js` 的 `GRID_CARD_MIN`/`GRID_CARD_MAX`，不通过 CSS utility 控制
+- **Grid 列公式**: 在 `frontend/src/lib/grid.js` 的 `GRID_CARD_MIN`/`GRID_CARD_MAX`，不通过 CSS utility 控制
 - **mpv-status**: 不轮询 — `EventSource` 监听 `/api/events/mpv-status`，DB 落盘仅 `final` 事件
 - **后端 TS 纪律**: 后端源码是 `.ts`（strict 模式），**禁止新增 `any`**；改后端后跑 `npm run typecheck`（必须 0 错误）+ `cd server && npm test`
 - **类型定义集中地**: 跨文件共享类型放 `server/types.ts`（AppData/ServerState/Anime/MyListItem/ScanNode 等），禁止散落在各路由文件里各自定义

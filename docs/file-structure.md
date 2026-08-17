@@ -93,74 +93,51 @@ server/
 
 ---
 
-## frontend/ — 前端源码（Vite 构建输入）
+## frontend/ — 前端源码（Svelte 5 SPA，Vite 构建输入）
 
 ```
 frontend/
-├── index.html                 # HTML 入口（22 个 <script> 严格顺序）
-├── vite.config.js             # Vite 配置（复制模式）
+├── index.html                 # HTML 入口（含 #chrome/#sidebar/#app 三个 Svelte 挂载点 + vendor script + <script type="module" src="/src/main.js">）
+├── vite.config.js             # Vite + @sveltejs/vite-plugin-svelte + @tailwindcss/vite；proxy /api /covers /thumbs /banners → :3457
+├── svelte.config.js
+├── vitest.config.js           # vitest（node 环境，src/**/*.test.js）
 ├── package.json
 │
 ├── src/
-│   ├── js/                    # 前端 JS 源码（22 个文件）
+│   ├── main.js                # Svelte 入口：mount(App) + mount(Chrome) + mount(Sidebar) + initI18n + 启动逻辑
+│   ├── App.svelte             # 根组件（Toast/Modal/ConfirmDialog/Onboarding/ThemeDock/KbdHelp + 各视图）
+│   ├── js/                    # 少量 ES module 工具（4 个）
+│   │   ├── api.js             #   HTTP API 封装（API.get/post/put/del）
+│   │   ├── state.js           #   AppState 跨模块共享状态（CustomEvent）
+│   │   ├── debug.js           #   F12 调试系统（__debug）
+│   │   └── keyboard.js        #   键盘快捷键
+│   ├── lib/                   # 可复用逻辑（ES module）
 │   │   ├── i18n-zh.js         #   i18n 文案字典（唯一，改文案只改这里）
 │   │   ├── i18n.js            #   i18next 初始化 + 全局 t() + data-i18n 绑定
-│   │   ├── state.js           #   UI 全局状态管理
-│   │   ├── debug.js           #   F12 调试系统
-│   │   ├── ui.js              #   通用 UI 工具
-│   │   ├── api.js             #   HTTP API 封装
-│   │   ├── components.js      #   UI 组件工厂（dropdown/filterBar）
-│   │   ├── utils.js           #   工具函数（escHtml/escAttr）
-│   │   ├── discovery.js       #   媒体浏览视图
-│   │   ├── library.js         #   库视图（grid 列公式 GRID_CARD_MIN/MAX）
-│   │   ├── detail.js          #   详情页
-│   │   ├── tag-data.js        #   标签词库（含中英解释，悬停 tooltip 数据源）
-│   │   ├── detail-nav.js      #   详情页导航
-│   │   ├── detail-stats.js    #   详情页统计
-│   │   ├── detail-pagination.js # 详情页分页
-│   │   ├── mylist.js          #   我的列表
-│   │   ├── metamatch.js       #   元数据匹配 SSE 流
-│   │   ├── stats.js           #   统计图表页
-│   │   ├── search.js          #   搜索
-│   │   ├── titlebar.js        #   自定义标题栏
-│   │   ├── onboarding.js      #   首次引导
-│   │   ├── keyboard.js        #   键盘快捷键
-│   │   └── app.js             #   应用主控（视图切换/缩放）
-│   │
-│   └── css/                   # 前端 CSS 源码
-│       ├── styles.css         #   入口（勿改，仅 @import）
-│       ├── tokens.css         #   设计 Token（颜色/间距/圆角）
-│       ├── base.css           #   基础样式重置 + 全局排版
-│       ├── light.css          #   亮色模式覆盖
-│       ├── components/        #   组件样式（10 个）
-│       │   ├── patterns.css   #     @utility 小组件（复用入口）
-│       │   ├── buttons.css
-│       │   ├── card-grid.css
-│       │   ├── dropdowns.css
-│       │   ├── forms.css
-│       │   ├── modals.css
-│       │   ├── badges.css
-│       │   ├── toast.css
-│       │   ├── discovery.css
-│       │   └── theme-controls.css
-│       ├── layouts/           #   布局样式（2 个）
-│       │   ├── sidebar.css
-│       │   └── titlebar.css
-│       └── views/             #   视图样式（11 个）
-│           ├── dashboard.css
-│           ├── archive.css
-│           ├── detail-layout.css
-│           ├── detail-banner.css
-│           ├── detail-episodes.css
-│           ├── detail-characters.css
-│           ├── mylist.css
-│           ├── metamatch.css
-│           ├── stats.css
-│           ├── onboarding.css
-│           └── keyboard.css
+│   │   ├── router.js          #   showView 视图切换协调器 + 滚动状态
+│   │   ├── ui-state.js        #   跨组件 Svelte store（libraryData/mylistData/pendingAutoPlay/pendingFinishAnimeId）
+│   │   ├── theme.js           #   主题/缩放/reduce-motion 纯函数
+│   │   ├── grid.js            #   Grid 列公式（GRID_CARD_MIN/MAX + calcGridCols）
+│   │   ├── mpv-status.js      #   全局 mpv-status SSE 监听
+│   │   ├── sync-stream.js     #   MetaMatch SSE 流封装（+ sync-stream.test.js）
+│   │   ├── anime-utils.js / dashboard-layout.js / lazy-bg.js / scroll-dots.js / sort.js / tag-data.js / tauri-dialog.js / tooltip.js
+│   ├── components/            # Svelte 组件
+│   │   ├── Toast.svelte / Modal.svelte / ConfirmDialog.svelte / ContextMenu.svelte / KbdHelp.svelte / Onboarding.svelte / Sidebar.svelte / StatusModal.svelte / StatusSection.svelte / ThemeDock.svelte / AnimeCard.svelte
+│   │   ├── chrome/            #   Chrome.svelte / Titlebar.svelte / SearchBar.svelte
+│   │   ├── detail/            #   Characters / EpisodeHeatmap / FinishConfirmModal / RelationList / SyncModal / WatchStats
+│   │   └── metamatch/         #   MetaMatchDetail / MetaMatchList / MetaMatchPanel / MetaMatchSyncLog / MetaMatchToolbar
+│   ├── views/                 # Svelte 视图组件
+│   │   ├── Detail.svelte / Discovery.svelte / Library.svelte / LocalAnimeSection.svelte / MetaMatch.svelte / Mylist.svelte / Settings.svelte / Stats.svelte
+│   └── css/                   # 前端 CSS（Tailwind v4 + 设计 token）
+│       ├── styles.css         #   入口（Tailwind @theme + @import 各子文件）
+│       ├── tokens.css / base.css / light.css
+│       ├── components/        #   buttons/forms/badges/dropdowns/modals/toast/theme-controls/card-grid/discovery/patterns
+│       ├── layouts/           #   titlebar.css / sidebar.css
+│       └── views/             #   detail-layout/detail-episodes/detail-characters/detail-banner/mylist/archive/metamatch/dashboard/stats/onboarding/keyboard
 │
-│   └── public/                    # Vite 静态资源目录（第三方库，构建时复制到 dist/）
-│       └── vendor/            # gsap/d3/wordcloud/i18next
+└── public/                    # Vite 静态资源
+    ├── favicon.svg / icon.svg
+    └── vendor/                # gsap(gsap/Flip/ScrollTrigger) / d3 / i18next / wordcloud
 ```
 
 ---
@@ -252,7 +229,8 @@ docs/
 | 路由模块 | `server/routes/*.ts` (9 个) |
 | DB 操作 | `server/db.ts` |
 | 元数据抓取 | `server/scrapers/*.ts` (5 个) |
-| 前端 JS | `frontend/src/js/*.js` → Vite build → `frontend/dist/assets/app.js` |
+| 前端 JS | `frontend/src/lib/*.js` + `frontend/src/components/*.svelte`（Svelte 组件） |
+| 前端入口 | `frontend/src/main.js`（Svelte mount） |
 | 前端 CSS | `frontend/src/css/` |
 | HTML 入口 | `frontend/index.html` |
 | 页面视图样式 | `frontend/src/css/views/*.css` (11 个) |
@@ -260,7 +238,7 @@ docs/
 | 布局样式 | `frontend/src/css/layouts/*.css` (2 个) |
 | 设计 Token | `frontend/src/css/tokens.css` |
 | 第三方库 | `frontend/public/vendor/` (gsap/d3/wordcloud/i18next) |
-| 前端文案字典 | `frontend/src/js/i18n-zh.js`（i18n，改文案只改这里） |
+| 前端文案字典 | `frontend/src/lib/i18n-zh.js`（i18n，改文案只改这里） |
 | 前端检查脚本 | `scripts/check-frontend.js`（`npm run check:frontend` 一键检查+构建） |
 | Rust 入口 | `src-tauri/src/main.rs` |
 | Tauri 配置 | `src-tauri/tauri.conf.json` |

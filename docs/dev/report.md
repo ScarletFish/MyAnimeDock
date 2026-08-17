@@ -21,7 +21,7 @@
 | 文件 | 改动类型 | 说明 |
 |------|----------|------|
 | `server/routes/xxx.ts` | 新增/修改/删除 | [简要说明] |
-| `frontend/src/js/xxx.js` | 修改 | [简要说明] |
+| `frontend/src/views/xxx.svelte`（或 `frontend/src/lib/xxx.js`） | 修改 | [简要说明] |
 
 ### 测试结果
 - `node --test __tests__/xxx.test.js` — N/N pass（xxx ms）

@@ -98,7 +98,7 @@ Anime Title [bgm12345]/
 ## 技术栈
 
 - **后端** — Node.js（原生 `http` 模块），单文件 HTTP 服务
-- **前端** — Vanilla HTML / CSS / JavaScript，浏览器直接加载
+- **前端** — Svelte 5 + Vite + Tailwind CSS v4（SPA）
 - **桌面壳** — Tauri v2（Rust）
 - **数据库** — SQLite（better-sqlite3 原生 SQL）
 - **动画** — GSAP + Flip 插件

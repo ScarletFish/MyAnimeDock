@@ -7,7 +7,7 @@ http.createServer((req, res) => {
   ├─ CORS headers (Access-Control-Allow-*)
   ├─ Parse URL + method
   ├─ Route matching:
-  │   ├─ Static files: frontend/dist/ (index.html, app.js, *.css, vendor/)
+  │   ├─ Static files: frontend/dist/ (index.html, assets/*.js, *.css, vendor/)
   │   ├─ API routes (/api/*):
   │   │   ├─ Read body (if POST/PUT/DELETE)
   │   │   ├─ Execute handler logic

@@ -67,7 +67,7 @@ MyAnimeDock 功能开发/修 bug 的标准流程。**禁止跳过阶段直接写
 **改任何代码之前，必须先能写出根因声明：**
 
 > 根因：`xxx` 中 `yyy` 因为 `zzz` 导致 `www`。
-> 示例：根因：`library.js:120` 的 `renderCard()` 在 `data.episodes` 为 null 时没有 fallback，导致 `card.innerHTML` 拼接了 `undefined`。
+> 示例：根因：`Library.svelte` 中渲染卡片处（如 `{#each}` 循环里的 `AnimeCard`）在 `data.episodes` 为 null 时没有 fallback，导致渲染出 `undefined`。
 
 写不出一句根因 → **回到第 3 步**，禁止进入修复。
 
@@ -121,7 +121,7 @@ MyAnimeDock 功能开发/修 bug 的标准流程。**禁止跳过阶段直接写
 ### 路径 D：微调快路径
 
 适用于**纯文案/样式微调**：≤20 行、不涉及逻辑变更、不改数据模型。例如：
-- 改 `frontend/src/js/i18n-zh.js` 里的文案值
+- 改 `frontend/src/lib/i18n-zh.js` 里的文案值
 - 静态 HTML 的 `data-i18n` / `data-i18n-attr` 文本
 - 已有 CSS 的 token 值微调（不改结构）
 
@@ -184,8 +184,8 @@ MyAnimeDock 功能开发/修 bug 的标准流程。**禁止跳过阶段直接写
 **示例**：
 > 目标：添加筛选栏记住最后选中的筛选条件
 > 读：`docs/data-flow.md` → Config 字段
-> 读：`library.js` → `createFilterBar()` + `renderLibrary()`
-> 读：`state.js` → UIState
+> 读：`frontend/src/views/Library.svelte`（筛选/渲染逻辑）
+> 读：`frontend/src/lib/ui-state.js`（Svelte store）
 > 结论：加字段到 UI state + localStorage，2 个文件
 
 ---
@@ -241,7 +241,7 @@ MyAnimeDock 功能开发/修 bug 的标准流程。**禁止跳过阶段直接写
 
 - [ ] 遵守以下 Key Patterns（至少过一遍不遗漏）：
   - API 调用 → `API.get/post/del`
-  - 用户数据 → `escHtml()` / `escAttr()` 包裹
+  - 用户数据 → `escHtml()` / `escAttr()` 包裹（注意：现在主要在 Svelte 组件中，Svelte 默认转义，仅当用 `{@html}` 输出外部数据时才需手动转义）
   - 动画 → GSAP，非 CSS transition/Web API
   - 持久化 → 只写实际修改的表（`db.saveLibrary()` 等，不调全量 `saveData()`）
 - [ ] CSS 缩放必须用 `--scale` calc，禁止 `zoom`
@@ -258,9 +258,9 @@ MyAnimeDock 功能开发/修 bug 的标准流程。**禁止跳过阶段直接写
 
 **示例**：
 > 修改批量标记观看功能
-> 1. 路由层：`routes/mylist.js` 新增 `/api/mylist/batch-watch`
+> 1. 路由层：`server/routes/mylist.ts` 新增 `/api/mylist/batch-watch`
 > 2. DB 层：`db.ts` 新增 `batchUpdateEpisodesWatched()` 批量写 SQLite
-> 3. 前端：`mylist.js` 加按钮 + API 调用
+> 3. 前端：`Mylist.svelte` 加按钮 + API 调用
 > 4. 前端改 → CSS 遵循"先找后写"三步协议，完成后跑 `npm run check:frontend`
 
 ---
@@ -310,7 +310,7 @@ MyAnimeDock 功能开发/修 bug 的标准流程。**禁止跳过阶段直接写
   | `server/db.ts`（持久化逻辑） | `docs/data-flow/save-taxonomy.md` |
   | `server/scrapers/*.ts`（爬虫/匹配） | `docs/data-flow/import-metadata.md` + `docs/code-explorer.md` |
   | `server/scanner.ts`（扫描逻辑） | `docs/data-flow/scan-discovery.md` + `docs/code-explorer.md` |
-  | `frontend/src/js/*.js`（前端逻辑） | `docs/dev/frontend.md`（组件表/检查清单） |
+  | `frontend/src/components/*.svelte` + `frontend/src/views/*.svelte` + `frontend/src/lib/*.js`（前端逻辑） | `docs/dev/frontend.md`（组件表/检查清单） |
   | `frontend/src/css/*.css`（样式） | `docs/dev/frontend.md` 必读章节、token/组件表 |
   | 新的边缘条件/隐式逻辑 | `docs/data-flow/gotchas.md` |
   | `docs/dev/*.md`（规范本身） | 无需映射（改了啥自己清楚） |

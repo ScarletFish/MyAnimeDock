@@ -98,9 +98,9 @@ Download the MSI or NSIS installer from [Releases](https://github.com/ScarletFis
 ## Tech Stack
 
 - **Backend** — Node.js (native `http` module), single-file HTTP service
-- **Frontend** — Vanilla HTML / CSS / JavaScript, loaded directly by the browser
+- **Frontend** — Svelte 5 + Vite + Tailwind CSS v4 (SPA)
 - **Desktop Shell** — Tauri v2 (Rust)
-- **Database** — SQLite + Prisma ORM
+- **Database** — SQLite (better-sqlite3 native SQL)
 - **Animation** — GSAP + Flip plugin
 - **Player** — mpv, with real-time progress tracking via IPC
 - **Metadata** — Bangumi API + AniList GraphQL (romaji support)

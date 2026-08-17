@@ -155,7 +155,10 @@ afterEach(() => {
 
 ## 已知限制
 
-- 前端代码无测试（vanilla JS SPA，无 bundler/测试 runner）
+- 前端测试用 **vitest**（`frontend/vitest.config.js`，node 环境，include `src/**/*.test.js`）
+- 运行：`cd frontend && npm test`（vitest run）
+- 现有测试：`frontend/src/lib/sync-stream.test.js`（SSE 同步流模块，mock EventSource 覆盖 done/cancel/timeout/finish 幂等/handler）
+- 前端纯 UI 组件（Svelte）目前无测试；纯 JS 逻辑模块（lib/ 下无 DOM 依赖的）可加 vitest 测试
 - 纯 UI 文案/样式改动不需要跑测试
 - 如果改动完全不涉及数据层，选跑关联测试即可
 - 测试环境 Windows（CI 未配置）

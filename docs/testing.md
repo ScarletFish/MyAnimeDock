@@ -20,7 +20,17 @@ cd server && npm test            # 全量测试（当前 368 tests: 35 DB + 64 s
 cd server && npx node --test --test-name-pattern="parseFolderName" __tests__/scanner.test.js  # 筛选单个 describe
 cd server && npx node --test --test-name-pattern="NCOP" __tests__/scanner.test.js              # 筛选单个 it
 cd server && node --test __tests__/scrapers.test.js                                           # 仅匹配逻辑测试（改匹配时用）
+cd frontend && npm test                                                                       # 前端 vitest 测试（sync-stream 等纯 JS 模块）
 ```
+
+## 前端测试（vitest）
+
+前端纯 JS 逻辑模块使用 **vitest** 测试（`frontend/vitest.config.js`，node 环境，include `src/**/*.test.js`）：
+
+- 运行：`cd frontend && npm test`（vitest run）
+- 现有测试：`frontend/src/lib/sync-stream.test.js`（SSE 同步流模块，mock EventSource 覆盖 done/cancel/timeout/finish 幂等/handler）
+- 纯 JS 逻辑模块（lib/ 下无 DOM 依赖的）可加 vitest 测试
+- 前端纯 UI 组件（Svelte）目前无测试
 
 ## 测试分类
 

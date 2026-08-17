@@ -5,7 +5,7 @@
 以下逻辑散落在代码中但未在任一文件里显式声明，阅读 / 修改播放流程前必读：
 
 ### 看完判定（Finish Confirm）
-`frontend/src/js/detail.js:572,611,849` — `findPendingFinishConfirm` / `showFinishConfirm` / `checkAndShowFinishConfirm`
+`frontend/src/views/Detail.svelte` — `findPendingFinishConfirm` / `showFinishConfirm` / `checkAndShowFinishConfirm`
 
 **后端不再自动标记 watched**（`server/mpv-ipc.ts` 不再设 `WATCHED_RATIO`，`/api/play` 的 `final` 回调不再写 `ep.watched`）。
 
@@ -18,9 +18,9 @@
 | 不处理 | `off` | 什么都不做（等价于旧的关闭开关） |
 
 ```
-mpv 关闭 → SSE `mpv-status: {active: false}` → app.js 全局监听 onGlobalMpvStatus
+mpv 关闭 → SSE `mpv-status: {active: false}` → lib/mpv-status.js 全局监听 onGlobalMpvStatus
   → 自动聚焦 App 窗口（focusAppWindow，不跳页）
-  → 在详情页且结束的正是当前番 → window.handleDetailPlaybackEnded(animeId)
+  → 在详情页且结束的正是当前番 → handleDetailPlaybackEnded(animeId)（Detail.svelte）
       → checkAndShowFinishConfirm(anime)
         → mode = localStorage['myAnimDock_finishConfirm'] || 'prompt'（on→prompt 迁移）
         → off → return（不处理）
@@ -35,12 +35,12 @@ mpv 关闭 → SSE `mpv-status: {active: false}` → app.js 全局监听 onGloba
           → re-render 详情页（播放按钮、剧集列表）
           → scrollToNextUnwatched() 滚动列表到下一未观看
           → Toast "已标记第 N 集为已看完"
-  → 不在详情页 → Toast "播放已结束，进度已更新" + 记 window.pendingFinishAnimeId
+  → 不在详情页 → Toast "播放已结束，进度已更新" + 记 pendingFinishAnimeId store
       → 之后回到该番详情页（showDetail）→ 补弹完工确认
 ```
 
 关键点：
-- **SSE 监听在全局（app.js `startGlobalMpvStatus`）**，任何页面都能收到播放结束事件；详情页通过 `window.handleDetailPlaybackEnded` 注册消费回调（`detail.js`），返回 false 时由全局兜底（toast + pending）
+- **SSE 监听在全局（lib/mpv-status.js `startGlobalMpvStatus`）**，任何页面都能收到播放结束事件；详情页通过 `Detail.svelte` 的 `handleDetailPlaybackEnded` 注册消费回调，返回 false 时由全局兜底（toast + pending）
 - **不在详情页时进度照样落盘**（server 每次事件写库），只丢失结束反馈；pending 机制保证回详情页后补弹"标记看完"
 - **模态框是临时 DOM**（`modal-overlay` + `modal`），用完销毁
 - **`_dismissedFinishConfirm`** 是 `Set`，key 为 `"animeId:epNumber"`，仅当前 session 有效；只在 `prompt` 模式下使用
@@ -62,20 +62,20 @@ mpv 关闭 → SSE `mpv-status: {active: false}` → app.js 全局监听 onGloba
 这个逻辑接在 auto-mark 之后，保证统计 `stats("看完")` 会准确地映射到实际看完的动画。
 
 ### 前端全局 SSE + Finish Confirm + Toast
-`frontend/src/js/app.js:9-50` — `startGlobalMpvStatus()` / `onGlobalMpvStatus()`；`frontend/src/js/detail.js:116-143` — `window.handleDetailPlaybackEnded`
+`frontend/src/lib/mpv-status.js` — `startGlobalMpvStatus()` / `onGlobalMpvStatus()`；`frontend/src/views/Detail.svelte` — `handleDetailPlaybackEnded`
 
-**SSE 监听是全局的**（app.js 在 `DOMContentLoaded` 时建立 `EventSource` 连 `/api/events/mpv-status`），不随页面切换断开：
+**SSE 监听是全局的**（lib/mpv-status.js 在 main.js 启动时建立 `EventSource` 连 `/api/events/mpv-status`），不随页面切换断开：
 
 当前端收到 `mpv-status: { active: false }`（mpv 从活跃变为不活跃）时，`onGlobalMpvStatus` 统一处理：
 1. 自动聚焦 App 窗口（`focusAppWindow`，Tauri 下 `unminimize + setFocus`，**不跳转页面**）
-2. 若当前在详情页且结束的番正是当前展示的番 → 调用 `window.handleDetailPlaybackEnded(animeId)` 消费事件：刷新数据 + `checkAndShowFinishConfirm` + toast
-3. 否则（其他页面或番不匹配）→ 通用 toast `"播放已结束，进度已更新"` + 记录 `window.pendingFinishAnimeId`
+2. 若当前在详情页且结束的番正是当前展示的番 → 调用 `handleDetailPlaybackEnded(animeId)`（Detail.svelte）消费事件：刷新数据 + `checkAndShowFinishConfirm` + toast
+3. 否则（其他页面或番不匹配）→ 通用 toast `"播放已结束，进度已更新"` + 记录 `pendingFinishAnimeId` store
 
 `handleDetailPlaybackEnded` 返回 `true` 表示已消费（详情页刷新），返回 `false` 则由全局兜底处理。`startDetailRefresh` / `stopDetailRefresh` 保留为兼容占位（不再各自建连接）。
 
-**Pending 兜底：** 播放结束在非详情页时，回到该番详情页（`showDetail`）会检查 `window.pendingFinishAnimeId === id`，命中则补弹完工确认。end 事件本身不带 animeId，靠最近一次 `active:true` 事件缓存的 `gMpvAnimeId` 补全。
+**Pending 兜底：** 播放结束在非详情页时，回到该番详情页（`showDetail`）会检查 `pendingFinishAnimeId` store === id，命中则补弹完工确认。end 事件本身不带 animeId，靠最近一次 `active:true` 事件缓存的 `gMpvAnimeId` 补全。
 
-**HTTP 兜底：** `startGlobalMpvStatus()` 建立 SSE 后立即发一次 `GET /api/mpv-status` 查询当前播放状态（`app.js`）。这解决 SSE 刚建立时的延迟以及不支持的浏览器降级。
+**HTTP 兜底：** `startGlobalMpvStatus()` 建立 SSE 后立即发一次 `GET /api/mpv-status` 查询当前播放状态（`lib/mpv-status.js`）。这解决 SSE 刚建立时的延迟以及不支持的浏览器降级。
 
 ## 开始播放
 
@@ -131,13 +131,13 @@ POST /api/play
 
 | 位置 | 函数 | 文件 | 用途 |
 |------|------|------|------|
-| Dashboard「继续观看」卡片 | `findContinueEpisode` | `library.js:209` | 选缩略图 + 点击跳转 |
-| 详情页播放按钮 | `findTargetEpisode` | `detail.js:537` | 选目标集 + 按钮文字 |
-| Dashboard→自动播放 | `findWatchEpisode`（委托 `findTargetEpisode`） | `detail.js:561` | 跳转后立即播放 |
+| Dashboard「继续观看」卡片 | `findContinueEpisode` | `Library.svelte` | 选缩略图 + 点击跳转 |
+| 详情页播放按钮 | `findTargetEpisode` | `Detail.svelte` | 选目标集 + 按钮文字 |
+| Dashboard→自动播放 | `findWatchEpisode`（委托 `findTargetEpisode`） | `Detail.svelte` | 跳转后立即播放 |
 
 **`pendingAutoPlay` 实现：**
-- Dashboard「继续观看」卡片点击 → `library.js` 设 `window.pendingAutoPlay = animeId`
-- 页面跳转到详情页后（`showDetail`）→ `detail.js:179-183` 检查 `pendingAutoPlay`，匹配则自动调用播放
+- Dashboard「继续观看」卡片点击 → `Library.svelte` 设 `pendingAutoPlay` store
+- 页面跳转到详情页后（`showDetail`）→ `Detail.svelte` 检查 `pendingAutoPlay` store，匹配则自动调用播放
 - 使用后清空，防止重复触发
 - 只对 Dashboard 点击生效，直接进入详情页不触发
 
@@ -196,7 +196,7 @@ GET /api/stats/watch-activity
       ├─ watchSecs = Math.max(duration, clockTime)  // duration = content progress
       └─ minutes += Math.round(watchSecs / 60)
   → Return { months: [{ label, minutes }] }
-  → Frontend: D3 area chart in stats.js loadActivityChart()
+  → Frontend: D3 area chart in Stats.svelte loadActivityChart()
   → Empty state when totalMinutes === 0
 ```
 
@@ -216,7 +216,7 @@ GET /api/anime/:id/sessions
   → Fill last 90 days (i = 89 → 0) with LOCAL dates:
       result[key] = Math.round((byDate[key] || 0) / 60);  // 秒 → 分钟
   → Return { "YYYY-MM-DD": minutes }
-  → Frontend: renderWatchStats() in detail-stats.js:
+  → Frontend: renderWatchStats() in components/detail/WatchStats.svelte:
       ├─ totalMinutes === 0 → 隐藏整个模块（#watchStats display:none）
       ├─ 按 Mon-Sun 周聚合（new Date(dateStr + 'T00:00:00') 解析日期）
       ├─ Canvas 柱状图，x 轴 = 周，y 轴 = 分钟
@@ -243,7 +243,7 @@ GET /api/anime/:id/sessions
 - UTC/local time：session startTime 存的是 `new Date().toISOString()`，取用时必须用 local 访问器（`getFullYear/getMonth/getDate`），不能用 `toISOString().slice()` 做 UTC 转换
 - **手动 toggle watched 不会触发 auto-complete**。auto-complete 只在 mpv 进程关闭的 `final` 回调中执行。这意味着如果用户通过右击标记最后一集 watched，myListStatus 不会自动变为 completed
 - **无 myList 条目的动画**：播放后不会自动创建 myList 记录。status 更新仅作用于已有的 myList 条目
-- **完工弹窗全局触发 + pending 兜底**：SSE 全局监听（app.js）。播放结束在详情页按"进度确认"三态处理（prompt 弹窗 / auto 直接标记 / off 忽略）；在其他页面则 toast + 记 `pendingFinishAnimeId`，回到该番详情页时补处理。进度数据不受页面切换影响（server 每次事件落盘）
+- **完工弹窗全局触发 + pending 兜底**：SSE 全局监听（lib/mpv-status.js）。播放结束在详情页按"进度确认"三态处理（prompt 弹窗 / auto 直接标记 / off 忽略）；在其他页面则 toast + 记 `pendingFinishAnimeId`，回到该番详情页时补处理。进度数据不受页面切换影响（server 每次事件落盘）
 - **`_dismissedFinishConfirm` 是内存 Set**：刷新页面后重置，同一集可再次弹窗；仅 prompt 模式使用，auto/off 模式不触碰
 - **`lastPlayedEp` 不由完工确认更新**：`lastPlayedEp` 始终由 playSessions 基于 `startTime` 排序生成，标记 watched 不改变它。但 `findTargetEpisode` / `findContinueEpisode` 会跳过已看完的集，所以下一集才是目标
 - **Dashboard 缩略图区分**：targetEp 有 progress 时缩略图取进度位置；progress=0（下一新集）时用 `&time=mid` 取中间帧

@@ -6,23 +6,25 @@
 
 | 场景 | 使用 | 定义文件 |
 |------|------|----------|
-| 按钮 | `.btn` / `.btn-primary` / `.btn-danger` / `.btn-outline` | `components/buttons.css` |
-| 标签/角标 | `.badge` | `components/badges.css` |
-| 卡片布局 | `.anime-card` | `components/card-grid.css` |
-| 水平分页滚动 | `.hscroll-section` + `.hscroll-card` | `components/patterns.css` |
-| 下拉框 | `.sort-dropdown` / `createDropdown()` | `components/dropdowns.css` + `components.js` |
-| 模态框 | `.modal-overlay` + `.modal-panel` | `components/modals.css` |
-| 输入框/搜索 | `.search-input` / `.filter-input` / `.select-native` | `components/forms.css` |
-| 开关 | `.toggle-switch` + `.toggle-slider` | `components/forms.css` |
-| 单选胶囊组 | `.seg-radio-group` + `.seg-radio-item`（原生 radio，`:has(:checked)` 高亮） | `components/forms.css` |
-| Toast 提示 | `.toast` + `.toast-visible` | `components/toast.css` |
-| 加载中 | `.loading-spinner` | `components/patterns.css` |
-| 分页 | `.pagination` | `components/patterns.css` |
-| 标签组 | `.tags-field` | `components/patterns.css` |
-| 发现页 | `.discovery-*` | `components/discovery.css` |
-| 主题选择器 | `.theme-dock` | `components/theme-controls.css` |
+| 按钮 | `.btn` / `.btn-primary` / `.btn-danger` / `.btn-outline` | `frontend/src/css/components/buttons.css` |
+| 标签/角标 | `.badge` | `frontend/src/css/components/badges.css` |
+| 卡片布局 | `.anime-card` | `frontend/src/css/components/card-grid.css` |
+| 水平分页滚动 | `.hscroll-section` + `.hscroll-card` | `frontend/src/css/components/patterns.css` |
+| 下拉框 | `.sort-dropdown`（复杂下拉用 bits-ui `Select`） | `frontend/src/css/components/dropdowns.css` |
+| 模态框 | `.modal-overlay` + `.modal-panel` | `frontend/src/css/components/modals.css` |
+| 输入框/搜索 | `.search-input` / `.filter-input` / `.select-native` | `frontend/src/css/components/forms.css` |
+| 开关 | `.toggle-switch` + `.toggle-slider` | `frontend/src/css/components/forms.css` |
+| 单选胶囊组 | `.seg-radio-group` + `.seg-radio-item`（原生 radio，`:has(:checked)` 高亮） | `frontend/src/css/components/forms.css` |
+| Toast 提示 | `.toast` + `.toast-visible` | `frontend/src/css/components/toast.css` |
+| 加载中 | `.loading-spinner` | `frontend/src/css/components/patterns.css` |
+| 分页 | `.pagination` | `frontend/src/css/components/patterns.css` |
+| 标签组 | `.tags-field` | `frontend/src/css/components/patterns.css` |
+| 发现页 | `.discovery-*` | `frontend/src/css/components/discovery.css` |
+| 主题选择器 | `.theme-dock` | `frontend/src/css/components/theme-controls.css` |
 
 > 更多组件见对应 `.css` 文件。**写新 UI 前先查这些有没有现成的。**
+>
+> 下拉框注意：**复杂交互下拉（排序、筛选、日期选择等）用 bits-ui `Select` 组件**，不再用 `createDropdown()` 工厂。`.sort-dropdown` 样式类仍保留，供简单场景或自定义下拉复用。
 
 ### 水平分页滚动（hscroll）
 
@@ -62,7 +64,7 @@
 - `--cols` 默认4，可通过 `style="--cols:N"` 或 CSS 覆盖
 - `--gap` 默认 `var(--space-4)`，可按需覆盖
 - media query 选择器必须唯一（用 `[data-section="xxx"]` 或 ID），避免影响其他 hscroll section
-- JS `initHScrolls()` 自动查找 `.hscroll-section` 并注入圆点，无需手动调用
+- 圆点指示器由 `initScrollDots()`（`frontend/src/lib/scroll-dots.js`）在 Svelte 组件 `onMount` 中初始化，无需手动调用
 - 卡片宽度从 `--cols` 自动计算，无需手写 `calc()`
 
 ### Token 引用规则
@@ -102,32 +104,27 @@ npm run check:css        # 仅扫描 views/ + layouts/ 的 token 合规性（che
 
 ## 架构概要
 
-Vite 构建 + 全局 `<script>` 标签（非 ESM）的 vanilla HTML/CSS/JS SPA。
-GSAP 作为唯一动画库。
+**Svelte 5 + Vite + Tailwind CSS v4 + bits-ui** 的 SPA。GSAP 作为唯一动画库。
+
+前端已从 vanilla JS 全量迁移到 Svelte 5：视图、通用组件、交互逻辑均为 Svelte 组件，模块用 ES import 组织，由 Vite 打包为 ES module。
 
 ### 构建方式
 
-Vite 在 **复制模式**（`build.rollupOptions.input` 只处理入口，JS 非 module 不打包）下工作：
-`index.html` 里 22 个 `<script>` 标签被 Vite 按原样复制到 `dist/`，不做 tree-shaking 或 scope 隔离。
-这样避免了 100+ 全局函数跨模块调用的 ESM 迁移风险。
+Vite 打包 ES module，`index.html` 提供三个挂载点（`#app` / `#chrome` / `#sidebar`），`src/main.js` 用 Svelte 5 的 `mount()` 分别挂载 App / Chrome / Sidebar。
 
 ```
 npm run dev              # Vite localhost:3456 + 后端 3457
 npm run build:frontend   # 输出到 frontend/dist/
 ```
 
-### 加载顺序（严格依赖）
+### 加载顺序
 
-```
-i18n-zh.js → i18n.js → state.js → debug.js → ui.js → api.js → components.js
-    → utils.js → discovery.js → library.js → detail-pagination.js
-    → detail-stats.js → detail-nav.js → detail.js → mylist.js
-    → metamatch.js → stats.js → titlebar.js → app.js → search.js
-    → onboarding.js → keyboard.js
-```
+`src/main.js` 是**唯一入口**，模块用 ES import 组织，无严格 script 顺序依赖。`main.js` 负责：
 
-`frontend/index.html` 中 `<script>` 标签顺序必须与此一致（与 `vite.config.js` 的 `JS_FILES` 对应）。打破依赖可能导致 `undefined` 引用。
-**`i18n-zh.js` / `i18n.js` 必须在最前**——所有使用 `t()` 的脚本都依赖它们先执行。
+- `initI18n()` — 必须在其他模块使用 `t()` 之前调用
+- `mount(App, #app)` / `mount(Chrome, #chrome)` / `mount(Sidebar, #sidebar)`
+- `bindDom()` — 替换 `[data-i18n]` / `[data-i18n-attr]`
+- 启动初始化：`loadTheme` / `loadReduceMotion` / `applyZoom` / `showView('library')` / `startGlobalMpvStatus`
 
 ## i18n 文案规范（必读）
 
@@ -138,8 +135,8 @@ i18n-zh.js → i18n.js → state.js → debug.js → ui.js → api.js → compon
 
 | 文件 | 作用 |
 |------|------|
-| `frontend/src/js/i18n-zh.js` | **唯一文案字典**（`window.I18N_ZH`）。新增/修改文案只改这里 |
-| `frontend/src/js/i18n.js` | 初始化 i18next，暴露全局 `t()`，绑定 `[data-i18n]` / `[data-i18n-attr]` |
+| `frontend/src/lib/i18n-zh.js` | **唯一文案字典**（`I18N_ZH`）。新增/修改文案只改这里 |
+| `frontend/src/lib/i18n.js` | 初始化 i18next，暴露全局 `t()`，绑定 `[data-i18n]` / `[data-i18n-attr]` |
 | `frontend/public/vendor/i18next/i18next.min.js` | i18next UMD 库（全局 `i18next`） |
 
 ### 三种写法
@@ -169,7 +166,7 @@ showToast('成功导入 ' + result.imported.length + ' 个条目', 'success');
 <input placeholder="搜索…" data-i18n-attr="nav.searchPlaceholder:placeholder">
 ```
 
-> 属性缺省列表：`data-tooltip, title, aria-label, placeholder`。`i18n.js` 在 `DOMContentLoaded` 时统一替换，动态插入的节点需要手动调 `t()`。
+> 属性缺省列表：`data-tooltip, title, aria-label, placeholder`。`i18n.js` 的 `bindDom()` 在挂载后统一替换，动态插入的节点需要手动调 `t()`。
 
 ### key 组织
 
@@ -179,7 +176,7 @@ showToast('成功导入 ' + result.imported.length + ' 个条目', 'success');
 
 ### 修改文案流程
 
-1. 只改 `frontend/src/js/i18n-zh.js` 里对应 key 的值（或新增 key 并替换硬编码处）
+1. 只改 `frontend/src/lib/i18n-zh.js` 里对应 key 的值（或新增 key 并替换硬编码处）
 2. `npm run check:frontend`（一键：语法检查 + CSS 合规 + 重建 dist/）
 
 ### 注意
@@ -213,50 +210,54 @@ element.setAttribute('data-value', escAttr(userInput));
 element.innerHTML = `<span>${title}</span>`;
 ```
 
-`escHtml` / `escAttr` 定义在 `utils.js`，`module.exports` guard 仅 Node.js 测试环境生效。
+> **Svelte 默认转义**：Svelte 模板插值 `{title}` 默认转义，无需手动 `escHtml()`。仅当用 `{@html ...}` 渲染外部/用户数据时才需自行转义（项目已无独立 `escHtml`/`escAttr` 工具函数）。
 
 ### 视图切换
 
-CSS `hidden` class toggle，无客户端路由器：
+`showView()` 现在在 `frontend/src/lib/router.js`（不是 app.js）。它是**协调器**，不再直接操作 DOM 显隐：
+
+- 保存 library/mylist 滚动位置
+- 更新 sidebar active 状态
+- 同步各视图的 Svelte store（`discoveryOpen` / `libraryOpen` / `statsOpen` / `mylistOpen` / `detailOpen`）
+- 视图可见性由 store 驱动，各 Svelte 视图监听自己的 store 决定渲染
 
 ```js
-// app.js — showView()
-function showView(view) {
-  document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
-  document.getElementById(`view-${view}`).classList.remove('hidden');
-  // 维护当前视图状态
-  currentView = view;
-  // 自动恢复滚动位置
-  restoreScroll(view);
+// router.js — showView()
+export function showView(view) {
+  // 保存滚动、更新 sidebar active、设置 currentView
+  // 同步 Svelte 视图 store
+  discoveryOpen.set(view === 'discovery');
+  libraryOpen.set(view === 'library');
+  statsOpen.set(view === 'stats');
+  mylistOpen.set(view === 'mylist');
+  detailOpen.set(view === 'detail');
 }
 ```
 
-### UI 组件工厂
+### UI 组件
 
-优先用工厂，避免重复写 toggle/render/click-outside：
+通用组件是 **Svelte 组件**（`frontend/src/components/`）：`Toast` / `Modal` / `ConfirmDialog` / `ContextMenu` / `ThemeDock` / `KbdHelp` 等。复杂交互组件用 **bits-ui**（`Select` 下拉、日期选择等）。
 
-```js
-// components.js
-createDropdown({ containerId, options, storageKey, onSelect });
-createFilterBar({ container, options, initial, onChange });
-```
+不再有 `createDropdown()` / `createFilterBar()` 工厂函数。
 
 ### 数据状态管理
 
-`state.js` 维护全局 UI 状态，视图切换时不重建父容器：
+- `frontend/src/lib/state.js` — `AppState`（`get`/`set`/`on`，通过 `CustomEvent('statechange')` 通知），用于跨模块的轻量共享数据
+- `frontend/src/lib/ui-state.js` — Svelte `writable` store，用于跨组件响应式共享：`libraryData` / `mylistData` / `pendingAutoPlay` / `pendingFinishAnimeId`
 
-- `currentView` — 当前视图名
-- `libraryScrollPositions` — 各视图滚动位置
-- `searchQuery` — 搜索查询
-- `filterState` — 筛选器状态
-
-恢复搜索/筛选状态：状态保存在 state + localStorage，视图切换时按需恢复。
+```js
+// ui-state.js
+export const libraryData = writable([]);
+export const mylistData = writable([]);
+export const pendingAutoPlay = writable(null);
+export const pendingFinishAnimeId = writable(null);
+```
 
 ### 搜索
 
-- 前端搜索库列表（不调 API）
-- 匹配字段：`title` / `bangumiTitle` / `pinyinTitle`
-- `pinyinTitle` 由后端 library 路由计算（pinyin-pro，去声调）
+前端搜索逻辑在 Svelte 视图（`Library.svelte`）中，匹配字段：`title` / `bangumiTitle` / `pinyinTitle`。
+
+`pinyinTitle` 由后端 library 路由计算（pinyin-pro，去声调）。
 
 ## CSS 缩放标准
 
@@ -283,7 +284,7 @@ padding: var(--space-4);
 .theme-dock { --scale: 1; }
 ```
 
-`applyZoom(scale)` 在 `app.js:173`，设置 `:root` 的 `--scale` 属性。gridZoom 独立控制（50%-200%，`localStorage` 持久化）。
+`applyZoom(scale)` 在 `frontend/src/lib/theme.js`，设置 `:root` 的 `--scale` 属性。gridZoom 独立控制（50%-200%，`localStorage` 持久化）。
 
 ## 动画约定
 
@@ -291,11 +292,24 @@ padding: var(--space-4);
 
 GSAP 已注册全局 `gsap.registerPlugin(Flip)`，引用自 `frontend/public/vendor/gsap/`。
 
-```js
-// 封面切换动画
-animateHeroCoverFlip(oldCover, newCover);
-// 内部创建 position:fixed overlay → Flip.getState() → DOM 变化
-// → Flip.from(state, { absolute: true })
+在 Svelte 组件中用 `gsap.context()` + `onMount`，并在卸载时返回 `() => ctx.revert()` 清理：
+
+```svelte
+<script>
+  import { onMount } from 'svelte';
+  import gsap from 'gsap';
+
+  let ctx;
+  onMount(() => {
+    ctx = gsap.context(() => {
+      // 封面切换动画
+      animateHeroCoverFlip(oldCover, newCover);
+      // 内部创建 position:fixed overlay → Flip.getState() → DOM 变化
+      // → Flip.from(state, { absolute: true })
+    });
+    return () => ctx.revert();
+  });
+</script>
 ```
 
 ### 封面加载
@@ -322,21 +336,27 @@ if (el) { /* 更新 */ }
 
 ## 响应式
 
-网格自适应列宽：
+网格自适应列宽由 `frontend/src/lib/grid.js` 的 `GRID_CARD_MIN=200` / `GRID_CARD_MAX=277` 控制，用 `calcGridCols(scale)` 计算：
 
-```css
-grid-template-columns: repeat(auto-fill, minmax(size, 1fr));
+```js
+// grid.js
+export const GRID_CARD_MIN = 200;
+export const GRID_CARD_MAX = 277;
+
+export function calcGridCols(scale) {
+  return `repeat(auto-fit, minmax(${Math.round(200 * scale)}px, ${Math.round(277 * scale)}px))`;
+}
 ```
 
-`GRID_CARD_BASE = 180`（`library.js`），实际渲染尺寸 = `180 × gridZoom × --scale`。gap = `clamp(0.85rem, 1.2vw, 1.25rem)`。
+实际渲染尺寸 = `GRID_CARD_MIN/MAX × --scale`。gap = `clamp(0.85rem, 1.2vw, 1.25rem)`。
 
 ## 主题
 
-6 种色彩主题（default/amber/ocean/sakura/emerald/violet）+ 独立 dark/light 模式。底部 dock 选择器即时切换生效。
+6 种色彩主题（default/amber/ocean/sakura/emerald/violet）+ 独立 dark/light 模式。底部 dock 选择器（`ThemeDock.svelte`）即时切换生效。
 
 ## 调试系统
 
-`frontend/src/js/debug.js` — 前端诊断，F12 启用：
+`frontend/src/lib/debug.js` — 前端诊断，F12 启用：
 
 ```js
 __debug.toggle()              // 启用/关闭（localStorage 持久化）
@@ -348,15 +368,24 @@ __debug.snapshot(label)       // view, scrollTop, scrollHeight 快照
 
 ## 局部刷新
 
-只更新内容区域，不重建父容器：
+Svelte 响应式自动处理视图更新：数据变化通过 store / `$state` 自动更新视图，**无需手动 innerHTML**。
 
-```js
-// ✅ 正确 — 只更新列表容器
-document.getElementById('library-grid').innerHTML = renderGrid(items);
-
-// ❌ 错误 — 重建整个视图导致搜索框失焦、排序状态丢失
-document.getElementById('view-library').innerHTML = renderFullLibrary(items);
+```svelte
+<!-- ✅ 正确 — 数据变化自动更新列表 -->
+{#each $libraryData as item}
+  <AnimeCard {item} />
+{/each}
 ```
+
+不要手动操作 DOM 重建视图（会导致搜索框失焦、排序状态丢失）。
+
+## Svelte 5 组件开发约定
+
+- **组件**放 `frontend/src/components/`（通用组件）与 `frontend/src/components/detail/`、`frontend/src/components/chrome/`、`frontend/src/components/metamatch/`（按域分子目录）
+- **视图**放 `frontend/src/views/`（`Library.svelte` / `Mylist.svelte` / `Detail.svelte` / `Discovery.svelte` / `Stats.svelte` / `Settings.svelte` / `MetaMatch.svelte`）
+- **可复用逻辑**放 `frontend/src/lib/`（`router.js` / `ui-state.js` / `grid.js` / `theme.js` / `i18n.js` / `scroll-dots.js` 等）
+- **样式**用 CSS 文件（`styles.css` 入口 + `views/` / `components/` / `layouts/` 子文件），组件内 `<style>` 尽量少用，优先用全局 CSS 类
+- 组件内 `<style>` 仅用于组件私有、无法用全局类表达的样式；可复用的样式抽象到对应全局 CSS 文件
 
 ## 设计 Token 参考
 
@@ -453,14 +482,14 @@ document.getElementById('view-library').innerHTML = renderFullLibrary(items);
 
 > ⚠️ 写 CSS/UI 前**必须先看**本文档顶部的 [必读章节](#%EF%B8%8F-必读写-cssui-前必须看)。以下清单是补充检查项。
 
-- [ ] 用工厂函数（`createDropdown` / `createFilterBar`）还是自己写？
-  - 有现有工厂 → 用工厂。没有 → 自己写，考虑是否可以抽象成新的工厂
+- [ ] 用现有 Svelte 组件、bits-ui 组件，还是新建组件？
+  - 有现成组件 → 复用。没有 → 新建 Svelte 组件，考虑是否可抽象到 `components/`
 - [ ] 外部输入是否 escHtml/escAttr？
 - [ ] 所有文案是否走 i18n？（JS 用 `t('ns.key')`，HTML 用 `data-i18n` / `data-i18n-attr`，禁止硬编码中文）
 - [ ] 缩放是否用 `--scale` calc？
 - [ ] DOM 操作前是否检查元素存在？
-- [ ] 局部刷新还是重建？—— 重建仅当视图结构变化时（新增/删除区块），否则局部刷新
-- [ ] 是否有动画？是否用 GSAP？
+- [ ] 用 Svelte 响应式，避免手动 DOM 操作？—— 数据变化通过 store / `$state` 自动更新，不手动 innerHTML
+- [ ] 是否有动画？是否用 GSAP？—— 在 `onMount` 中用 `gsap.context()`，返回 `() => ctx.revert()` 清理
 - [ ] 响应式：1000px 以下不崩、1920px 以上不太空？
   - 确认 `min-width` / `max-width` / `auto-fill` 行为合理
 - [ ] 颜色/间距/圆角/阴影/字号是否完全使用 `var(--xxx)` token？—— 跑 `npm run check:frontend` 验证
@@ -484,5 +513,3 @@ document.getElementById('view-library').innerHTML = renderFullLibrary(items);
 
 标题用 `.detail-section-header` + `<h3>` 体系（flex 行，标题左，操作右）。
 卡片/内容区的 gap、padding、font-size 从已有同类模块取，不猜值。
-
-

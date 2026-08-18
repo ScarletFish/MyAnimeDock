@@ -162,6 +162,9 @@
     resetDetailEnter();
     try {
       anime = await api.get('/api/anime/' + encodeURIComponent(id));
+      if (anime && anime.downloaded === false) {
+        showToast(tr('detail.fileMissing'), 'warning');
+      }
       bannerFailed = false;
       coverFailed = false;
       tagsExpanded = false;
@@ -483,6 +486,9 @@
     if (detailSection) detailSection.style.visibility = 'hidden';
     isWishlistMode = result.wishlist;
     anime = result.data;
+    if (!result.wishlist && result.data && result.data.downloaded === false) {
+      showToast(tr('detail.fileMissing'), 'warning');
+    }
     bannerFailed = false;
     coverFailed = false;
     tagsExpanded = false;

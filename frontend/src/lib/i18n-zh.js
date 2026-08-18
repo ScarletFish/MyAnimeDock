@@ -391,6 +391,7 @@ export const I18N_ZH = {
   'detail.playEndedUpdated': '播放已结束，进度已更新',
   'detail.loadFailed': '加载详情失败: {{error}}',
   'detail.ratingPeople': '{{count}}人',
+  'detail.fileMissing': '本地文件缺失',
   'detail.wishlistNoLocal': '此条目来自愿望单，目前没有本地文件。',
   'detail.ratingLabel': '评分',
   'detail.wishlistLabel': '愿望单',

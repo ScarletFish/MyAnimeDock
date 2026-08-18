@@ -51,7 +51,6 @@
 
   // ─── 状态 ───
   let anime = $state(null);
-  let isWishlistMode = $state(false);
   let detailSourceView = $state('library');
   let enterActive = $state(false);
   let showContent = $state(false);
@@ -118,15 +117,11 @@
   });
 
   // 模块可见性
-  let episodeHeatmapVisible = $derived(!isWishlistMode);
-  let watchStatsVisible = $derived(!isWishlistMode && (anime?.episodes || []).some((e) => e.watched));
-  let fetchBtnVisible = $derived(!isWishlistMode);
-  let deleteBtnVisible = $derived(!isWishlistMode);
-  let archiveVisible = $derived(isWishlistMode);
+  let watchStatsVisible = $derived((anime?.episodes || []).some((e) => e.watched));
 
   // 播放按钮
   let playBtn = $derived.by(() => {
-    if (isWishlistMode || !anime || !anime.episodes || anime.episodes.length === 0) return null;
+    if (!anime || !anime.episodes || anime.episodes.length === 0) return null;
     const result = findTargetEpisode(anime);
     const targetEp = result.episode;
     const allWatched = result.allWatched;
@@ -137,9 +132,6 @@
     else text = tr('detail.startPlay');
     return { text, path: targetEp.filePath, pos: targetEp.progress || 0, epIdx: anime.episodes.indexOf(targetEp) };
   });
-
-  // 心愿单外部链接
-  let bgmUrl = $derived('https://bgm.tv');
 
   // ─── Titlebar 上下文 ───
   $effect(() => {
@@ -153,7 +145,6 @@
     if ($detailOpen && pendingOpen) {
       const { id, fromRect, fromSrc, sourceView } = pendingOpen;
       detailSourceView = sourceView || 'library';
-      isWishlistMode = false;
       loadAndShow(id, fromRect, fromSrc);
     }
   });
@@ -399,30 +390,7 @@
   // 否则 anime=... 会触发 #key 重建，把退出动画挂载的旧节点提前销毁。
   async function loadAnimeData(id) {
     try {
-      if (detailSourceView === 'mylist' && $mylistData) {
-        const item = $mylistData.find((i) => i.id === id);
-        if (!item) throw new Error('条目不存在');
-        if (item.source === 'wishlist') {
-          return {
-            wishlist: true,
-            data: {
-              id: item.id,
-              title: item.title,
-              bangumiTitle: item.bangumiTitle || item.title,
-              localCover: null,
-              coverUrl: item.coverUrl || '',
-              rating: item.rating || null,
-              summary: item.summary || '',
-              bangumiId: item.bangumiId,
-              season: null,
-              episodes: [],
-              downloaded: false,
-            },
-          };
-        }
-        return { wishlist: false, data: await api.get('/api/anime/' + encodeURIComponent(id)) };
-      }
-      return { wishlist: false, data: await api.get('/api/anime/' + encodeURIComponent(id)) };
+      return await api.get('/api/anime/' + encodeURIComponent(id));
     } catch (e) {
       console.error('[Detail] loadAnimeData failed for id=' + id + ':', e);
       showToast(tr('detail.loadFailed', { error: e.message }), 'error');
@@ -484,9 +452,8 @@
     // 杜绝「重建后先以可见态绘制一帧」导致的整页闪。
     const detailSection = document.getElementById('svelte-detailView');
     if (detailSection) detailSection.style.visibility = 'hidden';
-    isWishlistMode = result.wishlist;
-    anime = result.data;
-    if (!result.wishlist && result.data && result.data.downloaded === false) {
+    anime = result;
+    if (result && result.downloaded === false) {
       showToast(tr('detail.fileMissing'), 'warning');
     }
     bannerFailed = false;
@@ -759,8 +726,8 @@
             </div>
             <div class="detail-actions">
               <button class="btn btn-outline" id="btnPlayAnime" style:display={playBtn ? 'inline-flex' : 'none'} onclick={playEpisodeFromCover}><span id="btnPlayText">{playBtn?.text}</span></button>
-              <button class="btn btn-ghost" id="btnFetchBangumi" style:display={fetchBtnVisible ? 'inline-flex' : 'none'} onclick={syncBangumiMetadata}>{tr('common.sync')}</button>
-              <button class="btn btn-danger" id="btnDeleteAnime" style:display={deleteBtnVisible ? 'inline-flex' : 'none'} onclick={deleteAnime}>{tr('common.remove')}</button>
+              <button class="btn btn-ghost" id="btnFetchBangumi" onclick={syncBangumiMetadata}>{tr('common.sync')}</button>
+              <button class="btn btn-danger" id="btnDeleteAnime" onclick={deleteAnime}>{tr('common.remove')}</button>
             </div>
           </div>
           <div class="detail-banner-right">
@@ -802,7 +769,7 @@
             <p id="detailSummary" class="detail-summary">{summary}</p>
           </div>
         </div>
-        <div class="episode-list-section hscroll-section" id="svelte-episodeHeatmap" style:display={episodeHeatmapVisible ? '' : 'none'}>
+        <div class="episode-list-section hscroll-section" id="svelte-episodeHeatmap">
           <div class="episode-list-header">
             <div class="episode-header-left">
               <h3>{tr('detail.episodeList')}</h3>
@@ -812,9 +779,7 @@
           <EpisodeHeatmap bind:this={episodeHeatmapRef} anime={anime} episodes={anime.episodes} lastPlayedEp={anime.lastPlayedEp} onPlay={playEpisode} onToggleWatched={toggleWatched} />
         </div>
         <LazySection delay={350}>
-          {#if !isWishlistMode}
-            <Characters chars={anime.characters} />
-          {/if}
+          <Characters chars={anime.characters} />
         </LazySection>
         <LazySection delay={450}>
           {#if watchStatsVisible}
@@ -830,23 +795,6 @@
         <LazySection delay={450}>
           <RelationList animeId={anime.id} kind="recommendations" />
         </LazySection>
-        <div class="archive-magazine" id="archiveDetail" style:display={archiveVisible ? '' : 'none'}>
-          <div class="archive-magazine-essay">
-            <div class="archive-magazine-thoughts text-sm text-content leading-[1.7]">{tr('detail.wishlistNoLocal')}</div>
-          </div>
-          <div class="archive-magazine-meta">
-            {#if anime.rating}
-              <div class="archive-magazine-stat"><span class="archive-magazine-stat-value">★ {anime.rating}</span><span class="archive-magazine-stat-label">{tr('detail.ratingLabel')}</span></div>
-            {/if}
-            <div class="archive-magazine-stat"><span class="archive-magazine-stat-value">{tr('detail.wishlistLabel')}</span><span class="archive-magazine-stat-label">{tr('detail.sourceLabel')}</span></div>
-          </div>
-          <div class="wishlist-detail-actions mt-4">
-            <a class="btn btn-primary" href={bgmUrl + '/subject/' + anime.bangumiId} target="_blank" rel="noopener">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-              {tr('detail.openInBangumi')}
-            </a>
-          </div>
-        </div>
       </div>
     {/key}
   {/if}

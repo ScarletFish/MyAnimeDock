@@ -50,9 +50,6 @@
   let ctxY = $state(0);
   let ctxItem = $state(null);
 
-  // 愿望单详情弹窗
-  let wishItem = $state(null);
-
   // Grid 列（响应 --scale）
   let gridCols = $state('');
   $effect(() => {
@@ -178,10 +175,6 @@
 
   // ─── 卡片点击 ───
   function onCardClick(item, e) {
-    if (item.source === 'wishlist') {
-      showWishlistDetail(item);
-      return;
-    }
     const cardEl = e.currentTarget;
     const img = cardEl.querySelector('img');
     let rect = null;
@@ -192,11 +185,6 @@
     }
     if (!rect) rect = cardEl.getBoundingClientRect();
     showDetail(item.id, rect, imgSrc, 'mylist');
-  }
-
-  // ─── 愿望单详情弹窗 ───
-  function showWishlistDetail(item) {
-    wishItem = item;
   }
 
   // ─── 右键菜单 ───
@@ -247,21 +235,6 @@
     if (!confirmed) return;
     try {
       await api.del('/api/mylist/' + encodeURIComponent(item.id));
-      showToast(tr('mylist.removed'), 'info');
-      loadMyListImpl();
-    } catch (e) {
-      showToast(tr('mylist.removeFailed', { message: e.message }), 'error');
-    }
-  }
-
-  async function deleteWishlistItem() {
-    const item = ctxItem;
-    closeCtx();
-    if (!item) return;
-    const confirmed = await showConfirm(tr('mylist.confirmRemoveFromWishlist'));
-    if (!confirmed) return;
-    try {
-      await api.del('/api/wishlist/' + encodeURIComponent(item.id));
       showToast(tr('mylist.removed'), 'info');
       loadMyListImpl();
     } catch (e) {
@@ -444,7 +417,7 @@
                 <AnimeCard
                   {item}
                   alwaysShowTitle={getCardTitleVisible('mylist')}
-                  showMoreBtn={item.source !== 'wishlist'}
+                  showMoreBtn
                   onClick={onCardClick}
                   onContextMenu={showMyListContextMenu}
                   onMore={openStatusModal}
@@ -464,7 +437,7 @@
             <AnimeCard
               {item}
               alwaysShowTitle={getCardTitleVisible('mylist')}
-              showMoreBtn={item.source !== 'wishlist'}
+              showMoreBtn
               onClick={onCardClick}
               onContextMenu={showMyListContextMenu}
               onMore={openStatusModal}
@@ -477,9 +450,7 @@
 
   <!-- 右键菜单 -->
   <ContextMenu bind:open={ctxOpen} bind:x={ctxX} bind:y={ctxY}>
-    {#if ctxItem?.source === 'wishlist'}
-      <div class="context-menu-item context-menu-danger" onclick={deleteWishlistItem}>{tr('mylist.removeFromWishlist')}</div>
-    {:else if ctxItem}
+    {#if ctxItem}
       <div class="context-menu-item" onclick={copyTitle}>
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
         <span>{tr('mylist.copyTitle')}</span>
@@ -503,32 +474,4 @@
 
   <!-- 状态弹窗 -->
   <StatusModal bind:open={statusModalOpen} item={statusModalItem} onSaved={afterSave} />
-
-  <!-- 愿望单详情弹窗 -->
-  {#if wishItem}
-    <div class="modal-overlay show" onclick={(e) => { if (e.target === e.currentTarget) wishItem = null; }}>
-      <div class="modal wishlist-detail-modal">
-        {#if wishItem.coverUrl}
-          <div class="wishlist-detail-cover"><img src={wishItem.coverUrl} alt={wishItem.bangumiTitle || wishItem.title} loading="lazy" decoding="async"></div>
-        {/if}
-        <h2>{wishItem.bangumiTitle || wishItem.title}</h2>
-        {#if wishItem.rating}
-          <div class="wishlist-detail-rating">★ {wishItem.rating}</div>
-        {/if}
-        {#if wishItem.summary}
-          <p class="wishlist-detail-summary">{wishItem.summary}</p>
-        {/if}
-        <div class="wishlist-detail-actions">
-          <a class="btn btn-primary" href={`${getBangumiFrontendUrl()}/subject/${wishItem.bangumiId}`} target="_blank" rel="noopener">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-            {tr('mylist.openInBgmFull')}
-          </a>
-          <button class="btn btn-ghost" onclick={() => (wishItem = null)}>{tr('common.close')}</button>
-        </div>
-        <button class="modal-close-btn" onclick={() => (wishItem = null)}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
-      </div>
-    </div>
-  {/if}
 {/if}

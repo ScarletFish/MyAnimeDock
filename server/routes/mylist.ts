@@ -1,4 +1,4 @@
-// server/routes/mylist.ts — MyList、Wishlist 路由
+// server/routes/mylist.ts — MyList 路由
 import { jsonResp, readBody } from '../lib/utils';
 import { enrichAnime } from '../lib/enrich';
 import type { ServerState } from '../types';
@@ -35,15 +35,6 @@ function handleGetMyList(req: any, res: any, state: ServerState) {
         hasLocalFiles: !!anime, source: 'library',
         summary: anime ? anime.summary : item.summary,
       });
-    } else {
-      merged.push({
-        id: item.id, bangumiId: item.bangumiId,
-        title: item.title, bangumiTitle: item.bangumiTitle,
-        coverUrl: item.coverUrl,
-        rating: item.rating, status: 'wish',
-        hasLocalFiles: false, source: 'wishlist',
-        summary: item.summary,
-      });
     }
   }
   jsonResp(res, 200, merged);
@@ -60,16 +51,9 @@ async function handleUpdateMyListStatus(req: any, res: any, state: ServerState) 
       jsonResp(res, 400, { error: 'Invalid status' }); return;
     }
     if (!data.myList) data.myList = [];
-    let existing;
-    if (id.startsWith('wish-')) {
-      existing = data.myList.find(m => m.id === id);
-    } else {
-      existing = data.myList.find(m => m.animeId === id || m.id === id);
-    }
+    let existing = data.myList.find(m => m.animeId === id || m.id === id);
     if (existing) {
       existing.status = status;
-    } else if (id.startsWith('wish-')) {
-      data.myList.push({ id, bangumiId: parseInt(id.replace('wish-', '')), title: '', status, rating: null, thoughts: '', notes: '' } as any);
     } else {
       data.myList.push({ animeId: id, status, rating: null, thoughts: '', notes: '' } as any);
     }
@@ -136,59 +120,9 @@ async function handleDeleteMyListItem(req: any, res: any, state: ServerState) {
   }
 }
 
-function handleGetWishlist(req: any, res: any, state: ServerState) {
-  const { data } = state;
-  const wishItems = (data.myList || []).filter(m => !m.animeId);
-  jsonResp(res, 200, wishItems);
-}
-
-async function handlePostWishlist(req: any, res: any, state: ServerState) {
-  const { data, db, logger } = state;
-  try {
-    const body = await readBody(req);
-    const item = JSON.parse(body);
-    if (!item.bangumiId || !item.title) { jsonResp(res, 400, { error: 'bangumiId and title required' }); return; }
-    if (!data.myList) data.myList = [];
-    const existing = data.myList.find(m => !m.animeId && m.bangumiId === item.bangumiId);
-    if (existing) { jsonResp(res, 200, { ok: true, myList: existing }); return; }
-    const entry = {
-      bangumiId: item.bangumiId, title: item.title,
-      bangumiTitle: item.bangumiTitle || null, coverUrl: item.coverUrl || null,
-      summary: item.summary || null, rating: item.rating || null, status: 'wish',
-    };
-    data.myList.push(entry as any);
-    db.saveMyList(data).then(() => {
-      jsonResp(res, 200, { ok: true, myList: entry });
-    }).catch((e: any) => {
-      logger.error('Wishlist save error:', e);
-      jsonResp(res, 500, { error: 'Failed to persist' });
-    });
-  } catch (e: any) {
-    jsonResp(res, 400, { error: 'Invalid request body' });
-  }
-}
-
-async function handleDeleteWishlistItem(req: any, res: any, state: ServerState) {
-  const { data, db, logger } = state;
-  try {
-    const wishlistDeleteMatch = req.url.match(/^\/api\/wishlist\/([^/]+)$/);
-    const id = decodeURIComponent(wishlistDeleteMatch[1]);
-    const idx = (data.myList || []).findIndex(m => m.id === id);
-    if (idx === -1) { jsonResp(res, 404, { error: 'Wishlist item not found' }); return; }
-    data.myList.splice(idx, 1);
-    db.saveMyList(data).then(() => jsonResp(res, 200, { ok: true }))
-      .catch((e: any) => { logger.error('Wishlist delete save error:', e); jsonResp(res, 500, { error: 'Failed to persist' }); });
-  } catch (e: any) {
-    jsonResp(res, 400, { error: 'Invalid request body' });
-  }
-}
-
 export {
   handleGetMyList,
   handleUpdateMyListStatus,
   handleUpdateMyListItem,
   handleDeleteMyListItem,
-  handleGetWishlist,
-  handlePostWishlist,
-  handleDeleteWishlistItem,
 };

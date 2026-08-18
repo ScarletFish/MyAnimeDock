@@ -14,7 +14,6 @@
     onMore = null,
   } = $props();
 
-  const isWish = $derived(item.source === 'wishlist');
   const title = $derived(item.bangumiTitle || item.title || '');
   const cover = $derived(coverSrc(item, coverSize));
 
@@ -25,18 +24,17 @@
 </script>
 
 <div
-  class="anime-card" class:anime-card--wish={isWish}
+  class="anime-card"
   data-id={item.id} data-source={item.source}
   onclick={(e) => onClick && onClick(item, e)}
   oncontextmenu={(e) => onContextMenu && onContextMenu(item, e)}
 >
   {#if cover}
-    <img src={cover} loading="lazy" decoding="async" alt={title}
-      style={isWish ? 'opacity:0.45;filter:grayscale(0.6)' : ''}>
+    <img src={cover} loading="lazy" decoding="async" alt={title}>
   {:else}
     <div class="gray-cover"><span class="gray-cover-text">{(title || '?')[0].toUpperCase()}</span></div>
   {/if}
-  {#if showMoreBtn && !isWish}
+  {#if showMoreBtn}
     <div class="card-more-btn" data-tooltip={tr('ui.setStatusTooltip')} onclick={handleMore}>
       <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
         <circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/>
@@ -53,8 +51,7 @@
     <h3>{title}</h3>
     <div class="meta">
       {#if item.rating}<span class="rating-badge">★ {item.rating}</span>{/if}
-      {#if item.season && !isWish}<span class="season-badge">S{item.season}</span>{/if}
-      {#if isWish}<span class="wishlist-badge">{tr('ui.wishlistBadge')}</span>{/if}
+      {#if item.season}<span class="season-badge">S{item.season}</span>{/if}
     </div>
   </div>
 </div>

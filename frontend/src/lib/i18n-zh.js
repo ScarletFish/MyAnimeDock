@@ -242,7 +242,6 @@ export const I18N_ZH = {
 
   // ── UI 组件 ──
   'ui.setStatusTooltip': '设置状态',
-  'ui.wishlistBadge': '愿望',
 
   // ── 动漫库 ──
   'library.title': '动漫库',
@@ -286,17 +285,14 @@ export const I18N_ZH = {
   'mylist.sortImported': '导入时间',
   'mylist.loadFailed': '加载我的列表失败: {{message}}',
   'mylist.emptyFiltered': '暂无"{{label}}"的条目',
-  'mylist.openInBgmFull': '在 Bangumi 中打开',
   'mylist.saved': '已保存',
   'mylist.saveFailed': '保存失败: {{message}}',
-  'mylist.removeFromWishlist': '从愿望单移除',
   'mylist.copied': '已复制',
   'mylist.copyFailed': '复制失败',
   'mylist.copyTitle': '复制标题',
   'mylist.openInBgm': '在 Bangumi 打开',
   'mylist.statusUpdated': '状态已更新',
   'mylist.updateFailed': '更新失败: {{message}}',
-  'mylist.confirmRemoveFromWishlist': '从愿望单移除？',
   'mylist.removed': '已移除',
   'mylist.removeFailed': '移除失败: {{message}}',
   'mylist.confirmRemove': '将「{{name}}」从列表中移除？<br><small class="text-content">动漫库中的条目不受影响</small>',
@@ -392,9 +388,7 @@ export const I18N_ZH = {
   'detail.loadFailed': '加载详情失败: {{error}}',
   'detail.ratingPeople': '{{count}}人',
   'detail.fileMissing': '本地文件缺失',
-  'detail.wishlistNoLocal': '此条目来自愿望单，目前没有本地文件。',
   'detail.ratingLabel': '评分',
-  'detail.wishlistLabel': '愿望单',
   'detail.sourceLabel': '来源',
   'detail.openInBangumi': '在 Bangumi 中打开',
   'detail.episodeXofY': '第 {{number}} / {{total}} 集',

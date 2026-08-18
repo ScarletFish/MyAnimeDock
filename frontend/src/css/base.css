@@ -1,5 +1,6 @@
 /* ─── Body ─── */
 html {
+  background: var(--bg-deep);
   scroll-behavior: smooth;
   scrollbar-color: var(--bg-surface) transparent;
   scrollbar-width: thin;

@@ -240,7 +240,7 @@ describe('bangumi route handlers', () => {
           syncMyList: async (data, opts) => {
             syncCalled = true;
             syncDryRun = opts?.dryRun;
-            return { synced: 0, created: 0, wishlistAdded: 0 };
+            return { synced: 0, created: 0 };
           },
         },
       });

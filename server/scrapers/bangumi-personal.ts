@@ -1,5 +1,5 @@
 // server/scrapers/bangumi-personal.ts — Bangumi 个人 API（OAuth + Bangumi 收藏管理）
-// 能力：OAuth 认证、拉取收藏列表（→ Wishlist）、推送终态（看过/抛弃 + 评分）
+// 能力：OAuth 认证、拉取收藏列表、推送终态（看过/抛弃 + 评分）
 // 推送：状态（全部类型）+ 已看集数 + 评分，不包含感想
 
 import { nodeFetch } from './node-fetch';
@@ -178,7 +178,7 @@ class BangumiPersonal {
 
   /**
    * GET /v0/users/{username}/collections?subject_type=2 — 拉取用户所有动漫收藏（分页自动处理）
-   * 返回数据含 subject 对象（name, name_cn, images, summary, score），可用于无本地文件时写入 Wishlist
+   * 返回数据含 subject 对象（name, name_cn, images, summary, score）
    */
   async getAllMyCollections(): Promise<any[]> {
     if (!this.username) {

@@ -121,7 +121,7 @@ async function handleBangumiSync(req: any, res: any, state: State) {
       config.bangumiLastSync = result.lastSyncTime;
       saveConfig(config);
     }
-    if (result.created > 0 || result.wishlistAdded > 0) {
+    if (result.created > 0) {
       try { await db.saveMyList(data); } catch (e: any) { logger.error('MyList save after sync failed:', e.message); }
     }
     jsonResp(res, 200, result);

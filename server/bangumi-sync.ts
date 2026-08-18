@@ -1,5 +1,5 @@
 // server/bangumi-sync.ts — Bangumi 同步编排层
-// 能力：从 Bangumi 拉取收藏（→ Wishlist）、推送终态（看过/抛弃 + 评分）
+// 能力：从 Bangumi 拉取收藏、推送终态（看过/抛弃 + 评分）
 // 推送：状态（全部类型）+ 已看集数 + 评分，不包含感想
 
 import { Logger } from './logger';
@@ -28,23 +28,22 @@ class BangumiSync {
    *
    * 流程：
    *   Pull: 从 Bangumi 拉取所有动漫收藏
-   *   Merge: 匹配本地 anime（by bangumiId），缺失→创建本地 MyList / Wishlist
+   *   Merge: 匹配本地 anime（by bangumiId），缺失→创建本地 MyList
    *   Push: 本地状态（全部类型）+ 已看集数 + 评分不一致 → 推送到 Bangumi
    *
    * @param {object} data - 全局 data 对象（包含 library, myList）
    * @param {object} [opts]
    * @param {boolean} [opts.dryRun] - 仅返回 diff，不实际写入
-   * @returns {Promise<{ pulled: number, pushed: number, created: number, wishlistAdded: number, errors: string[], lastSyncTime: string }>}
+   * @returns {Promise<{ pulled: number, pushed: number, created: number, errors: string[], lastSyncTime: string }>}
    */
   async syncMyList(data: AppData, opts: { dryRun?: boolean } = {}) {
     const result: {
       pulled: number;
       pushed: number;
       created: number;
-      wishlistAdded: number;
       errors: string[];
       lastSyncTime: string | null;
-    } = { pulled: 0, pushed: 0, created: 0, wishlistAdded: 0, errors: [], lastSyncTime: null };
+    } = { pulled: 0, pushed: 0, created: 0, errors: [], lastSyncTime: null };
 
     if (!this.api.isAuthed()) {
       result.errors.push('Bangumi 未绑定');
@@ -82,35 +81,12 @@ class BangumiSync {
 
       // ─── Merge ───
       //   - 远程有 & 本地有匹配 anime → 创建缺失的本地 MyList 条目
-      //   - 远程有 & 本地无匹配 anime → 创建 MyList wish 条目
       if (!data.myList) data.myList = [];
 
       for (const remote of remoteItems) {
         const bgmId = String(remote.subject_id);
         const anime = animeByBgmId.get(bgmId);
-
-        if (!anime) {
-          // 本地没有这个番的文件 → 存入 MyList (wish 状态)
-          const subject = remote.subject || {};
-          const existingIdx = data.myList.findIndex((m) => !m.animeId && String(m.bangumiId) === bgmId);
-          const wishEntry = {
-            bangumiId: parseInt(bgmId),
-            title: subject.name_cn || subject.name || `Subject #${bgmId}`,
-            bangumiTitle: subject.name || null,
-            coverUrl: subject.images?.common || null,
-            summary: subject.summary || null,
-            rating: subject.score || null,
-            status: 'wish',
-          };
-          if (existingIdx >= 0) {
-            Object.assign(data.myList[existingIdx], wishEntry);
-          } else {
-            data.myList.push(wishEntry as MyListItem);
-            result.wishlistAdded = (result.wishlistAdded || 0) + 1;
-          }
-          logger.info(`MyList 同步：从 Bangumi 创建 Wishlist ${wishEntry.title}`);
-          continue;
-        }
+        if (!anime) continue;
 
         const existingLocal = myListByBgmId.get(bgmId);
         if (!existingLocal) {

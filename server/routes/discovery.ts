@@ -2,58 +2,11 @@
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
-import { spawn } from 'child_process';
-import { jsonResp, readBody, getFfmpegPath } from '../lib/utils';
+import { jsonResp, readBody } from '../lib/utils';
 import { saveScannedTree, DATA_DIR } from '../lib/config';
 import type { ServerState, ScanNode } from '../types';
 
 type State = ServerState;
-
-/** 时长探测缓存：filePath -> 秒，避免重复探测 */
-const _durCache = new Map<string, number>();
-
-/** 探测视频时长（秒）。失败返回 null。结果缓存避免重复探测。 */
-function _probeDuration(filePath: string): Promise<number | null> {
-  const cached = _durCache.get(filePath);
-  if (cached !== undefined) return Promise.resolve(cached);
-  const ffmpegPath = getFfmpegPath();
-  if (!ffmpegPath) return Promise.resolve(null);
-  return new Promise((resolve) => {
-    const ff = spawn(ffmpegPath, ['-i', filePath, '-loglevel', 'error']);
-    let stderr = '';
-    let done = false;
-    ff.stderr.on('data', (d) => { stderr += d.toString(); });
-    const finish = () => {
-      if (done) return; done = true;
-      const m = stderr.match(/Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/);
-      if (m) {
-        const secs = parseInt(m[1]) * 3600 + parseInt(m[2]) * 60 + parseFloat(m[3]);
-        _durCache.set(filePath, secs);
-        resolve(secs);
-      } else {
-        resolve(null);
-      }
-    };
-    ff.on('close', finish);
-    ff.on('error', () => { if (!done) { done = true; resolve(null); } });
-    setTimeout(() => { if (!done) { done = true; ff.kill(); resolve(null); } }, 10000);
-  });
-}
-
-/** 批量探测剧集时长并写回 ep.duration（并发 4）。探测失败保持 null，不阻塞导入。 */
-async function _probeEpisodes(episodes: Array<{ filePath: string; duration: number | null }>): Promise<void> {
-  const CONCURRENCY = 4;
-  let idx = 0;
-  const workers = Array.from({ length: Math.min(CONCURRENCY, episodes.length) }, async () => {
-    while (idx < episodes.length) {
-      const ep = episodes[idx++];
-      if (ep.duration && ep.duration > 0) continue;
-      const dur = await _probeDuration(ep.filePath);
-      if (dur && dur > 0) ep.duration = dur;
-    }
-  });
-  await Promise.all(workers);
-}
 
 async function handleBrowse(req: any, res: any, state: State) {
     const { data, config, logger } = state;
@@ -171,7 +124,6 @@ async function handleBrowse(req: any, res: any, state: State) {
       }
       const { findVideos, isExtraVideo } = require('../scanner') as any;
       const imported: string[] = [];
-      const allEpisodes: Array<{ filePath: string; duration: number | null }> = [];
       for (const item of items) {
         const { folderPath, folderName, parsedTitle, parsedSeason, specialSuffix } = item;
         if (!folderPath || !folderName) continue;
@@ -192,7 +144,6 @@ async function handleBrowse(req: any, res: any, state: State) {
             number: i + 1, filePath: v.path, fileName: v.name, fileSize: v.size,
             duration: null, watched: false, progress: 0,
           }));
-          allEpisodes.push(...existing.episodes);
           imported.push(existing.id);
           if (scannedNode) scannedNode.excluded = false;
           continue;
@@ -215,7 +166,6 @@ async function handleBrowse(req: any, res: any, state: State) {
             duration: null, watched: false, progress: 0,
           })),
         };
-        allEpisodes.push(...anime.episodes);
         data.library.push(anime);
         imported.push(anime.id);
         if (!data.myList) data.myList = [];
@@ -243,12 +193,6 @@ async function handleBrowse(req: any, res: any, state: State) {
           state.thumbnailQueue?.enqueue(anime);
         }
       });
-      // 后台批量探测剧集时长并写回 ep.duration（不阻塞导入响应）。
-      // _probeEpisodes 直接改 allEpisodes 里的对象引用（即 data.library 中 anime.episodes 的对象），
-      // 完成后增量落盘 duration。失败仅打日志，不影响导入结果。
-      _probeEpisodes(allEpisodes)
-        .then(() => db.saveLibrary(data, new Set(imported)))
-        .catch((e: any) => logger.warn('Episode duration probe/save error:', e?.message || e));
     } catch (e: any) {
       jsonResp(res, 400, { error: 'Invalid request body' });
     }

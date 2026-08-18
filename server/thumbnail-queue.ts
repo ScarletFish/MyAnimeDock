@@ -294,6 +294,14 @@ class ThumbnailQueue {
       let duration = item.duration && item.duration > 0 ? item.duration : null;
       if (duration === null) {
         duration = await this._probeDuration(filePath);
+        // 探测到真实时长：写回 DB（一次性代价换缩略图 + duration 双用途，
+        // 导入流程不再额外探测）。写库失败不影响缩略图生成。
+        if (duration && duration > 0 && item.animeId && item.episodeNumber != null) {
+          try {
+            const { updateEpisodeProgress } = require('./db') as any;
+            updateEpisodeProgress(item.animeId, item.episodeNumber, { duration }).catch(() => {});
+          } catch { /* best-effort */ }
+        }
       }
       if (!duration || duration <= 0) {
         this._settle(item, null, new Error('duration unknown'));

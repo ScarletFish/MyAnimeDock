@@ -230,7 +230,7 @@
     if (!a.episodes || a.episodes.length === 0) return null;
     if (a.lastPlayedEp) {
       const ep = a.episodes.find((e) => e.number === a.lastPlayedEp);
-      if (ep && (!ep.watched || ep.progress > 0)) return { episode: ep, allWatched: false };
+      if (ep && !ep.watched) return { episode: ep, allWatched: false };
     }
     for (let i = 0; i < a.episodes.length; i++) {
       if (!a.episodes[i].watched) return { episode: a.episodes[i], allWatched: false };
@@ -308,9 +308,11 @@
   async function toggleWatched(epNumber, watched) {
     if (!anime) return;
     try {
-      const result = await api.post('/api/progress', { animeId: anime.id, episodeNumber: epNumber, watched, progress: watched ? undefined : 0 });
+      const result = await api.post('/api/progress', { animeId: anime.id, episodeNumber: epNumber, watched });
       const ep = anime.episodes.find((e) => e.number === epNumber);
       if (ep) { ep.watched = result.episode.watched; ep.progress = result.episode.progress; }
+      // 手动标记已看：与完工确认一致的"引导到下一未看"（仅标记方向滚动，取消不滚动）
+      if (watched) scrollToNextUnwatched(anime, epNumber);
     } catch (e) {
       showToast(tr('detail.actionFailed', { error: e.message }), 'error');
     }

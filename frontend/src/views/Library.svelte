@@ -160,7 +160,7 @@
     if (!anime.episodes || anime.episodes.length === 0) return null;
     if (anime.lastPlayedEp) {
       const ep = anime.episodes.find((e) => e.number === anime.lastPlayedEp);
-      if (ep && (!ep.watched || ep.progress > 0)) return ep;
+      if (ep && !ep.watched) return ep;
     }
     for (let i = 0; i < anime.episodes.length; i++) {
       if (!anime.episodes[i].watched) return anime.episodes[i];

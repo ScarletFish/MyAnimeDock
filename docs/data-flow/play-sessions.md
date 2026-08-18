@@ -44,7 +44,7 @@ mpv 关闭 → SSE `mpv-status: {active: false}` → lib/mpv-status.js 全局监
 - **不在详情页时进度照样落盘**（server 每次事件写库），只丢失结束反馈；pending 机制保证回详情页后补弹"标记看完"
 - **模态框是临时 DOM**（`modal-overlay` + `modal`），用完销毁
 - **`_dismissedFinishConfirm`** 是 `Set`，key 为 `"animeId:epNumber"`，仅当前 session 有效；只在 `prompt` 模式下使用
-- 确认后 `progress=0`，`findContinueEpisode` / `findTargetEpisode` 会跳过该集，自然落到下一集
+- 确认后 `watched=true`（同时 `progress=0`），`findContinueEpisode` / `findTargetEpisode` 以 `watched` 一票否决跳过该集，自然落到下一集
 
 ### 自动标记前序集
 `server/routes/playback.ts:102-113`
@@ -144,7 +144,7 @@ POST /api/play
 ### 定位优先级
 
 ```
-① lastPlayedEp（最近播放会话）→ 如果未完全看完（!watched || progress > 0）→ 用它
+① lastPlayedEp（最近播放会话）→ 如果未看完（!watched）→ 用它
 ② 数组顺序第一个未观看 → 用它
 ③ 全部看完 → 第一集（重新看）
 ```
@@ -166,8 +166,8 @@ targetEp.progress > 0 或观看历史  → "继续播放"
 `renderEpisodeHeatmap` 在每次渲染时自动滚动到 `lastPlayedEp`，但新增兜底：
 
 ```
-lastPlayedEp 有进度（!watched || progress > 0）→ 滚到该集
-lastPlayedEp 已完全看完（watched && progress=0）→ 滚到第一个未观看
+lastPlayedEp 未看完（!watched）→ 滚到该集
+lastPlayedEp 已看完（watched）→ 滚到第一个未观看
 无 lastPlayedEp                                   → 不滚动（自然起始位置）
 ```
 
@@ -258,11 +258,11 @@ GET /api/anime/:id/sessions
 | 来源 | 值 | 说明 |
 |------|----|------|
 | mpv `final` 事件 | 秒数 | `currentPos` 来自 mpv `time-pos`，前端用 `ep.progress / ep.duration * 100` 算百分比 |
-| 主动标记未看完 | `0` | toggle watched OFF 时重置进度 |
+| 右键标记已看/未看 | 不变 | toggle 只翻转 `watched` 状态位，**不修改 `progress`**（标记/取消均可逆，进度不被破坏）；标记已看成功后与完工确认一致，`scrollToNextUnwatched` 滚动到下一未看（取消标记不滚动） |
 
 注意：
-- `ep.progress > 0` 判断的是**是否有过播放进度**，不区分"正在看"还是"看完重温"
-- toggle watched ON **不修改** `ep.progress`，保留 mpv 最后写入的秒数
+- `ep.progress > 0` 仅表示**有过播放进度**，不参与继续播放目标判定——`findContinueEpisode` / `findTargetEpisode` 以 `watched` 一票否决，已看集无论 progress 多少都跳过（右键标记与完工确认行为一致）
+- toggle watched ON **不修改** `ep.progress`，保留 mpv 最后写入的秒数（可逆；且已看集不会再被继续播放选中）
 - 播放续播时有兜底（`playback.ts:96-98`）：如果 `0 < position < 1` 则按比例换算秒，否则直接当秒用
 
 ### Session 二次绑定验证

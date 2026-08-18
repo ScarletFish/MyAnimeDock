@@ -274,9 +274,14 @@
 .dashboard-continue-bg {
   position: absolute; inset: 0;
   background-size: cover; background-position: center;
-  opacity: 0; transition: opacity 0.4s var(--ease-out);
+  transform: scale(1);
+  opacity: 0;
+  transition:
+    opacity 0.4s var(--ease-out),
+    transform 0.6s var(--ease-out);
 }
 .dashboard-continue-bg[style*="url"] { opacity: 1; }
+.dashboard-continue-card:hover .dashboard-continue-bg { transform: scale(1.06); }
 .dashboard-continue-overlay {
   position: absolute; inset: 0;
   background: linear-gradient(135deg, rgba(15,12,9,0.88) 15%, rgba(15,12,9,0.45) 55%, rgba(15,12,9,0.7) 100%);

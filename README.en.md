@@ -62,12 +62,14 @@ MyAnimeDock is designed around the following principles:
 - **Smart Scanning**: Recursively walks your media directory and uses anitomy to parse titles, seasons, and subtitle groups; folders named with `[bgmN]` are auto-matched to Bangumi precisely.
 - **Metadata Matching**: Pulls covers, synopses, ratings, tags, and cast from Bangumi; the batch matching workbench supports SSE streaming sync, cancellation, and retry; fuzzy matching and mirror-site settings are supported.
 - **Library Home**: The default startup view, with multiple quick-access modules and a customizable, modular home design.
-- **mpv Playback & Progress Tracking**: Tracks progress in real time via the IPC pipe, persisting every 10 seconds and on final save at close; auto-marks watched episodes and supports resume.
+- **mpv Playback & Progress Tracking**: Tracks progress in real time via the IPC pipe, persisting every 10 seconds and on final save at close; shows a finish-confirmation dialog when playback ends (configurable: prompt/auto/off) and supports resume.
 - **Full Status Management**: Covers the full lifecycle from import to completion, with 5 statuses plus ratings, progress, dates, and notes.
 - **Statistics Dashboard**: A complete statistics page showing the tag word cloud, watch activity, rating distribution, season distribution, and more.
+- **Episode Thumbnails**: A background ffmpeg queue generates episode thumbnails, self-heals missing items on startup, and pauses during playback to avoid contention.
+- **Database Management**: Built-in backup / full backup / restore / cache clearing / VACUUM optimization in settings, with automatic backup before reset.
 - **Theme System**: 6 color themes + independent dark/light mode, switchable instantly from the bottom Dock.
 - ~~**Bangumi Two-Way Sync**: After authorization, Pull → Merge → Push, with every operation auto-synced.~~
-  Development in this direction is temporarily paused due to network access restrictions on the Bangumi main site and related security concerns.
+  The feature is **shelved** with no entry point, due to network access restrictions on the Bangumi main site.
 - **Startup Auto-Import**: On startup, asynchronously scans for new folders with `[bgmN]` and imports them automatically.
 - **Pinyin Search**: Matches `title` / `bangumiTitle` / `pinyinTitle` simultaneously, with full pinyin search support.
 

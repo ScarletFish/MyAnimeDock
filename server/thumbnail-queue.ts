@@ -9,6 +9,12 @@ import { DATA_DIR } from './lib/config';
 import { Logger } from './logger';
 const logger: Logger = require('./logger').child('[THUMBQ]');
 
+// ─── 语义常量 ───
+const THUMB_MIDPOINT_RATIO = 0.5; // background 项缩略图取时长中点
+const THUMB_THREADS = 2;          // ffmpeg 编码线程数
+const THUMB_WIDTH = 480;          // 缩略图宽度
+const THUMB_QUALITY = 5;          // ffmpeg -q:v 质量
+
 /** Remove a 0-byte thumbnail file so it gets regenerated next time */
 function _cleanupZeroByte(thumbPath: string): void {
   try {
@@ -307,7 +313,7 @@ class ThumbnailQueue {
         this._settle(item, null, new Error('duration unknown'));
         return;
       }
-      time = Math.floor(duration / 2);
+      time = Math.floor(duration * THUMB_MIDPOINT_RATIO);
     }
 
     const thumbPath = this._thumbPathFor(filePath, item.cacheKey ?? THUMB_HASH_SEED);
@@ -322,9 +328,9 @@ class ThumbnailQueue {
     return new Promise<void>((resolve) => {
       const ff = spawn(ffmpegPath, [
         '-ss', String(time), '-i', filePath,
-        '-skip_frame', 'nokey', '-threads', '2',
-        '-vf', 'scale=480:-2',
-        '-frames:v', '1', '-q:v', '5', '-y', thumbPath, '-loglevel', 'error',
+        '-skip_frame', 'nokey', '-threads', String(THUMB_THREADS),
+        '-vf', `scale=${THUMB_WIDTH}:-2`,
+        '-frames:v', '1', '-q:v', String(THUMB_QUALITY), '-y', thumbPath, '-loglevel', 'error',
       ]);
       let resolved = false;
       const timeout = setTimeout(() => {

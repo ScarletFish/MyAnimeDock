@@ -187,7 +187,8 @@ class BangumiPersonal {
       if (this.onTokenChange) this.onTokenChange(this.toConfigPayload());
     }
     const allData: any[] = [];
-    const limit = 100;
+    const BGM_PAGE_SIZE = 100;
+    const limit = BGM_PAGE_SIZE;
     let offset = 0;
     let total = Infinity;
     while (offset < total) {

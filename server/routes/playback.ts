@@ -11,6 +11,10 @@ const logger: Logger = require('../logger').child('[Playback]');
 
 type State = ServerState;
 
+// ─── 语义常量 ───
+const AUTO_MARK_THRESHOLD_EP = 2; // 自动标记已看：从第 2 集起
+const THUMB_MIDPOINT_RATIO = 0.5; // 缩略图取时长中点
+
 // ─── Thumbnail helpers (module-scoped, not on exports — avoids `this` issues) ───
 
 const _durCache = new Map();
@@ -72,7 +76,7 @@ async function handlePlay(req: any, res: any, state: State) {
     }
     let sessionId = null;
     if (targetAnime && targetEp) {
-      if (config.autoMarkWatched && targetEp.number >= 2) {
+      if (config.autoMarkWatched && targetEp.number >= AUTO_MARK_THRESHOLD_EP) {
         const autoMarked = [];
         for (const ep of targetAnime.episodes) {
           if (ep.number < targetEp.number && !ep.watched) {
@@ -226,7 +230,7 @@ function handleThumbnail(req: any, res: any, state: State) {
     _probeDuration(videoPath, (dur) => {
       logger.info(`[THUMB-DEBUG] mid probed dur=${dur}`);
       if (!dur) { jsonResp(res, 500, { error: 'thumbnail generation failed' }); return; }
-      const time = Math.floor(dur / 2);
+      const time = Math.floor(dur * THUMB_MIDPOINT_RATIO);
       if (!state.thumbnailQueue) { jsonResp(res, 500, { error: 'thumbnail generation failed' }); return; }
       state.thumbnailQueue.ensureGenerated(videoPath, time, THUMB_HASH_SEED, 30000)
         .then((thumbPath: string) => {

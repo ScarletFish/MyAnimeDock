@@ -28,7 +28,8 @@ export interface Scraper {
 /**
  * Process items in parallel with concurrency limit
  */
-export async function parallelMap(items: any[], fn: (item: any, index: number) => Promise<any>, concurrency = 3): Promise<any[]> {
+const DEFAULT_CONCURRENCY = 3;
+export async function parallelMap(items: any[], fn: (item: any, index: number) => Promise<any>, concurrency = DEFAULT_CONCURRENCY): Promise<any[]> {
   const results = new Array(items.length);
   let index = 0;
   async function worker() {

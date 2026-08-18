@@ -133,7 +133,7 @@ frontend/
 │       ├── tokens.css / base.css / light.css
 │       ├── components/        #   buttons/forms/badges/dropdowns/modals/toast/theme-controls/card-grid/discovery/patterns
 │       ├── layouts/           #   titlebar.css / sidebar.css
-│       └── views/             #   detail-layout/detail-episodes/detail-characters/detail-banner/mylist/archive/metamatch/dashboard/stats/onboarding/keyboard
+│       └── views/             #   detail-layout/detail-episodes/detail-characters/detail-banner/mylist/metamatch/dashboard/stats/onboarding/keyboard
 │
 └── public/                    # Vite 静态资源
     ├── favicon.svg / icon.svg

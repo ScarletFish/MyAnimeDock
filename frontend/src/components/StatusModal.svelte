@@ -46,7 +46,7 @@
     const watchedCount = src.episodes ? src.episodes.filter((e) => e.watched).length : 0;
     const progVal = storedProgress != null ? storedProgress : watchedCount || '';
     progressVal = progVal !== '' ? String(progVal) : '—';
-    // 进度上限 = 本地集数；无本地文件（愿望单）时回退 999
+    // 进度上限 = 本地集数；无本地文件时回退 999
     progressMax = src.episodes && src.episodes.length ? src.episodes.length : 999;
 
     const storedStart = it.startedAt ? it.startedAt : null;

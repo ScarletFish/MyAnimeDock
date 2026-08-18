@@ -157,25 +157,51 @@ class ThumbnailQueue {
   }
 
   /**
-   * 启动时全量校验：扫描整个 library，把缺失缩略图的剧集全部入后台队列补全。
+   * 启动时全量校验：把缺失缩略图的剧集全部入后台队列补全。
    * 队列本身不持久化（内存结构），服务重启后依赖此校验重建"待生成清单"，
    * 保证缩略图缓存覆盖率随时间收敛到 100%，避免滚动到未缓存集时触发慢速按需生成。
+   *
+   * 对账方式（方案 A）：缩略图缓存文件名 = md5(filePath + THUMB_HASH_SEED) + '.jpg'，
+   * 全部集中在 data/thumbs/ 一个目录。启动时一次 readdir 建文件名 Set，
+   * 遍历库时纯内存算 hash 查 Set —— 零同步 IO，毫秒级，不阻塞事件循环。
+   * 以文件系统为事实来源：无论缓存被谁清（含 db-manager 清缓存）、怎么清，结果永远正确，天然自愈。
    * @param library - data.library 数组
    * @returns 本次入队的缩略图数量
    */
   enqueueMissingForLibrary(library: any[]): number {
     if (!Array.isArray(library)) return 0;
-    let enqueued = 0;
+    // 一次 readdir 拿全部已生成缩略图文件名；目录不存在（首次/已清空）→ 视为全部缺失
+    let existing: Set<string> = new Set();
+    try {
+      existing = new Set(fs.readdirSync(path.join(DATA_DIR, 'thumbs')));
+    } catch { /* thumbs 目录不存在 → 全部缺失 */ }
+
+    const items: ThumbItem[] = [];
     for (const anime of library) {
       if (!anime?.episodes) continue;
-      const before = this._queue.length;
-      this.enqueue(anime);
-      enqueued += this._queue.length - before;
+      for (const ep of anime.episodes) {
+        if (!ep.filePath) continue;
+        // 缓存命中（文件名在 Set 中）→ 跳过；否则入队补全
+        if (existing.has(this._thumbHash(ep.filePath) + '.jpg')) continue;
+        const thumbPath = this._thumbPathFor(ep.filePath, THUMB_HASH_SEED);
+        if (this._enqueuedThumbs.has(thumbPath)) continue;
+        if (this._ongoing.has(thumbPath)) continue;
+        this._enqueuedThumbs.add(thumbPath);
+        items.push({
+          filePath: ep.filePath,
+          duration: ep.duration || null,
+          animeId: anime.id,
+          episodeNumber: ep.number,
+          cacheKey: THUMB_HASH_SEED,
+          type: 'background',
+        });
+      }
     }
-    if (enqueued > 0) {
-      logger.info(`Startup thumb check: enqueued ${enqueued} missing thumbnails across ${library.length} anime`);
-    }
-    return enqueued;
+    if (items.length === 0) return 0;
+    this._queue.push(...items);
+    logger.info(`Startup thumb check: enqueued ${items.length} missing thumbnails across ${library.length} anime`);
+    this._scheduleDrain();
+    return items.length;
   }
 
   /** 是否正在处理 */

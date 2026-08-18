@@ -455,14 +455,6 @@ async function init() {
   validateCovers(data).catch(e => logger.warn('Cover validation error:', e.message));
   validateBanners(data).catch(e => logger.warn('Banner validation error:', e.message));
 
-  // Phase 3.5: Thumbnail self-heal — 队列不持久化，重启后重建缺失缩略图的待生成清单
-  // （背景队列空闲时生成；已缓存的跳过，md5(filePath+v1) 命中即不重复入队）
-  try {
-    thumbnailQueue.enqueueMissingForLibrary(data.library || []);
-  } catch (e: any) {
-    logger.warn('Thumbnail startup enqueue error:', e?.message || e);
-  }
-
   // Phase 4: Start serving (try ports 3456→3460, fallback on EADDRINUSE)
   // BASE_PORT can be overridden via env (e.g. Vite dev on 3456 → backend on 3457)
   const PORT_RANGE = 5;
@@ -501,6 +493,17 @@ async function init() {
   if (config.mediaDir) {
     logger.info(`Media directory: ${config.mediaDir}`);
   }
+
+  // Phase 3.5 (deferred): Thumbnail self-heal — 队列不持久化，重启后重建缺失缩略图的待生成清单。
+  // 延迟到端口监听之后异步执行，避免自愈（对账+入队）拖慢冷启动（回归：启动变慢）。
+  // 对账为一次 readdir 快照（见 enqueueMissingForLibrary），毫秒级；已缓存的跳过，md5(filePath+v1) 命中即不重复入队。
+  setTimeout(() => {
+    try {
+      thumbnailQueue.enqueueMissingForLibrary(data.library || []);
+    } catch (e: any) {
+      logger.warn('Thumbnail startup enqueue error:', e?.message || e);
+    }
+  }, 1000);
 
 }
 

@@ -679,6 +679,7 @@ async function updatePlaySession(sessionId: any, fields: any): Promise<boolean> 
     if (fields.endTime !== undefined) data.endTime = new Date(fields.endTime).getTime();
     if (fields.duration !== undefined) data.duration = fields.duration;
     if (fields.clockTime !== undefined) data.clockTime = fields.clockTime;
+    if (fields.episodeNumber !== undefined) data.episodeNumber = fields.episodeNumber;
     if (Object.keys(data).length === 0) return true;
     const setList = Object.keys(data).map(c => `"${c}" = @${c}`).join(', ');
     d.prepare(`UPDATE PlaySession SET ${setList} WHERE "sessionId" = @sessionId`)

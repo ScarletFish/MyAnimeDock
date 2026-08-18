@@ -92,6 +92,8 @@ class MpvPlayerStrategy extends BasePlayerStrategy {
         let peakPos = position || 0;
         let currentDuration = 0;
         let isPaused = false;
+        // 当前实际播放的文件（mpv 内切换文件/跨集播放时会变化，如 autoload 自动进下一集）
+        let currentFilePath = filePath;
         const spawnTime = Date.now();
         let mpvProcess: any = null;
         let ipc: any = null;
@@ -121,6 +123,8 @@ class MpvPlayerStrategy extends BasePlayerStrategy {
                     currentDuration = msg.data;
                 } else if (msg.name === 'pause' && typeof msg.data === 'boolean') {
                     isPaused = msg.data;
+                } else if (msg.name === 'path' && typeof msg.data === 'string' && msg.data) {
+                    currentFilePath = msg.data;
                 }
             }
         });
@@ -140,6 +144,7 @@ class MpvPlayerStrategy extends BasePlayerStrategy {
                 ipc.observeProperty(1, 'time-pos');
                 ipc.observeProperty(2, 'duration');
                 ipc.observeProperty(3, 'pause');
+                ipc.observeProperty(4, 'path'); // 跨集播放：跟踪 mpv 内切换到的当前文件
                 // 窗口已前置弹出，延迟解除 ontop 避免永久置顶
                 setTimeout(() => {
                     try {
@@ -168,7 +173,7 @@ class MpvPlayerStrategy extends BasePlayerStrategy {
             }
             callbacks.onProgress({
                 sessionId,
-                filePath,
+                filePath: currentFilePath,
                 progress: currentPos,
                 peakPos,
                 watched: false,

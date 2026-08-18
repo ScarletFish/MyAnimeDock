@@ -110,9 +110,54 @@ async function handlePlay(req: any, res: any, state: State) {
         strategy.start(mpvPath, filePath, startSeconds || 0, {
           onProgress: ({ sessionId: cbSid, filePath: fp, progress, peakPos, watched, duration, final }: any) => {
             if (cbSid !== sessionId) return;
-            const active = activePlays.get(fp);
+            // mpv 内切换文件（跨集播放）后 fp 已不是启动时的 key：先按路径查，再用 sessionId 兜底
+            let active = activePlays.get(fp);
+            if (active && active.sessionId !== cbSid) active = undefined;
+            let activeKey: string | null = active ? fp : null;
+            if (!active) {
+              for (const [key, play] of activePlays) {
+                if (play.sessionId === cbSid) { active = play; activeKey = key; break; }
+              }
+            }
             if (!active) return;
             if (active.sessionId !== cbSid) return; // 旧 session 异步清理时避免操作新 session 的数据
+
+            // ── mpv 内跨集播放：文件在会话中途切换，把进度/会话重新归属到新文件对应的集 ──
+            if (fp !== activeKey) {
+              let newAnime: any = null;
+              let newEp: any = null;
+              for (const a of data.library) {
+                const e = a.episodes.find((ep2: any) => ep2.filePath === fp);
+                if (e) { newAnime = a; newEp = e; break; }
+              }
+              if (!newAnime || !newEp) {
+                // 换到了库外文件：无法归属任何集，仅清理会话，不写进度
+                activePlays.delete(activeKey as string);
+                broadcastMpvStatus?.();
+                return;
+              }
+              // 与 /api/play 启动语义一致：autoMarkWatched 开启时把新集的前序集标记为已看
+              if (config.autoMarkWatched && newEp.number >= AUTO_MARK_THRESHOLD_EP) {
+                const autoMarked: number[] = [];
+                for (const ep2 of newAnime.episodes) {
+                  if (ep2.number < newEp.number && !ep2.watched) {
+                    ep2.watched = true;
+                    autoMarked.push(ep2.number);
+                  }
+                }
+                if (autoMarked.length > 0) db.updateEpisodesWatched(newAnime.id, autoMarked);
+              }
+              active.episode = newEp;
+              active.anime = newAnime;
+              activePlays.delete(activeKey as string);
+              activePlays.set(fp, active);
+              const session = data.playSessions.find((s: any) => s.sessionId === active.sessionId);
+              if (session && session.episodeNumber !== newEp.number) {
+                session.episodeNumber = newEp.number;
+                db.updatePlaySession(session.sessionId, { episodeNumber: newEp.number });
+              }
+            }
+
             const ep = active.episode;
             ep.progress = progress;
             if (duration > 0) ep.duration = duration;

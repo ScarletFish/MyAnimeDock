@@ -14,6 +14,10 @@ const ThumbnailQueue = require('../../dist/thumbnail-queue');
 const { THUMB_HASH_SEED } = require('../../dist/lib/utils');
 const { DATA_DIR } = require('../../dist/lib/config');
 
+// 模拟 mpv 策略在会话中途切换文件（跨集播放）时的上报路径/进度
+let mockFinalPath = null;
+let mockProgress = 0.5;
+
 describe('playback route handlers', () => {
   describe('handleMpvStatus', () => {
     it('returns active:false when no active plays', () => {
@@ -180,12 +184,12 @@ describe('playback route handlers', () => {
       class MockMpvStrategy {
         static checkAvailable() { return true; }
         start(mpvPath, filePath, startSeconds, callbacks, sessionId) {
-          // Simulate successful mpv spawn
+          // Simulate successful mpv spawn; final reports current file (may differ from
+          // the spawned one when playback switched files inside mpv).
           process.nextTick(() => {
-            // onProgress with final=true to signal completion
             callbacks.onProgress?.({
-              sessionId: null, filePath, progress: 0.5,
-              peakPos: 0.5, watched: false, duration: 1200, final: true,
+              sessionId, filePath: mockFinalPath || filePath, progress: mockProgress,
+              peakPos: mockProgress, watched: false, duration: 1200, final: true,
             });
           });
           return { stop: () => {} };
@@ -208,6 +212,8 @@ describe('playback route handlers', () => {
       };
       tmpFile = path.join(os.tmpdir(), 'test-play-' + Date.now() + '.mp4');
       fs.writeFileSync(tmpFile, '');
+      mockFinalPath = null;
+      mockProgress = 0.5;
     });
 
     after(() => {
@@ -253,6 +259,107 @@ describe('playback route handlers', () => {
       assert.strictEqual(res._status, 200);
       assert.ok(res._body.ok);
       assert.strictEqual(state.data.playSessions.length, 1);
+    });
+
+    it('rebinds progress to the new episode when the file changes inside mpv (跨集播放)', async () => {
+      // 播放 ep9 时 mpv 内切到 ep10（如 autoload 自动进下一集），final 上报的是 ep10 的路径与进度。
+      // 修复前：进度/会话仍归属 ep9 → 继续播放卡片停在上一集；修复后应归属 ep10。
+      const f9 = path.join(os.tmpdir(), 'test-ep9-' + Date.now() + '.mp4');
+      const f10 = path.join(os.tmpdir(), 'test-ep10-' + Date.now() + '.mp4');
+      fs.writeFileSync(f9, '');
+      fs.writeFileSync(f10, '');
+      const progressWrites = [];
+      const sessionUpdates = [];
+      let watchedMarked = null;
+      try {
+        mockFinalPath = f10;
+        mockProgress = 42; // ep10 片头位置（秒）
+        const state = mockState({
+          data: {
+            library: [{
+              id: 'anime-1',
+              episodes: [
+                { number: 9, filePath: f9, progress: 0, duration: 1400, watched: false },
+                { number: 10, filePath: f10, progress: 0, duration: 1400, watched: false },
+              ],
+            }],
+            playSessions: [],
+          },
+          activePlays: new Map(),
+          config: { mpvPath: 'mpv', autoMarkWatched: true },
+          db: {
+            savePlaySessions: async () => {},
+            updateEpisodeProgress: async (animeId, epNum, data) => { progressWrites.push({ animeId, epNum, ...data }); },
+            updateEpisodesWatched: async (animeId, nums) => { watchedMarked = { animeId, nums }; },
+            updatePlaySession: async (sessionId, data) => { sessionUpdates.push({ sessionId, ...data }); },
+            saveMyList: async () => {},
+          },
+        });
+        const req = mockReq({ url: '/api/play', method: 'POST', body: JSON.stringify({ filePath: f9, position: 0 }) });
+        const res = mockRes();
+        await playback.handlePlay(req, res, state);
+        assert.strictEqual(res._status, 200);
+
+        const ep9 = state.data.library[0].episodes.find((e) => e.number === 9);
+        const ep10 = state.data.library[0].episodes.find((e) => e.number === 10);
+        // ep10 拿到进度，ep9 不被污染
+        assert.strictEqual(ep10.progress, 42);
+        assert.strictEqual(ep9.progress, 0);
+        const write = progressWrites.find((w) => w.epNum === 10);
+        assert.ok(write, 'progress should be written to ep10, got: ' + JSON.stringify(progressWrites));
+        assert.strictEqual(write.progress, 42);
+        // 会话归属到 ep10（详情页/卡片据此定位继续播放）
+        assert.strictEqual(state.data.playSessions[0].episodeNumber, 10);
+        assert.ok(sessionUpdates.some((u) => u.episodeNumber === 10), 'session episodeNumber should persist');
+        // autoMarkWatched：第 9 集被标记为已看
+        assert.deepStrictEqual(watchedMarked, { animeId: 'anime-1', nums: [9] });
+        // 播放结束 activePlays 清理干净
+        assert.strictEqual(state.activePlays.size, 0);
+      } finally {
+        try { fs.unlinkSync(f9); } catch (_) {}
+        try { fs.unlinkSync(f10); } catch (_) {}
+      }
+    });
+
+    it('does not write progress when mpv switches to a file outside the library', async () => {
+      const f9 = path.join(os.tmpdir(), 'test-ep9b-' + Date.now() + '.mp4');
+      const outside = path.join(os.tmpdir(), 'test-outside-' + Date.now() + '.mp4');
+      fs.writeFileSync(f9, '');
+      fs.writeFileSync(outside, '');
+      const progressWrites = [];
+      try {
+        mockFinalPath = outside;
+        mockProgress = 10;
+        const state = mockState({
+          data: {
+            library: [{
+              id: 'anime-1',
+              episodes: [{ number: 9, filePath: f9, progress: 0, duration: 1400, watched: false }],
+            }],
+            playSessions: [],
+          },
+          activePlays: new Map(),
+          config: { mpvPath: 'mpv', autoMarkWatched: true },
+          db: {
+            savePlaySessions: async () => {},
+            updateEpisodeProgress: async (animeId, epNum, data) => { progressWrites.push({ animeId, epNum, ...data }); },
+            updateEpisodesWatched: async () => {},
+            updatePlaySession: async () => {},
+            saveMyList: async () => {},
+          },
+        });
+        const req = mockReq({ url: '/api/play', method: 'POST', body: JSON.stringify({ filePath: f9, position: 0 }) });
+        const res = mockRes();
+        await playback.handlePlay(req, res, state);
+        assert.strictEqual(res._status, 200);
+        // 库外文件不归属任何集：不写进度、不污染 ep9
+        assert.strictEqual(progressWrites.length, 0, 'no progress write expected');
+        assert.strictEqual(state.data.library[0].episodes[0].progress, 0);
+        assert.strictEqual(state.activePlays.size, 0, 'active play should be cleaned up');
+      } finally {
+        try { fs.unlinkSync(f9); } catch (_) {}
+        try { fs.unlinkSync(outside); } catch (_) {}
+      }
     });
   });
 

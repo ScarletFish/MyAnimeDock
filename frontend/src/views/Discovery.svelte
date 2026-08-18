@@ -48,17 +48,16 @@
 
   // 过滤后的展示数据（派生）
   let displayData = $derived.by(() => {
-    let data = discoveryData;
-    if (filter === 'unimported') {
-      data = discoveryData.filter((n) => !n.alreadyImported && !n.excluded);
-    } else if (filter === 'excluded') {
-      data = discoveryData.filter((n) => n.excluded);
-    } else if (filter === 'all') {
-      data = discoveryData.filter((n) => !n.excluded);
-      // 未导入排前
-      data = [...data].sort((a, b) => (a.alreadyImported ? 1 : -1));
+    if(filter === 'unimported'){
+      return discoveryData.filter((n) => !n.alreadyImported && !n.excluded);
     }
-    return data;
+    if(filter === 'excluded'){
+      return discoveryData.filter((n) => n.excluded);
+    }
+    // 默认 fallback：all
+    return discoveryData
+      .filter((n) => !n.excluded)
+      .sort((a, b) => (a.alreadyImported ? 1 : -1));//未导入排前
   });
 
   // 分组行（父目录下多个子项 → sibling group；单个子项 → 展平父目录）

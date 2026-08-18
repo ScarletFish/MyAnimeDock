@@ -45,29 +45,7 @@
   import { loadMyList } from './Mylist.svelte';
   import { showView } from '../lib/router.js';
   import { titlebarContext } from '../components/chrome/Titlebar.svelte';
-
-  // ─── API 辅助（自包含，不复用全局 API）───
-  const api = {
-    async get(url) {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
-    },
-    async post(url, data) {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
-    },
-    async del(url) {
-      const res = await fetch(url, { method: 'DELETE' });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
-    },
-  };
+  import { API as api } from '../lib/api.js';
 
   const path = { basename(p) { return p ? p.split(/[\\/]/).pop() : ''; } };
 

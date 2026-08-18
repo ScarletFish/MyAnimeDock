@@ -17,6 +17,7 @@
   import { initScrollDots } from '../../lib/scroll-dots.js';
   import { tr } from '../../lib/anime-utils.js';
   import { openDetail } from '../../views/Detail.svelte';
+  import { API as api } from '../../lib/api.js';
 
   let { animeId = null, kind = 'relations' } = $props();
 
@@ -30,14 +31,6 @@
   const scrollId = $derived(isRecs ? 'svelte-recommendationScroll' : 'svelte-relationScroll');
   const endpoint = $derived(isRecs ? 'recommendations' : 'relations');
   const badgeColors = { SEQUEL: '#22c55e', PREQUEL: '#f59e0b', SIDE_STORY: '#6366f1', SPIN_OFF: '#ec4899' };
-
-  const api = {
-    async get(url) {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
-    },
-  };
 
   function openDetailFromCard(id) {
     openDetail(id, null, null, 'library');

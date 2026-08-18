@@ -9,5 +9,5 @@ export function readScale() {
 }
 
 export function calcGridCols(scale) {
-  return `repeat(auto-fit, minmax(${Math.round(200 * scale)}px, ${Math.round(277 * scale)}px))`;
+  return `repeat(auto-fit, minmax(${Math.round(GRID_CARD_MIN * scale)}px, ${Math.round(GRID_CARD_MAX * scale)}px))`;
 }

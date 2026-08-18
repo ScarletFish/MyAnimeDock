@@ -33,19 +33,11 @@
   import { showView, showDetail, getLibraryScrollTop, __skipViewEnter } from '../lib/router.js';
   import { settingsOpen } from './Settings.svelte';
   import { metaMatchOpen } from './MetaMatch.svelte';
+  import { API as api } from '../lib/api.js';
 
   // ─── Grid 列公式（原 library.js GRID_CARD_MIN/MAX）───
   const GRID_CARD_MIN = 200;
   const GRID_CARD_MAX = 277;
-
-  // ─── API 辅助（自包含，不复用全局 API）───
-  const api = {
-    async get(url) {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
-    },
-  };
 
   // ─── 状态 ───
   let stats = $state(null);

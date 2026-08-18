@@ -5,20 +5,13 @@
   import { onMount } from 'svelte';
   import { tr } from '../../lib/anime-utils.js';
   import * as d3 from 'd3';
+  import { API as api } from '../../lib/api.js';
 
   let { anime = null } = $props();
 
   let containerEl = $state(null);
   let watchStatsVersion = 0;
   let _wsTooltip = null;
-
-  const api = {
-    async get(url) {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
-    },
-  };
 
   function fmtPlain(mins) {
     const h = Math.floor(mins / 60);

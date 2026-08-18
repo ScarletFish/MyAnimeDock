@@ -4,21 +4,9 @@
   // fixResults / fixKeyword 为局部状态；onApplyFix(result) 上抛给父容器编排。
   import { tr, basename } from '../../lib/anime-utils.js';
   import { showToast } from '../../components/Toast.svelte';
+  import { API as api } from '../../lib/api.js';
 
   let { item, syncInProgress, onApplyFix, onResearch } = $props();
-
-  // ─── API 辅助（自包含）───
-  const api = {
-    async post(url, data) {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
-    },
-  };
 
   // ─── 局部状态 ───
   let fixResults = $state([]);

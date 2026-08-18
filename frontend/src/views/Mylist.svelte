@@ -30,29 +30,7 @@
   import { showDetail, getMyListScrollTop, __skipViewEnter } from '../lib/router.js';
   import { loadLibrary } from './Library.svelte';
   import { Select } from 'bits-ui';
-
-  // ─── API 辅助（自包含，不复用全局 API）───
-  const api = {
-    async get(url) {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
-    },
-    async put(url, data) {
-      const res = await fetch(url, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
-    },
-    async del(url) {
-      const res = await fetch(url, { method: 'DELETE' });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
-    },
-  };
+  import { API as api } from '../lib/api.js';
 
   // ─── 状态 ───
   let mylistFilter = $state('all');

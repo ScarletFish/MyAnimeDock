@@ -5,24 +5,13 @@
   import { showToast } from '../Toast.svelte';
   import { tr } from '../../lib/anime-utils.js';
   import { loadLibrary } from '../../views/Library.svelte';
+  import { API as api } from '../../lib/api.js';
 
   let { open = false, anime = null, onAttached, onClose } = $props();
 
   let keyword = $state('');
   let state = $state('idle'); // idle | searching | fetching | results | empty | failed
   let results = $state([]);
-
-  const api = {
-    async post(url, data) {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
-    },
-  };
 
   // 打开时初始化关键词 + 锁 body 滚动 + 聚焦输入框
   $effect(() => {

@@ -18,24 +18,7 @@
   import MetaMatchToolbar from '../components/metamatch/MetaMatchToolbar.svelte';
   import MetaMatchList from '../components/metamatch/MetaMatchList.svelte';
   import MetaMatchPanel from '../components/metamatch/MetaMatchPanel.svelte';
-
-  // ─── API 辅助（自包含，不复用全局 API）───
-  const api = {
-    async get(url) {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
-    },
-    async post(url, data) {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
-    },
-  };
+  import { API as api } from '../lib/api.js';
 
   // ─── 共享状态（$state runes）───
   let items = $state([]);

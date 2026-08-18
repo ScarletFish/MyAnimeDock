@@ -2,34 +2,12 @@
 // 纯逻辑抽取：从 Library.svelte / Mylist.svelte 抽出可复用积木。
 
 import { showDetail } from './router.js';
+export { API as api } from './api.js';
 
 // i18n 辅助（复用全局 t()）
 export function tr(key, options) {
   return typeof globalThis.t === 'function' ? globalThis.t(key, options) : key;
 }
-
-// API 辅助（自包含，不复用全局 API）
-export const api = {
-  async get(url) {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
-  },
-  async put(url, data) {
-    const res = await fetch(url, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
-  },
-  async del(url) {
-    const res = await fetch(url, { method: 'DELETE' });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
-  },
-};
 
 export function basename(p) {
   if (!p) return '';

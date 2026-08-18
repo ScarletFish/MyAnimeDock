@@ -15,15 +15,7 @@
   import { tr } from '../lib/anime-utils.js';
   import * as d3 from 'd3';
   import WordCloud from 'wordcloud';
-
-  // ─── API 辅助（自包含，不复用全局 API）───
-  const api = {
-    async get(url) {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
-    },
-  };
+  import { API as api } from '../lib/api.js';
 
   const WORDCLOUD_MAX_WORDS = 60;
 

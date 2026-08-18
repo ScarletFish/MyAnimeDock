@@ -13,19 +13,7 @@
   import { showToast } from './Toast.svelte';
   import { tr } from '../lib/anime-utils.js';
   import { showView } from '../lib/router.js';
-
-  // ─── 自包含 API 封装（不复用全局 API）───
-  const api = {
-    async post(url, data) {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
-    },
-  };
+  import { API as api } from '../lib/api.js';
 
   // ─── 状态 ───
   let mediaDir = $state('');

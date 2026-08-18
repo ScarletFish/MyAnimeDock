@@ -23,24 +23,7 @@
   import { showConfirm } from '../components/ConfirmDialog.svelte';
   import { openVisualDock } from '../components/ThemeDock.svelte';
   import { tr } from '../lib/anime-utils.js';
-
-  // ─── API 辅助（自包含，不复用全局 API）───
-  const api = {
-    async get(url) {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
-    },
-    async post(url, data) {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
-    },
-  };
+  import { API as api } from '../lib/api.js';
 
   // ─── 状态 ───
   let activeTab = $state('basic');

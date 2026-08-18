@@ -48,7 +48,7 @@
 2. **single-flight 去重**：`_ongoing: Map<thumbKey, Promise>`，同文件并发请求共享一次生成（thumbKey = 最终 thumbPath）
 3. 否则以 `ondemand` 类型高优先级入队 + 立即 drain + 返回带超时（30s）的 Promise
 
-**time 语义**：`_generate` 用 `item.time ?? (item.duration ? Math.floor(duration/2) : 探测)`——ondemand 项用显式 time，background 项（`enqueue`）从 duration 取 mid。**duration 缺失（NULL）时先 `_probeDuration` 探测真实时长再取中点**；**探测失败直接报错（`duration unknown`），不兜底 60s**。探测结果缓存于 `_durCache`。
+**time 语义**：`_generate` 用 `item.time ?? (item.duration ? Math.floor(duration/2) : 探测)`——ondemand 项用显式 time，background 项（`enqueue`）从 duration 取 mid。**duration 缺失（NULL）时先 `_probeDuration` 探测真实时长再取中点**；**探测失败直接报错（`duration unknown`），不兜底 60s**。探测结果缓存于 `_durCache`，且**探测到的真实时长会写回 DB**（`updateEpisodeProgress(animeId, episodeNumber, { duration })`）——一次探测双用途：既算缩略图 mid 时间点，又补全 `ep.duration` 供前端（看完判断、继续观看缩略图时间点）使用。
 
 **`enqueue(anime, prepend)` 保留**（后台预生成/详情页插队），增加**入队去重**：已在队列中或已在生成中的 thumbKey 跳过。
 
@@ -110,4 +110,5 @@
 - 修复：`ensureGenerated` 参数语义为显式 `time`（非 duration），避免 mid 双半 bug
 - 修复：后台项 duration 为 NULL 时 `_probeDuration` 探测真实时长取中点（否则回退 60s 落在 OP 画面、多集重复）
 - 修复：ffmpeg 加 `-vf scale=480:-2` 降采样（卡片不需要 1080P）
-- 修复：扫描导入时批量探测时长写 DB（`_probeEpisodes`，4 并发，`ffmpeg -i` 解析 stderr，无 ffprobe）；缩略图生成时 duration null 再探测一次，**查不到直接报错，不兜底 60s**（on-demand mid 探测失败 500、自定义 time 解析失败 400）
+- 修复：缩略图生成时 duration null 则 `_probeDuration` 探测真实时长取中点，**查不到直接报错，不兜底 60s**（on-demand mid 探测失败 500、自定义 time 解析失败 400）
+- 重构：**时长探测收敛到缩略图队列**——导入流程不再额外探测（移除 `_probeEpisodes`），队列生成缩略图时探测到的 duration 顺便写回 DB（`updateEpisodeProgress`），一次探测双用途。导入响应零探测开销，`ep.duration` 由后台队列补齐

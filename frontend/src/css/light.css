@@ -189,7 +189,8 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   }
   .episode-card-num,
-  .episode-card-duration {
+  .episode-card-duration,
+  .episode-card-watched {
     background: rgba(0, 0, 0, 0.5);
   }
 

@@ -296,6 +296,10 @@ html.theme-transitioning .theme-dock {
   .episode-card:hover .episode-card-bg { transform: none !important; }
   .episode-card-play { transition: opacity 0.01ms !important; transform: translate(-50%, -50%) !important; }
   .episode-card:hover .episode-card-play { opacity: 1 !important; }
+  .episode-card-watched,
+  .episode-card-progress-bar { transition: opacity 0.01ms !important; }
+  .episode-card:hover .episode-card-watched,
+  .episode-card:hover .episode-card-progress-bar { opacity: 1 !important; }
   .episode-dot { transition: none !important; }
 }
 
@@ -355,6 +359,14 @@ html[data-reduce-motion="true"] .episode-card-play {
   transform: translate(-50%, -50%) !important;
 }
 html[data-reduce-motion="true"] .episode-card:hover .episode-card-play {
+  opacity: 1 !important;
+}
+html[data-reduce-motion="true"] .episode-card-watched,
+html[data-reduce-motion="true"] .episode-card-progress-bar {
+  transition: opacity 0.01ms !important;
+}
+html[data-reduce-motion="true"] .episode-card:hover .episode-card-watched,
+html[data-reduce-motion="true"] .episode-card:hover .episode-card-progress-bar {
   opacity: 1 !important;
 }
 html[data-reduce-motion="true"] .episode-dot {

@@ -428,6 +428,7 @@ export const I18N_ZH = {
   'detail.episodeCountTotal': '{{localCount}} / {{totalCount}}集',
   'detail.episodeCountLocal': '{{localCount}} 集',
   'detail.episodeNumber': '第{{number}}集',
+  'detail.watchedTag': '已看',
   'detail.loading': '加载中...',
   'detail.minutes': '{{minutes}} 分钟',
 

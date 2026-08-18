@@ -119,6 +119,46 @@
   -webkit-backdrop-filter: blur(4px);
 }
 
+/* ─── Watched tag (hover reveal; mirrors num badge metrics) ─── */
+.episode-card-watched {
+  position: absolute;
+  top: var(--space-250);
+  right: var(--space-250);
+  padding: var(--space-075) var(--space-250);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-bold);
+  color: var(--on-image);
+  background: var(--overlay-dark);
+  border-radius: var(--radius-sm);
+  z-index: 2;
+  line-height: 1.4;
+  pointer-events: none;
+  user-select: none;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  opacity: 0;
+  transition: opacity 0.3s var(--ease-out);
+}
+.episode-card:hover .episode-card-watched { opacity: 1; }
+
+/* ─── In-progress bar (hover reveal; mirrors dashboard continue bar) ─── */
+.episode-card-progress-bar {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 4px;
+  background: var(--overlay-light-soft);
+  overflow: hidden;
+  z-index: 3;
+  opacity: 0;
+  transition: opacity 0.3s var(--ease-out);
+}
+.episode-card-progress-fill {
+  height: 100%;
+  background: var(--accent-gradient);
+  transition: width 0.3s var(--ease-out);
+}
+.episode-card:hover .episode-card-progress-bar { opacity: 1; }
+
 /* ─── Play Button ─── */
 .episode-card-play {
   position: absolute;

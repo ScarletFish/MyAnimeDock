@@ -123,6 +123,7 @@
       {@const epTitle = ep.fileName || tr('detail.episodeNumber', { number: ep.number })}
       {@const thumbUrl = '/api/thumbnail?path=' + encodeURIComponent(ep.filePath) + '&time=mid'}
       {@const epNum = String(ep.number).padStart(2, '0')}
+      {@const epPct = ep.progress > 0 && !ep.watched && ep.duration > 0 ? Math.min(100, Math.max(0, Math.round(ep.progress / ep.duration * 100))) : 0}
       <div
         class="episode-card"
         data-index={idx}
@@ -134,6 +135,12 @@
           <div class="episode-card-bg" data-src={thumbUrl}></div>
           <div class="episode-card-overlay"></div>
           <div class="episode-card-num">{epNum}</div>
+          {#if ep.watched}
+            <div class="episode-card-watched">{tr('detail.watchedTag')}</div>
+          {/if}
+          {#if epPct > 0}
+            <div class="episode-card-progress-bar"><div class="episode-card-progress-fill" style="width: {epPct}%"></div></div>
+          {/if}
           <button class="episode-card-play" onclick={(e) => { e.stopPropagation(); onPlay(ep.filePath, ep.progress || 0); }}>
             <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg>
           </button>

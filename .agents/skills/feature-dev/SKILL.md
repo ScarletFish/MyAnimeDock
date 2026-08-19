@@ -31,12 +31,13 @@ Goal: Understand what needs to be built.
 
 1. Create a todo list covering all seven phases.
 2. **使用需求模板**：要求用户填写 `REQUIREMENTS-TEMPLATE.md`（同目录），或协助填写。模板包含：
-   - 一句话描述
-   - 解决什么问题
-   - 验收标准（至少 3 条可测试标准）
-   - 边界情况清单
-   - 影响范围
-   - 非目标
+   - 做什么
+   - 收益
+   - 代价（可选）
+   - Fallback（兜底，可选）
+   - 你的建议/评价
+   - 边界情况
+   （影响范围/验收标准等实现细节由实现方内部把握，不上表）
 3. 如果用户已提供清晰需求，直接确认模板内容；如果模糊，先协助填写模板再继续。
 4. Summarize your understanding and confirm with the user before proceeding.
 

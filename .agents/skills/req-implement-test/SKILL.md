@@ -1,6 +1,6 @@
 ---
 name: req-implement-test
-description: Requirements elicitation workflow. Use structured questioning to extract complete requirements before implementation — covering data sources, edge cases, acceptance criteria, and non-goals. Mandatory for ALL feature requests (not just vague ones).
+description: Requirements elicitation workflow. Use structured questioning to extract complete requirements before implementation — covering what, benefits, costs, fallback, and edge cases. Mandatory for ALL feature requests (not just vague ones).
 ---
 
 # 需求规范化工作流
@@ -68,15 +68,14 @@ description: Requirements elicitation workflow. Use structured questioning to ex
 ```markdown
 | 项目 | 内容 |
 |------|------|
-| 功能描述 | 做什么，核心价值 |
-| 数据来源 | API/本地/外部 |
-| 行为细节 | 正常流程、交互方式 |
-| 边界情况 | 空数据、错误、极端输入 |
-| 验收标准 | 1.功能 2.数据 3.交互 4.性能（必要时写具体指标） |
-| 影响范围 | 改哪些文件、影响哪些模块 |
-| 非目标 | 明确不做什么（防 scope creep） |
-| 前置依赖 | 是否需要其他功能先完成 |
+| 做什么 | 功能行为描述，贴近实际使用场景 |
+| 收益 | 解决什么问题、值不值得做 |
+| 代价 | 可选：主要成本/风险 |
+| Fallback（兜底） | **默认不做**。旧代码/旧字段/向后兼容直接删，死代码是 bug 源。仅当主路径走不通且用户明确要求时才做 |
+| 你的建议/评价 | agent 对需求本身的独立看法：值不值得做、有无更简做法、风险顾虑 |
+| 边界情况 | 关键边界场景及处理方式 |
 
+> **实现细节不上表**：数据来源、影响范围/文件列表、行为细节、验收标准、前置依赖由 agent 内部把握，不逐条展示给用户（验收标准在测试阶段自行对照）。
 > **变更控制**：用户确认后如果需求变化，必须更新表格重新确认，不可自行 scope creep。
 ```
 
@@ -121,14 +120,12 @@ AI 应该：
 
 > | 项目 | 我的理解 |
 > |------|----------|
-> | 功能描述 | 统计页新增季度分布图表 |
-> | 数据来源 | `/api/stats/seasons`（已有端点） |
-> | 行为细节 | D3.js 横向柱状图，四种配色 |
-> | 边界情况 | 无数据 → "暂无数据"占位 |
-> | 验收标准 | 1. 正确分组 2. 主题适配 3. 响应式 |
-> | 影响范围 | stats.js, index.html, styles.css |
-> | 非目标 | 不做年份维度、不做交互筛选 |
-> | 前置依赖 | 无 |
+> | 做什么 | 统计页新增季度分布图表，展示每季度观看数量 |
+> | 收益 | 一眼看出观看高峰，不用看数字脑补趋势 |
+> | 代价 | 图表库体积增加（可选：用轻量自绘方案） |
+> | Fallback | 默认不做；无数据时不渲染图表，显示"暂无数据"占位 |
+> | 你的建议/评价 | 建议先做季度维度，年份维度需要时再加；轻量自绘，不必引图表库 |
+> | 边界情况 | 无数据、单季数据、主题切换 |
 
 **Step 3: 确认**
 

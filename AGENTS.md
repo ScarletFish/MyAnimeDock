@@ -4,13 +4,13 @@ Svelte 5 SPA + Node.js HTTP server + Tauri v2 desktop shell. 自托管动漫媒�
 
 ## Workflow
 
-完整流程见 `docs/dev/workflow.md`（6 阶段）。**禁止跳过阶段直接写代码**。
+完整流程见 `docs/dev/workflow.md`。**禁止跳过需求对齐直接写代码**。
 
 | 场景 | 行为 |
 |------|------|
 | 功能需求（新增/修改功能） | **必须先出需求确认表** → `skill("req-implement-test")` |
 | 修明确的小 bug（已知位置+已知改法） | 直接修，修完报告 |
-| 纯文案/样式微调（≤20 行、无逻辑变更） | 走微调快路径（`docs/dev/workflow.md` 路径 D），改完跑 `npm run check:frontend` |
+| 纯文案/样式微调（≤20 行、无逻辑变更） | 走微调快路径（`docs/dev/workflow.md` 路径 C），改完跑 `npm run check:frontend` |
 | 设计讨论（"怎么实现"/"哪个方案好"） | 走设计讨论路径（`docs/dev/workflow.md` 路径 B） |
 | **定位文件/文件结构** | **读 `docs/file-structure.md`** |
 | 数据流/API/模型 | 读 `docs/data-flow.md` 选子文件 |
@@ -47,6 +47,7 @@ cd server && npm test      # 测试（先自动跑 tsc）
 - **缩略图**: 依赖 ffmpeg PATH，首次延迟
 - **封面路径**: `localCover` 绝对路径；跨 DATA_DIR 迁移由 `server.ts` 的 `migrateLegacyDataPaths()` 启动钩子幂等重写（旧 `server/` 前缀 → 新 `data/`）
 - **CSS *禁止* `zoom`**: 用 `--scale` calc（详见 `docs/dev/frontend.md`）
+- **backdrop-filter 在 release 失效**: WebView2 透明窗口下 backdrop-filter 无像素可采样（dev 正常、release 失效）；弹窗模糊用 portal 到 `#modal-root` + `body:has(...) > :not(#modal-root) { filter: blur() }`（详见 `docs/dev/frontend.md`）
 - **"先找后写"三步协议**: 新增 CSS 前先查已有组件和 token，禁止写死值。完成后跑 `npm run check:frontend` 验证（详见 `docs/dev/frontend.md` 必读章节）
 - **改前端后跑 `npm run check:frontend`**: 勿只跑其中一条，否则 dist 过期"改了没生效"
 - **CSS 子文件结构**: 勿改 `styles.css`（仅入口）；视图样式放 `views/*.css`，小组件用 `@utility` 放 `patterns.css`，主题特有放 `layouts/` 和 `components/`

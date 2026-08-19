@@ -16,16 +16,20 @@ server/
 ├── server.ts           → HTTP 服务入口，路由注册 + 中间件
 ├── db.ts               → better-sqlite3 原生 SQL 封装层
 ├── scanner.ts           → 媒体目录扫描 + 文件夹名解析
-├── mpv-ipc.ts           → mpv IPC 播放进度追踪
+├── mpv-ipc.ts           → mpv IPC 纯传输层（connect/send/call/observeProperty/onEvent）
 ├── thumbnail-queue.ts   → ffmpeg 缩略图生成队列
 ├── logger.ts            → [TAG] 结构化日志
-├── bangumi-sync.ts      → Push→Merge→Pull 同步引擎
+├── bangumi-sync.ts      → Pull→Merge→Push 同步引擎
 ├── types.ts             → 共享类型（AppData/ServerState/Anime/MyListItem/ScanNode 等）
-├── scrapers/            → 元数据抓取器
+├── players/             → 播放器策略抽象层（base-player / mpv-strategy / registry）
+├── scrapers/            → 元数据抓取器（index/bangumi/bangumi-personal/anilist/node-fetch）
 ├── routes/              → 路由处理模块（9 个 .ts）
 └── lib/
     ├── paths.js         → 路径单点计算（故意留 JS，不转 TS）
-    └── http-fetch.ts    → 共享 HTTP 请求层
+    ├── http-fetch.ts    → 共享 HTTP 请求层
+    ├── utils.ts         → jsonResp/serveImage/readBody/getFfmpegPath 等工具
+    ├── config.ts        → 配置/路径/scannedTree 管理
+    └── enrich.ts        → enrichAnime 运行时字段注入
 ```
 
 > 源码全部为 TypeScript（strict 模式），`npm run build:ts`（tsc）编译到 `server/dist/`；运行/测试/打包都吃 dist 产物。改完源码不 build，dist 是旧的"改了没生效"。
@@ -58,14 +62,16 @@ app.get('/api/mylist', mylistRoutes.handleGetMyList);
 
 ```ts
 // routes/example.ts
+import { jsonResp } from '../lib/utils';
 async function handleAction(req: IncomingMessage, res: ServerResponse) {
   try {
     const { id } = new URL(req.url || '', 'http://localhost').searchParams; // GET 参数
     const body = await parseBody(req); // POST body
     const data = await doWork(id, body);
-    respondJson(res, 200, data);
+    jsonResp(res, 200, data);
   } catch (err) {
-    respondError(res, 500, (err as Error).message);
+    logger.error('[example]', err);
+    jsonResp(res, 500, { error: (err as Error).message });
   }
 }
 module.exports = { handleAction };
@@ -75,10 +81,10 @@ module.exports = { handleAction };
 
 | 规则 | 说明 |
 |------|------|
-| 每个 handler 必须 try/catch | 未捕获的 rejection → process.on('unhandledRejection') 兜底，但不应依赖 |
-| 用 `respondJson` / `respondError` / `respondFile` | 统一响应格式 |
+| 每个 handler 必须 try/catch | 未捕获的 rejection → `process.on('unhandledRejection')` 兜底（仅 warn，不 exit），但不应依赖 |
+| 用 `jsonResp` / `serveImage` / `serveRaw` | 统一响应格式（`lib/utils.ts`） |
 | 路由不直接调 scrapers | scrapers 只通过 `bangumi-sync.ts` 或 `routes/library.ts` 调用 |
-| 路由不直接写文件 | 写操作委托给 `db.ts` 的方法 |
+| 路由不直接写文件 | 写操作委托给 `db.ts` 的方法；`saveScannedTree` 在 `lib/config.ts` |
 | 查询参数用 URL 编码 | 路径参数先 `encodeURIComponent` 再拼入 URL |
 | 文件名：kebab-case | `db-manager.js` 而非 `dbManager.js` |
 
@@ -92,29 +98,32 @@ module.exports = { handleAction };
 // ✅ 正确
 db.saveLibrary(library);          // 只写 Anime 表
 db.updateEpisodesWatched(...);    // 只写 Episode.progress
-db.saveMemories(memories);        // 只写 Memory 表
 db.updateMyItemStatus(id, 'completed'); // 只写 MyList.status
+db.saveAll(...);                  // 内部批量同步 library/myList/playSessions
 
 // ❌ 错误
-db.saveData(library, null, myList, memories); // 全量写，nodemon 误触发重启
+db.saveData(library, null, myList, memories); // 全量写（已不存在），nodemon 误触发重启
 ```
 
 ### 生命周期
 
 ```
 db.loadData() → 读 SQLite 初始化
-  └─ anime, myList, episodes, memories, config, scannedTree
+  └─ anime, myList, episodes, config, scannedTree, playSessions
 
 写入路径 (任一):
   db.saveLibrary(library)          → anime + episodes
-  db.saveMemories(memories)        → memories
+  db.saveAll(...)                  → 批量同步 library/myList/playSessions
   db.savePlaySessions(sessions)    → playSessions（mpv 启动/关闭/出错）
   db.updateEpisodeProgress(...)    → 单集进度
   db.updateEpisodesWatched(...)    → 批量标记已看
   db.updateMyItemStatus(id, s)    → myList 状态
   db.updateMyListItem(id, item)   → myList 条目
+  db.updatePlaySession(id, data)  → 会话更新
+  db.updateAnime(id, data)        → Anime 字段更新
   db.deletePlaySession(id)        → 删除会话
-  db.saveScannedTree(tree)        → JSON 文件同步写入
+  db.clearSessions()              → 清空会话
+  db.saveScannedTree(tree)        → JSON 文件同步写入（lib/config.ts）
 ```
 
 ### better-sqlite3 注意事项
@@ -127,9 +136,9 @@ db.loadData() → 读 SQLite 初始化
 
 ## Scanner 约定
 
-- `parseFolderName(name)` — 纯函数，从文件夹名提取 `{ title, year, season, bangumiId, anilistId, label }`
+- `parseFolderName(name)` — 纯函数，从文件夹名提取 `{ title, cjkTitle, cleanTitle, season, year, animeTitle, episode, seasonRaw, resolution, source, videoCodec, audioCodec, releaseGroup, specialSuffix, bangumiId, _raw }`
 - `extractBgmId(name)` — 提取 `[bgmN]` 格式的数字 ID，用作 `bangumiId`（内容身份，唯一索引）
-- `findVideos(dir)` — 递归查找视频文件（mp4/mkv/avi/mov/wmv）
+- `findVideos(dir)` — 递归查找视频文件（`VIDEO_EXTS = mkv/mp4/avi/mov/webm`）
 - `scanMediaDirFlat(dir)` — 扫描返回扁平 leaf 数组（含 `parentChain`）
 - 手动导入项主键同样为 UUID（`crypto.randomUUID()`）
 
@@ -139,19 +148,22 @@ db.loadData() → 读 SQLite 初始化
 
 ## mpv-ipc 约定
 
-- `activePlays` Map（内存）追踪当前播放会话
+- `mpv-ipc.ts` 是**纯 IPC 传输层**：`MpvIpcConnection` 类（connect/send/call/observeProperty/onEvent，含重试与超时），不承载播放逻辑
+- `activePlays` Map（内存）在 `server.ts` 与 `routes/playback.ts` 维护
+- 播放器策略在 `players/`（base-player 抽象 + mpv-strategy 实现 + registry 注册）
 - `--start` 改为 IPC seek（connect 后 seek，不污染队列）
 - 进度由 mpv IPC 实时推送 `time-pos` 更新，不做定时轮询
-- mpv 关闭时发 `final: true` 标记，触发一次性落盘 + Map 清理
+- mpv 关闭时发 `final: true` 标记，触发一次性落盘 + Map 清理（`routes/playback.ts` 的 onProgress 回调）
 - 播放路径编码：`escAttr` → HTML `dataset` → JSON.parse 全链路
 
 ## Thumbnail 约定
 
-- `thumbnail-queue.ts`：队列 + 去重 + 限并发（默认 3）
+- `thumbnail-queue.ts`：队列 + 去重（single-flight）+ 限并发（默认 4）
 - 依赖 ffmpeg：dev 模式用仓库内置 `scripts/ffmpeg-upx.exe`（Windows），打包模式用 `sidecar-modules/ffmpeg.exe`，均无需系统安装 ffmpeg；仅当两者缺失时才回落系统 PATH
 - 生成缓存到 `thumbs/` 目录
-- ffmpeg 命令：`ffmpeg -ss {time} -i {video} -vframes 1 -vf scale=320:-1 {output}`
+- ffmpeg 命令：`ffmpeg -ss {time} -i {video} -vframes 1 -vf scale=480:-2 {output}`（`THUMB_WIDTH=480`）
 - 首次请求可能延迟（同步等待生成）
+- 启动时 `enqueueMissingForLibrary()` 对账补全缺失缩略图
 
 ## http-fetch 共享层
 
@@ -182,17 +194,21 @@ const data = await httpFetch.fetch(url, { headers, retries: 2 });
   "theme": "default",
   "themeMode": "dark",
   "autoMarkWatched": true,
-  "uiScale": 1.25
+  "uiScale": 1,
+  "reduceMotion": false,
+  "apiSources": ["bangumi", "anilist"]
 }
 ```
+
+> 运行时由 `lib/config.ts` 注入字段（不上 JSON）：`bangumiAccessToken`、`bangumiClientId/Secret`、`bangumiLastSync`、`bangumiUsername`。
 
 ## 错误处理链
 
 ```
 route handler try/catch
-  → respondError(res, code, message)
-  → logger.error('[TAG]', err)
-  └─ 未捕获 → process.on('unhandledRejection') → process.exit(1)
+  → jsonResp(res, code, {error}) 或 logger.error('[TAG]', err)
+  └─ 未捕获 → process.on('unhandledRejection') → logger.warn（不 exit）
+     uncaughtException → logger.error（不 exit）
 ```
 
 恢复：重启 sidecar（Rust 监控线程自动检测退出后关闭 Tauri 窗口）。

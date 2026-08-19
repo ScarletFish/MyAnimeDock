@@ -6,21 +6,21 @@
 
 | 场景 | 使用 | 定义文件 |
 |------|------|----------|
-| 按钮 | `.btn` / `.btn-primary` / `.btn-danger` / `.btn-outline` | `frontend/src/css/components/buttons.css` |
-| 标签/角标 | `.badge` | `frontend/src/css/components/badges.css` |
+| 按钮 | `.btn` / `.btn-primary` / `.btn-danger` / `.btn-outline`（另 btn-ghost/btn-accent/btn-sm/btn-xs/btn-back） | `frontend/src/css/components/buttons.css` |
+| 评分/季角标 | `.rating-badge` / `.season-badge` / `.user-rating` | `frontend/src/css/components/badges.css` |
 | 卡片布局 | `.anime-card` | `frontend/src/css/components/card-grid.css` |
 | 水平分页滚动 | `.hscroll-section` + `.hscroll-card` | `frontend/src/css/components/patterns.css` |
 | 下拉框 | `.sort-dropdown`（复杂下拉用 bits-ui `Select`） | `frontend/src/css/components/dropdowns.css` |
-| 模态框 | `.modal-overlay` + `.modal-panel` | `frontend/src/css/components/modals.css` |
-| 输入框/搜索 | `.search-input` / `.filter-input` / `.select-native` | `frontend/src/css/components/forms.css` |
+| 模态框 | `.modal-overlay` + `.modal`（另 modal-large/modal-header/modal-actions） | `frontend/src/css/components/modals.css` |
+| 输入框/搜索 | `.search-input` | `frontend/src/css/components/forms.css` |
 | 开关 | `.toggle-switch` + `.toggle-slider` | `frontend/src/css/components/forms.css` |
-| 单选胶囊组 | `.seg-radio-group` + `.seg-radio-item`（原生 radio，`:has(:checked)` 高亮） | `frontend/src/css/components/forms.css` |
-| Toast 提示 | `.toast` + `.toast-visible` | `frontend/src/css/components/toast.css` |
-| 加载中 | `.loading-spinner` | `frontend/src/css/components/patterns.css` |
-| 分页 | `.pagination` | `frontend/src/css/components/patterns.css` |
-| 标签组 | `.tags-field` | `frontend/src/css/components/patterns.css` |
+| 单选胶囊组 | `.seg-radio-group` + `.seg-radio-item`（原生 radio，`:has(input:checked)` 高亮） | `frontend/src/css/components/forms.css` |
+| Toast 提示 | `.toast`（退场用 `.dismissing`） | `frontend/src/css/components/toast.css` |
+| 标签组 | `.tag-pill` | `frontend/src/css/components/patterns.css` |
 | 发现页 | `.discovery-*` | `frontend/src/css/components/discovery.css` |
 | 主题选择器 | `.theme-dock` | `frontend/src/css/components/theme-controls.css` |
+
+> 组件样式均为 Tailwind v4 `@utility` 语法（如 `@utility btn`），类名即 utility 名。
 
 > 更多组件见对应 `.css` 文件。**写新 UI 前先查这些有没有现成的。**
 >
@@ -99,6 +99,22 @@ npm run check:css        # 仅扫描 views/ + layouts/ 的 token 合规性（che
 ```
 
 > ⚠️ 每次新增/修改前端 JS/CSS 后必须跑 `npm run check:frontend`（内含全部检查并重建 dist/），确认通过后才算完成。
+
+### 弹窗模糊（release 兼容，必读）
+
+**坑**：Tauri release（WebView2 透明窗口）下 `backdrop-filter` 失效——它采样元素背后像素，透明窗口背后无可采样内容。dev（浏览器）正常、release 失效，导致弹窗背后无模糊、内容透出。
+
+**已实现方案（勿改回）**：
+
+1. 弹窗组件用 `use:portal`（`frontend/src/lib/portal.js`）把 `.modal-overlay` 移到 body 级 `#modal-root`（`index.html`）。
+2. `modals.css` 用纯 CSS 检测弹窗打开：`body:has(#modal-root .modal-overlay.show) > :not(#modal-root) { filter: blur(16px) saturate(150%); }` —— 模糊 body 下非弹窗内容（标题栏+侧边栏+主内容），复刻全屏毛玻璃。
+3. 遮罩保持半透明（`var(--overlay-dark)` / 浅色 `rgba(0,0,0,0.45)`），**禁止**给 `.modal-overlay` 加 backdrop-filter（dev 下会双重模糊，制造 dev/release 不一致）。
+
+**规则**：
+
+- 新增弹窗组件必须加 `use:portal`，否则 release 下无模糊。
+- `filter: blur()` 模糊元素自身渲染内容，release 下可靠；`backdrop-filter` 依赖窗口背后像素，release 下不可靠。
+- 常驻元素（标题栏/侧边栏/toast）的 backdrop-filter 与弹窗无关，保留不动。
 
 ---
 
@@ -182,7 +198,7 @@ showToast('成功导入 ' + result.imported.length + ' 个条目', 'success');
 ### 注意
 
 - **动漫元数据（简介 `summary`、标题等来自 Bangumi API 的数据）不是 UI 文案，不走 i18n**，改 i18n 映射不会影响它们
-- i18next 默认转义已关闭（`interpolation.escapeValue: false`），因为项目已有 `escHtml()`/`escAttr()`。**翻译值若含用户/外部数据仍须自行转义**
+- i18next 默认转义已关闭（`interpolation.escapeValue: false`）。**翻译值若含用户/外部数据仍须自行转义**
 
 ## 核心模式
 
@@ -195,22 +211,13 @@ const result = await API.post('/api/mylist/update', { id, status });
 await API.del('/api/play-session/123');
 ```
 
-返回格式统一：`{ ok: true/false, data, error }`。
+返回：直接返回响应 JSON；非 2xx 时 `throw new Error(响应文本)`（调用方用 try/catch 接）。
 
 ### XSS 防护
 
-**所有用户数据必须用 `escHtml()` / `escAttr()` 包裹：**
+**Svelte 模板插值 `{title}` 默认转义**，无需手动处理。
 
-```js
-// ✅ 正确
-element.innerHTML = `<span>${escHtml(title)}</span>`;
-element.setAttribute('data-value', escAttr(userInput));
-
-// ❌ 错误 — 直接拼接用户数据
-element.innerHTML = `<span>${title}</span>`;
-```
-
-> **Svelte 默认转义**：Svelte 模板插值 `{title}` 默认转义，无需手动 `escHtml()`。仅当用 `{@html ...}` 渲染外部/用户数据时才需自行转义（项目已无独立 `escHtml`/`escAttr` 工具函数）。
+> 仅当用 `{@html ...}` 渲染外部/用户数据时需自行转义（项目无独立 `escHtml`/`escAttr` 工具函数）。
 
 ### 视图切换
 
@@ -261,7 +268,7 @@ export const pendingFinishAnimeId = writable(null);
 
 ## CSS 缩放标准
 
-**禁止使用 CSS `zoom`**（导致 GSAP Flip 断裂、fixed 元素错位）。
+**禁止使用 CSS `zoom`**（导致 fixed 元素错位、动画断裂）。
 
 使用 CSS 自定义属性 `--scale` 实现 UI 缩放：
 
@@ -284,33 +291,29 @@ padding: var(--space-4);
 .theme-dock { --scale: 1; }
 ```
 
-`applyZoom(scale)` 在 `frontend/src/lib/theme.js`，设置 `:root` 的 `--scale` 属性。gridZoom 独立控制（50%-200%，`localStorage` 持久化）。
+`applyZoom(scale)` 在 `frontend/src/lib/theme.js`，设置 `:root` 的 `--scale` 属性。缩放经 `uiScale` 配置持久化（`/api/config`，ThemeDock/Settings 控制）。
 
 ## 动画约定
 
 ### GSAP
 
-GSAP 已注册全局 `gsap.registerPlugin(Flip)`，引用自 `frontend/public/vendor/gsap/`。
-
-在 Svelte 组件中用 `gsap.context()` + `onMount`，并在卸载时返回 `() => ctx.revert()` 清理：
+GSAP 通过 UMD 全局加载（`index.html` 的 `/vendor/gsap/gsap.min.js` + `ScrollTrigger.min.js`），组件内用 `const gsap = globalThis.gsap`：
 
 ```svelte
 <script>
   import { onMount } from 'svelte';
-  import gsap from 'gsap';
 
-  let ctx;
   onMount(() => {
-    ctx = gsap.context(() => {
-      // 封面切换动画
-      animateHeroCoverFlip(oldCover, newCover);
-      // 内部创建 position:fixed overlay → Flip.getState() → DOM 变化
-      // → Flip.from(state, { absolute: true })
-    });
-    return () => ctx.revert();
+    const gsap = globalThis.gsap;
+    gsap.fromTo(el, { opacity: 0 }, { opacity: 1, duration: 0.3 });
+    return () => { gsap.killTweensOf(el); };
   });
 </script>
 ```
+
+- **不用 `gsap.context()` / `ctx.revert()`**（未注册 Flip，封面切换用手动 transform 动画）
+- ScrollTrigger 实际在用（`gsap.ScrollTrigger`）
+- 数据可视化用 d3/wordcloud（非动画库）
 
 ### 封面加载
 
@@ -324,7 +327,7 @@ GSAP 已注册全局 `gsap.registerPlugin(Flip)`，引用自 `frontend/public/ve
 <img src="..." decoding="sync" alt="">
 ```
 
-必须 `eager` 加载，否则 GSAP Flip 动画完成时封面尚未解码，露出空白框架闪白。
+必须 `eager` 加载，否则封面切换动画完成时封面尚未解码，露出空白框架闪白。
 
 ### 操作 DOM 前检查元素存在
 
@@ -382,9 +385,9 @@ Svelte 响应式自动处理视图更新：数据变化通过 store / `$state` �
 ## Svelte 5 组件开发约定
 
 - **组件**放 `frontend/src/components/`（通用组件）与 `frontend/src/components/detail/`、`frontend/src/components/chrome/`、`frontend/src/components/metamatch/`（按域分子目录）
-- **视图**放 `frontend/src/views/`（`Library.svelte` / `Mylist.svelte` / `Detail.svelte` / `Discovery.svelte` / `Stats.svelte` / `Settings.svelte` / `MetaMatch.svelte`）
-- **可复用逻辑**放 `frontend/src/lib/`（`router.js` / `ui-state.js` / `grid.js` / `theme.js` / `i18n.js` / `scroll-dots.js` 等）
-- **样式**用 CSS 文件（`styles.css` 入口 + `views/` / `components/` / `layouts/` 子文件），组件内 `<style>` 尽量少用，优先用全局 CSS 类
+- **视图**放 `frontend/src/views/`（`Library.svelte` / `Mylist.svelte` / `Detail.svelte` / `Discovery.svelte` / `Stats.svelte` / `Settings.svelte` / `MetaMatch.svelte` / `LocalAnimeSection.svelte`）
+- **可复用逻辑**放 `frontend/src/lib/`（`router.js` / `ui-state.js` / `grid.js` / `theme.js` / `i18n.js` / `scroll-dots.js` / `keyboard.js` / `mpv-status.js` / `sort.js` / `tooltip.js` / `sync-stream.js` 等）
+- **样式**用 CSS 文件（`styles.css` 入口 + `tokens.css` / `base.css` / `light.css` + `views/` / `components/` / `layouts/` 子文件），组件内 `<style>` 尽量少用，优先用全局 CSS 类
 - 组件内 `<style>` 仅用于组件私有、无法用全局类表达的样式；可复用的样式抽象到对应全局 CSS 文件
 
 ## 设计 Token 参考
@@ -436,31 +439,39 @@ Svelte 响应式自动处理视图更新：数据变化通过 store / `$state` �
 所有间距由 `--scale` 缩放，必须用 `var(--space-*)`，不许写 `px`/`rem`：
 
 ```css
---space-1: calc(0.25rem * var(--scale));   /* 4px  @scale=1 */
---space-2: calc(0.50rem * var(--scale));   /* 8px */
---space-3: calc(0.75rem * var(--scale));   /* 12px */
---space-4: calc(1.00rem * var(--scale));   /* 16px */
---space-5: calc(1.25rem * var(--scale));   /* 20px */
---space-6: calc(1.50rem * var(--scale));   /* 24px */
---space-8: calc(2.00rem * var(--scale));   /* 32px */
---space-10: calc(2.50rem * var(--scale));  /* 40px */
---space-12: calc(3.00rem * var(--scale));  /* 48px */
+--space-025: calc(0.0625rem * var(--scale));  /* 1px */
+--space-050: calc(0.125rem  * var(--scale));  /* 2px */
+--space-075: calc(0.1875rem * var(--scale));  /* 3px */
+--space-1:   calc(0.25rem   * var(--scale));  /* 4px  @scale=1 */
+--space-150: calc(0.375rem  * var(--scale));  /* 6px */
+--space-2:   calc(0.5rem    * var(--scale));  /* 8px */
+--space-250: calc(0.625rem  * var(--scale));  /* 10px */
+--space-3:   calc(0.75rem   * var(--scale));  /* 12px */
+--space-350: calc(0.875rem  * var(--scale));  /* 14px */
+--space-4:   calc(1rem      * var(--scale));  /* 16px */
+--space-5:   calc(1.25rem   * var(--scale));  /* 20px */
+--space-6:   calc(1.5rem    * var(--scale));  /* 24px */
+--space-8:   calc(2rem      * var(--scale));  /* 32px */
+--space-10:  calc(2.5rem    * var(--scale));  /* 40px */
+--space-12:  calc(3rem      * var(--scale));  /* 48px */
 ```
 
 ### 圆角
 
 ```css
+--radius-xs: calc(0.125rem * var(--scale));  /* 2px */
 --radius-sm: calc(0.375rem * var(--scale));  /* 6px  — 按钮、输入框 */
 --radius-md: calc(0.625rem * var(--scale));  /* 10px — 下拉框、提示框 */
 --radius-lg: calc(1.00rem * var(--scale));   /* 16px — 卡片、模块面板 */
---radius-xl: calc(1.50rem * var(--scale));   /* 24px — 大模态框、首屏 hero */
+--radius-pill: 999px;                         /* 胶囊 */
 ```
 
 ### 字体
 
 ```css
---font-display: 'Playfair Display', serif;  /* 大标题/展示 */
---font-body: 'DM Sans', sans-serif;          /* 正文/说明 */
+--font-display: 'Playfair Display', 'Noto Sans SC', 'Noto Sans JP', serif;  /* 大标题/展示 */
+--font-body: 'DM Sans', 'Noto Sans SC', 'Noto Sans JP', sans-serif;          /* 正文/说明 */
+--font-accent: 'Playfair Display', 'Noto Sans SC', 'Noto Sans JP', serif;    /* 强调 */
 --font-mono: 'JetBrains Mono', monospace;    /* 代码/数字 */
 --fw-normal: 400;
 --fw-medium: 500;     /* 按钮文字、标签 */
@@ -468,6 +479,8 @@ Svelte 响应式自动处理视图更新：数据变化通过 store / `$state` �
 --fw-bold: 700;
 --fw-extrabold: 800;
 ```
+
+字号用 `--text-*`（带 ×1.25 系数，如 `--text-base: calc(1.016rem * var(--scale))`）：`--text-2xs/xs/sm/base/md/body/lg/xl/2xl/3xl`，另有 `--text-compact-xs/sm/md/lg`。
 
 ### 动效
 
@@ -484,12 +497,12 @@ Svelte 响应式自动处理视图更新：数据变化通过 store / `$state` �
 
 - [ ] 用现有 Svelte 组件、bits-ui 组件，还是新建组件？
   - 有现成组件 → 复用。没有 → 新建 Svelte 组件，考虑是否可抽象到 `components/`
-- [ ] 外部输入是否 escHtml/escAttr？
+- [ ] 外部输入是否转义？（`{@html}` 渲染外部数据时）
 - [ ] 所有文案是否走 i18n？（JS 用 `t('ns.key')`，HTML 用 `data-i18n` / `data-i18n-attr`，禁止硬编码中文）
 - [ ] 缩放是否用 `--scale` calc？
 - [ ] DOM 操作前是否检查元素存在？
 - [ ] 用 Svelte 响应式，避免手动 DOM 操作？—— 数据变化通过 store / `$state` 自动更新，不手动 innerHTML
-- [ ] 是否有动画？是否用 GSAP？—— 在 `onMount` 中用 `gsap.context()`，返回 `() => ctx.revert()` 清理
+- [ ] 是否有动画？是否用 GSAP？—— 在 `onMount` 中用 `globalThis.gsap`，离开时 `killTweensOf` 清理
 - [ ] 响应式：1000px 以下不崩、1920px 以上不太空？
   - 确认 `min-width` / `max-width` / `auto-fill` 行为合理
 - [ ] 颜色/间距/圆角/阴影/字号是否完全使用 `var(--xxx)` token？—— 跑 `npm run check:frontend` 验证

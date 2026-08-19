@@ -212,7 +212,7 @@ docs/
 │   └── gotchas.md             #   跨领域陷阱
 │
 └── dev/                       # 开发规范（6 个）
-    ├── workflow.md            #   6 阶段开发工作流
+    ├── workflow.md            #   开发工作流（需求对齐 + 路径 A/B/C）
     ├── backend.md             #   后端规范
     ├── frontend.md            #   前端规范
     ├── testing.md             #   测试规范

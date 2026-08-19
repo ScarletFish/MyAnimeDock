@@ -24,6 +24,7 @@
   import { openVisualDock } from '../components/ThemeDock.svelte';
   import { tr } from '../lib/anime-utils.js';
   import { API as api } from '../lib/api.js';
+  import { portal } from '../lib/portal.js';
 
   // ─── 状态 ───
   let activeTab = $state('basic');
@@ -668,7 +669,7 @@
 </script>
 
 {#if $settingsOpen}
-  <div class="modal-overlay show" id="settingsModal" onclick={(e) => { if (e.target === e.currentTarget) close(); }}>
+  <div class="modal-overlay show" id="settingsModal" use:portal onclick={(e) => { if (e.target === e.currentTarget) close(); }}>
     <div class="modal modal--settings">
       <div class="settings-header">
         <div class="settings-header-top">

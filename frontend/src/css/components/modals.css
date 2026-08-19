@@ -1,11 +1,14 @@
 /* ─── Modal System ─── */
 
+/* 弹窗打开时，模糊 body 下除弹窗外的所有内容（标题栏 + 侧边栏 + 主内容） */
+body:has(#modal-root .modal-overlay.show) > :not(#modal-root) {
+  filter: blur(16px) saturate(150%);
+}
+
 @utility modal-overlay {
   position: fixed;
   inset: 0;
   background: var(--overlay-dark);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
   z-index: 250;
   display: flex;
   align-items: center;

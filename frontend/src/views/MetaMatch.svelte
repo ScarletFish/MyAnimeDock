@@ -13,6 +13,7 @@
   import { showToast } from '../components/Toast.svelte';
   import { showConfirm } from '../components/ConfirmDialog.svelte';
   import { tr } from '../lib/anime-utils.js';
+  import { portal } from '../lib/portal.js';
   import { createSyncStream } from '../lib/sync-stream.js';
   import { loadLibrary } from './Library.svelte';
   import MetaMatchToolbar from '../components/metamatch/MetaMatchToolbar.svelte';
@@ -574,6 +575,7 @@
 {#if $metaMatchOpen}
   <div
     class="modal-overlay modal-overlay--metamatch show"
+    use:portal
     id="metaMatchModal"
     onclick={(e) => { if (e.target === e.currentTarget) closeModal(); }}
   >

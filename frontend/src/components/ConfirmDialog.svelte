@@ -2,6 +2,7 @@
   // ─── 独立确认弹窗 ───
   import { writable, get } from 'svelte/store';
   import { tr } from '../lib/anime-utils.js';
+  import { portal } from '../lib/portal.js';
 
   const confirmStore = writable(null);
 
@@ -30,6 +31,7 @@
 {#if $confirmStore}
   <div
     class="modal-overlay show modal-overlay--confirm"
+    use:portal
     role="dialog"
     tabindex="-1"
     aria-modal="true"

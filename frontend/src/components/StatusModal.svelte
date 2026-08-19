@@ -4,6 +4,7 @@
   // 只认 props，不 fetch、不查 libraryData/mylistData store。
   import { tr, api, coverSrc, localDateStr, todayStr } from '../lib/anime-utils.js';
   import { getStatusLabels } from '../lib/sort.js';
+  import { portal } from '../lib/portal.js';
   import { showToast } from './Toast.svelte';
   import { Select } from 'bits-ui';
 
@@ -251,7 +252,7 @@
 </script>
 
 {#if open}
-  <div class="modal-overlay show" id="svelte-statusModal" onclick={(e) => { if (e.target === e.currentTarget) open = false; }}>
+  <div class="modal-overlay show" id="svelte-statusModal" use:portal onclick={(e) => { if (e.target === e.currentTarget) open = false; }}>
     <div class="modal status-modal">
       <button class="status-modal-close" onclick={() => (open = false)} aria-label={tr('common.close')}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>

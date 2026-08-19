@@ -202,7 +202,7 @@
     box-shadow: 0 16px 48px rgba(0, 0, 0, 0.12);
   }
   .modal--settings {
-    background: rgba(var(--bg-rgb), 0.82);
+    background: var(--bg-elevated);
     border-color: rgba(var(--bg-rgb), 0.2);
     box-shadow: 0 8px 48px rgba(0, 0, 0, 0.1);
   }
@@ -320,7 +320,7 @@
 
   /* ─── Context Menu ─── */
   .context-menu {
-    background: rgba(255, 255, 255, 0.94);
+    background: #ffffff;
     border-color: rgba(0, 0, 0, 0.06);
     box-shadow:
       0 2px 4px rgba(0, 0, 0, 0.04),

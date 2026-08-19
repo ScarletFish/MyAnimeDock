@@ -105,8 +105,6 @@
   flex-direction: column;
   gap: var(--space-025);
   background: var(--bg-elevated);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--overlay-glass-border);
   border-radius: var(--radius-md);
   padding: var(--space-150);

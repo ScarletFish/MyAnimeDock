@@ -1,5 +1,7 @@
 <script>
   // ─── Svelte 版 Modal（复用现有 modals.css 类名）───
+  import { portal } from '../lib/portal.js';
+
   let {
     open = $bindable(false),   // 受控开关（父组件 bind:open）
     title = '',                // 可选标题（渲染 modal-header）
@@ -42,6 +44,7 @@
 {#if visible}
   <div
     class="modal-overlay"
+    use:portal
     class:show={open}
     role="button"
     tabindex="-1"

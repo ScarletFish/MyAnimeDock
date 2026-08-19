@@ -4,6 +4,7 @@
   import { tick } from 'svelte';
   import { showToast } from '../Toast.svelte';
   import { tr } from '../../lib/anime-utils.js';
+  import { portal } from '../../lib/portal.js';
   import { loadLibrary } from '../../views/Library.svelte';
   import { API as api } from '../../lib/api.js';
 
@@ -63,7 +64,7 @@
 </script>
 
 {#if open}
-  <div class="modal-overlay show" id="svelte-syncModal" onclick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}>
+  <div class="modal-overlay show" id="svelte-syncModal" use:portal onclick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}>
     <div class="modal modal--large">
       <h2>{tr('detail.syncMetadata')}</h2>
       <div class="form-group">

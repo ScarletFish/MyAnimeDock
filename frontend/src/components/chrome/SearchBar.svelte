@@ -108,6 +108,15 @@
     highlighted = -1;
   }
 
+  // ─── 重新聚焦：若已有查询则立即重开下拉（点击外部关闭后再点回输入框）───
+  function onFocus() {
+    const q = query.trim();
+    if (!q) return;
+    filtered = filterByQuery(q);
+    open = true;
+    highlighted = -1;
+  }
+
   // ─── 输入处理（防抖 300ms）───
   function onInput() {
     clearTimeout(searchTimer);
@@ -194,6 +203,7 @@
       bind:this={inputEl}
       bind:value={query}
       oninput={onInput}
+      onfocus={onFocus}
       onkeydown={onKeydown}
       placeholder={tr('nav.searchPlaceholder')}
       autocomplete="off"

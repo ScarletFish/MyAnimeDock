@@ -221,6 +221,24 @@
   color: var(--fg-muted);
 }
 
+/* 动漫结果首字母占位块 — 复用 .gray-cover 语言（display 字体/加粗/muted） */
+.titlebar__search-item-avatar {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  background: rgba(var(--accent-rgb), 0.08);
+  font-family: var(--font-display);
+  font-size: var(--text-compact-md);
+  font-weight: var(--fw-bold);
+  color: var(--fg-muted);
+  opacity: 0.85;
+  line-height: 1;
+}
+
 .titlebar__search-item-text {
   display: flex;
   flex-direction: column;

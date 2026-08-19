@@ -208,7 +208,7 @@
         <div class="titlebar__search-group">{tr('search.group.anime')}</div>
         {#each filtered.anime as r, i}
           <div class="titlebar__search-item" class:highlighted={highlighted === i} onclick={() => navigateTo(r)}>
-            <svg class="titlebar__search-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
+            <span class="titlebar__search-item-avatar">{(r.label || '?')[0].toUpperCase()}</span>
             <div class="titlebar__search-item-text">
               <span class="titlebar__search-item-label">{r.label}</span>
               {#if r.sublabel}<span class="titlebar__search-item-sublabel">{r.sublabel}</span>{/if}

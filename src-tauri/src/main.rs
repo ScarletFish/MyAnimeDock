@@ -50,15 +50,31 @@ fn should_spawn_sidecar() -> bool {
 
 /// 获取 .port 文件路径（与 Node.js 端 DATA_DIR 保持一致）。
 /// 生产模式：%APPDATA%/MyAnimeDock/.port
-/// 开发模式：data/.port（仅在手动启动时有用，sidecar 模式不读）
+/// 开发模式：项目根 data/.port（server/lib/paths.js findServerRoot 定位项目根，此处对称向上遍历）
 fn port_file_path() -> PathBuf {
     if cfg!(debug_assertions) {
-        // dev 模式：data/.port（与 server/lib/config.ts DATA_DIR 一致：项目根 data/）
-        let exe_dir = std::env::current_exe()
+        // dev 模式：current_exe 在 src-tauri/target/debug/，向上遍历找项目根
+        // （package.json name=anime-manager），join data/.port
+        let mut dir = std::env::current_exe()
             .ok()
             .and_then(|p| p.parent().map(|p| p.to_path_buf()))
             .unwrap_or_else(|| PathBuf::from("."));
-        exe_dir.join("data").join(".port")
+        for _ in 0..8 {
+            let pkg = dir.join("package.json");
+            if pkg.exists() {
+                if let Ok(s) = std::fs::read_to_string(&pkg) {
+                    if s.contains("\"name\": \"anime-manager\"") {
+                        return dir.join("data").join(".port");
+                    }
+                }
+            }
+            match dir.parent() {
+                Some(p) => dir = p.to_path_buf(),
+                None => break,
+            }
+        }
+        // 找不到项目根 → 回退 exe 同级 data（与旧行为一致）
+        dir.join("data").join(".port")
     } else {
         // 生产模式：%APPDATA%/MyAnimeDock/.port
         let appdata = std::env::var("APPDATA").unwrap_or_else(|_| ".".to_string());

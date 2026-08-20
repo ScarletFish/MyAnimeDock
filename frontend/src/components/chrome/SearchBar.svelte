@@ -25,7 +25,7 @@
   // 下拉用 Svelte {#each} 渲染（自动转义），不再手动拼 HTML 字符串。
   import { onMount, onDestroy } from 'svelte';
   import { tr } from '../../lib/anime-utils.js';
-  import { ANILIST_TAG_DATA } from '../../lib/tag-data.js';
+  import { filterTags, tagZh, tagSearchFields } from '../../lib/tag-utils.js';
   import { libraryData } from '../../lib/ui-state.js';
   import { showDetail } from '../../lib/router.js';
   import { settingsOpen, settingsTab } from '../../views/Settings.svelte';
@@ -55,6 +55,8 @@
   let searchTimer = null;
   let containerEl = $state(null);
   let inputEl = $state(null);
+  // 详情页 tag 点击派发事件后，跳过紧随其后的 document click（避免立即关闭下拉）
+  let suppressNextDocClick = false;
 
   // 键盘导航用的扁平列表（渲染顺序：标签在前、动漫、设置在后）
   let flatItems = $derived([...filtered.tags, ...filtered.anime, ...filtered.settings]);
@@ -93,9 +95,8 @@
       const tagSet = new Set();
       if ($libraryData && $libraryData.length) {
         for (const a of $libraryData) {
-          for (const t of (a.anilistTags || [])) {
-            if (t.isMediaSpoiler) continue;
-            tagSet.add(ANILIST_TAG_DATA[t.name]?.zh || t.name);
+          for (const t of filterTags(a.anilistTags)) {
+            tagSet.add(tagZh(t.name));
           }
         }
       }
@@ -112,15 +113,8 @@
         let matched = false;
         let matchField = '';
         if (isTagSearch) {
-          // 标签搜索：tags / genres / anilistTags（英文原始名 + 中文名，排除剧透）
-          const tagFields = [
-            ...(a.tags || []),
-            ...(a.genres || []),
-            ...(a.anilistTags || []).filter((t) => !t.isMediaSpoiler).flatMap((t) => {
-              const zh = ANILIST_TAG_DATA[t.name]?.zh;
-              return zh && zh !== t.name ? [t.name, zh] : [t.name];
-            }),
-          ].filter(Boolean);
+          // 标签搜索：anilistTags（英文原始名 + 中文名，排除剧透）
+          const tagFields = tagSearchFields(a.anilistTags);
           const hit = tagFields.find((t) => t.toLowerCase().indexOf(queryStr) !== -1);
           if (hit) { matched = true; matchField = hit; }
         } else {
@@ -252,6 +246,7 @@
 
   // ─── 外部点击关闭 ───
   function onDocClick(e) {
+    if (suppressNextDocClick) { suppressNextDocClick = false; return; }
     if (containerEl && !containerEl.contains(e.target)) closeDropdown();
   }
 
@@ -277,6 +272,7 @@
     filtered = filterByQuery(query);
     open = true;
     highlighted = -1;
+    suppressNextDocClick = true;
   }
 
   onMount(() => {
@@ -360,7 +356,7 @@
         <div class="titlebar__search-group">{tr('common.settings')}</div>
         {#each filtered.settings as s, i}
           <div class="titlebar__search-item" class:highlighted={highlighted === filtered.tags.length + filtered.anime.length + i} onclick={() => navigateTo(s)}>
-            <svg class="titlebar__search-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+            <span class="titlebar__search-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></span>
             <div class="titlebar__search-item-text">
               <span class="titlebar__search-item-label">{s.label}</span>
               <span class="titlebar__search-item-sublabel">{s.sublabel}</span>

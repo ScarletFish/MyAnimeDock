@@ -12,6 +12,7 @@
 <script>
   import { onMount, tick } from 'svelte';
   import { ANILIST_TAG_DATA } from '../lib/tag-data.js';
+  import { tagZh } from '../lib/tag-utils.js';
   import { tr } from '../lib/anime-utils.js';
   import * as d3 from 'd3';
   import WordCloud from 'wordcloud';
@@ -513,11 +514,6 @@
       if (!silent) { chordLoading = false; chordEmpty = true; }
       console.error('Chord chart load error:', err);
     }
-  }
-
-  function tagZh(name) {
-    const d = ANILIST_TAG_DATA[name];
-    return (d && d.zh) || name;
   }
 
   function renderChordChart(tags, matrix) {

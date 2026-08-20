@@ -15,6 +15,8 @@
    */
   export function openDetail(id, fromRect, fromSrc, sourceView = 'library') {
     pendingOpen = { id, fromRect, fromSrc, sourceView };
+    // 已在详情页时 detailOpen 值不变，store 不触发更新；先置 false 再置 true 强制触发 $effect 消费 pendingOpen
+    detailOpen.set(false);
     detailOpen.set(true);
   }
 
@@ -38,6 +40,7 @@
   import SyncModal from '../components/detail/SyncModal.svelte';
   import FinishConfirmModal from '../components/detail/FinishConfirmModal.svelte';
   import { ANILIST_TAG_DATA } from '../lib/tag-data.js';
+  import { filterTags, tagZh } from '../lib/tag-utils.js';
   import { searchTag } from '../components/chrome/SearchBar.svelte';
   import { tr } from '../lib/anime-utils.js';
   import { libraryData, mylistData, pendingAutoPlay, pendingFinishAnimeId } from '../lib/ui-state.js';
@@ -91,11 +94,10 @@
 
   // Tags
   let tags = $derived.by(() => {
-    return (anime?.anilistTags || [])
-      .filter((t) => !t.isGeneralSpoiler)
+    return filterTags(anime?.anilistTags)
       .map((t) => {
         const d = ANILIST_TAG_DATA[t.name];
-        return { name: d?.zh || t.name, desc: d?.descZh || d?.descEn || '', rank: t.rank };
+        return { name: tagZh(t.name), desc: d?.descZh || d?.descEn || '', rank: t.rank };
       })
       .sort((x, y) => y.rank - x.rank);
   });

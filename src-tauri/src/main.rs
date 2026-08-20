@@ -1,7 +1,7 @@
 // 在 Windows 上隐藏控制台窗口（仅在 release 模式生效，dev 模式保留控制台输出）
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use tauri::{Manager, WebviewWindowBuilder};
+use tauri::{Listener, Manager, WebviewWindowBuilder};
 use std::process::{Command, Stdio};
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -138,8 +138,9 @@ fn main() {
         // 单实例插件必须第一个注册，确保在其它插件之前生效
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             bootstrap_log("single-instance callback triggered (2nd instance)");
-            // 第二次启动时把已有窗口唤起到前台
+            // 第二次启动时把已有窗口唤起到前台（窗口可能仍处于隐藏加载态，先显示）
             if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
                 let _ = window.set_focus();
             }
         }))
@@ -151,6 +152,14 @@ fn main() {
         .setup(|app| {
             bootstrap_log("setup() entered");
             let handle = app.handle();
+
+            // 前端渲染完成后显示窗口（窗口先隐藏，避免启动闪烁）
+            let ready_handle = handle.clone();
+            handle.listen("app-ready", move |_| {
+                if let Some(window) = ready_handle.get_webview_window("main") {
+                    let _ = window.show();
+                }
+            });
             
             // 生产模式或 TAURI_PROD=1 时自行启动 sidecar；
             // 普通 dev 模式由手动 `npm run dev:server` 提供后端
@@ -334,9 +343,25 @@ fn main() {
                 .resizable(true)
                 .decorations(false)
                 .background_color(bg_color)
+                .visible(false)
                 .build()
                 {
-                    Ok(_) => bootstrap_log("window created OK"),
+                    Ok(_) => {
+                        bootstrap_log("window created OK");
+                        // 兜底：5 秒后仍未收到前端 app-ready 事件则强制显示窗口。
+                        // 正常流程前端渲染完必发 app-ready，此处仅防前端启动 JS 抛错导致事件丢失。
+                        let fb = handle_clone.clone();
+                        std::thread::spawn(move || {
+                            std::thread::sleep(Duration::from_secs(5));
+                            match fb.get_webview_window("main") {
+                                Some(w) => {
+                                    bootstrap_log("fallback: showing window (app-ready not received in 5s)");
+                                    let _ = w.show();
+                                }
+                                None => bootstrap_log("ERROR fallback: window 'main' not found"),
+                            }
+                        });
+                    }
                     Err(e) => bootstrap_log(&format!("ERROR creating window: {}", e)),
                 }
             });

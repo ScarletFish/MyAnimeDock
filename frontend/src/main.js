@@ -77,6 +77,11 @@ bindDom();
   showView('library');
   startGlobalMpvStatus();
 
+  // 通知 Tauri 窗口可以显示了（窗口先隐藏，页面就绪后再显示，避免启动闪烁）
+  if (window.__TAURI__?.event?.emit) {
+    window.__TAURI__.event.emit('app-ready').catch(() => {});
+  }
+
   if (configCache?.firstRun) {
     onboardingOpen.set(true);
   }

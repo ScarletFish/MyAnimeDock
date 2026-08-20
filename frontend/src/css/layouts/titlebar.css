@@ -199,6 +199,15 @@
   color: var(--fg-muted);
 }
 
+.titlebar__search-count {
+  margin-left: var(--space-1);
+  font-weight: var(--fw-normal);
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--fg-muted);
+  opacity: 0.8;
+}
+
 .titlebar__search-item {
   display: flex;
   align-items: center;
@@ -258,6 +267,12 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* 命中关键词高亮 */
+.titlebar__search-item-mark {
+  color: var(--accent);
+  font-weight: var(--fw-semibold);
 }
 
 .titlebar__search-empty {

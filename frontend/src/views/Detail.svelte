@@ -38,6 +38,7 @@
   import SyncModal from '../components/detail/SyncModal.svelte';
   import FinishConfirmModal from '../components/detail/FinishConfirmModal.svelte';
   import { ANILIST_TAG_DATA } from '../lib/tag-data.js';
+  import { searchTag } from '../components/chrome/SearchBar.svelte';
   import { tr } from '../lib/anime-utils.js';
   import { libraryData, mylistData, pendingAutoPlay, pendingFinishAnimeId } from '../lib/ui-state.js';
   import { loadLibrary } from './Library.svelte';
@@ -756,9 +757,9 @@
                 {#if studio}<span class="tag-pill tag-pill--studio">{tr('detail.studioLabel')} {studio}</span>{/if}
                 {#each shownTags as tag}
                   {#if tag.desc}
-                    <span class="tag-pill" data-tooltip={tag.desc} data-tooltip-rich>{tag.name}</span>
+                    <span class="tag-pill" data-tooltip={tag.desc} data-tooltip-rich onclick={() => searchTag(tag.name)}>{tag.name}</span>
                   {:else}
-                    <span class="tag-pill">{tag.name}</span>
+                    <span class="tag-pill" onclick={() => searchTag(tag.name)}>{tag.name}</span>
                   {/if}
                 {/each}
                 {#if !tagsExpanded && tagsRemaining > 0}

@@ -354,6 +354,8 @@ export const I18N_ZH = {
   'search.settingsPage': '设置页',
   'search.noResults': '无匹配结果',
   'search.group.anime': '动漫',
+  'search.group.tags': '标签',
+  'search.resultCount': '共 {{count}} 条',
 
   // ── 引导页 ──
   'onboarding.welcome': '欢迎使用 MyAnimeDock',

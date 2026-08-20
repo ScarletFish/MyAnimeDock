@@ -48,13 +48,13 @@ fn should_spawn_sidecar() -> bool {
     !cfg!(debug_assertions) || std::env::var("TAURI_PROD").is_ok()
 }
 
-/// 获取 .port 文件路径（与 Node.js 端 DATA_DIR 保持一致）。
-/// 生产模式：%APPDATA%/MyAnimeDock/.port
-/// 开发模式：项目根 data/.port（server/lib/paths.js findServerRoot 定位项目根，此处对称向上遍历）
-fn port_file_path() -> PathBuf {
+/// 获取 DATA_DIR（与 Node.js 端 DATA_DIR 保持一致）。
+/// 生产模式：%APPDATA%/MyAnimeDock
+/// 开发模式：项目根 data/（server/lib/paths.js findServerRoot 定位项目根，此处对称向上遍历）
+fn data_dir_path() -> PathBuf {
     if cfg!(debug_assertions) {
         // dev 模式：current_exe 在 src-tauri/target/debug/，向上遍历找项目根
-        // （package.json name=anime-manager），join data/.port
+        // （package.json name=anime-manager），join data
         let mut dir = std::env::current_exe()
             .ok()
             .and_then(|p| p.parent().map(|p| p.to_path_buf()))
@@ -64,7 +64,7 @@ fn port_file_path() -> PathBuf {
             if pkg.exists() {
                 if let Ok(s) = std::fs::read_to_string(&pkg) {
                     if s.contains("\"name\": \"anime-manager\"") {
-                        return dir.join("data").join(".port");
+                        return dir.join("data");
                     }
                 }
             }
@@ -74,11 +74,32 @@ fn port_file_path() -> PathBuf {
             }
         }
         // 找不到项目根 → 回退 exe 同级 data（与旧行为一致）
-        dir.join("data").join(".port")
+        dir.join("data")
     } else {
-        // 生产模式：%APPDATA%/MyAnimeDock/.port
+        // 生产模式：%APPDATA%/MyAnimeDock
         let appdata = std::env::var("APPDATA").unwrap_or_else(|_| ".".to_string());
-        PathBuf::from(appdata).join("MyAnimeDock").join(".port")
+        PathBuf::from(appdata).join("MyAnimeDock")
+    }
+}
+
+/// 获取 .port 文件路径（DATA_DIR/.port）
+fn port_file_path() -> PathBuf {
+    data_dir_path().join(".port")
+}
+
+/// 读取主题模式（config.json 的 themeMode），返回 true = dark / false = light。
+/// config.json 缺失或解析失败时默认 dark（与 server 端 DEFAULT_CONFIG 一致）。
+fn read_theme_mode() -> bool {
+    let cfg_path = data_dir_path().join("config.json");
+    match std::fs::read_to_string(&cfg_path) {
+        Ok(s) => {
+            if let Ok(v) = serde_json::from_str::<serde_json::Value>(&s) {
+                let mode = v.get("themeMode").and_then(|m| m.as_str()).unwrap_or("dark");
+                return mode != "light";
+            }
+            true
+        }
+        Err(_) => true,
     }
 }
 
@@ -293,6 +314,14 @@ fn main() {
                 };
                 
                 bootstrap_log(&format!("creating window with URL: {}", url_str));
+                // 窗口背景色按主题模式适配（dark #050505 / light #f2f2f2），
+                // 避免 WebView 加载前端前窗口白屏一闪
+                let is_dark = read_theme_mode();
+                let bg_color = if is_dark {
+                    tauri::window::Color(5, 5, 5, 255)
+                } else {
+                    tauri::window::Color(242, 242, 242, 255)
+                };
                 match WebviewWindowBuilder::new(
                     &handle_clone,
                     "main",
@@ -304,9 +333,7 @@ fn main() {
                 .center()
                 .resizable(true)
                 .decorations(false)
-                // 窗口背景色设为深色（#050505，与 dark 主题 --bg-deep 一致），
-                // 避免 WebView 加载前端前窗口白屏一闪
-                .background_color(tauri::window::Color(5, 5, 5, 255))
+                .background_color(bg_color)
                 .build()
                 {
                     Ok(_) => bootstrap_log("window created OK"),

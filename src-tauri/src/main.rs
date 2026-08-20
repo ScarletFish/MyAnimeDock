@@ -304,6 +304,9 @@ fn main() {
                 .center()
                 .resizable(true)
                 .decorations(false)
+                // 窗口背景色设为深色（#050505，与 dark 主题 --bg-deep 一致），
+                // 避免 WebView 加载前端前窗口白屏一闪
+                .background_color(tauri::window::Color(5, 5, 5, 255))
                 .build()
                 {
                     Ok(_) => bootstrap_log("window created OK"),

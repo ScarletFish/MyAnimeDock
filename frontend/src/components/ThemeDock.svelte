@@ -59,11 +59,18 @@
     }, 500);
   }
 
+  // 主题/模式持久化到 server config.json（Rust 启动时读它设置窗口背景色）。
+  // 必须用 POST（server 仅注册 POST /api/config，PUT 会 404）。
+  function persistTheme(theme, mode) {
+    api.post('/api/config', { theme, themeMode: mode }).catch(() => {});
+  }
+
   function selectTheme(theme) {
     if (theme === activeTheme) return;
     const mode = dockThemeMode ? 'light' : 'dark';
     animateThemeTransition(theme, mode);
     activeTheme = theme;
+    persistTheme(theme, mode);
   }
 
   function handleDockThemeModeToggle() {
@@ -74,6 +81,7 @@
     if (activeTheme === oldTheme && newMode === oldMode) return;
     updateDockThemeToggleLabels();
     animateThemeTransition(activeTheme, newMode);
+    persistTheme(activeTheme, newMode);
   }
 
   let _dockZoomTimer = null;
@@ -82,7 +90,7 @@
     applyZoom(scale);
     clearTimeout(_dockZoomTimer);
     _dockZoomTimer = setTimeout(async () => {
-      try { await api.put('/api/config', { uiScale: scale }); } catch (_) {}
+      try { await api.post('/api/config', { uiScale: scale }); } catch (_) {}
     }, 300);
   }
 

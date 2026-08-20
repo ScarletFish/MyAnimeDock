@@ -42,7 +42,7 @@
 }
 
 .stats-card-subtitle {
-  font-size: var(--text-base);
+  font-size: var(--text-md);
   color: var(--fg-muted);
 }
 
@@ -173,8 +173,8 @@
 }
 
 .rating-chart-badge {
-  color: var(--rating);
-  font-size: var(--text-xl);
+  color: var(--accent);
+  font-size: var(--text-3xl);
   line-height: 1;
 }
 
@@ -188,7 +188,7 @@
 }
 
 .rating-chart-avg-label {
-  font-size: var(--text-sm);
+  font-size: var(--text-md);
   color: var(--fg-muted);
 }
 
@@ -207,7 +207,7 @@
 .rating-row-score {
   min-width: var(--space-8);
   font-family: var(--font-mono);
-  font-size: var(--text-sm);
+  font-size: var(--text-md);
   font-weight: var(--fw-semibold);
   color: var(--fg-secondary);
   text-align: right;
@@ -237,7 +237,7 @@
 .rating-row-count {
   min-width: var(--space-10);
   font-family: var(--font-mono);
-  font-size: var(--text-sm);
+  font-size: var(--text-md);
   color: var(--fg-muted);
   text-align: right;
   flex-shrink: 0;
@@ -280,7 +280,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  font-size: var(--text-sm);
+  font-size: var(--text-md);
 }
 
 .season-legend-swatch {
@@ -302,6 +302,6 @@
 }
 
 .season-chart-hint {
-  font-size: var(--text-sm);
+  font-size: var(--text-md);
   color: var(--fg-muted);
 }

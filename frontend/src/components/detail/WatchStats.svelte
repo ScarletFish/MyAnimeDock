@@ -72,7 +72,7 @@
     svg.append('text').attr('text-anchor', 'middle').attr('dy', '-0.15em').attr('fill', tc.text)
       .attr('font-size', '1.4rem').attr('font-weight', '700').text(watchedEp + '/' + totalEp);
     svg.append('text').attr('text-anchor', 'middle').attr('dy', '1.1em').attr('fill', tc.muted)
-      .attr('font-size', '0.95rem').attr('id', 'wsDur_' + version).text('');
+      .attr('font-size', '1.016rem').attr('id', 'wsDur_' + version).text('');
   }
 
   function renderWsChart(container, weeks, version) {
@@ -128,10 +128,10 @@
         if (i % labelInt === 0 || i === weeks.length - 1) return (weeks[i].start.getMonth() + 1) + '/' + weeks[i].start.getDate();
         return '';
       }))
-      .selectAll('text').attr('fill', tc.muted).attr('font-size', '0.7rem').attr('dy', '1em');
+      .selectAll('text').attr('fill', tc.muted).attr('font-size', '0.938rem').attr('dy', '1em');
     svg.selectAll('.domain').attr('stroke', tc.border);
     svg.append('g').call(d3.axisLeft(y).ticks(3).tickFormat((d) => d >= 60 ? (d / 60).toFixed(0) + 'h' : d + 'm'))
-      .selectAll('text').attr('fill', tc.muted).attr('font-size', '0.7rem');
+      .selectAll('text').attr('fill', tc.muted).attr('font-size', '0.938rem');
     svg.selectAll('.domain').attr('stroke', tc.border);
   }
 

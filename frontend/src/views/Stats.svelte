@@ -115,7 +115,7 @@
       const list = entries.map(([name, count]) => {
         const d = ANILIST_TAG_DATA[name];
         const word = (d && d.zh) || name;
-        const weight = 18 + ((count - minCount) / range) * 25;
+        const weight = 16 + ((count - minCount) / range) * 22;
         return [word, Math.round(weight)];
       });
       if (!silent) { wordcloudLoading = false; wordcloudLoaded = true; }
@@ -323,7 +323,7 @@
       .selectAll('text')
       .attr('fill', tc.muted)
       .attr('font-family', tc.fontBody)
-      .attr('font-size', '12px')
+      .attr('font-size', '15px')
       .attr('dy', '1.2em');
     svg.selectAll('.domain').attr('stroke', tc.border);
 
@@ -332,7 +332,7 @@
       .selectAll('text')
       .attr('fill', tc.muted)
       .attr('font-family', tc.fontMono)
-      .attr('font-size', '12px');
+      .attr('font-size', '15px');
     svg.selectAll('.domain').attr('stroke', tc.border);
   }
 
@@ -391,6 +391,31 @@
   }
 
   // ─── Season Distribution (Donut + Legend) ───
+  // 固定四季色相（绿/黄/橙/蓝），明暗随主题自适应：深色主题提亮，浅色主题压暗，色相不变。
+  const SEASON_HUES = {
+    spring: { h: 142, s: 0.7, l: 0.58 },
+    summer: { h: 48, s: 0.96, l: 0.53 },
+    autumn: { h: 25, s: 0.95, l: 0.53 },
+    winter: { h: 213, s: 0.94, l: 0.68 }
+  };
+
+  function seasonColor({ h, s, l }, isDark) {
+    // 深色主题提亮（+0.12），浅色主题压暗（-0.13）并稍增饱和以在浅底上更醒目
+    const L = isDark ? Math.min(l + 0.12, 0.9) : Math.max(l - 0.13, 0.18);
+    const S = isDark ? s : Math.min(s + 0.05, 1);
+    const c = (1 - Math.abs(2 * L - 1)) * S;
+    const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+    const m = L - c / 2;
+    let r = 0, g = 0, b = 0;
+    if (h < 60) { r = c; g = x; }
+    else if (h < 120) { r = x; g = c; }
+    else if (h < 180) { g = c; b = x; }
+    else if (h < 240) { g = x; b = c; }
+    else if (h < 300) { r = x; b = c; }
+    else { r = c; b = x; }
+    return `rgb(${Math.round((r + m) * 255)},${Math.round((g + m) * 255)},${Math.round((b + m) * 255)})`;
+  }
+
   async function loadSeasonChart(silent = false) {
     if (!silent) {
       seasonLoading = true;
@@ -400,11 +425,12 @@
     try {
       const data = await api.get('/api/stats/seasons');
       const seasons = data.seasons || {};
+      const tc = getThemeColors();
       const entries = [
-        { key: 'spring', label: tr('stats.spring'), color: '#4ade80' },
-        { key: 'summer', label: tr('stats.summer'), color: '#facc15' },
-        { key: 'autumn', label: tr('stats.autumn'), color: '#f97316' },
-        { key: 'winter', label: tr('stats.winter'), color: '#60a5fa' }
+        { key: 'spring', label: tr('stats.spring'), color: seasonColor(SEASON_HUES.spring, tc.isDark) },
+        { key: 'summer', label: tr('stats.summer'), color: seasonColor(SEASON_HUES.summer, tc.isDark) },
+        { key: 'autumn', label: tr('stats.autumn'), color: seasonColor(SEASON_HUES.autumn, tc.isDark) },
+        { key: 'winter', label: tr('stats.winter'), color: seasonColor(SEASON_HUES.winter, tc.isDark) }
       ];
       const items = entries.map(e => ({ ...e, count: seasons[e.key] || 0 }));
       const total = items.reduce((s, v) => s + v.count, 0) + (seasons.unknown || 0);
@@ -609,7 +635,7 @@
       .attr('text-anchor', d => d.angle > Math.PI ? 'end' : 'start')
       .attr('fill', tc.text)
       .attr('font-family', tc.fontBody)
-      .attr('font-size', '12px')
+      .attr('font-size', '15px')
       .attr('font-weight', '600')
       .text(d => tagZh(tags[d.index]));
   }

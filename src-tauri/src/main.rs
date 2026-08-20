@@ -2,12 +2,12 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use tauri::{Manager, WebviewWindowBuilder};
-use std::process::Command;
+use std::process::{Command, Stdio};
 use std::path::PathBuf;
 use std::sync::Mutex;
 use std::time::{Duration, SystemTime};
 use log::{info, warn};
-use std::io::Write;
+use std::io::{Write, BufRead, BufReader, Read};
 use url::Url;
 
 #[cfg(target_os = "windows")]
@@ -66,32 +66,32 @@ fn port_file_path() -> PathBuf {
     }
 }
 
-/// 读取 .port 文件获取实际端口号，最多等待 10 秒。
-/// 如果文件始终不存在（非 sidecar 场景），回退到默认端口 3456。
-fn read_actual_port() -> u16 {
+/// 读取 .port 文件获取实际端口号（仅 dev 模式使用：server 由外部启动，无 stdout 管道可接）。
+/// 最多等待 10 秒；找不到则返回 None（不猜端口，窗口不创建）。
+fn read_actual_port() -> Option<u16> {
     let port_file = port_file_path();
     bootstrap_log(&format!("read_actual_port: looking for {:?}", port_file));
-    for i in 0..20 {
+    for i in 0..100 {
         if port_file.exists() {
             match std::fs::read_to_string(&port_file) {
                 Ok(s) => {
                     if let Ok(port) = s.trim().parse::<u16>() {
                         bootstrap_log(&format!("read_actual_port: found port {}", port));
-                        return port;
+                        return Some(port);
                     }
-                    warn!("Invalid .port content: '{}', using default 3456", s.trim());
-                    return 3456;
+                    warn!("Invalid .port content: '{}'", s.trim());
+                    return None;
                 }
                 Err(e) => warn!("Failed to read .port: {}", e),
             }
-        } else if i % 5 == 0 {
+        } else if i % 25 == 0 {
             bootstrap_log(&format!("read_actual_port: still waiting (attempt {})", i));
         }
-        std::thread::sleep(Duration::from_millis(500));
+        std::thread::sleep(Duration::from_millis(100));
     }
-    bootstrap_log("read_actual_port: TIMEOUT after 10s, falling back to 3456");
-    warn!(".port file not found after 10s, falling back to 3456");
-    3456
+    bootstrap_log("read_actual_port: TIMEOUT after 10s, .port not found");
+    warn!(".port file not found after 10s");
+    None
 }
 
 fn main() {
@@ -119,6 +119,10 @@ fn main() {
             // 普通 dev 模式由手动 `npm run dev:server` 提供后端
             let spawn = should_spawn_sidecar();
             bootstrap_log(&format!("should_spawn_sidecar() = {}", spawn));
+            
+            // 端口通知 channel：sidecar 模式由 stdout 读线程解析 PORT= 行后发送，
+            // 窗口线程阻塞接收（响应式，无轮询、无超时回退）
+            let (port_tx, port_rx) = std::sync::mpsc::channel::<u16>();
             if spawn {
                 let sidecar_path = match get_sidecar_path(&handle) {
                     Ok(p) => {
@@ -134,14 +138,16 @@ fn main() {
                 
                 let mut cmd = Command::new(&sidecar_path);
                 cmd.current_dir(sidecar_path.parent().unwrap())
-                    .env("TAURI_SIDECAR", "1");
+                    .env("TAURI_SIDECAR", "1")
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::piped());
                 
                 // 隐藏 sidecar 的控制台窗口（GUI 应用不应显示后台控制台）
                 #[cfg(target_os = "windows")]
                 cmd.creation_flags(CREATE_NO_WINDOW);
                 
                 bootstrap_log("calling cmd.spawn()...");
-                let child = match cmd.spawn() {
+                let mut child = match cmd.spawn() {
                     Ok(c) => {
                         bootstrap_log("sidecar spawned OK");
                         c
@@ -151,6 +157,43 @@ fn main() {
                         panic!("Failed to start Node.js sidecar: {}", e);
                     }
                 };
+                
+                // 接管 stdout 管道：读线程解析 PORT= 行 → 端口 channel（响应式端口发现）
+                if let Some(stdout) = child.stdout.take() {
+                    std::thread::spawn(move || {
+                        let reader = BufReader::new(stdout);
+                        for line in reader.lines() {
+                            match line {
+                                Ok(l) => {
+                                    if let Some(port_str) = l.strip_prefix("PORT=") {
+                                        if let Ok(port) = port_str.trim().parse::<u16>() {
+                                            bootstrap_log(&format!("stdout reader: got PORT={}", port));
+                                            let _ = port_tx.send(port);
+                                        }
+                                    }
+                                }
+                                Err(e) => {
+                                    bootstrap_log(&format!("stdout reader error: {}", e));
+                                    break;
+                                }
+                            }
+                        }
+                        bootstrap_log("stdout reader: EOF");
+                    });
+                }
+                
+                // 接管 stderr 管道：持续 drain，防止管道缓冲满阻塞 server 日志写入
+                if let Some(mut stderr) = child.stderr.take() {
+                    std::thread::spawn(move || {
+                        let mut buf = [0u8; 4096];
+                        loop {
+                            match stderr.read(&mut buf) {
+                                Ok(0) | Err(_) => break,
+                                Ok(_) => {}
+                            }
+                        }
+                    });
+                }
                 
                 // 存储 child 以便退出时清理
                 if let Ok(mut guard) = handle.state::<SidecarProcess>().0.lock() {
@@ -197,15 +240,33 @@ fn main() {
                 });
             }
             
-            // 等待 server 就绪后创建窗口（URL 直接指向服务器，无需 placeholder 页面）
+            // 等待 server 端口后创建窗口（URL 直接指向服务器，无需 placeholder 页面）
             let handle_clone = handle.clone();
             std::thread::spawn(move || {
-                bootstrap_log("health check thread started");
-                info!("Waiting for server to be ready...");
-                let port = read_actual_port();
-                bootstrap_log(&format!("read_actual_port() = {}", port));
-                wait_for_server_ready(port);
-                
+                let port = if spawn {
+                    // sidecar 模式：阻塞等 stdout 管道的 PORT= 行（响应式，无轮询、无超时回退）。
+                    // server 未输出 PORT= 就退出 → channel 关闭 → recv 返回 Err → 不建窗。
+                    match port_rx.recv() {
+                        Ok(p) => {
+                            bootstrap_log(&format!("window thread: got port {} from stdout", p));
+                            p
+                        }
+                        Err(_) => {
+                            bootstrap_log("ERROR: server exited before reporting PORT, window not created");
+                            return;
+                        }
+                    }
+                } else {
+                    // dev 模式：server 由外部手动启动（stdout 不归本进程），读 .port 文件
+                    match read_actual_port() {
+                        Some(p) => p,
+                        None => {
+                            bootstrap_log("ERROR: .port not found, window not created");
+                            return;
+                        }
+                    }
+                };
+
                 let url_str = format!("http://localhost:{}", port);
                 let url = match Url::parse(&url_str) {
                     Ok(u) => u,
@@ -287,30 +348,4 @@ fn get_sidecar_path(handle: &tauri::AppHandle) -> Result<PathBuf, Box<dyn std::e
     }
     
     Err("Sidecar executable not found".into())
-}
-
-fn wait_for_server_ready(port: u16) {
-    let url = format!("http://localhost:{}/api/health", port);
-    bootstrap_log(&format!("wait_for_server_ready: polling {}", url));
-    for attempt in 1..=45 {
-        if let Ok(resp) = ureq::get(&url).call() {
-            if resp.status() == 200 {
-                // Parse response to check ready flag
-                if let Ok(body) = resp.into_body().read_to_string() {
-                    if body.contains("\"ready\":true") {
-                        info!("Server ready after {attempt} attempts on port {port}");
-                        bootstrap_log(&format!("server ready after {} attempts", attempt));
-                        return;
-                    }
-                }
-            }
-        }
-        if attempt % 10 == 0 {
-            bootstrap_log(&format!("wait_for_server_ready: still waiting (attempt {})", attempt));
-        }
-        std::thread::sleep(Duration::from_millis(500));
-    }
-    bootstrap_log("wait_for_server_ready: TIMEOUT after 45 attempts (~22.5s)");
-    warn!("Server did not become ready within timeout on port {port}");
-    // 窗口将在调用方无条件创建（URL 指向 server），即使未就绪也能让用户看到错误
 }

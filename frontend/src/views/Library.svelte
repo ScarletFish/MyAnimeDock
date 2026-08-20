@@ -29,7 +29,7 @@
   import { initScrollDots } from '../lib/scroll-dots.js';
   import { getDashboardLayout } from '../lib/dashboard-layout.js';
   import { tr } from '../lib/anime-utils.js';
-  import { libraryData, pendingAutoPlay } from '../lib/ui-state.js';
+  import { libraryData, pendingAutoPlay, consumeStartupLibraryPromise } from '../lib/ui-state.js';
   import { showView, showDetail, getLibraryScrollTop, __skipViewEnter } from '../lib/router.js';
   import { settingsOpen } from './Settings.svelte';
   import { metaMatchOpen } from './MetaMatch.svelte';
@@ -110,7 +110,8 @@
     returnedToPosition = fromViewSwitch && restore > 0;
     loading = true;
     try {
-      const newData = await api.get('/api/library');
+      // 首次加载消费启动预取 promise（并行发起，省串行 RTT）；之后走全新请求。
+      const newData = await (consumeStartupLibraryPromise() ?? api.get('/api/library'));
       libraryData.set(newData);
       layout = getDashboardLayout();
       await loadStats();

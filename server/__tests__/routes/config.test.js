@@ -90,46 +90,6 @@ describe('config route handlers', () => {
     });
   });
 
-  describe('handleHealth', () => {
-    it('returns 200 with ready:true and correct library count', () => {
-      const state = mockState({
-        data: { library: [{ id: '1' }, { id: '2' }, { id: '3' }] },
-        startupTime: Date.now() - 10000,
-      });
-      const req = mockReq({ url: '/api/health' });
-      const res = mockRes();
-      config.handleHealth(req, res, state);
-      assert.strictEqual(res._status, 200);
-      assert.strictEqual(res._body.ready, true);
-      assert.strictEqual(res._body.library, 3);
-    });
-
-    it('returns 200 with correct uptime calculation', () => {
-      const startupTime = Date.now() - 5000;
-      const state = mockState({
-        data: { library: [] },
-        startupTime,
-      });
-      const req = mockReq({ url: '/api/health' });
-      const res = mockRes();
-      config.handleHealth(req, res, state);
-      assert.strictEqual(res._status, 200);
-      assert.ok(res._body.uptime >= 4900 && res._body.uptime <= 5100);
-    });
-
-    it('returns 200 with library:0 when data is missing', () => {
-      const state = mockState({
-        data: undefined,
-        startupTime: Date.now(),
-      });
-      const req = mockReq({ url: '/api/health' });
-      const res = mockRes();
-      config.handleHealth(req, res, state);
-      assert.strictEqual(res._status, 200);
-      assert.strictEqual(res._body.library, 0);
-    });
-  });
-
   describe('handlePostConfig', () => {
     it('returns 200 and updates mpvPath', async () => {
       const state = mockState({

@@ -228,7 +228,7 @@ const routeTable = [
   // Config
   { method: 'GET', path: '/api/config', handler: H.handleGetConfig },
   { method: 'POST', path: '/api/config', handler: H.handlePostConfig },
-  { method: 'GET', path: '/api/health', handler: H.handleHealth },
+  
   { method: 'GET', path: '/api/notifications', handler: H.handleGetNotifications },
   // Discovery
   { method: 'GET', path: '/api/browse', handler: H.handleBrowse },
@@ -481,7 +481,7 @@ async function init() {
   try { fs.writeFileSync(portFile, String(actualPort), 'utf-8'); } catch (e: any) {
     logger.error(`Failed to write .port file: ${e.message}`);
   }
-  console.log(`PORT=${actualPort}`);  // stdout for sidecar stdout capture
+  process.stdout.write(`PORT=${actualPort}\n`);  // stdout for sidecar stdout capture (Rust 读管道)
   bootLog(`Server listening on port ${actualPort}`);
 
   const elapsed = Date.now() - startTime;

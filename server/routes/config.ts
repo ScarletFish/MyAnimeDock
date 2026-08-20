@@ -24,14 +24,6 @@ function handleGetNotifications(req: any, res: any, state: State) {
     jsonResp(res, 200, { notifications: notifs });
 }
 
-function handleHealth(req: any, res: any, state: State) {
-    jsonResp(res, 200, {
-        ready: true,
-        library: state.data ? state.data.library.length : 0,
-        uptime: Date.now() - state.startupTime,
-    });
-}
-
 async function handlePostConfig(req: any, res: any, state: State) {
     const { config, bangumiPersonal } = state;
     try {
@@ -83,6 +75,5 @@ async function handlePostConfig(req: any, res: any, state: State) {
 export {
     handleGetConfig,
     handleGetNotifications,
-    handleHealth,
     handlePostConfig,
 };

@@ -9,6 +9,7 @@ import { showView } from './lib/router.js';
 import { startGlobalMpvStatus } from './lib/mpv-status.js';
 import { initI18n, bindDom } from './lib/i18n.js';
 import { API } from './lib/api.js';
+import { setStartupLibraryPromise } from './lib/ui-state.js';
 import { refreshBangumiAuthStatus } from './views/Settings.svelte';
 import './lib/tooltip.js';
 import './lib/keyboard.js';
@@ -37,6 +38,11 @@ bindDom();
 
 // ─── Init (DOM already ready — modules are deferred) ───
 (async () => {
+  // 首屏并行：/api/library 不依赖 /api/config，立即发起（Library 首次加载时消费）。
+  const startupLibrary = API.get('/api/library');
+  startupLibrary.catch(() => {}); // 未被消费时避免 unhandled rejection（消费方仍会收到错误）
+  setStartupLibraryPromise(startupLibrary);
+
   let configCache = null;
   const onServerOrigin = window.location.origin.startsWith('http');
   if (onServerOrigin) {

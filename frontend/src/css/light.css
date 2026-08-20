@@ -149,6 +149,11 @@
     border-color: rgba(var(--accent-rgb), 0.15);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   }
+  /* 继续播放 label 压在暗色遮罩上，浅色主题的 --accent-soft 是深色变体 → 暗上叠暗；
+     用 color-mix 把主题 accent 提亮，保留色相且自动适配各浅色主题（暗色模式不动） */
+  .dashboard-continue-label {
+    color: color-mix(in srgb, var(--accent) 40%, white 60%);
+  }
 
   /* ─── Detail View ─── */
   .detail-cover-wrap {

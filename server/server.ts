@@ -20,6 +20,7 @@ import { SERVER_ROOT } from './lib/paths';
 import {
   mime, setFfmpegPath, serveImage, serveRaw, readBody, jsonResp, cleanupOldCache,
 } from './lib/utils';
+import { computePinyinTitle } from './lib/pinyin';
 import ThumbnailQueue = require('./thumbnail-queue');
 
 // ── 播放器策略注册（加载即自注册到 registry）──
@@ -404,6 +405,15 @@ async function init() {
 
   // Phase 2: Hydrate data
   data = (await db.loadData()) || { discovered: [], library: [], myList: [], playSessions: [] };
+
+  // pinyinTitle 一次性补全（幂等迁移）：旧数据空值在此计算并落库，
+  // 之后读取路径（GET /api/library）纯读，不再有计算/兜底逻辑。
+  const missingPinyin = data.library.filter((a: any) => !a.pinyinTitle);
+  if (missingPinyin.length > 0) {
+    missingPinyin.forEach((a: any) => { a.pinyinTitle = computePinyinTitle(a.bangumiTitle || a.title || ''); });
+    db.saveLibrary(data, new Set(missingPinyin.map((a: any) => a.id)))
+      .catch((e: any) => logger.warn('pinyin backfill save error:', e.message));
+  }
 
   // 结构整改迁移：DB 中旧 server/ 前缀的本地路径 → data/（幂等，一次性）
   try {

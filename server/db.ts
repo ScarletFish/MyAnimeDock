@@ -7,6 +7,7 @@ import path from 'path';
 import fs from 'fs';
 import { PROJECT_ROOT } from './lib/paths';
 import { Logger } from './logger';
+import { computePinyinTitle } from './lib/pinyin';
 import type { AppData } from './types';
 
 // better-sqlite3 是原生模块：dev 模式直接 require；pkg 快照无法内嵌 .node，
@@ -420,6 +421,8 @@ async function saveLibrary(data: any, changedIds: any = null) {
       const delEpisodes = d.prepare(`DELETE FROM Episode WHERE animeId = ?`);
 
       for (const a of toProcess) {
+        // pinyinTitle 落库收敛：空值（旧数据/新导入）在此计算，避免 GET 时全量重算
+        if (!a.pinyinTitle) a.pinyinTitle = computePinyinTitle(a.bangumiTitle || a.title || '');
         let ratingVal = a.rating;
         if (ratingVal != null && typeof ratingVal !== 'number') {
           ratingVal = parseFloat(ratingVal);

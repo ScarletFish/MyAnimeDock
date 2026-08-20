@@ -5,6 +5,7 @@ import * as crypto from 'crypto';
 import { jsonResp, readBody, serveImage } from '../lib/utils';
 import { saveScannedTree, DATA_DIR } from '../lib/config';
 import { enrichAnime } from '../lib/enrich';
+import { computePinyinTitle } from '../lib/pinyin';
 import type { ServerState } from '../types';
 
 // Shared helper: resolve folder parsed for structural folders
@@ -41,15 +42,8 @@ function resolveFolderParsed(anime: any) {
 
 export function handleGetLibrary(req: any, res: any, state: ServerState) {
   const { data, config, logger } = state;
-  // Compute pinyin for each anime
-  const { pinyin } = require('pinyin-pro');
+  // pinyinTitle 由写入路径保证（saveLibrary 空值计算 + 元数据同步改名重算 + 启动一次性补全），此处纯读
   data.library.forEach((a: any) => {
-    const name = a.bangumiTitle || a.title || '';
-    try {
-      a.pinyinTitle = pinyin(name, { toneType: 'none', type: 'array', nonZh: 'consecutive' }).join('');
-    } catch (_) {
-      a.pinyinTitle = '';
-    }
     enrichAnime(a, data);
   });
   jsonResp(res, 200, data.library.filter((a: any) => a.downloaded !== false));
@@ -164,6 +158,8 @@ export function handleLibrarySyncStream(req: any, res: any, state: ServerState) 
           }
           if (timedOut) return;
           Object.assign(anime, meta);
+          // 改名后重算 pinyinTitle（bangumiTitle 可能变化，旧值过期）
+          anime.pinyinTitle = computePinyinTitle(anime.bangumiTitle || anime.title || '');
         // Cover resize removed — browser handles display scaling
           if (matchedSeason != null) anime.matchedSeason = matchedSeason;
           // 从 matchSeason 直存 anilistId（罗马音走 AniList 桥）

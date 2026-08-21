@@ -49,13 +49,44 @@ export function handleGetLibrary(req: any, res: any, state: ServerState) {
   jsonResp(res, 200, data.library.filter((a: any) => a.downloaded !== false));
 }
 
-export function handleGetAnimeDetail(req: any, res: any, state: ServerState) {
-  const { data } = state;
+export async function handleGetAnimeDetail(req: any, res: any, state: ServerState) {
+  const { data, db, logger } = state;
   const id = decodeURIComponent(req.url.slice('/api/anime/'.length));
   const anime = data.library.find((a: any) => a.id === id);
   if (!anime) { jsonResp(res, 404, { error: 'Anime not found' }); return; }
   anime.downloaded = fs.existsSync(anime.folderPath);
   enrichAnime(anime, data);
+
+  // 增量检测本地新集：对比文件夹中的视频文件与 DB 中 episodes，有新增则追加
+  if (anime.downloaded && anime.folderPath) {
+    try {
+      const { findVideos, isExtraVideo } = require('../scanner') as typeof import('../scanner');
+      const videos = await findVideos(anime.folderPath);
+      const episodeFiles = videos.filter((v: any) => !isExtraVideo(v.name));
+      const existingPaths = new Set((anime.episodes || []).map((e: any) => e.filePath));
+      const newFiles = episodeFiles.filter((v: any) => !existingPaths.has(v.path));
+      if (newFiles.length > 0) {
+        const startNum = (anime.episodes || []).length;
+        for (let i = 0; i < newFiles.length; i++) {
+          anime.episodes.push({
+            number: startNum + i + 1,
+            filePath: newFiles[i].path,
+            fileName: newFiles[i].name,
+            fileSize: newFiles[i].size,
+            duration: null,
+            watched: false,
+            progress: 0,
+          });
+        }
+        db.saveLibrary(data, new Set([anime.id])).catch((e: any) => {
+          logger.error('Failed to save episodes after local scan:', e.message);
+        });
+      }
+    } catch (e: any) {
+      logger.warn(`Local file scan failed for ${anime.title}: ${e.message}`);
+    }
+  }
+
   jsonResp(res, 200, anime);
 
   // 后台预生成缩略图（详情页查看时插队到队列最前）

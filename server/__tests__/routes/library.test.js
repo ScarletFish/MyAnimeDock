@@ -122,15 +122,15 @@ describe('library route handlers', () => {
   });
 
   describe('handleGetAnimeDetail', () => {
-    it('returns 404 when anime not found', () => {
+    it('returns 404 when anime not found', async () => {
       const state = mockState({ data: { library: [] } });
       const req = mockReq({ url: '/api/anime/nonexistent' });
       const res = mockRes();
-      lib.handleGetAnimeDetail(req, res, state);
+      await lib.handleGetAnimeDetail(req, res, state);
       assert.strictEqual(res._status, 404);
     });
 
-    it('returns 200 with anime detail and downloaded flag', () => {
+    it('returns 200 with anime detail and downloaded flag', async () => {
       // Use a real temp path so fs.existsSync returns true
       const tmpDir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'test-'));
       const state = mockState({
@@ -141,7 +141,7 @@ describe('library route handlers', () => {
       });
       const req = mockReq({ url: '/api/anime/anime-1' });
       const res = mockRes();
-      lib.handleGetAnimeDetail(req, res, state);
+      await lib.handleGetAnimeDetail(req, res, state);
       assert.strictEqual(res._status, 200);
       assert.strictEqual(res._body.title, 'Test Anime');
       assert.strictEqual(res._body.downloaded, true);
@@ -149,7 +149,7 @@ describe('library route handlers', () => {
       fs.rmdirSync(tmpDir);
     });
 
-    it('returns 200 with downloaded=false when folder does not exist', () => {
+    it('returns 200 with downloaded=false when folder does not exist', async () => {
       const state = mockState({
         data: {
           library: [{ id: 'anime-2', title: 'Missing Anime', folderPath: '/nonexistent/path' }],
@@ -158,7 +158,7 @@ describe('library route handlers', () => {
       });
       const req = mockReq({ url: '/api/anime/anime-2' });
       const res = mockRes();
-      lib.handleGetAnimeDetail(req, res, state);
+      await lib.handleGetAnimeDetail(req, res, state);
       assert.strictEqual(res._status, 200);
       assert.strictEqual(res._body.downloaded, false);
     });

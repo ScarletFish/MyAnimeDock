@@ -114,6 +114,20 @@ input[type="radio"] { accent-color: var(--accent); }
   font-size: var(--text-xs); color: var(--fg-muted); margin-top: 4px;
 }
 
+/* ─── 即时校验错误提示 ─── */
+.field-error {
+  font-size: var(--text-xs); color: var(--error); margin-top: 4px; display: block;
+}
+.form-group input.invalid,
+.form-group textarea.invalid {
+  border-color: var(--error);
+  box-shadow: 0 0 0 1px var(--error);
+}
+.form-group input.invalid:focus,
+.form-group textarea.invalid:focus {
+  box-shadow: 0 0 0 1px var(--error), 0 0 0 3px rgba(var(--error-rgb), 0.15);
+}
+
 /* ─── Number Stepper ─── */
 @utility num-stepper {
   display: inline-flex;

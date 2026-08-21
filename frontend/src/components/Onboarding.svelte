@@ -19,9 +19,34 @@
   let mediaDir = $state('');
   let mpvPath = $state('');
   let errorMsg = $state('');
+  let dirError = $state('');
+  let mpvError = $state('');
   let submitting = $state(false);
   let dirSkipped = $state(false);
   let mpvSkipped = $state(false);
+
+  // ─── 路径规范化 ───
+  function normalizePath(raw) {
+    let s = raw.trim();
+    s = s.replace(/^["']|["']$/g, '');
+    s = s.replace(/\\/g, '/');
+    s = s.replace(/\/+$/, '');
+    return s;
+  }
+
+  function onDirBlur() {
+    dirError = '';
+    if (!mediaDir.trim()) return;
+    mediaDir = normalizePath(mediaDir);
+    if (/[<>"|?*]/.test(mediaDir)) dirError = '路径包含非法字符（<>"|?*）';
+  }
+
+  function onMpvBlur() {
+    mpvError = '';
+    if (!mpvPath.trim()) return;
+    mpvPath = normalizePath(mpvPath);
+    if (/[<>"|?*]/.test(mpvPath)) mpvError = '路径包含非法字符（<>"|?*）';
+  }
 
   // ─── 浏览按钮 ───
   async function browseDir() {
@@ -76,6 +101,11 @@
     const dir = mediaDir.trim();
     const mpv = mpvPath.trim();
 
+    // 校验
+    if (dir) { onDirBlur(); }
+    if (mpv) { onMpvBlur(); }
+    if (dirError || mpvError) { submitting = false; return; }
+
     try {
       // 保存已填内容（空值 = 保持默认）
       const payload = {};
@@ -115,9 +145,10 @@
       <div class="onb-field" id="onbDirGroup" class:onb-field--skipped={dirSkipped}>
         <label class="onb-field__label">{tr('onboarding.mediaDir')}</label>
         <div class="onb-field__row">
-          <input type="text" class="onb-field__input" id="onbMediaDir" bind:value={mediaDir} placeholder={tr('onboarding.mediaDirPlaceholder')} autocomplete="off" spellcheck="false" />
+          <input type="text" class="onb-field__input" id="onbMediaDir" bind:value={mediaDir} placeholder={tr('onboarding.mediaDirPlaceholder')} autocomplete="off" spellcheck="false" onblur={onDirBlur}>
           <button class="onb-field__browse" id="onbBrowseDir" onclick={browseDir}>{tr('common.browse')}</button>
         </div>
+        {#if dirError}<span class="field-error">{dirError}</span>{/if}
         <div class="onb-field__foot">
           <button type="button" class="onb-field__skip" id="onbSkipDir" onclick={skipDir}>{tr('onboarding.skipForNow')}</button>
         </div>
@@ -125,9 +156,10 @@
       <div class="onb-field" id="onbMpvGroup" class:onb-field--skipped={mpvSkipped}>
         <label class="onb-field__label"><span>{tr('onboarding.mpvPlayer')}</span><span class="onb-field__optional">{tr('common.optional')}</span></label>
         <div class="onb-field__row">
-          <input type="text" class="onb-field__input" id="onbMpvPath" bind:value={mpvPath} placeholder={tr('onboarding.mpvPlaceholder')} autocomplete="off" spellcheck="false" />
+          <input type="text" class="onb-field__input" id="onbMpvPath" bind:value={mpvPath} placeholder={tr('onboarding.mpvPlaceholder')} autocomplete="off" spellcheck="false" onblur={onMpvBlur}>
           <button class="onb-field__browse" id="onbBrowseMpv" onclick={browseMpv}>{tr('common.browse')}</button>
         </div>
+        {#if mpvError}<span class="field-error">{mpvError}</span>{/if}
         <div class="onb-field__foot">
           <button type="button" class="onb-field__skip" id="onbSkipMpv" onclick={skipMpv}>{tr('onboarding.skipForNow')}</button>
         </div>

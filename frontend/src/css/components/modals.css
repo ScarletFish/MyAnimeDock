@@ -1,7 +1,7 @@
 /* ─── Modal System ─── */
 
 /* 弹窗打开时，模糊 body 下除弹窗外的所有内容（标题栏 + 侧边栏 + 主内容） */
-body:has(#modal-root .modal-overlay.show) > :not(#modal-root) {
+body:has(#modal-root .modal-overlay.show) > :not(#modal-root):not(#globalTooltip) {
   filter: blur(16px) saturate(150%);
 }
 

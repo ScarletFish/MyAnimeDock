@@ -32,16 +32,17 @@
 
   // basic
   let mediaDir = $state('');
+  let mediaDirError = $state('');
   // playback
   let players = $state([]);
   let playerMode = $state('mpv');
   let mpvPath = $state('');
+  let mpvPathError = $state('');
   let playerDdOpen = $state(false);
-  let playerPathHint = $state('');
   let autoMark = $state(true);
   // scraper
-  let bangumiUrl = $state('https://api.bangumi.lol');
-  let anilistEnabled = $state(false);
+  let bangumiUrl = $state('https://api.bgm.tv');
+  let bangumiUrlError = $state('');
   let bangumiClientId = $state('');
   let bangumiClientSecret = $state('');
   // bangumi auth（当前 HTML 无对应 UI，逻辑保留迁移）
@@ -110,6 +111,55 @@
     settingsOpen.set(false);
   }
 
+  // ─── 输入规范化 + 即时校验 ───
+  function normalizePath(raw) {
+    let s = raw.trim();
+    s = s.replace(/^["']|["']$/g, '');   // 去包裹引号
+    s = s.replace(/\\/g, '/');            // 反斜杠 → 正斜杠
+    s = s.replace(/\/+$/, '');            // 去末尾斜杠
+    return s;
+  }
+
+  function normalizeUrl(raw) {
+    let s = raw.trim();
+    if (s && !/^https?:\/\//i.test(s)) s = 'https://' + s;
+    return s;
+  }
+
+  function onMediaDirBlur() {
+    mediaDirError = '';
+    if (!mediaDir.trim()) return;          // 空值由保存时拦截
+    mediaDir = normalizePath(mediaDir);
+    if (/[<>"|?*]/.test(mediaDir)) {
+      mediaDirError = '路径包含非法字符（<>"|?*）';
+    }
+  }
+
+  function onMpvPathBlur() {
+    mpvPathError = '';
+    if (!mpvPath.trim()) return;
+    mpvPath = normalizePath(mpvPath);
+    if (/[<>"|?*]/.test(mpvPath)) {
+      mpvPathError = '路径包含非法字符（<>"|?*）';
+    }
+  }
+
+  function onBangumiUrlBlur() {
+    bangumiUrlError = '';
+    bangumiUrl = bangumiUrl.trim();
+    if (!bangumiUrl) { bangumiUrl = 'https://api.bgm.tv'; return; }
+    bangumiUrl = normalizeUrl(bangumiUrl);
+    try {
+      const u = new URL(bangumiUrl);
+      const h = u.hostname;
+      const dotIdx = h.lastIndexOf('.');
+      // 需要：含字母、有点、TLD≥2字符
+      if (!/[a-zA-Z]/.test(h) || dotIdx < 1 || h.length - dotIdx - 1 < 2) {
+        bangumiUrlError = '域名格式不正确（如 api.bgm.tv）';
+      }
+    } catch { bangumiUrlError = 'URL 格式不正确'; }
+  }
+
   // ─── 打开时加载配置 ───
   async function loadSettings() {
     try {
@@ -122,9 +172,7 @@
 
       const sources = config.apiSources || [];
       const bangumiSrc = sources.find((s) => s.type === 'bangumi');
-      const anilistSrc = sources.find((s) => s.type === 'anilist');
-      bangumiUrl = bangumiSrc?.url || 'https://api.bangumi.lol';
-      anilistEnabled = !!anilistSrc;
+      bangumiUrl = bangumiSrc?.url || 'https://api.bgm.tv';
 
       if (config.bangumiClientId) bangumiClientId = config.bangumiClientId;
       bangumiClientSecret = '••••••••';
@@ -156,18 +204,25 @@
 
   // ─── 表单保存 ───
   async function saveSettings() {
-    if (!mediaDir) {
+    // 保存时兜底校验（防止绕过 blur 直接保存）
+    onMediaDirBlur();
+    onMpvPathBlur();
+    onBangumiUrlBlur();
+    if (!mediaDir.trim()) {
       errorMsg = tr('app.enterMediaDirPath');
       return;
     }
+    if (mediaDirError || mpvPathError || bangumiUrlError) return;
 
     const rawTheme = document.documentElement.getAttribute('data-theme') || 'dark';
     const newTheme = rawTheme === 'dark' || rawTheme === 'light' ? 'default' : rawTheme;
     const newThemeMode = document.documentElement.getAttribute('data-theme-mode') || 'dark';
     const currentZoom = parseFloat(document.documentElement.style.getPropertyValue('--scale')) || 1;
 
-    const apiSources = [{ type: 'bangumi', url: bangumiUrl.trim() || 'https://api.bangumi.lol', key: '' }];
-    if (anilistEnabled) apiSources.push({ type: 'anilist', url: 'https://graphql.anilist.co', key: '' });
+    const apiSources = [
+      { type: 'bangumi', url: bangumiUrl.trim() || 'https://api.bgm.tv', key: '' },
+      { type: 'anilist', url: 'https://graphql.anilist.co', key: '' },
+    ];
 
     try {
       const secretToSend = bangumiClientSecret === '••••••••' ? undefined : bangumiClientSecret;
@@ -204,9 +259,6 @@
     players = playersList;
     playerMode = currentMode;
     mpvPath = currentPath || '';
-    playerPathHint = currentPath
-      ? tr('app.currentPath', { path: currentPath })
-      : tr('app.autoSearchPath');
   }
 
   function togglePlayerDropdown(event) {
@@ -686,10 +738,8 @@
         </div>
         <nav class="settings-tabs" role="tablist">
           <button class="settings-tab" class:active={activeTab === 'basic'} role="tab" aria-selected={activeTab === 'basic'} onclick={() => switchSettingsTab('basic')}>{tr('settings.tabBasic')}</button>
-          <button class="settings-tab" class:active={activeTab === 'playback'} role="tab" aria-selected={activeTab === 'playback'} onclick={() => switchSettingsTab('playback')}>{tr('settings.tabPlayback')}</button>
-          <button class="settings-tab" class:active={activeTab === 'scraper'} role="tab" aria-selected={activeTab === 'scraper'} onclick={() => switchSettingsTab('scraper')}>{tr('settings.tabScraper')}</button>
-          <button class="settings-tab" class:active={activeTab === 'dashboard'} role="tab" aria-selected={activeTab === 'dashboard'} onclick={() => switchSettingsTab('dashboard')}>{tr('settings.tabDashboard')}</button>
           <button class="settings-tab" class:active={activeTab === 'personalize'} role="tab" aria-selected={activeTab === 'personalize'} onclick={() => switchSettingsTab('personalize')}>{tr('settings.tabPersonalize')}</button>
+          <button class="settings-tab" class:active={activeTab === 'dashboard'} role="tab" aria-selected={activeTab === 'dashboard'} onclick={() => switchSettingsTab('dashboard')}>{tr('settings.tabDashboard')}</button>
           <button class="settings-tab" class:active={activeTab === 'database'} role="tab" aria-selected={activeTab === 'database'} onclick={() => switchSettingsTab('database')}>{tr('settings.tabDatabase')}</button>
         </nav>
       </div>
@@ -699,14 +749,11 @@
           <div class="form-group">
             <label for="settingsMediaDir">{tr('settings.mediaDir')}</label>
             <div class="input-with-btn">
-              <input type="text" id="settingsMediaDir" placeholder="E:/Anime" bind:value={mediaDir}>
+              <input type="text" id="settingsMediaDir" placeholder="E:/Anime" bind:value={mediaDir} onblur={onMediaDirBlur} class:invalid={mediaDirError}>
               <button class="btn btn-sm" onclick={browseFolder}>{tr('common.browse')}</button>
             </div>
+            {#if mediaDirError}<span class="field-error">{mediaDirError}</span>{/if}
           </div>
-        </div>
-
-        <!-- Tab: 播放 -->
-        <div class="settings-panel" class:active={activeTab === 'playback'} id="tab-playback">
           <div class="form-group">
             <label>{tr('settings.player')}</label>
             <div class="input-with-btn">
@@ -721,10 +768,15 @@
                   {/each}
                 </div>
               </div>
-              <input type="text" id="settingsPlayerPath" placeholder={tr('settings.playerPathPlaceholder')} bind:value={mpvPath}>
+              <input type="text" id="settingsPlayerPath" placeholder={tr('settings.playerPathPlaceholder')} bind:value={mpvPath} onblur={onMpvPathBlur} class:invalid={mpvPathError} data-tooltip={mpvPath || ''}>
               <button class="btn btn-sm" onclick={browsePlayerExecutable}>{tr('common.browse')}</button>
             </div>
-            <p class="form-hint" id="playerPathHint">{playerPathHint}</p>
+            {#if mpvPathError}<span class="field-error">{mpvPathError}</span>{/if}
+          </div>
+          <div class="form-group">
+            <label for="bangumiUrl">{tr('settings.bangumiApi')}</label>
+            <input type="text" id="bangumiUrl" placeholder="https://api.bgm.tv" bind:value={bangumiUrl} onblur={onBangumiUrlBlur} class:invalid={bangumiUrlError}>
+            {#if bangumiUrlError}<span class="field-error">{bangumiUrlError}</span>{/if}
           </div>
           <div class="form-group">
             <label>{tr('settings.autoMark')}</label>
@@ -739,25 +791,23 @@
               </div>
             </div>
           </div>
-        </div>
-
-        <!-- Tab: 刮削 -->
-        <div class="settings-panel" class:active={activeTab === 'scraper'} id="tab-scraper">
           <div class="form-group">
-            <label for="bangumiUrl">{tr('settings.bangumiApi')}</label>
-            <input type="text" id="bangumiUrl" placeholder="https://api.bangumi.lol" bind:value={bangumiUrl}>
-            <p class="form-hint">{tr('settings.bangumiHint')}</p>
-          </div>
-          <div class="form-group">
-            <label>{tr('settings.anilist')}</label>
-            <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:var(--space-2)">
-              <label class="toggle-switch" style="margin:0">
-                <input type="checkbox" id="anilistEnabled" bind:checked={anilistEnabled}>
-                <span class="toggle-slider"></span>
+            <label>{tr('settings.progressConfirm')}</label>
+            <p class="form-hint mt-0">{tr('settings.progressConfirmHint')}</p>
+            <div class="seg-radio-group" style="margin-top:0.75rem">
+              <label class="seg-radio-item">
+                <input type="radio" name="settingsFinishConfirmMode" value="prompt" bind:group={finishConfirmMode}>
+                <span>{tr('settings.confirmPrompt')}</span>
               </label>
-              <span class="dashboard-layout-label">{tr('settings.enableAnilist')}</span>
+              <label class="seg-radio-item">
+                <input type="radio" name="settingsFinishConfirmMode" value="auto" bind:group={finishConfirmMode}>
+                <span>{tr('settings.autoMarkOption')}</span>
+              </label>
+              <label class="seg-radio-item">
+                <input type="radio" name="settingsFinishConfirmMode" value="off" bind:group={finishConfirmMode}>
+                <span>{tr('settings.doNothing')}</span>
+              </label>
             </div>
-            <blockquote class="form-hint" style="border-inline-start: 2px solid var(--border); padding-inline-start: var(--space-3); margin: 0; font-style: normal;"><span>{tr('settings.anilistRomanji')}</span><br><span>{tr('settings.anilistBanner')}</span></blockquote>
           </div>
         </div>
 
@@ -824,24 +874,6 @@
                 </label>
                 <span class="dashboard-layout-label">{tr('settings.titleBackground')}</span>
               </div>
-            </div>
-          </div>
-          <div class="form-group">
-            <label>{tr('settings.progressConfirm')}</label>
-            <p class="form-hint mt-0">{tr('settings.progressConfirmHint')}</p>
-            <div class="seg-radio-group" style="margin-top:0.75rem">
-              <label class="seg-radio-item">
-                <input type="radio" name="settingsFinishConfirmMode" value="prompt" bind:group={finishConfirmMode}>
-                <span>{tr('settings.confirmPrompt')}</span>
-              </label>
-              <label class="seg-radio-item">
-                <input type="radio" name="settingsFinishConfirmMode" value="auto" bind:group={finishConfirmMode}>
-                <span>{tr('settings.autoMarkOption')}</span>
-              </label>
-              <label class="seg-radio-item">
-                <input type="radio" name="settingsFinishConfirmMode" value="off" bind:group={finishConfirmMode}>
-                <span>{tr('settings.doNothing')}</span>
-              </label>
             </div>
           </div>
         </div>

@@ -271,7 +271,7 @@
                     <span class="status-dd-text" id="svelte-statusDdText">{getStatusLabels()[status] || tr('common.wish')}</span>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="status-dd-chevron"><polyline points="6 9 12 15 18 9"/></svg>
                   </Select.Trigger>
-                  <Select.Portal>
+                  <Select.Portal to="#modal-root">
                     <Select.Content class="status-dd-menu" id="svelte-statusDdMenu" align="start" style="width: var(--bits-floating-anchor-width)">
                       <Select.Item value="watching">
                         {#snippet child(p)}

@@ -44,7 +44,8 @@ function spawnAsync(cmd: string, args: string[], timeout?: number, binary = fals
       if (signal) {
         reject(new Error(`${cmd} 被信号 ${signal} 终止`));
       } else if (code !== 0 && !(binary ? stdoutChunks.length : stdout.trim())) {
-        reject(new Error(`${cmd} 退出码 ${code}: ${stderr || '未知错误'}`));
+        const detail = stderr || (code === 28 ? '请求超时' : '未知错误');
+        reject(new Error(`${cmd} 退出码 ${code}: ${detail}`));
       } else {
         resolve({ stdout: binary ? Buffer.concat(stdoutChunks) as any : stdout, stderr });
       }

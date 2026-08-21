@@ -518,10 +518,6 @@ function setFilter(f) {
       <p class="discovery-hero-path" id="svelte-discoveryPath">{mediaDir}</p>
     </div>
     <div class="view-header-right">
-      <div class="discovery-stats-pills" id="svelte-discoveryStats" style:display={statsVisible ? '' : 'none'}>
-        <span class="stat-pill"><span id="svelte-statAnime">{statAnime}</span><span>{tr('discovery.animeCountUnit')}</span></span>
-        <span class="stat-pill"><span id="svelte-statImported">{statImported}</span><span>{tr('discovery.importedCountUnit')}</span></span>
-      </div>
       <button class="btn btn-outline discovery-scan-btn" id="svelte-discoveryScanBtn" style:display={scanBtnVisible ? '' : 'none'} disabled={scanBtnDisabled} onclick={startScan}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"></path>
@@ -532,27 +528,37 @@ function setFilter(f) {
   </div>
 
   <div class="discovery-actions-sentinel" id="svelte-discoveryActionsSentinel" bind:this={sentinelEl}></div>
-  <div class="discovery-actions" id="svelte-discoveryActions" style:display={actionsVisible ? '' : 'none'} bind:this={actionsEl}>
+  <div class="discovery-actions" id="svelte-discoveryActions" style:display={statsVisible ? '' : 'none'} bind:this={actionsEl}>
     <div class="discovery-actions-left">
-      <button class="btn btn-outline" id="svelte-selectAllBtn" onclick={selectAllCandidates}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8Z"/><path d="M15 3v4a2 2 0 0 0 2 2h4"/></svg>
-        <span>{selectAllLabel}</span>
-      </button>
-      <button class="btn btn-outline" onclick={importSelected}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
-        <span>{tr('discovery.importSelected')}</span> (<span id="svelte-importCount">{importCount}</span>)
-      </button>
+      {#if actionsVisible}
+        <button class="btn btn-outline" id="svelte-selectAllBtn" onclick={selectAllCandidates}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8Z"/><path d="M15 3v4a2 2 0 0 0 2 2h4"/></svg>
+          <span>{selectAllLabel}</span>
+        </button>
+        <button class="btn btn-outline" onclick={importSelected}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+          <span>{tr('discovery.importSelected')}</span> (<span id="svelte-importCount">{importCount}</span>)
+        </button>
+      {/if}
+      {#if statsVisible}
+        <span class="discovery-stats" id="svelte-discoveryStats">
+          <span class="discovery-stats-num">{statAnime}{tr('discovery.animeCountUnit')}</span>
+          <span class="discovery-stats-sub">{statImported}{tr('discovery.importedCountUnit')}</span>
+        </span>
+      {/if}
     </div>
     <div class="discovery-actions-right">
-      <div class="filter-group">
-        <button class="filter-btn" class:filter-btn--active={filter === 'all'} data-filter="all" onclick={() => setFilter('all')}>{tr('common.all')}</button>
-        <button class="filter-btn" class:filter-btn--active={filter === 'unimported'} data-filter="unimported" onclick={() => setFilter('unimported')}>{tr('discovery.unimported')}</button>
-        <button class="filter-btn" class:filter-btn--active={filter === 'excluded'} data-filter="excluded" onclick={() => setFilter('excluded')}>{tr('discovery.excluded')}</button>
-      </div>
-      <div class="filter-group">
-        <button class="filter-btn" onclick={expandAll}>{tr('discovery.expandAll')}</button>
-        <button class="filter-btn" onclick={collapseAll}>{tr('discovery.collapseAll')}</button>
-      </div>
+      {#if actionsVisible}
+        <div class="filter-group">
+          <button class="filter-btn" class:filter-btn--active={filter === 'all'} data-filter="all" onclick={() => setFilter('all')}>{tr('common.all')}</button>
+          <button class="filter-btn" class:filter-btn--active={filter === 'unimported'} data-filter="unimported" onclick={() => setFilter('unimported')}>{tr('discovery.unimported')}</button>
+          <button class="filter-btn" class:filter-btn--active={filter === 'excluded'} data-filter="excluded" onclick={() => setFilter('excluded')}>{tr('discovery.excluded')}</button>
+        </div>
+        <div class="filter-group">
+          <button class="filter-btn" onclick={expandAll}>{tr('discovery.expandAll')}</button>
+          <button class="filter-btn" onclick={collapseAll}>{tr('discovery.collapseAll')}</button>
+        </div>
+      {/if}
     </div>
   </div>
 

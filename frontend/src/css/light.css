@@ -267,9 +267,6 @@
 
   /* ─── Discovery ─── */
   .discovery-hero-path { color: var(--fg-muted); }
-  .stat-pill {
-    background: var(--bg-card);
-  }
   .discovery-actions {
     /* In light mode --bg-elevated = #ffffff = same as surface.
        Border is the primary separator; bump opacity for visibility. */

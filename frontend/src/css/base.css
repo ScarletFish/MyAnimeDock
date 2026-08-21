@@ -75,7 +75,7 @@ html {
 
 /* ─── View Transitions ─── */
 .view {
-  padding: var(--space-12);
+  padding: var(--space-8);
   animation: fadeSlideUp 0.4s var(--ease-out);
 }
 
@@ -90,7 +90,7 @@ html {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 2rem;
+  margin-bottom: var(--space-4);
 }
 
 .view-header h1 {

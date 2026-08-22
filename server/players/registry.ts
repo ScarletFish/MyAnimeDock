@@ -1,10 +1,4 @@
-// server/players/registry.ts — 播放器策略注册与调度
-//
-// 职责：
-//   1. 维护策略类注册表
-//   2. 检测可用播放器
-//   3. 按配置调度默认策略
-//   4. 提供测试注入接口
+// registry.ts — 播放器策略注册与调度
 
 import { Logger } from '../logger';
 
@@ -20,12 +14,6 @@ type PlayerStrategyClass = {
 /** @type {Map<string, PlayerStrategyClass>} */
 const _registry = new Map<string, PlayerStrategyClass>();
 
-// ── 注册 ────────────────────────────────────────────────────────────────────
-
-/**
- * 注册一个播放器策略类
- * @param {PlayerStrategyClass} strategyClass
- */
 function register(strategyClass: PlayerStrategyClass): void {
     const type = strategyClass.type;
     if (!type) {
@@ -36,22 +24,11 @@ function register(strategyClass: PlayerStrategyClass): void {
     logger.info(`Registered player strategy: ${type} (${strategyClass.displayName || type})`);
 }
 
-// ── 查询 ────────────────────────────────────────────────────────────────────
-
-/**
- * 获取指定类型的策略类
- * @param {string} type - 'mpv', 'vlc', 等
- * @returns {PlayerStrategyClass|null}
- */
 function getStrategy(type: string): PlayerStrategyClass | null {
     return _registry.get(type) || null;
 }
 
-/**
- * 检测所有已注册策略的可用性
- * @param {object} config - 应用配置，含各播放器路径设置
- * @returns {Array<{ type: string, displayName: string, available: boolean }>}
- */
+/** 检测所有已注册策略的可用性 */
 function getAvailable(config: Record<string, unknown>): Array<{ type: string; displayName: string; available: boolean }> {
     const results: Array<{ type: string; displayName: string; available: boolean }> = [];
     for (const [type, cls] of _registry) {

@@ -1,6 +1,4 @@
-// server/mpv-ipc.ts — 纯 IPC 通信层
-// mpv JSON IPC 协议封装：连接、发送命令、接收事件
-// 不涉及 spawn、生命周期、业务逻辑
+// mpv-ipc.ts — mpv JSON IPC 传输层
 
 import * as net from 'net';
 import * as path from 'path';
@@ -8,15 +6,6 @@ import * as os from 'os';
 import { Logger } from './logger';
 
 const logger: Logger = require('./logger').child('[IPC]');
-
-// ── MpvIpcConnection ────────────────────────────────────────────────────────
-// 管理一条到 mpv --input-ipc-server 的 TCP/Named Pipe 连接
-//
-// 两种通信方式：
-//   1. send(obj)   — 即发即忘（当前 observe_property / set 等使用）
-//   2. call(args)  — Promise 式请求-响应匹配（支持超时）
-//
-// 事件通过 onEvent(handler) 订阅
 
 const MAX_RETRIES = 7;
 
@@ -34,9 +23,6 @@ class MpvIpcConnection {
     private _connectTimer: any = null;
     private _log: Logger;
 
-    /**
-     * @param {string} pipePath - Named pipe 或 Unix socket 路径
-     */
     constructor(pipePath: string) {
         this.pipePath = pipePath;
         this._client = null;
@@ -53,12 +39,6 @@ class MpvIpcConnection {
         this._log = (logger as any).child({ pipe: pipePath });
     }
 
-    // ── 连接 ────────────────────────────────────────────────────────────────
-
-    /**
-     * 建立连接（重试逻辑内置）
-     * @returns {Promise<void>}
-     */
     connect(): Promise<void> {
         return new Promise((resolve, reject) => {
             this._doConnect(resolve, reject);
@@ -116,12 +96,6 @@ class MpvIpcConnection {
         });
     }
 
-    // ── 发送 ────────────────────────────────────────────────────────────────
-
-    /**
-     * 即发即忘发送 JSON 命令（对应旧 ipcWrite）
-     * @param {object} obj - { command: [...], ... }
-     */
     send(obj: any): void {
         if (!this._client || !this._connected) {
             this._log.warn('send skipped, not connected');
@@ -134,13 +108,7 @@ class MpvIpcConnection {
         }
     }
 
-    /**
-     * Promise 式调用，通过 request_id 匹配响应
-     * @param {string} cmd     - 命令名，如 'set_property'
-     * @param  {...any} args   - 参数
-     * @param {number} [timeout=5000] - 超时毫秒
-     * @returns {Promise<any>} 响应 data
-     */
+    /** Promise 式调用，通过 request_id 匹配响应 */
     call(cmd: string, ...args: any[]): Promise<any> {
         const timeout = typeof args[args.length - 1] === 'number' ? args.pop() : 5000;
         return this._callWithId(cmd, args, timeout);
@@ -173,43 +141,23 @@ class MpvIpcConnection {
         });
     }
 
-    /**
-     * 快捷：observe_property（即发即忘）
-     */
     observeProperty(id: number, name: string): void {
         this.send({ command: ['observe_property', id, name] });
     }
 
-    // ── 事件 ────────────────────────────────────────────────────────────────
-
-    /**
-     * 注册事件回调（所有非 request_id 响应的消息）
-     * @param {function} handler - (msg) => void
-     */
+    /** 注册事件回调（所有非 request_id 响应的消息） */
     onEvent(handler: (msg: any) => void): void {
         this._eventHandler = handler;
     }
 
-    /**
-     * 注册连接关闭回调
-     * @param {function} handler
-     */
     onClose(handler: () => void): void {
         this._onCloseHandler = handler;
     }
 
-    // ── 生命周期 ────────────────────────────────────────────────────────────
-
-    /**
-     * 是否已连接
-     */
     isConnected(): boolean {
         return this._connected && this._client !== null;
     }
 
-    /**
-     * 关闭连接
-     */
     close(): void {
         this._destroyed = true;
         if (this._connectTimer) {
@@ -224,8 +172,6 @@ class MpvIpcConnection {
         }
         this._pending.clear();
     }
-
-    // ── 内部 ────────────────────────────────────────────────────────────────
 
     _dispatch(msg: any): void {
         // request_id 匹配 → 响应 pending call
@@ -254,14 +200,6 @@ class MpvIpcConnection {
     }
 }
 
-// ── 便利函数 ────────────────────────────────────────────────────────────────
-
-/**
- * 生成唯一 IPC 管道/套接字名
- * @param {number} [sessionId] - 可选的会话标识
- * @param {number} [counter]   - 可选的计数器，防冲突
- * @returns {{ pipeName: string, pipePath: string }}
- */
 function generatePipePath(sessionId: number, counter: number): { pipeName: string, pipePath: string } {
     const isWin = process.platform === 'win32';
     const pid = process.pid;

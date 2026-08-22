@@ -1,6 +1,4 @@
-// server/bangumi-sync.ts — Bangumi 同步编排层
-// 能力：从 Bangumi 拉取收藏、推送终态（看过/抛弃 + 评分）
-// 推送：状态（全部类型）+ 已看集数 + 评分，不包含感想
+// bangumi-sync.ts — Bangumi 同步编排层（Pull → Merge → Push）
 
 import { Logger } from './logger';
 const logger: Logger = require('./logger').child('[BGM-SYNC]');
@@ -19,22 +17,13 @@ class BangumiSync {
     this.lastSyncTime = null;
   }
 
-  // ════════════════════════════════════════════════
-  //  MyList 双向同步
-  // ════════════════════════════════════════════════
-
   /**
    * 全量同步 MyList（Pull → Push，本地优先）
    *
    * 流程：
    *   Pull: 从 Bangumi 拉取所有动漫收藏
    *   Merge: 匹配本地 anime（by bangumiId），缺失→创建本地 MyList
-   *   Push: 本地状态（全部类型）+ 已看集数 + 评分不一致 → 推送到 Bangumi
-   *
-   * @param {object} data - 全局 data 对象（包含 library, myList）
-   * @param {object} [opts]
-   * @param {boolean} [opts.dryRun] - 仅返回 diff，不实际写入
-   * @returns {Promise<{ pulled: number, pushed: number, created: number, errors: string[], lastSyncTime: string }>}
+   *   Push: 本地状态 + 已看集数 + 评分不一致 → 推送到 Bangumi
    */
   async syncMyList(data: AppData, opts: { dryRun?: boolean } = {}) {
     const result: {
@@ -64,13 +53,11 @@ class BangumiSync {
       result.pulled = remoteItems.length;
       logger.info(`MyList 同步：拉取到 ${remoteItems.length} 条收藏`);
 
-      // 建立 bangumiId → anime 索引（来自 library）
       const animeByBgmId = new Map();
       for (const a of (data.library || [])) {
         if (a.bangumiId) animeByBgmId.set(String(a.bangumiId), a);
       }
 
-      // 建立 bangumiId → local MyList 索引
       const myListByBgmId = new Map();
       for (const m of (data.myList || [])) {
         const anime = (data.library || []).find((a) => a.id === m.animeId);

@@ -1,7 +1,4 @@
-// server/players/base-player.js — 播放器策略接口文档
-//
-// 这不是强制基类。Node.js 用 duck typing，策略只需实现约定的方法。
-// 此文件仅作为接口契约的文档和统一原型链的便利。
+// base-player.ts — 播放器策略接口（duck typing，非强制基类）
 
 import { Logger } from '../logger';
 const logger: Logger = require('../logger');
@@ -34,30 +31,16 @@ class BasePlayerStrategy {
     static get type(): string { throw new Error('子类必须定义静态 type'); }
     static get displayName(): string { throw new Error('子类必须定义静态 displayName'); }
 
-    /**
-     * 检测播放器可执行文件是否可用
-     * @param {string} execPath - 配置中的路径或默认命令名
-     * @returns {boolean}
-     */
+    /** 检测播放器可执行文件是否可用 */
     static checkAvailable(execPath: string): boolean { // eslint-disable-line no-unused-vars
         return false;
     }
 
-    /**
-     * 启动播放
-     * @param {string}  filePath   - 媒体文件绝对路径
-     * @param {number}  position   - 起始播放位置（秒）
-     * @param {PlayerCallbacks} callbacks - 进度/错误回调
-     * @param {string}  sessionId  - 本次播放会话 ID
-     * @returns {{ stop: function }}
-     */
+    /** 启动播放，返回 { stop } 控制句柄 */
     start(filePath: string, position: number, callbacks: any, sessionId: string): { stop: () => void } { // eslint-disable-line no-unused-vars
         throw new Error('子类必须实现 start()');
     }
 
-    /**
-     * 停止当前播放（可选实现）
-     */
     stop(): void {}
 }
 

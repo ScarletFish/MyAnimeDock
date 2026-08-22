@@ -1,7 +1,4 @@
-// server/players/mpv-strategy.ts — mpv 播放器策略
-//
-// 职责：spawn mpv 进程 + 通过 JSON IPC 追踪播放进度
-// 通信层委派给 mpv-ipc.ts，本模块只关心 mpv 特有的生命周期
+// mpv-strategy.ts — mpv 播放器策略（spawn + IPC 追踪进度）
 
 import { spawn, execSync } from 'child_process';
 import * as fs from 'fs';
@@ -24,13 +21,7 @@ class MpvPlayerStrategy extends BasePlayerStrategy {
         this._session = null; // 当前播放会话状态
     }
 
-    // ── 静态：检测 ──────────────────────────────────────────────────────────
-
-    /**
-     * 检测 mpv 可执行文件是否可用
-     * @param {string} execPath - 配置中的路径或 'mpv'
-     * @returns {boolean}
-     */
+    /** 检测 mpv 可执行文件是否可用 */
     static checkAvailable(execPath: string): boolean {
         const isWin = process.platform === 'win32';
         let mpvPath = execPath || 'mpv';
@@ -52,18 +43,7 @@ class MpvPlayerStrategy extends BasePlayerStrategy {
         }
     }
 
-    // ── 实例：启动 ──────────────────────────────────────────────────────────
-
-    /**
-     * 启动 mpv 并开始追踪进度
-     *
-     * @param {string} mpvPath   - mpv 可执行文件路径
-     * @param {string} filePath  - 媒体文件路径
-     * @param {number} position  - 起始播放位置（秒）
-     * @param {object} callbacks - { onProgress, onError }
-     * @param {string} sessionId - 会话 ID
-     * @returns {{ stop: function }}
-     */
+    /** 启动 mpv 并开始追踪进度 */
     start(mpvPath: string, filePath: any, position: number, callbacks: any, sessionId?: string): { stop: () => void } {
         // 停止前一会话
         this.stop();

@@ -23,9 +23,3 @@ export function getDashboardLayout() {
 export function saveDashboardLayout(layout) {
   localStorage.setItem('myAnimDock_layout', JSON.stringify(layout));
 }
-
-/** 应用详情页标题背景设置到 document */
-export function applyDetailTitleBg() {
-  var on = localStorage.getItem('myAnimDock_detailTitleBg') === 'on';
-  document.documentElement.setAttribute('data-detail-title-bg', on ? 'on' : '');
-}

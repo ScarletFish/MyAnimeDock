@@ -26,6 +26,7 @@
   import { tr } from '../lib/anime-utils.js';
   import { API as api } from '../lib/api.js';
   import { portal } from '../lib/portal.js';
+  import { applyDetailTitleBg } from '../lib/theme.js';
   import { cardTitleLibrary, cardTitleMylist, finishConfirmMode, detailTitleBg } from '../lib/ui-state.js';
 
   // ─── 状态 ───
@@ -457,11 +458,6 @@
     showToast(tr('app.bangumiUnbound'), 'info');
   }
 
-  // ─── 详情标题背景（localStorage）───
-  function applyDetailTitleBg() {
-    const on = localStorage.getItem('myAnimDock_detailTitleBg') === 'on';
-    document.documentElement.setAttribute('data-detail-title-bg', on ? 'on' : '');
-  }
 
   // ─── 动漫库布局（模块开关/排序）───
   function defaultDashboardLayout() {

@@ -18,12 +18,6 @@ export function coverSrc(item, size) {
   return item.localCover ? '/covers/' + basename(item.localCover) + '?w=' + size + '&q=75' : '';
 }
 
-export function getCardTitleVisible(view, defaultVal = false) {
-  const val = localStorage.getItem('myAnimDock_cardTitle_' + view);
-  if (val === null) return defaultVal;
-  return val === 'true';
-}
-
 export function localDateStr(isoStr) {
   var d = new Date(isoStr);
   return d.getFullYear() + '-' +

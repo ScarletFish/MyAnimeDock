@@ -5,7 +5,8 @@
   import StatusSection from '../components/StatusSection.svelte';
   import AnimeCard from '../components/AnimeCard.svelte';
   import { getStatusLabels, getAnimeSortOptions, sortAnimeItems } from '../lib/sort.js';
-  import { STATUS_SECTIONS_LIBRARY, getCardTitleVisible, navigateToDetail, tr } from '../lib/anime-utils.js';
+  import { STATUS_SECTIONS_LIBRARY, navigateToDetail, tr } from '../lib/anime-utils.js';
+  import { cardTitleLibrary } from '../lib/ui-state.js';
   import { Select } from 'bits-ui';
 
   let {
@@ -15,6 +16,11 @@
     onOpenContextMenu,
     onOpenStatus,
   } = $props();
+
+  // ─── 卡片标题常显（响应 Settings 变更）───
+  let alwaysShowTitle = $state(false);
+  const unsubCardTitle = cardTitleLibrary.subscribe((v) => { alwaysShowTitle = v; });
+  onDestroy(unsubCardTitle);
 
   // ─── 排序 ───
   let sortMode = $state(localStorage.getItem('librarySort') || 'name');
@@ -105,7 +111,7 @@
           {#snippet children(item)}
             <AnimeCard
               {item}
-              alwaysShowTitle={getCardTitleVisible('library')}
+              alwaysShowTitle={alwaysShowTitle}
               onClick={onOpenDetail}
               onContextMenu={onOpenContextMenu}
               onMore={onOpenStatus}

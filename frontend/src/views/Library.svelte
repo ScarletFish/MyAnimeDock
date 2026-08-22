@@ -19,7 +19,7 @@
   // 复用现有 CSS 类名（视觉不变），与 vanilla 版共存（后续清理阶段再删 vanilla）。
   // 核心逻辑（网格渲染/排序/空状态/继续观看）用 runes 重写；
   // 跨视图副作用（showDetail/openStatusModal/showView/mmOpenModal 等）通过 window 桥接现有全局。
-  import { onMount, tick } from 'svelte';
+  import { onMount, onDestroy, tick } from 'svelte';
   import { showToast } from '../components/Toast.svelte';
   import { showConfirm } from '../components/ConfirmDialog.svelte';
   import StatusModal from '../components/StatusModal.svelte';
@@ -72,6 +72,12 @@
     // 外部流程（saveStatusModal/detail.js 等）调裸 loadLibrary() 时，
     // 路由到这里刷新 Svelte 库页（in-place，保留当前滚动）。
     setLoadLibrary((fromViewSwitch) => loadLibraryImpl(fromViewSwitch));
+    // Settings 面板修改动漫库布局后通知刷新
+    const onLayoutChanged = () => {
+      layout = getDashboardLayout();
+    };
+    document.addEventListener('dashboard-layout-changed', onLayoutChanged);
+    return () => document.removeEventListener('dashboard-layout-changed', onLayoutChanged);
   });
 
   // ─── 打开时加载数据（避免启动时全量 fetch）───

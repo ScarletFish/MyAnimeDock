@@ -30,6 +30,7 @@
 
 <script>
   import { onMount, tick } from 'svelte';
+  import { get } from 'svelte/store';
   import { showToast } from '../components/Toast.svelte';
   import { showConfirm } from '../components/ConfirmDialog.svelte';
   import EpisodeHeatmap from '../components/detail/EpisodeHeatmap.svelte';
@@ -43,7 +44,7 @@
   import { filterTags, tagZh } from '../lib/tag-utils.js';
   import { searchTag } from '../components/chrome/SearchBar.svelte';
   import { tr } from '../lib/anime-utils.js';
-  import { libraryData, mylistData, pendingAutoPlay, pendingFinishAnimeId } from '../lib/ui-state.js';
+  import { libraryData, mylistData, pendingAutoPlay, pendingFinishAnimeId, finishConfirmMode } from '../lib/ui-state.js';
   import { loadLibrary } from './Library.svelte';
   import { refreshDiscovery } from './Discovery.svelte';
   import { loadMyList } from './Mylist.svelte';
@@ -277,7 +278,7 @@
 
   async function checkAndShowFinishConfirm(a) {
     if (!a) return;
-    let mode = localStorage.getItem('myAnimDock_finishConfirm') || 'prompt';
+    let mode = get(finishConfirmMode);
     if (mode === 'on') mode = 'prompt';
     if (mode === 'off') return;
     const ep = findPendingFinishConfirm(a);

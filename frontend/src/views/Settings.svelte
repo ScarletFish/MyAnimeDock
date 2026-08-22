@@ -19,12 +19,14 @@
 
 <script>
   import { onMount } from 'svelte';
+  import { get } from 'svelte/store';
   import { showToast } from '../components/Toast.svelte';
   import { showConfirm } from '../components/ConfirmDialog.svelte';
   import { openVisualDock } from '../components/ThemeDock.svelte';
   import { tr } from '../lib/anime-utils.js';
   import { API as api } from '../lib/api.js';
   import { portal } from '../lib/portal.js';
+  import { cardTitleLibrary, cardTitleMylist, finishConfirmMode, detailTitleBg } from '../lib/ui-state.js';
 
   // ─── 状态 ───
   let activeTab = $state('basic');
@@ -55,10 +57,10 @@
   let lastSyncVisible = $state(false);
   let syncing = $state(false);
   // personalize
-  let cardTitleLibrary = $state(false);
-  let cardTitleMylist = $state(false);
-  let detailTitleBg = $state(false);
-  let finishConfirmMode = $state('prompt');
+  let cardTitleLibraryLocal = $state(false);
+  let cardTitleMylistLocal = $state(false);
+  let detailTitleBgLocal = $state(false);
+  let finishConfirmModeLocal = $state('prompt');
   // dashboard layout
   let layout = $state([]);
   let dragState = $state(null);
@@ -178,16 +180,16 @@
       bangumiClientSecret = '••••••••';
       refreshBangumiAuthStatus();
 
-      cardTitleLibrary = getCardTitleVisible('library');
-      cardTitleMylist = getCardTitleVisible('mylist');
+      cardTitleLibraryLocal = get(cardTitleLibrary);
+      cardTitleMylistLocal = get(cardTitleMylist);
       renderDashboardLayoutSettings();
 
-      detailTitleBg = localStorage.getItem('myAnimDock_detailTitleBg') === 'on';
+      detailTitleBgLocal = get(detailTitleBg);
       applyDetailTitleBg();
 
-      let mode = localStorage.getItem('myAnimDock_finishConfirm') || 'prompt';
+      let mode = get(finishConfirmMode);
       if (mode === 'on') mode = 'prompt';
-      finishConfirmMode = mode;
+      finishConfirmModeLocal = mode;
 
       refreshDbInfo();
     } catch (e) {
@@ -240,11 +242,11 @@
         ...(secretToSend ? { bangumiClientSecret: secretToSend } : {}),
       });
 
-      localStorage.setItem('myAnimDock_cardTitle_library', cardTitleLibrary);
-      localStorage.setItem('myAnimDock_cardTitle_mylist', cardTitleMylist);
-      localStorage.setItem('myAnimDock_detailTitleBg', detailTitleBg ? 'on' : '');
+      cardTitleLibrary.set(cardTitleLibraryLocal);
+      cardTitleMylist.set(cardTitleMylistLocal);
+      detailTitleBg.set(detailTitleBgLocal);
       applyDetailTitleBg();
-      localStorage.setItem('myAnimDock_finishConfirm', finishConfirmMode);
+      finishConfirmMode.set(finishConfirmModeLocal);
 
       close();
       showToast(tr('app.settingsSaved'), 'success');
@@ -455,13 +457,7 @@
     showToast(tr('app.bangumiUnbound'), 'info');
   }
 
-  // ─── 卡片标题 / 详情标题背景（localStorage）───
-  function getCardTitleVisible(view, defaultVal) {
-    const val = localStorage.getItem('myAnimDock_cardTitle_' + view);
-    if (val === null) return defaultVal === true;
-    return val === 'true';
-  }
-
+  // ─── 详情标题背景（localStorage）───
   function applyDetailTitleBg() {
     const on = localStorage.getItem('myAnimDock_detailTitleBg') === 'on';
     document.documentElement.setAttribute('data-detail-title-bg', on ? 'on' : '');
@@ -496,13 +492,17 @@
     layout = getDashboardLayout();
   }
 
+  function notifyDashboardLayoutChanged() {
+    document.dispatchEvent(new CustomEvent('dashboard-layout-changed'));
+  }
+
   function toggleDashboardSection(id, enabled) {
     const l = getDashboardLayout();
     const s = l.find((x) => x.id === id);
     if (s) s.enabled = enabled;
     saveDashboardLayout(l);
     renderDashboardLayoutSettings();
-    if (typeof renderDashboard === 'function') renderDashboard();
+    notifyDashboardLayoutChanged();
   }
 
   function moveDashboardSection(id, dir) {
@@ -516,7 +516,7 @@
     l[newIdx] = tmp;
     saveDashboardLayout(l);
     renderDashboardLayoutSettings();
-    if (typeof renderDashboard === 'function') renderDashboard();
+    notifyDashboardLayoutChanged();
   }
 
   // 指针拖拽排序
@@ -551,7 +551,7 @@
   function onDragEnd() {
     if (!dragState) return;
     dragState = null;
-    if (typeof renderDashboard === 'function') renderDashboard();
+    notifyDashboardLayoutChanged();
   }
 
   // ─── 数据库管理 ───
@@ -796,15 +796,15 @@
             <p class="form-hint mt-0">{tr('settings.progressConfirmHint')}</p>
             <div class="seg-radio-group" style="margin-top:0.75rem">
               <label class="seg-radio-item">
-                <input type="radio" name="settingsFinishConfirmMode" value="prompt" bind:group={finishConfirmMode}>
+                <input type="radio" name="settingsFinishConfirmMode" value="prompt" bind:group={finishConfirmModeLocal}>
                 <span>{tr('settings.confirmPrompt')}</span>
               </label>
               <label class="seg-radio-item">
-                <input type="radio" name="settingsFinishConfirmMode" value="auto" bind:group={finishConfirmMode}>
+                <input type="radio" name="settingsFinishConfirmMode" value="auto" bind:group={finishConfirmModeLocal}>
                 <span>{tr('settings.autoMarkOption')}</span>
               </label>
               <label class="seg-radio-item">
-                <input type="radio" name="settingsFinishConfirmMode" value="off" bind:group={finishConfirmMode}>
+                <input type="radio" name="settingsFinishConfirmMode" value="off" bind:group={finishConfirmModeLocal}>
                 <span>{tr('settings.doNothing')}</span>
               </label>
             </div>
@@ -849,14 +849,14 @@
             <div class="dashboard-layout-list" style="margin-top:0.75rem">
               <div class="dashboard-layout-item" style="cursor:default">
                 <label class="toggle-switch" style="margin:0">
-                  <input type="checkbox" id="settingsCardTitleLibrary" bind:checked={cardTitleLibrary}>
+                  <input type="checkbox" id="settingsCardTitleLibrary" bind:checked={cardTitleLibraryLocal}>
                   <span class="toggle-slider"></span>
                 </label>
                 <span class="dashboard-layout-label">{tr('library.title')}</span>
               </div>
               <div class="dashboard-layout-item" style="cursor:default">
                 <label class="toggle-switch" style="margin:0">
-                  <input type="checkbox" id="settingsCardTitleMylist" bind:checked={cardTitleMylist}>
+                  <input type="checkbox" id="settingsCardTitleMylist" bind:checked={cardTitleMylistLocal}>
                   <span class="toggle-slider"></span>
                 </label>
                 <span class="dashboard-layout-label">{tr('mylist.title')}</span>
@@ -869,7 +869,7 @@
             <div class="dashboard-layout-list" style="margin-top:0.75rem">
               <div class="dashboard-layout-item" style="cursor:default">
                 <label class="toggle-switch" style="margin:0">
-                  <input type="checkbox" id="settingsDetailTitleBg" bind:checked={detailTitleBg}>
+                  <input type="checkbox" id="settingsDetailTitleBg" bind:checked={detailTitleBgLocal}>
                   <span class="toggle-slider"></span>
                 </label>
                 <span class="dashboard-layout-label">{tr('settings.titleBackground')}</span>

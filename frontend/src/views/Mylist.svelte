@@ -16,7 +16,7 @@
 </script>
 
 <script>
-  import { onMount, tick } from 'svelte';
+  import { onMount, onDestroy, tick } from 'svelte';
   import { showToast } from '../components/Toast.svelte';
   import { showConfirm } from '../components/ConfirmDialog.svelte';
   import AnimeCard from '../components/AnimeCard.svelte';
@@ -26,7 +26,7 @@
   import { getStatusLabels, MYLIST_STATUS_ORDER, getAnimeSortOptions, sortAnimeItems } from '../lib/sort.js';
   import { calcGridCols, readScale } from '../lib/grid.js';
   import { tr } from '../lib/anime-utils.js';
-  import { mylistData } from '../lib/ui-state.js';
+  import { mylistData, cardTitleMylist } from '../lib/ui-state.js';
   import { showDetail, getMyListScrollTop, __skipViewEnter } from '../lib/router.js';
   import { loadLibrary } from './Library.svelte';
   import { Select } from 'bits-ui';
@@ -153,13 +153,12 @@
     return groups;
   });
 
-  // ─── 卡片渲染辅助 ───
-  function getCardTitleVisible(view) {
-    const val = localStorage.getItem('myAnimDock_cardTitle_' + view);
-    if (val === null) return false;
-    return val === 'true';
-  }
+  // ─── 卡片标题常显（响应 Settings 变更）───
+  let alwaysShowTitleMylist = $state(false);
+  const unsubCardTitle = cardTitleMylist.subscribe((v) => { alwaysShowTitleMylist = v; });
+  onDestroy(unsubCardTitle);
 
+  // ─── 卡片渲染辅助 ───
   function basename(p) {
     if (!p) return '';
     return p.split(/[\\/]/).pop();
@@ -416,7 +415,7 @@
               {#snippet children(item)}
                 <AnimeCard
                   {item}
-                  alwaysShowTitle={getCardTitleVisible('mylist')}
+                  alwaysShowTitle={alwaysShowTitleMylist}
                   showMoreBtn
                   onClick={onCardClick}
                   onContextMenu={showMyListContextMenu}
@@ -436,7 +435,7 @@
           {#snippet children(item)}
             <AnimeCard
               {item}
-              alwaysShowTitle={getCardTitleVisible('mylist')}
+              alwaysShowTitle={alwaysShowTitleMylist}
               showMoreBtn
               onClick={onCardClick}
               onContextMenu={showMyListContextMenu}

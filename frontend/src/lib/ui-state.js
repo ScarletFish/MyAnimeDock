@@ -6,11 +6,19 @@
 //   pendingAutoPlay      Library.svelte 写入，Detail.svelte 读取
 //   pendingFinishAnimeId mpv-status.js 写入，Detail.svelte 读取
 import { writable } from 'svelte/store';
+import { localStore } from './local-store.js';
 
 export const libraryData = writable([]);
 export const mylistData = writable([]);
 export const pendingAutoPlay = writable(null);
 export const pendingFinishAnimeId = writable(null);
+
+// ─── 设置项（localStorage ↔ store 双向同步）───
+// Settings.svelte 写入，Library / Mylist / Detail 等视图响应式读取。
+export const cardTitleLibrary = localStore('myAnimDock_cardTitle_library', false);
+export const cardTitleMylist = localStore('myAnimDock_cardTitle_mylist', false);
+export const finishConfirmMode = localStore('myAnimDock_finishConfirm', 'prompt');
+export const detailTitleBg = localStore('myAnimDock_detailTitleBg', false);
 
 // ─── 启动预取 promise（main.js 发起，Library.svelte 首次消费）───
 // 首屏并行：/api/library 不依赖 /api/config，启动时立即发起并缓存 promise，

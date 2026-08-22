@@ -24,13 +24,6 @@ export function saveDashboardLayout(layout) {
   localStorage.setItem('myAnimDock_layout', JSON.stringify(layout));
 }
 
-/** 读取卡片标题可见性设置 */
-export function getCardTitleVisible(view, defaultVal = false) {
-  var val = localStorage.getItem('myAnimDock_cardTitle_' + view);
-  if (val === null) return defaultVal;
-  return val === 'true';
-}
-
 /** 应用详情页标题背景设置到 document */
 export function applyDetailTitleBg() {
   var on = localStorage.getItem('myAnimDock_detailTitleBg') === 'on';

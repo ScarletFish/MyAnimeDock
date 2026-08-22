@@ -49,19 +49,16 @@
     updateMaximizeIcon();
   }
 
-  // ── 拖拽移动（mousedown 在 titlebar 上，跳过交互元素）──
+  // ── 拖拽移动 + 双击最大化（合并处理：startDragging 会捕获鼠标，dblclick 事件无法到达 webview）──
   function onTitlebarMouseDown(e) {
     if (!tauriWin) return;
     if (e.button !== 0) return;
     if (e.target.closest('button, input, select, textarea, a, #globalSearchResults')) return;
-    tauriWin.startDragging();
-  }
-
-  // ── 双击最大化 / 还原 ──
-  function onTitlebarDblClick(e) {
-    if (!tauriWin) return;
-    if (e.target.closest('.titlebar__btn')) return;
-    tauriWin.toggleMaximize().then(updateMaximizeIcon);
+    if (e.detail === 2) {
+      tauriWin.toggleMaximize().then(updateMaximizeIcon);
+    } else {
+      tauriWin.startDragging();
+    }
   }
 
   // ── 返回按钮（详情视图）──
@@ -84,7 +81,7 @@
   });
 </script>
 
-<div id="titlebar" onmousedown={onTitlebarMouseDown} ondblclick={onTitlebarDblClick}>
+<div id="titlebar" onmousedown={onTitlebarMouseDown}>
   <div class="titlebar__left">
     <span class="titlebar__brand" id="titlebarBrand" class:hidden={$titlebarContext.mode === 'detail'}>MyAnimeDock</span>
     <div class="titlebar__detail-context" id="titlebarDetailContext" class:hidden={$titlebarContext.mode !== 'detail'}>

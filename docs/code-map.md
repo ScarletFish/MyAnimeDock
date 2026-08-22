@@ -15,7 +15,7 @@
 | `anime-utils.js` | `tr(key, opts)`, `basename(p)`, `coverSrc(item, size)`, `navigateToDetail(id, el, source)`, `STATUS_SECTIONS_LIBRARY`, `STATUS_SECTIONS_MYLIST` | i18n 翻译 / 路径 / 封面 / 状态分区 | 全局 |
 | `grid.js` | `GRID_CARD_MIN`, `GRID_CARD_MAX`, `readScale()`, `calcGridCols(scale)` | 网格列公式 | Library/Mylist/LocalAnimeSection |
 | `sort.js` | `getStatusLabels()`, `getAnimeSortOptions()`, `sortAnimeItems(items, mode)`, `MYLIST_STATUS_ORDER` | 排序/状态标签 | LocalAnimeSection/Mylist |
-| `dashboard-layout.js` | `getDashboardLayout()`, `saveDashboardLayout(l)`, `defaultDashboardLayout()`, `applyDetailTitleBg()` | 动漫库布局配置 + 详情标题背景 | Settings/Library |
+| `dashboard-layout.js` | `getDashboardLayout()`, `saveDashboardLayout(l)`, `defaultDashboardLayout()` | 动漫库布局配置 | Settings/Library |
 | `theme.js` | `loadTheme`, `applyTheme`, `applyZoom`, `loadReduceMotion`, `applyDetailTitleBg` | 主题/缩放/reduce-motion | main.js |
 | `state.js` | `AppState`（CustomEvent 全局总线） | 跨组件事件通信（遗留，新代码用 store） | 旧代码 |
 | `portal.js` | `portal(node, target)` | Svelte action：DOM 节点移到 portal 容器 | Modal/ConfirmDialog |

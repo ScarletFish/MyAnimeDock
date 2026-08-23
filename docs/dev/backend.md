@@ -23,7 +23,7 @@ server/
 ├── types.ts             → 共享类型（AppData/ServerState/Anime/MyListItem/ScanNode 等）
 ├── players/             → 播放器策略抽象层（base-player / mpv-strategy / registry）
 ├── scrapers/            → 元数据抓取器（index/bangumi/bangumi-personal/anilist/node-fetch）
-├── routes/              → 路由处理模块（9 个 .ts）
+├── routes/              → 路由处理模块（10 个 .ts）
 └── lib/
     ├── paths.js         → 路径单点计算（故意留 JS，不转 TS）
     ├── http-fetch.ts    → 共享 HTTP 请求层

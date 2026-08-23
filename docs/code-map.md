@@ -85,6 +85,7 @@
 | `bangumi-sync.ts` | Bangumi 同步引擎 | Pull→Merge→Push |
 | `mpv-ipc.ts` | mpv IPC 播放进度追踪 | 播放器通信 |
 | `thumbnail-queue.ts` | ffmpeg 缩略图生成队列 | 缩略图生成 |
+| `lib/qb-client.ts` | `qbTestConnection()`, `qbGetTorrents()`, `qbGetFiles()`, `qbAddTorrent()`, `qbPauseTorrent()`, `qbResumeTorrent()`, `qbDeleteTorrent()` | qBittorrent WebAPI 客户端 |
 
 ## 路由 `server/routes/`
 
@@ -99,6 +100,7 @@
 | `relations.ts` | `/api/relations` | 关联条目 |
 | `db-manager.ts` | `/api/db/*` | 数据备份/恢复/导出 |
 | `bangumi.ts` | `/api/bangumi/*` | Bangumi 同步/授权 |
+| `qb.ts` | `/api/qb/*` | qBittorrent API 代理 |
 
 ## 设计模式速查
 

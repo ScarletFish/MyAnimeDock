@@ -134,7 +134,8 @@ const H: any = Object.assign(
   require('./routes/stats'),
   require('./routes/bangumi'),
   require('./routes/db-manager'),
-  require('./routes/relations')
+  require('./routes/relations'),
+  require('./routes/qb')
 );
 
 // ── 内联 handler（封面、静态文件、CORS）──
@@ -284,6 +285,12 @@ const routeTable = [
   { method: 'POST', path: '/api/db/vacuum', handler: H.handleDbVacuum },
   { method: 'POST', path: '/api/db/clear-cache', handler: H.handleDbClearCache },
   { method: 'POST', path: '/api/db/reset', handler: H.handleDbReset },
+  // qBittorrent
+  { method: 'POST', path: '/api/qb/test', handler: H.handleQbTest },
+  { method: 'GET', path: '/api/qb/torrents', handler: H.handleQbTorrents },
+  { method: 'GET', path: '/api/qb/files', handler: H.handleQbFiles },
+  { method: 'POST', path: '/api/qb/add', handler: H.handleQbAdd },
+  { method: 'POST', path: '/api/qb/action', handler: H.handleQbAction },
   // Covers
   { method: 'GET', prefix: '/covers/', handler: handleCoverImage },
   // Banners

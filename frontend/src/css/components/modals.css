@@ -288,9 +288,8 @@ body:has(#modal-root .modal-overlay.show) > :not(#modal-root):not(#globalTooltip
 }
 .settings-panel { display: none; animation: settings-fade-in 250ms var(--ease-out) both; }
 .settings-panel.active { display: block; }
-.settings-panel .form-group + .form-group {
-  padding-top: var(--space-1); border-top: 1px solid var(--border);
-}
+.settings-panel .form-group + .form-group { padding-top: var(--space-1); border-top: 1px solid var(--border); }
+
 
 @keyframes settings-fade-in {
   from { opacity: 0; transform: translateY(6px); }

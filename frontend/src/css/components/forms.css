@@ -336,3 +336,132 @@ input[type="radio"] { accent-color: var(--accent); }
   }
 }
 
+/* ─── qBittorrent Config Group ─── */
+.qb-config .form-group {
+  margin-bottom: var(--space-3);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.settings-panel .qb-config .form-group + .form-group {
+  border-top: none;
+  padding-top: 0;
+}
+
+.qb-config .form-group:last-child {
+  margin-bottom: 0;
+}
+
+.qb-config .form-group > label {
+  flex-shrink: 0;
+  min-width: 4em;
+  font-size: var(--text-sm);
+  font-weight: var(--fw-medium);
+  color: var(--fg-muted);
+  letter-spacing: 0.02em;
+  margin-bottom: 0;
+}
+
+.qb-config .form-group input {
+  flex: 1;
+}
+
+/* Password input with toggle button */
+.password-input-wrapper {
+  position: relative;
+  flex: 1;
+}
+
+.password-input-wrapper input {
+  width: 100%;
+  padding-right: 40px;
+}
+
+.password-toggle-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: var(--space-1);
+  color: var(--fg-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.password-toggle-btn:hover {
+  color: var(--fg-primary);
+  background: var(--overlay-glass-hover);
+}
+
+/* qBittorrent test button */
+.qb-test-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: 1;
+}
+
+.qb-test-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--fg-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.qb-test-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--bg-surface);
+}
+
+.qb-test-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.qb-test-btn span {
+  font-size: var(--text-md);
+  line-height: 1;
+}
+
+.qb-test-btn span.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.qb-test-status {
+  font-size: var(--text-sm);
+  font-weight: var(--fw-medium);
+}
+
+.qb-test-success {
+  color: var(--success);
+}
+
+.qb-test-error {
+  color: var(--error);
+}
+
+.settings-panel .qb-config .form-group:focus-within::before,
+.settings-panel .form-group:has(.qb-config):focus-within::before {
+  display: none;
+}
+

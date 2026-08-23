@@ -34,6 +34,10 @@ export interface ConfigShape {
   autoMarkWatched: boolean;
   uiScale: number;
   apiSources: { type: string; url: string; key: string }[];
+  // qBittorrent
+  qbPort: number;
+  qbUsername: string;
+  qbPassword: string;
   // 运行时由 server.ts / routes 注入的字段（可选）
   reduceMotion?: boolean;
   bangumiAccessToken?: string;
@@ -55,6 +59,9 @@ const DEFAULT_CONFIG: ConfigShape = {
     { type: 'bangumi', url: 'https://api.bangumi.lol', key: '' },
     { type: 'anilist', url: '', key: '' },
   ],
+  qbPort: 8080,
+  qbUsername: 'admin',
+  qbPassword: '',
 };
 
 function loadConfig(): ConfigShape {

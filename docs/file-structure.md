@@ -41,7 +41,7 @@ server/
 ├── config.json                # 运行时配置（gitignore）
 ├── config.example.json        # 配置模板
 │
-├── routes/                    # 路由处理模块（9 个）
+├── routes/                    # 路由处理模块（10 个）
 │   ├── bangumi.ts             #   Bangumi 同步路由
 │   ├── config.ts              #   配置读写
 │   ├── db-manager.ts          #   数据备份/恢复/导出
@@ -49,6 +49,7 @@ server/
 │   ├── library.ts             #   库/元数据管理
 │   ├── mylist.ts              #   我的列表/状态
 │   ├── playback.ts            #   播放控制
+│   ├── qb.ts                  #   qBittorrent API 代理
 │   ├── relations.ts           #   关联条目
 │   └── stats.ts               #   统计图表
 │
@@ -62,6 +63,7 @@ server/
 ├── lib/                       # 共享工具库
 │   ├── http-fetch.ts          #   统一 HTTP 请求层（超时/重试）
 │   ├── config.ts              #   配置加载
+│   ├── qb-client.ts           #   qBittorrent WebAPI 客户端
 │   └── utils.ts               #   通用工具（escHtml/escAttr 等）
 │
 ├── __tests__/                 # 测试
@@ -226,7 +228,7 @@ docs/
 | 要找什么 | 路径 |
 |---------|------|
 | HTTP 入口 | `server/server.ts` |
-| 路由模块 | `server/routes/*.ts` (9 个) |
+| 路由模块 | `server/routes/*.ts` (10 个) |
 | DB 操作 | `server/db.ts` |
 | 元数据抓取 | `server/scrapers/*.ts` (5 个) |
 | 前端 JS | `frontend/src/lib/*.js` + `frontend/src/components/*.svelte`（Svelte 组件） |

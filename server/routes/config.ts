@@ -45,6 +45,9 @@ async function handlePostConfig(req: any, res: any, state: State) {
         if (parsed.uiScale !== undefined) config.uiScale = Math.max(0.5, Math.min(2, parsed.uiScale));
         if (parsed.reduceMotion !== undefined) config.reduceMotion = !!parsed.reduceMotion;
         if (parsed.apiSources !== undefined) config.apiSources = parsed.apiSources;
+        if (parsed.qbPort !== undefined) config.qbPort = Math.max(1, Math.min(65535, Number(parsed.qbPort) || 8080));
+        if (parsed.qbUsername !== undefined) config.qbUsername = String(parsed.qbUsername || 'admin');
+        if (parsed.qbPassword !== undefined) config.qbPassword = String(parsed.qbPassword || '');
         if (parsed.bangumiClientId !== undefined) {
             config.bangumiClientId = parsed.bangumiClientId;
             bangumiPersonal.clientId = parsed.bangumiClientId;

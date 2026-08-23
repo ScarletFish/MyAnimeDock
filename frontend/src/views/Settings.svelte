@@ -70,6 +70,12 @@
   let cacheInfo = $state(null);
   let dbLoaded = $state(false);
   let dbInfoError = $state('');
+  // qBittorrent
+  let qbPort = $state(8080);
+  let qbUsername = $state('admin');
+  let qbPassword = $state('');
+  let showPassword = $state(false);
+  let qbStatus = $state(null); // { ok, version, error } | null
 
   let configCache = $state(null);
   let authPollTimer = null;
@@ -188,6 +194,12 @@
       detailTitleBgLocal = get(detailTitleBg);
       applyDetailTitleBg();
 
+      // qBittorrent
+      qbPort = config.qbPort || 8080;
+      qbUsername = config.qbUsername || 'admin';
+      qbPassword = config.qbPassword || '';
+      qbStatus = null;
+
       let mode = get(finishConfirmMode);
       if (mode === 'on') mode = 'prompt';
       finishConfirmModeLocal = mode;
@@ -203,6 +215,21 @@
   function switchSettingsTab(tab) {
     activeTab = tab;
     if (tab === 'database') refreshDbInfo();
+  }
+
+  // ─── qBittorrent 测试连接 ───
+  async function testQbConnection() {
+    qbStatus = { testing: true };
+    try {
+      const res = await api.post('/api/qb/test', {
+        port: Number(qbPort) || 8080,
+        username: qbUsername || 'admin',
+        password: qbPassword || '',
+      });
+      qbStatus = res;
+    } catch (e) {
+      qbStatus = { ok: false, error: e.message };
+    }
   }
 
   // ─── 表单保存 ───
@@ -239,6 +266,9 @@
         reduceMotion: document.documentElement.getAttribute('data-reduce-motion') === 'true',
         autoMarkWatched: autoMark,
         apiSources,
+        qbPort: Number(qbPort) || 8080,
+        qbUsername: qbUsername || 'admin',
+        qbPassword: qbPassword || '',
         ...(bangumiClientId ? { bangumiClientId } : {}),
         ...(secretToSend ? { bangumiClientSecret: secretToSend } : {}),
       });
@@ -736,6 +766,7 @@
           <button class="settings-tab" class:active={activeTab === 'basic'} role="tab" aria-selected={activeTab === 'basic'} onclick={() => switchSettingsTab('basic')}>{tr('settings.tabBasic')}</button>
           <button class="settings-tab" class:active={activeTab === 'personalize'} role="tab" aria-selected={activeTab === 'personalize'} onclick={() => switchSettingsTab('personalize')}>{tr('settings.tabPersonalize')}</button>
           <button class="settings-tab" class:active={activeTab === 'dashboard'} role="tab" aria-selected={activeTab === 'dashboard'} onclick={() => switchSettingsTab('dashboard')}>{tr('settings.tabDashboard')}</button>
+          <button class="settings-tab" class:active={activeTab === 'downloader'} role="tab" aria-selected={activeTab === 'downloader'} onclick={() => switchSettingsTab('downloader')}>{tr('settings.tabDownloader')}</button>
           <button class="settings-tab" class:active={activeTab === 'database'} role="tab" aria-selected={activeTab === 'database'} onclick={() => switchSettingsTab('database')}>{tr('settings.tabDatabase')}</button>
         </nav>
       </div>
@@ -869,6 +900,68 @@
                   <span class="toggle-slider"></span>
                 </label>
                 <span class="dashboard-layout-label">{tr('settings.titleBackground')}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab: 下载器 -->
+        <div class="settings-panel" class:active={activeTab === 'downloader'} id="tab-downloader">
+          <div class="form-group">
+            <label>qBittorrent</label>
+            <div class="qb-config">
+              <div class="form-group">
+                <label>{tr('settings.qbPort')}</label>
+                <input type="text" id="qbPort" bind:value={qbPort}>
+              </div>
+              <div class="form-group">
+                <label>{tr('settings.qbUsername')}</label>
+                <input type="text" id="qbUsername" bind:value={qbUsername}>
+              </div>
+              <div class="form-group">
+                <label>{tr('settings.qbPassword')}</label>
+                <div class="password-input-wrapper">
+                  <input type={showPassword ? 'text' : 'password'} id="qbPassword" bind:value={qbPassword}>
+                  <button type="button" class="password-toggle-btn" onclick={() => showPassword = !showPassword}>
+                    {#if showPassword}
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                        <line x1="1" y1="1" x2="23" y2="23"/>
+                      </svg>
+                    {:else}
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                      </svg>
+                    {/if}
+                  </button>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>{tr('settings.qbTest')}</label>
+                <div class="qb-test-row">
+                  <button class="qb-test-btn" onclick={testQbConnection} disabled={qbStatus?.testing} aria-label={tr('settings.qbTest')}>
+                    {#if qbStatus?.testing}
+                      <svg class="spinning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M12 6v6l4 2"/>
+                      </svg>
+                    {:else}
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2a10 10 0 1 0 10 10"/>
+                        <path d="M12 12l5-5"/>
+                        <circle cx="12" cy="12" r="1" fill="currentColor"/>
+                      </svg>
+                    {/if}
+                  </button>
+                  {#if qbStatus && !qbStatus.testing}
+                    {#if qbStatus.ok}
+                      <span class="qb-test-status qb-test-success">{tr('settings.qbConnected', { version: qbStatus.version })}</span>
+                    {:else}
+                      <span class="qb-test-status qb-test-error">{qbStatus.error || tr('settings.qbFailed')}</span>
+                    {/if}
+                  {/if}
+                </div>
               </div>
             </div>
           </div>

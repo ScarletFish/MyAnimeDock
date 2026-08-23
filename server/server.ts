@@ -230,6 +230,7 @@ const routeTable = [
   // Config
   { method: 'GET', path: '/api/config', handler: H.handleGetConfig },
   { method: 'POST', path: '/api/config', handler: H.handlePostConfig },
+  { method: 'POST', path: '/api/config/validate', handler: H.handleConfigValidate },
   
   { method: 'GET', path: '/api/notifications', handler: H.handleGetNotifications },
   // Discovery

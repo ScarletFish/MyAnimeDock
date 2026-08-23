@@ -35,17 +35,14 @@
 
   // basic
   let mediaDir = $state('');
-  let mediaDirError = $state('');
   // playback
   let players = $state([]);
   let playerMode = $state('mpv');
   let mpvPath = $state('');
-  let mpvPathError = $state('');
   let playerDdOpen = $state(false);
   let autoMark = $state(true);
   // scraper
   let bangumiUrl = $state('https://api.bgm.tv');
-  let bangumiUrlError = $state('');
   let bangumiClientId = $state('');
   let bangumiClientSecret = $state('');
   // bangumi auth（当前 HTML 无对应 UI，逻辑保留迁移）
@@ -79,6 +76,7 @@
 
   let configCache = $state(null);
   let authPollTimer = null;
+  const fieldErrors = $state({});
 
   // ─── 打开/关闭 + body 滚动锁定 ───
   $effect(() => {
@@ -120,53 +118,24 @@
     settingsOpen.set(false);
   }
 
-  // ─── 输入规范化 + 即时校验 ───
-  function normalizePath(raw) {
-    let s = raw.trim();
-    s = s.replace(/^["']|["']$/g, '');   // 去包裹引号
-    s = s.replace(/\\/g, '/');            // 反斜杠 → 正斜杠
-    s = s.replace(/\/+$/, '');            // 去末尾斜杠
-    return s;
-  }
-
-  function normalizeUrl(raw) {
-    let s = raw.trim();
-    if (s && !/^https?:\/\//i.test(s)) s = 'https://' + s;
-    return s;
-  }
-
-  function onMediaDirBlur() {
-    mediaDirError = '';
-    if (!mediaDir.trim()) return;          // 空值由保存时拦截
-    mediaDir = normalizePath(mediaDir);
-    if (/[<>"|?*]/.test(mediaDir)) {
-      mediaDirError = '路径包含非法字符（<>"|?*）';
-    }
-  }
-
-  function onMpvPathBlur() {
-    mpvPathError = '';
-    if (!mpvPath.trim()) return;
-    mpvPath = normalizePath(mpvPath);
-    if (/[<>"|?*]/.test(mpvPath)) {
-      mpvPathError = '路径包含非法字符（<>"|?*）';
-    }
-  }
-
-  function onBangumiUrlBlur() {
-    bangumiUrlError = '';
-    bangumiUrl = bangumiUrl.trim();
-    if (!bangumiUrl) { bangumiUrl = 'https://api.bgm.tv'; return; }
-    bangumiUrl = normalizeUrl(bangumiUrl);
+  // ─── 后端校验（blur 时调用） ───
+  async function onFieldBlur(field, value) {
     try {
-      const u = new URL(bangumiUrl);
-      const h = u.hostname;
-      const dotIdx = h.lastIndexOf('.');
-      // 需要：含字母、有点、TLD≥2字符
-      if (!/[a-zA-Z]/.test(h) || dotIdx < 1 || h.length - dotIdx - 1 < 2) {
-        bangumiUrlError = '域名格式不正确（如 api.bgm.tv）';
+      const res = await api.post('/api/config/validate', { field, value });
+      if (res.ok) {
+        delete fieldErrors[field];
+        // 回填 normalize 后的值（mediaDir/mpvPath/bangumiUrl）
+        if (res.normalized !== undefined) {
+          if (field === 'mediaDir') mediaDir = res.normalized;
+          else if (field === 'mpvPath') mpvPath = res.normalized;
+          else if (field === 'bangumiUrl') bangumiUrl = res.normalized;
+        }
+      } else {
+        fieldErrors[field] = res.error;
       }
-    } catch { bangumiUrlError = 'URL 格式不正确'; }
+    } catch {
+      delete fieldErrors[field];
+    }
   }
 
   // ─── 打开时加载配置 ───
@@ -234,15 +203,11 @@
 
   // ─── 表单保存 ───
   async function saveSettings() {
-    // 保存时兜底校验（防止绕过 blur 直接保存）
-    onMediaDirBlur();
-    onMpvPathBlur();
-    onBangumiUrlBlur();
     if (!mediaDir.trim()) {
       errorMsg = tr('app.enterMediaDirPath');
       return;
     }
-    if (mediaDirError || mpvPathError || bangumiUrlError) return;
+    if (Object.keys(fieldErrors).length > 0) return;
 
     const rawTheme = document.documentElement.getAttribute('data-theme') || 'dark';
     const newTheme = rawTheme === 'dark' || rawTheme === 'light' ? 'default' : rawTheme;
@@ -776,10 +741,10 @@
           <div class="form-group">
             <label for="settingsMediaDir">{tr('settings.mediaDir')}</label>
             <div class="input-with-btn">
-              <input type="text" id="settingsMediaDir" placeholder="E:/Anime" bind:value={mediaDir} onblur={onMediaDirBlur} class:invalid={mediaDirError}>
+              <input type="text" id="settingsMediaDir" placeholder="E:/Anime" bind:value={mediaDir} onblur={() => onFieldBlur('mediaDir', mediaDir)} class:invalid={fieldErrors.mediaDir}>
               <button class="btn btn-sm" onclick={browseFolder}>{tr('common.browse')}</button>
             </div>
-            {#if mediaDirError}<span class="field-error">{mediaDirError}</span>{/if}
+            {#if fieldErrors.mediaDir}<span class="field-error">{fieldErrors.mediaDir}</span>{/if}
           </div>
           <div class="form-group">
             <label>{tr('settings.player')}</label>
@@ -795,15 +760,15 @@
                   {/each}
                 </div>
               </div>
-              <input type="text" id="settingsPlayerPath" placeholder={tr('settings.playerPathPlaceholder')} bind:value={mpvPath} onblur={onMpvPathBlur} class:invalid={mpvPathError} data-tooltip={mpvPath || ''}>
+              <input type="text" id="settingsPlayerPath" placeholder={tr('settings.playerPathPlaceholder')} bind:value={mpvPath} onblur={() => onFieldBlur('mpvPath', mpvPath)} class:invalid={fieldErrors.mpvPath} data-tooltip={mpvPath || ''}>
               <button class="btn btn-sm" onclick={browsePlayerExecutable}>{tr('common.browse')}</button>
             </div>
-            {#if mpvPathError}<span class="field-error">{mpvPathError}</span>{/if}
+            {#if fieldErrors.mpvPath}<span class="field-error">{fieldErrors.mpvPath}</span>{/if}
           </div>
           <div class="form-group">
             <label for="bangumiUrl">{tr('settings.bangumiApi')}</label>
-            <input type="text" id="bangumiUrl" placeholder="https://api.bgm.tv" bind:value={bangumiUrl} onblur={onBangumiUrlBlur} class:invalid={bangumiUrlError}>
-            {#if bangumiUrlError}<span class="field-error">{bangumiUrlError}</span>{/if}
+            <input type="text" id="bangumiUrl" placeholder="https://api.bgm.tv" bind:value={bangumiUrl} onblur={() => onFieldBlur('bangumiUrl', bangumiUrl)} class:invalid={fieldErrors.bangumiUrl}>
+            {#if fieldErrors.bangumiUrl}<span class="field-error">{fieldErrors.bangumiUrl}</span>{/if}
           </div>
           <div class="form-group">
             <label>{tr('settings.autoMark')}</label>

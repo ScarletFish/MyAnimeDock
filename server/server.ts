@@ -292,6 +292,7 @@ const routeTable = [
   { method: 'GET', path: '/api/qb/files', handler: H.handleQbFiles },
   { method: 'POST', path: '/api/qb/add', handler: H.handleQbAdd },
   { method: 'POST', path: '/api/qb/action', handler: H.handleQbAction },
+  { method: 'GET', path: '/api/qb/transfer', handler: H.handleQbTransfer },
   // Covers
   { method: 'GET', prefix: '/covers/', handler: handleCoverImage },
   // Banners

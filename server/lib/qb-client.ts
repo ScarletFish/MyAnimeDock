@@ -137,3 +137,7 @@ export async function qbPauseAll(port: number, username: string, password: strin
 export async function qbResumeAll(port: number, username: string, password: string): Promise<void> {
   await qbRequest(port, username, password, 'POST', '/api/v2/torrents/resume', 'hashes=all', 'application/x-www-form-urlencoded');
 }
+
+export async function qbGetTransfer(port: number, username: string, password: string): Promise<any> {
+  return qbRequest(port, username, password, 'GET', '/api/v2/transfer/info');
+}

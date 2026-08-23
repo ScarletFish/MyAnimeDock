@@ -83,10 +83,21 @@ async function handleQbAction(req: any, res: any, state: State) {
   }
 }
 
+async function handleQbTransfer(req: any, res: any, state: State) {
+  try {
+    const { port, username, password } = getCreds(state);
+    const info = await qb.qbGetTransfer(port, username, password);
+    jsonResp(res, 200, info);
+  } catch (e: any) {
+    jsonResp(res, 502, { error: e.message });
+  }
+}
+
 export {
   handleQbTest,
   handleQbTorrents,
   handleQbFiles,
   handleQbAdd,
   handleQbAction,
+  handleQbTransfer,
 };

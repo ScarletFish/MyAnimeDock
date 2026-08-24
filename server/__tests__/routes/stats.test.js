@@ -30,7 +30,7 @@ describe('stats route handlers', () => {
             { id: '2', myListStatus: 'completed', downloaded: true, episodes: [{ number: 1, watched: true, fileSize: 300 }] },
             { id: '3', downloaded: false, episodes: [{ number: 1 }] },
           ],
-          playSessions: [{ duration: 600 }, { clockTime: 300 }],
+          playSessions: [{ duration: 600 }, { duration: 300 }],
         },
       });
       const req = mockReq({ url: '/api/stats' });
@@ -50,7 +50,7 @@ describe('stats route handlers', () => {
       const state = mockState({
         data: {
           library: [],
-          playSessions: [{ duration: -100 }, { clockTime: 50 }],
+          playSessions: [{ duration: -100 }, { duration: 50 }],
         },
       });
       const req = mockReq({ url: '/api/stats' });
@@ -380,7 +380,7 @@ describe('stats route handlers', () => {
       assert.strictEqual(thisMonthEntry.minutes, 60);
     });
 
-    it('uses max of duration and clockTime', () => {
+    it('uses duration for watch time calculation', () => {
       const now = new Date();
       const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
       const state = mockState({
@@ -388,7 +388,7 @@ describe('stats route handlers', () => {
           playSessions: [{
             startTime: `${thisMonth}-01T10:00:00.000Z`,
             endTime: `${thisMonth}-01T11:00:00.000Z`,
-            duration: 1800, clockTime: 3600,
+            duration: 3600,
           }],
         },
       });
@@ -401,19 +401,17 @@ describe('stats route handlers', () => {
   });
 
   describe('handleAnimeSessions', () => {
-    it('returns empty object when no matching sessions', () => {
+    it('returns empty array when no matching sessions', () => {
       const state = mockState({ data: { playSessions: [] } });
       const req = mockReq({ url: '/api/anime/nonexistent-id/sessions' });
       const res = mockRes();
       stats.handleAnimeSessions(req, res, state);
       assert.strictEqual(res._status, 200);
-      assert.strictEqual(Object.keys(res._body).length, 90);
-      for (const val of Object.values(res._body)) {
-        assert.strictEqual(val, 0);
-      }
+      assert.ok(Array.isArray(res._body));
+      assert.strictEqual(res._body.length, 0);
     });
 
-    it('returns correct daily minutes for matching sessions', () => {
+    it('returns session data for matching sessions', () => {
       const today = new Date();
       const ymd = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
       const state = mockState({
@@ -430,7 +428,9 @@ describe('stats route handlers', () => {
       const res = mockRes();
       stats.handleAnimeSessions(req, res, state);
       assert.strictEqual(res._status, 200);
-      assert.strictEqual(res._body[ymd], 60);
+      assert.ok(Array.isArray(res._body));
+      assert.strictEqual(res._body.length, 1);
+      assert.strictEqual(res._body[0].duration, 3600);
     });
 
     it('filters sessions by anime ID from URL', () => {
@@ -448,7 +448,9 @@ describe('stats route handlers', () => {
       const res = mockRes();
       stats.handleAnimeSessions(req, res, state);
       assert.strictEqual(res._status, 200);
-      assert.strictEqual(res._body[ymd], 30);
+      assert.ok(Array.isArray(res._body));
+      assert.strictEqual(res._body.length, 1);
+      assert.strictEqual(res._body[0].duration, 1800);
     });
   });
 });

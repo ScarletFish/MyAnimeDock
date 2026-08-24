@@ -1,7 +1,4 @@
 <script>
-  // ─── 观看统计（D3 donut + area chart）───
-  // 根 id="svelte-watchStatsContent"。D3 直接 append SVG，且版本化 ID 防堆叠，
-  // 主题重渲前需手动 container.innerHTML=''（豁免声明式，注释说明原因）。
   import { onMount } from 'svelte';
   import { tr } from '../../lib/anime-utils.js';
   import * as d3 from 'd3';
@@ -13,12 +10,13 @@
   let watchStatsVersion = 0;
   let _wsTooltip = null;
 
-  function fmtPlain(mins) {
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    if (h === 0) return m + 'm';
-    if (m === 0) return h + 'h';
-    return h + 'h ' + Math.round(m / 6) + 'm';
+  function fmtDuration(seconds) {
+    if (seconds < 60) return Math.round(seconds) + 's';
+    const m = Math.round(seconds / 60);
+    if (m < 60) return m + 'min';
+    const h = Math.floor(m / 60);
+    const rm = m % 60;
+    return rm > 0 ? h + 'h ' + rm + 'min' : h + 'h';
   }
 
   function getThemeColors() {
@@ -44,14 +42,8 @@
     return _wsTooltip;
   }
 
-  function updateDonutDuration(version, totalMinutes) {
-    const el = document.getElementById('wsDur_' + version);
-    if (el) el.textContent = fmtPlain(totalMinutes);
-  }
-
-  function renderWsDonut(container, data, version) {
+  function renderDonut(container, totalEp, watchedEp, totalSecs, version) {
     const tc = getThemeColors();
-    const { totalEp, watchedEp } = data;
     const pct = totalEp > 0 ? watchedEp / totalEp : 0;
     const rect = container.getBoundingClientRect();
     const size = Math.max(Math.min(rect.width || 200, 220), 140);
@@ -66,19 +58,16 @@
     svg.append('path').attr('d', arc({ startAngle: 0, endAngle: tau })).attr('fill', tc.gridLine);
     const progressAngle = Math.min(pct * tau, tau);
     svg.append('path').attr('d', arc({ startAngle: -tau / 4, endAngle: -tau / 4 + progressAngle })).attr('fill', tc.accent);
-    svg.append('filter').attr('id', 'wsGlow_' + version).append('feDropShadow')
-      .attr('dx', '0').attr('dy', '1').attr('stdDeviation', '3')
-      .attr('flood-color', tc.accent).attr('flood-opacity', '0.25');
     svg.append('text').attr('text-anchor', 'middle').attr('dy', '-0.15em').attr('fill', tc.text)
       .attr('font-size', '1.4rem').attr('font-weight', '700').text(watchedEp + '/' + totalEp);
     svg.append('text').attr('text-anchor', 'middle').attr('dy', '1.1em').attr('fill', tc.muted)
-      .attr('font-size', '1.016rem').attr('id', 'wsDur_' + version).text('');
+      .attr('font-size', '1.016rem').text(fmtDuration(totalSecs));
   }
 
-  function renderWsChart(container, weeks, version) {
+  function renderChart(container, weeks, version) {
     const tc = getThemeColors();
     const rect = container.getBoundingClientRect();
-    const margin = { top: 10, right: 10, bottom: 26, left: 34 };
+    const margin = { top: 10, right: 10, bottom: 26, left: 50 };
     const width = Math.max(rect.width - margin.left - margin.right, 120);
     const height = Math.max(rect.height - margin.top - margin.bottom, 80);
     const svg = d3.select(container).append('svg')
@@ -111,7 +100,7 @@
       .attr('fill', 'transparent')
       .on('mousemove', (evt, d) => {
         const tip = wsTooltip();
-        tip.innerHTML = `<b>${(d.start.getMonth() + 1)}/${d.start.getDate()}</b><br>${tr('detail.minutes', { minutes: d.minutes })}`;
+        tip.innerHTML = '<b>' + (d.start.getMonth() + 1) + '/' + d.start.getDate() + '</b><br>' + tr('detail.minutes', { minutes: d.minutes });
         tip.style.display = 'block';
         const pad = 12;
         let l = evt.clientX + pad;
@@ -130,8 +119,11 @@
       }))
       .selectAll('text').attr('fill', tc.muted).attr('font-size', '0.938rem').attr('dy', '1em');
     svg.selectAll('.domain').attr('stroke', tc.border);
-    svg.append('g').call(d3.axisLeft(y).ticks(3).tickFormat((d) => d >= 60 ? (d / 60).toFixed(0) + 'h' : d + 'm'))
-      .selectAll('text').attr('fill', tc.muted).attr('font-size', '0.938rem');
+    svg.append('g').call(d3.axisLeft(y).ticks(3).tickFormat((d) => {
+      const v = Math.round(d);
+      if (v >= 60) return Math.round(v / 60) + 'h';
+      return v + 'min';
+    })).selectAll('text').attr('fill', tc.muted).attr('font-size', '0.938rem');
     svg.selectAll('.domain').attr('stroke', tc.border);
   }
 
@@ -141,44 +133,54 @@
     const totalEp = anime.totalEpisodes || anime.eps || (anime.episodes ? anime.episodes.length : 0);
     if (watchedEp <= 0) { containerEl.innerHTML = ''; return; }
     const version = ++watchStatsVersion;
-    // 豁免声明式：D3 直接 append SVG，且需版本化 ID 防堆叠；主题重渲前手动清空容器。
-    containerEl.innerHTML = `<div class="ws-grid"><div class="ws-donut-wrap" id="wsDonut_${version}"></div><div class="ws-right" id="wsRight_${version}"><div class="ws-chart" id="wsChartInner_${version}"></div></div></div>`;
+    containerEl.innerHTML = '<div class="ws-grid"><div class="ws-donut-wrap" id="wsDonut_' + version + '"></div><div class="ws-right" id="wsRight_' + version + '"><div class="ws-chart" id="wsChartInner_' + version + '"></div></div></div>';
     const donutEl = document.getElementById('wsDonut_' + version);
     const rightCol = document.getElementById('wsRight_' + version);
     const chartInner = document.getElementById('wsChartInner_' + version);
-    if (donutEl) renderWsDonut(donutEl, { totalEp, watchedEp }, version);
-    api.get('/api/anime/' + encodeURIComponent(anime.id) + '/sessions').then((data) => {
+
+    api.get('/api/anime/' + encodeURIComponent(anime.id) + '/sessions').then((sessions) => {
       if (version !== watchStatsVersion) return;
-      const dailyEntries = Object.entries(data);
-      const totalMinutes = dailyEntries.reduce((s, [, v]) => s + v, 0);
-      if (totalMinutes === 0) { if (rightCol) rightCol.style.display = 'none'; return; }
+      let totalSecs = 0;
+      const dayMap = new Map();
+      for (const s of sessions) {
+        const secs = Math.max(0, s.duration || 0);
+        totalSecs += secs;
+        if (secs <= 0) continue;
+        const d = new Date(s.startTime);
+        const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        dayMap.set(key, (dayMap.get(key) || 0) + secs);
+      }
+
+      if (donutEl) renderDonut(donutEl, totalEp, watchedEp, totalSecs, version);
+
+      if (dayMap.size === 0 || totalSecs === 0) {
+        if (rightCol) rightCol.style.display = 'none';
+        return;
+      }
+
       const weekMap = new Map();
-      for (const [dateStr, mins] of dailyEntries) {
-        if (mins === 0) continue;
+      for (const [dateStr, secs] of dayMap) {
         const d = new Date(dateStr + 'T00:00:00');
         const day = d.getDay();
         const mon = new Date(d);
         mon.setDate(d.getDate() - ((day + 6) % 7));
         const key = mon.toISOString().slice(0, 10);
         if (!weekMap.has(key)) weekMap.set(key, { start: mon, minutes: 0 });
-        weekMap.get(key).minutes += mins;
+        weekMap.get(key).minutes += Math.round(secs / 60);
       }
-      const sortedWeeks = [...weekMap.values()].sort((a, b) => a.start - b.start);
+      const sortedWeeks = [...weekMap.values()].filter((w) => w.minutes > 0).sort((a, b) => a.start - b.start);
       if (sortedWeeks.length === 0) {
-        updateDonutDuration(version, totalMinutes);
         if (rightCol) rightCol.style.display = 'none';
         return;
       }
-      updateDonutDuration(version, totalMinutes);
       if (rightCol) rightCol.style.display = '';
-      if (chartInner && d3) renderWsChart(chartInner, sortedWeeks, version);
+      if (chartInner && d3) renderChart(chartInner, sortedWeeks, version);
     }).catch(() => {
       if (version !== watchStatsVersion) return;
       if (rightCol) rightCol.style.display = 'none';
     });
   }
 
-  // anime 变化（含同 id 更新如 toggleWatched/回写）时重建；主题切换时手动重建
   $effect(() => {
     if (anime) build();
   });

@@ -19,7 +19,7 @@ export function handleStats(req: any, res: any, state: ServerState): void {
     }
   }
   const totalWatchSeconds = (data.playSessions || []).reduce((sum: number, s: any) => {
-    return sum + Math.max(0, s.duration || 0, s.clockTime || 0);
+    return sum + Math.max(0, s.duration || 0);
   }, 0);
   jsonResp(res, 200, { watching, completed, total, totalEpWatched, totalWatchSeconds, totalFileSize, totalFileCount });
 }
@@ -170,7 +170,7 @@ export function handleStatsWatchActivity(req: any, res: any, state: ServerState)
     const ym = `${sd.getFullYear()}-${String(sd.getMonth() + 1).padStart(2, '0')}`;
     const entry = months.find(m => m.ym === ym);
     if (entry) {
-      const watchSecs = Math.max(0, s.duration || 0, s.clockTime || 0);
+      const watchSecs = Math.max(0, s.duration || 0);
       entry.minutes += Math.round(watchSecs / 60);
     }
   }
@@ -181,19 +181,9 @@ export function handleAnimeSessions(req: any, res: any, state: ServerState): voi
   const { data } = state;
   const id = decodeURIComponent(req.url.slice('/api/anime/'.length, -'/sessions'.length));
   const sessions = data.playSessions.filter((s: any) => s.animeId === id && s.endTime);
-  const byDate: Record<string, number> = {};
-  for (const s of sessions) {
-    const sd = new Date(s.startTime);
-    const dateKey = `${sd.getFullYear()}-${String(sd.getMonth() + 1).padStart(2, '0')}-${String(sd.getDate()).padStart(2, '0')}`;
-    byDate[dateKey] = (byDate[dateKey] || 0) + Math.max(0, s.duration || 0);
-  }
-  const result: Record<string, number> = {};
-  const now = new Date();
-  for (let i = 89; i >= 0; i--) {
-    const d = new Date(now);
-    d.setDate(d.getDate() - i);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    result[key] = Math.round((byDate[key] || 0) / 60);
-  }
+  const result = sessions.map((s: any) => ({
+    startTime: s.startTime,
+    duration: Math.max(0, s.duration || 0),
+  }));
   jsonResp(res, 200, result);
 }

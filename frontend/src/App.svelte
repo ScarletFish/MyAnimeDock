@@ -11,6 +11,7 @@
   import Library from './views/Library.svelte';
   import Mylist from './views/Mylist.svelte';
   import Stats from './views/Stats.svelte';
+  import Download from './views/Download.svelte';
   import Detail from './views/Detail.svelte';
   import ThemeDock from './components/ThemeDock.svelte';
   import MetaMatch from './views/MetaMatch.svelte';
@@ -35,6 +36,7 @@
   <Library />
   <Mylist />
   <Stats />
+  <Download />
   <Detail />
   <MetaMatch />
 </div>

@@ -97,6 +97,13 @@
         <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
       </svg>
     </button>
+    <button class="nav-btn" id="btnDownload" data-tip="下载" data-i18n-attr="nav.download:data-tip" onclick={() => showView('download')} onmouseenter={(e) => scheduleShow(e.currentTarget)} onmouseleave={hideTip}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+        <polyline points="7 10 12 15 17 10"></polyline>
+        <line x1="12" y1="15" x2="12" y2="3"></line>
+      </svg>
+    </button>
   </nav>
   <div class="sidebar-bottom">
     <button class="nav-btn" id="btnSettings" data-tip="设置" data-i18n-attr="common.settings:data-tip" onclick={() => settingsOpen.set(true)} onmouseenter={(e) => scheduleShow(e.currentTarget)} onmouseleave={hideTip}>

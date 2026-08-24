@@ -196,6 +196,74 @@ function broadcastMpvStatus() {
   }
 }
 
+// ── SSE: qb-status 事件推送 ──
+const qbSseClients = new Set();
+let qbPollTimer: ReturnType<typeof setInterval> | null = null;
+let lastQbPayload: string = '';
+let qbPolling = false;
+
+function handleQbStatusSSE(req: any, res: any, _state: any) {
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'Access-Control-Allow-Origin': '*',
+  });
+  qbSseClients.add(res);
+  res.on('close', () => {
+    qbSseClients.delete(res);
+    if (qbSseClients.size === 0 && qbPollTimer) {
+      clearInterval(qbPollTimer);
+      qbPollTimer = null;
+    }
+  });
+  // 立即发送当前状态
+  buildQbStatusPayload().then(payload => {
+    const data = JSON.stringify(payload);
+    lastQbPayload = data;
+    res.write(`data: ${data}\n\n`);
+  }).catch(() => {});
+  // 启动轮询（仅首个客户端连接时启动）
+  if (!qbPollTimer) {
+    qbPollTimer = setInterval(pollQbStatus, 2000);
+  }
+}
+
+async function pollQbStatus() {
+  if (qbSseClients.size === 0 || qbPolling) return;
+  qbPolling = true;
+  try {
+    const payload = await buildQbStatusPayload();
+    const data = JSON.stringify(payload);
+    if (data === lastQbPayload) return;
+    lastQbPayload = data;
+    for (const client of qbSseClients) {
+      (client as any).write(`data: ${data}\n\n`);
+    }
+  } catch (e: any) {
+    logger.error(`[QB-SSE] poll error: ${e.message}`);
+  } finally {
+    qbPolling = false;
+  }
+}
+
+async function buildQbStatusPayload() {
+  const { qbPort, qbUsername, qbPassword } = config;
+  if (!qbPort || !qbUsername) {
+    return { configured: false, transfer: null, torrents: [] };
+  }
+  try {
+    const qb = require('./lib/qb-client');
+    const [transfer, torrents] = await Promise.all([
+      qb.qbGetTransfer(qbPort, qbUsername, qbPassword).catch(() => null),
+      qb.qbGetTorrents(qbPort, qbUsername, qbPassword).catch(() => []),
+    ]);
+    return { configured: true, transfer, torrents: torrents || [] };
+  } catch {
+    return { configured: true, transfer: null, torrents: [] };
+  }
+}
+
 function handleCorsPreflight(req: any, res: any) {
   res.writeHead(204, {
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
@@ -293,12 +361,15 @@ const routeTable = [
   { method: 'POST', path: '/api/qb/add', handler: H.handleQbAdd },
   { method: 'POST', path: '/api/qb/action', handler: H.handleQbAction },
   { method: 'GET', path: '/api/qb/transfer', handler: H.handleQbTransfer },
+  { method: 'GET', path: '/api/qb/status', handler: (req: any, res: any, _state: any) => { jsonResp(res, 200, buildQbStatusPayload()); } },
   // Covers
   { method: 'GET', prefix: '/covers/', handler: handleCoverImage },
   // Banners
   { method: 'GET', prefix: '/banners/', handler: handleBannerImage },
   // SSE: mpv-status 事件流
   { method: 'GET', path: '/api/events/mpv-status', handler: handleMpvStatusSSE },
+  // SSE: qb-status 事件流
+  { method: 'GET', path: '/api/events/qb-status', handler: handleQbStatusSSE },
 ];
 
 // ── HTTP 服务器 ──

@@ -7,6 +7,7 @@ import { discoveryOpen } from '../views/Discovery.svelte';
 import { libraryOpen } from '../views/Library.svelte';
 import { statsOpen } from '../views/Stats.svelte';
 import { mylistOpen } from '../views/Mylist.svelte';
+import { downloadOpen } from '../views/Download.svelte';
 import { detailOpen, openDetail } from '../views/Detail.svelte';
 import { titlebarContext } from '../components/chrome/Titlebar.svelte';
 
@@ -47,6 +48,7 @@ export function showView(view) {
   document.getElementById('btnLibrary').classList.toggle('active', view === 'library');
   document.getElementById('btnStats').classList.toggle('active', view === 'stats');
   document.getElementById('btnMyList').classList.toggle('active', view === 'mylist');
+  document.getElementById('btnDownload').classList.toggle('active', view === 'download');
 
   currentView = view;
   _libraryChangingView = false;
@@ -66,6 +68,7 @@ export function showView(view) {
   libraryOpen.set(view === 'library');
   statsOpen.set(view === 'stats');
   mylistOpen.set(view === 'mylist');
+  downloadOpen.set(view === 'download');
   detailOpen.set(view === 'detail');
 }
 

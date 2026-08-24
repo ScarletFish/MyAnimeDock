@@ -38,6 +38,8 @@ export interface ConfigShape {
   qbPort: number;
   qbUsername: string;
   qbPassword: string;
+  // 蜜柑计划镜像
+  mikanMirror: string;
   // 运行时由 server.ts / routes 注入的字段（可选）
   reduceMotion?: boolean;
   bangumiAccessToken?: string;
@@ -62,6 +64,7 @@ const DEFAULT_CONFIG: ConfigShape = {
   qbPort: 8080,
   qbUsername: 'admin',
   qbPassword: '',
+  mikanMirror: 'https://mikanime.tv',
 };
 
 function loadConfig(): ConfigShape {

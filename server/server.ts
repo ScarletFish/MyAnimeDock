@@ -135,7 +135,8 @@ const H: any = Object.assign(
   require('./routes/bangumi'),
   require('./routes/db-manager'),
   require('./routes/relations'),
-  require('./routes/qb')
+  require('./routes/qb'),
+  require('./routes/mikan')
 );
 
 // ── 内联 handler（封面、静态文件、CORS）──
@@ -362,6 +363,10 @@ const routeTable = [
   { method: 'POST', path: '/api/qb/action', handler: H.handleQbAction },
   { method: 'GET', path: '/api/qb/transfer', handler: H.handleQbTransfer },
   { method: 'GET', path: '/api/qb/status', handler: (req: any, res: any, _state: any) => { jsonResp(res, 200, buildQbStatusPayload()); } },
+  // Mikan
+  { method: 'GET', path: '/api/mikan/weekly', handler: H.handleMikanWeekly },
+  { method: 'GET', path: '/api/mikan/season', handler: H.handleMikanSeason },
+  { method: 'GET', path: '/api/mikan/bangumi', handler: H.handleMikanBangumi },
   // Covers
   { method: 'GET', prefix: '/covers/', handler: handleCoverImage },
   // Banners

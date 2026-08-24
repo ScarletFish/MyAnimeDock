@@ -73,6 +73,8 @@
   let qbPassword = $state('');
   let showPassword = $state(false);
   let qbStatus = $state(null); // { ok, version, error } | null
+  // 蜜柑计划
+  let mikanMirror = $state('https://mikanime.tv');
 
   let configCache = $state(null);
   let authPollTimer = null;
@@ -169,6 +171,9 @@
       qbPassword = config.qbPassword || '';
       qbStatus = null;
 
+      // 蜜柑计划
+      mikanMirror = config.mikanMirror || 'https://mikanime.tv';
+
       let mode = get(finishConfirmMode);
       if (mode === 'on') mode = 'prompt';
       finishConfirmModeLocal = mode;
@@ -234,6 +239,7 @@
         qbPort: Number(qbPort) || 8080,
         qbUsername: qbUsername || 'admin',
         qbPassword: qbPassword || '',
+        mikanMirror: mikanMirror.trim() || 'https://mikanime.tv',
         ...(bangumiClientId ? { bangumiClientId } : {}),
         ...(secretToSend ? { bangumiClientSecret: secretToSend } : {}),
       });
@@ -872,6 +878,11 @@
 
         <!-- Tab: 下载器 -->
         <div class="settings-panel" class:active={activeTab === 'downloader'} id="tab-downloader">
+          <div class="form-group">
+            <label>蜜柑计划</label>
+            <p class="form-hint mt-0">{tr('settings.mikanMirrorHint')}</p>
+            <input type="text" id="mikanMirror" placeholder="https://mikanime.tv" bind:value={mikanMirror}>
+          </div>
           <div class="form-group">
             <label>qBittorrent</label>
             <div class="qb-config">

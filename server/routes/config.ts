@@ -25,6 +25,7 @@ const ConfigUpdateSchema = z.object({
   qbPassword: z.string().optional(),
   bangumiClientId: z.string().optional(),
   bangumiClientSecret: z.string().optional(),
+  mikanMirror: z.string().optional(),
 });
 
 // ── 单字段校验 schema ──
@@ -77,6 +78,7 @@ const FIELD_MAP: Record<string, (v: unknown) => unknown> = {
   qbPort:        v => v,
   qbUsername:    v => v,
   qbPassword:    v => v,
+  mikanMirror:   v => v,
 };
 
 function handleGetConfig(req: any, res: any, state: State) {

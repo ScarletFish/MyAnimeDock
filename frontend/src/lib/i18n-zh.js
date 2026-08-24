@@ -103,6 +103,8 @@ export const I18N_ZH = {
   'settings.qbTest': '测试连接',
   'settings.qbConnected': '已连接 qBittorrent {{version}}',
   'settings.qbFailed': '连接失败',
+  // 蜜柑计划
+  'settings.mikanMirrorHint': '国内用户使用 https://mikanime.tv，海外用户使用 https://mikanani.me',
   'settings.visual': '视觉',
   'settings.titleBackground': '标题背景',
   'settings.cardTitle': '卡片常显标题',

@@ -143,6 +143,35 @@ export interface AppData {
   scannedTree: ScanNode[];
 }
 
+// ─── Mikan（蜜柑计划）───
+export interface MikanBangumi {
+  name: string;
+  detailUrl: string;
+}
+
+export interface MikanSubtitleGroupInfo {
+  id: number;
+  name: string;
+  rssUrl: string;
+}
+
+export interface MikanBangumiDetail {
+  name: string;
+  cover: string;
+  subgroups: MikanSubtitleGroupInfo[];
+  resources: MikanSubtitleGroup[];
+}
+
+export interface MikanSubtitleGroup {
+  name: string;
+  size: string;
+  date: string;
+  downloadUrl: string;
+  type: 'magnet' | 'torrent';
+  subgroupName?: string;
+  subgroupRss?: string;
+}
+
 // ─── ActivePlay（activePlays Map 的值）───
 // 对齐 routes/playback.ts 中 activePlays.set(filePath, { sessionId, episode, anime })
 export interface ActivePlay {

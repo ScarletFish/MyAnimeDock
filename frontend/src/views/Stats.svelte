@@ -328,11 +328,15 @@
     svg.selectAll('.domain').attr('stroke', tc.border);
 
     svg.append('g')
-      .call(d3.axisLeft(y).ticks(5).tickFormat(d => d >= 60 ? (d / 60).toFixed(0) + 'h' : d + 'm'))
+      .call(d3.axisLeft(y).ticks(5).tickFormat(d => {
+        const v = Math.round(d);
+        return v >= 60 ? (v / 60).toFixed(0) + 'h' : v + 'm';
+      }))
       .selectAll('text')
       .attr('fill', tc.muted)
-      .attr('font-family', tc.fontMono)
-      .attr('font-size', '15px');
+      .attr('font-family', tc.fontBody)
+      .attr('font-size', '15px')
+      .style('font-variant-numeric', 'tabular-nums');
     svg.selectAll('.domain').attr('stroke', tc.border);
   }
 
@@ -506,9 +510,10 @@
       .attr('text-anchor', 'middle')
       .attr('dy', '-0.15em')
       .attr('fill', tc.text)
-      .attr('font-family', tc.fontMono)
+      .attr('font-family', tc.fontBody)
       .attr('font-size', '1.5rem')
       .attr('font-weight', '700')
+      .style('font-variant-numeric', 'tabular-nums')
       .text(total);
     svg.append('text')
       .attr('text-anchor', 'middle')

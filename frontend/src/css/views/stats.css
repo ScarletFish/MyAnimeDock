@@ -185,6 +185,7 @@
   color: var(--fg-primary);
   line-height: 1;
   letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
 }
 
 .rating-chart-avg-label {
@@ -212,6 +213,7 @@
   color: var(--fg-secondary);
   text-align: right;
   flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
 }
 
 .rating-row-track {
@@ -241,6 +243,7 @@
   color: var(--fg-muted);
   text-align: right;
   flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ─── Season: donut ─── */
@@ -297,8 +300,11 @@
 
 .season-legend-value {
   color: var(--fg-muted);
-  font-family: var(--font-mono);
   margin-left: var(--space-2);
+  font-family: var(--font-mono);
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
 }
 
 .season-chart-hint {

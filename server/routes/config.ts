@@ -17,7 +17,7 @@ const ConfigUpdateSchema = z.object({
   theme: z.string().optional(),
   themeMode: z.string().optional(),
   autoMarkWatched: z.boolean().optional(),
-  uiScale: z.number().min(0.5).max(2).optional(),
+  uiScale: z.number().optional().transform(v => v == null ? v : Math.min(2, Math.max(0.5, v))),
   reduceMotion: z.boolean().optional(),
   apiSources: z.array(z.object({ type: z.string(), url: z.string(), key: z.string() })).optional(),
   qbPort: z.number().int().min(1).max(65535).optional(),

@@ -150,28 +150,30 @@ export interface MikanBangumi {
   cover: string;
 }
 
-export interface MikanSubtitleGroupInfo {
-  id: number;
-  name: string;
-  rssUrl: string;
-}
-
 export interface MikanBangumiDetail {
   name: string;
   cover: string;
-  subgroups: MikanSubtitleGroupInfo[];
-  resources: MikanSubtitleGroup[];
+  bgmId: string;
+  subgroups: MikanSubgroupWithResources[];
 }
 
-export interface MikanSubtitleGroup {
+export interface MikanSubgroupWithResources {
+  id: number;
+  name: string;
+  rssUrl: string;
+  resources: MikanResource[];
+}
+
+export interface MikanResource {
   name: string;
   size: string;
   date: string;
   downloadUrl: string;
   type: 'magnet' | 'torrent';
-  subgroupName?: string;
-  subgroupRss?: string;
 }
+
+// 兼容旧代码
+export type MikanSubtitleGroupInfo = Omit<MikanSubgroupWithResources, 'resources'>;
 
 // ─── ActivePlay（activePlays Map 的值）───
 // 对齐 routes/playback.ts 中 activePlays.set(filePath, { sessionId, episode, anime })

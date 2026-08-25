@@ -131,11 +131,12 @@
 
 .mikan-anime-name {
   flex-shrink: 0;
-  padding: var(--space-1) var(--space-2);
+  padding: var(--space-050) var(--space-2) var(--space-1);
+  font-family: var(--font-body);
   font-size: var(--text-xs);
   font-weight: var(--fw-medium);
   line-height: 1.3;
-  height: 2.6em;
+  max-height: 2.6em;
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
@@ -202,9 +203,185 @@
 }
 
 .mikan-subgroup-name {
+  font-family: var(--font-body);
   font-size: var(--text-sm);
   font-weight: var(--fw-medium);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* ─── Split Panel (Left: subgroups, Right: resources) ─── */
+.mikan-split {
+  display: flex;
+  gap: var(--space-3);
+  min-height: 200px;
+  max-height: 50vh;
+}
+
+.mikan-split-left {
+  width: 240px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  overflow: hidden;
+}
+
+.mikan-split-left-title {
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--fg-muted);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mikan-subgroup-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  scrollbar-width: none;
+}
+
+.mikan-subgroup-list::-webkit-scrollbar {
+  display: none;
+}
+
+.mikan-subgroup-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+.mikan-subgroup-item:hover {
+  background: var(--bg-elevated);
+}
+
+.mikan-subgroup-item.selected {
+  background: rgba(var(--accent-rgb), 0.12);
+  position: relative;
+}
+
+.mikan-subgroup-item.selected::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 3px;
+  border-radius: var(--radius-xs);
+  background: var(--accent);
+}
+
+.mikan-split-right {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.mikan-resource-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-1) 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.mikan-resource-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.mikan-resource-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.mikan-resource-list::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: var(--radius-xs);
+}
+
+.mikan-resource-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-025);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  font-family: var(--font-body);
+  border-bottom: 1px solid var(--border);
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+.mikan-resource-item:last-child {
+  border-bottom: none;
+}
+
+.mikan-resource-item:nth-child(even) {
+  background: var(--bg-elevated);
+}
+
+.mikan-resource-item:hover {
+  background: var(--bg-elevated);
+}
+
+.mikan-resource-name {
+  color: var(--fg-primary);
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  line-height: 1.4;
+}
+
+.mikan-resource-meta {
+  font-size: var(--text-xs);
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-body);
+}
+
+.mikan-resource-empty {
+  padding: var(--space-4);
+  text-align: center;
+  color: var(--fg-muted);
+  font-size: var(--text-sm);
+}
+
+.mikan-load-full-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  margin-top: var(--space-1);
+  background: transparent;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--fg-muted);
+  font-size: var(--text-xs);
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.mikan-load-full-btn:hover:not(:disabled) {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.05);
+}
+.mikan-load-full-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

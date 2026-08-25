@@ -8,10 +8,17 @@ const logger: Logger = require('../logger').child('[MIKAN]');
 const MIKAN_FALLBACK = 'https://mikanani.me';
 
 /**
- * 解码HTML实体（如 &#x55B5; → 喵）
+ * 解码HTML实体（如 &#x55B5; → 喵, &amp; → &）
  */
 function decodeHtmlEntities(str: string): string {
-  return str.replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+  return str
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)))
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'");
 }
 
 /**
@@ -225,7 +232,77 @@ function parseCover(html: string): string {
 }
 
 /**
- * 获取番剧详情页的字幕组资源
+ * 通过 AJAX 接口获取字幕组的完整资源列表
+ * Mikan 初始页只显示15条，需要调用 ExpandEpisodeTable 获取全部
+ */
+async function fetchFullEpisodeList(
+  bangumiId: string,
+  subgroupId: number,
+  mirror: string
+): Promise<Array<{ name: string; size: string; date: string; downloadUrl: string; type: 'magnet' | 'torrent' }>> {
+  const path = `/Home/ExpandEpisodeTable?bangumiId=${bangumiId}&subtitleGroupId=${subgroupId}&take=9999`;
+  
+  let html = '';
+  const urls = [`${mirror}${path}`, `${MIKAN_FALLBACK}${path}`];
+  for (const url of urls) {
+    try {
+      const res = await fetchWithTimeout(url, {
+        headers: { 'User-Agent': USER_AGENT },
+      }, 15000);
+      if (res.ok) {
+        html = await res.text();
+        break;
+      }
+    } catch {
+      // try next url
+    }
+  }
+  
+  if (!html) return [];
+  
+  const resources: Array<{ name: string; size: string; date: string; downloadUrl: string; type: 'magnet' | 'torrent' }> = [];
+  const rowRegex = /<tr>([\s\S]*?)<\/tr>/g;
+  let rowMatch;
+  
+  while ((rowMatch = rowRegex.exec(html)) !== null) {
+    const rowHtml = rowMatch[1];
+    
+    const magnetMatch = rowHtml.match(/data-magnet="([^"]+)"/);
+    if (!magnetMatch) continue;
+    
+    const magnet = magnetMatch[1].replace(/&amp;/g, '&');
+    
+    const tdContents: string[] = [];
+    const tdRegex = /<td>([\s\S]*?)<\/td>/g;
+    let tdMatch;
+    while ((tdMatch = tdRegex.exec(rowHtml)) !== null) {
+      tdContents.push(tdMatch[1]);
+    }
+    
+    // AJAX response: td[0]=checkbox, td[1]=name, td[2]=size, td[3]=date, td[4]=download, td[5]=play
+    const nameHtml = tdContents[1] || '';
+    const nameMatch = nameHtml.match(/<a[^>]*>([^<]+)<\/a>/);
+    const name = nameMatch ? decodeHtmlEntities(nameMatch[1].trim()) : '';
+    
+    const size = (tdContents[2] || '').replace(/<[^>]*>/g, '').trim();
+    const date = (tdContents[3] || '').replace(/<[^>]*>/g, '').trim();
+    
+    const torrentMatch = rowHtml.match(/href="(\/Download\/[^"]*\.torrent)"/);
+    
+    resources.push({
+      name,
+      size,
+      date,
+      downloadUrl: torrentMatch ? `https://mikanime.tv${torrentMatch[1]}` : magnet,
+      type: torrentMatch ? 'torrent' : 'magnet',
+    });
+  }
+  
+  return resources;
+}
+
+/**
+ * 获取番剧详情页的字幕组资源（初始页，每个字幕组最多15条，快速）
  */
 export async function getBangumiResources(detailUrl: string, mirror: string): Promise<MikanBangumiDetail> {
   const html = await fetchWithFallback(detailUrl, mirror);
@@ -245,28 +322,28 @@ export async function getBangumiResources(detailUrl: string, mirror: string): Pr
   // 提取封面
   const cover = parseCover(html);
   
-  // 提取字幕组和资源
+  // 提取字幕组
   const subgroupsRaw = parseSubgroups(html);
-  const resourcesRaw = parseDetailPage(html);
   
-  // 按字幕组索引分组资源
-  const resourcesBySubgroupIdx = new Map<number, typeof resourcesRaw>();
-  for (const r of resourcesRaw) {
-    const arr = resourcesBySubgroupIdx.get(r.subgroupIdx) || [];
-    arr.push(r);
-    resourcesBySubgroupIdx.set(r.subgroupIdx, arr);
+  // 从详情页 HTML 提取初始资源（每个字幕组最多15条，无需 AJAX，快速）
+  const initialResources = parseDetailPage(html);
+  const initialBySubgroupIdx = new Map<number, Array<{ name: string; size: string; date: string; downloadUrl: string; type: 'magnet' | 'torrent' }>>();
+  for (const r of initialResources) {
+    const list = initialBySubgroupIdx.get(r.subgroupIdx) || [];
+    list.push({ name: r.name, size: r.size, date: r.date, downloadUrl: r.downloadUrl, type: r.type });
+    initialBySubgroupIdx.set(r.subgroupIdx, list);
   }
   
-  // 构建新的返回结构：字幕组包含各自资源
+  // 构建返回结构：字幕组包含各自资源
   const subgroups: MikanSubgroupWithResources[] = subgroupsRaw.map((sg, idx) => {
-    const resources = (resourcesBySubgroupIdx.get(idx) || []).map(r => ({
+    const resources = (initialBySubgroupIdx.get(idx) || []).map(r => ({
       name: r.name,
       size: r.size,
       date: r.date,
       downloadUrl: r.downloadUrl,
       type: r.type,
     }));
-    logger.info(`[MIKAN] Subgroup "${sg.name}": ${resources.length} resources`);
+    logger.info(`[MIKAN] Subgroup "${sg.name}": ${resources.length} resources (initial)`);
     return {
       id: sg.id,
       name: sg.name,
@@ -278,8 +355,24 @@ export async function getBangumiResources(detailUrl: string, mirror: string): Pr
   return { name, cover, bgmId, subgroups };
 }
 
+/**
+ * 获取指定字幕组的完整资源列表（通过 AJAX，慢但全）
+ */
+export async function getSubgroupFullResources(
+  detailUrl: string,
+  subgroupId: number,
+  mirror: string
+): Promise<Array<{ name: string; size: string; date: string; downloadUrl: string; type: 'magnet' | 'torrent' }>> {
+  const html = await fetchWithFallback(detailUrl, mirror);
+  const bangumiIdMatch = detailUrl.match(/bangumiId=(\d+)/) || detailUrl.match(/\/Bangumi\/(\d+)/);
+  const bangumiId = bangumiIdMatch ? bangumiIdMatch[1] : '';
+  if (!bangumiId) return [];
+  return fetchFullEpisodeList(bangumiId, subgroupId, mirror);
+}
+
 export default {
   getWeeklyBangumi,
   getSeasonBangumi,
   getBangumiResources,
+  getSubgroupFullResources,
 };

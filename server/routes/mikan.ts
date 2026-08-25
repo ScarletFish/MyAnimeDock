@@ -1,7 +1,7 @@
 // server/routes/mikan.ts — 蜜柑计划 API 路由
 import { jsonResp } from '../lib/utils';
-import { getWeeklyBangumi, getSeasonBangumi, getBangumiResources } from '../scrapers/mikan';
-import type { ServerState, MikanBangumi, MikanSubtitleGroup, MikanSubtitleGroupInfo } from '../types';
+import { getWeeklyBangumi, getSeasonBangumi, getBangumiResources, getSubgroupFullResources } from '../scrapers/mikan';
+import type { ServerState, MikanBangumi } from '../types';
 
 interface MikanDayGroup {
   dayOfWeek: number;
@@ -101,8 +101,39 @@ async function handleMikanBangumi(req: any, res: any, state: ServerState) {
   }
 }
 
+/**
+ * GET /api/mikan/bangumi/full?url=/Home/Bangumi/3941&subgroupId=615
+ * 获取指定字幕组的完整资源列表（通过 AJAX，慢但全）
+ */
+async function handleMikanBangumiFull(req: any, res: any, state: ServerState) {
+  const { logger, config } = state;
+  try {
+    const url = new URL(req.url || '', 'http://localhost');
+    const detailUrl = url.searchParams.get('url');
+    const subgroupIdStr = url.searchParams.get('subgroupId');
+    
+    if (!detailUrl || !subgroupIdStr) {
+      jsonResp(res, 400, { error: 'url and subgroupId parameters are required' });
+      return;
+    }
+    
+    const subgroupId = parseInt(subgroupIdStr, 10);
+    if (isNaN(subgroupId)) {
+      jsonResp(res, 400, { error: 'subgroupId must be a number' });
+      return;
+    }
+    
+    const resources = await getSubgroupFullResources(detailUrl, subgroupId, config.mikanMirror);
+    jsonResp(res, 200, resources);
+  } catch (e: any) {
+    logger.error('[MIKAN]', e);
+    jsonResp(res, 500, { error: e.message });
+  }
+}
+
 module.exports = {
   handleMikanWeekly,
   handleMikanSeason,
   handleMikanBangumi,
+  handleMikanBangumiFull,
 };

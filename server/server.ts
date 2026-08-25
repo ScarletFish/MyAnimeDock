@@ -366,6 +366,7 @@ const routeTable = [
   // Mikan
   { method: 'GET', path: '/api/mikan/weekly', handler: H.handleMikanWeekly },
   { method: 'GET', path: '/api/mikan/season', handler: H.handleMikanSeason },
+  { method: 'GET', path: '/api/mikan/bangumi/full', handler: H.handleMikanBangumiFull },
   { method: 'GET', path: '/api/mikan/bangumi', handler: H.handleMikanBangumi },
   // Covers
   { method: 'GET', prefix: '/covers/', handler: handleCoverImage },

@@ -17,9 +17,11 @@
   let expandedAnime = $state(null);
   let bangumiDetail = $state(null);
   let loadingDetail = $state(false);
-  let copyingRss = $state(null);
+  let selectedSubgroupIdx = $state(0);
+  let subscribing = $state(null);
   let scrollEls = $state({});
-  let imageCache = $state(new Map());
+  let loadingFullSubgroup = $state(null);
+  let fullResourcesLoaded = $state(new Set());
 
   const DAY_NAMES = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
   const MIKAN_BASE = 'https://mikanime.tv';
@@ -39,6 +41,8 @@
       document.body.style.overflow = '';
       expandedAnime = null;
       bangumiDetail = null;
+      selectedSubgroupIdx = 0;
+      fullResourcesLoaded = new Set();
     }
   });
 
@@ -85,6 +89,8 @@
     expandedAnime = anime;
     bangumiDetail = null;
     loadingDetail = true;
+    selectedSubgroupIdx = 0;
+    fullResourcesLoaded = new Set();
 
     try {
       const resp = await api.get(`/api/mikan/bangumi?url=${encodeURIComponent(anime.detailUrl)}`);
@@ -96,15 +102,24 @@
     }
   }
 
-  async function copyRss(rssUrl) {
-    const fullUrl = `https://mikanime.tv${rssUrl}`;
+  async function subscribe(subgroup) {
+    if (!bangumiDetail || !expandedAnime) return;
+    
+    subscribing = subgroup.id;
     try {
-      await navigator.clipboard.writeText(fullUrl);
-      copyingRss = rssUrl;
-      showToast(tr('mikan.rssCopied'), 'success');
-      setTimeout(() => { copyingRss = null; }, 1500);
+      await api.post('/api/mikan/subscribe', {
+        animeId: expandedAnime.detailUrl,
+        bgmId: bangumiDetail.bgmId,
+        name: bangumiDetail.name,
+        subgroupId: subgroup.id,
+        subgroupName: subgroup.name,
+        rssUrl: subgroup.rssUrl,
+      });
+      showToast(tr('mikan.subscribed', { name: subgroup.name }), 'success');
     } catch (e) {
-      showToast(tr('mikan.copyFailed'), 'error');
+      showToast(tr('mikan.subscribeFailed', { error: e.message }), 'error');
+    } finally {
+      subscribing = null;
     }
   }
 
@@ -119,6 +134,25 @@
       name: DAY_NAMES[d - 1] || '周日',
       bangumi: map.get(d) || [],
     }));
+  }
+
+  async function loadFullResources(sgIdx) {
+    if (!bangumiDetail || !expandedAnime) return;
+    const sg = bangumiDetail.subgroups[sgIdx];
+    if (!sg || fullResourcesLoaded.has(sgIdx)) return;
+
+    loadingFullSubgroup = sgIdx;
+    try {
+      const resources = await api.get(`/api/mikan/bangumi/full?url=${encodeURIComponent(expandedAnime.detailUrl)}&subgroupId=${sg.id}`);
+      if (Array.isArray(resources) && resources.length > 0) {
+        bangumiDetail.subgroups[sgIdx].resources = resources;
+        fullResourcesLoaded = new Set([...fullResourcesLoaded, sgIdx]);
+      }
+    } catch (e) {
+      showToast(tr('mikan.loadFullFailed', { error: e.message }), 'error');
+    } finally {
+      loadingFullSubgroup = null;
+    }
   }
 
   // 初始化分页圆点
@@ -217,24 +251,71 @@
                         <span>{tr('common.loading')}</span>
                       </div>
                     {:else if bangumiDetail}
-                      <div class="mikan-detail-content">
-                        <div class="mikan-detail-title">{bangumiDetail.name}</div>
-                        <div class="mikan-subgroups">
-                          {#each bangumiDetail.subgroups as sg}
-                            <div class="mikan-subgroup-row">
-                              <span class="mikan-subgroup-name">{sg.name}</span>
-                              <button
-                                class="btn btn-sm btn-outline"
-                                onclick={(e) => { e.stopPropagation(); copyRss(sg.rssUrl); }}
+                      <div class="mikan-split">
+                        <!-- 左栏：字幕组列表 -->
+                        <div class="mikan-split-left">
+                          <div class="mikan-split-left-title">{bangumiDetail.name}</div>
+                          <div class="mikan-subgroup-list">
+                            {#each bangumiDetail.subgroups as sg, idx}
+                              <div
+                                class="mikan-subgroup-item"
+                                class:selected={selectedSubgroupIdx === idx}
+                                onclick={() => selectedSubgroupIdx = idx}
+                                role="button"
+                                tabindex="0"
+                                onkeydown={(e) => { if (e.key === 'Enter') selectedSubgroupIdx = idx; }}
                               >
-                                {#if copyingRss === sg.rssUrl}
-                                  ✓
-                                {:else}
-                                  {tr('mikan.copyRss')}
-                                {/if}
-                              </button>
+                                <span class="mikan-subgroup-name">{sg.name}</span>
+                                <button
+                                  class="btn btn-sm btn-outline"
+                                  disabled={subscribing === sg.id}
+                                  onclick={(e) => { e.stopPropagation(); subscribe(sg); }}
+                                >
+                                  {#if subscribing === sg.id}
+                                    ...
+                                  {:else}
+                                    {tr('mikan.subscribe')}
+                                  {/if}
+                                </button>
+                              </div>
+                            {/each}
+                          </div>
+                        </div>
+
+                        <!-- 右栏：资源列表 -->
+                        <div class="mikan-split-right">
+                          {#if bangumiDetail.subgroups[selectedSubgroupIdx]}
+                            {@const sg = bangumiDetail.subgroups[selectedSubgroupIdx]}
+                            <div class="mikan-resource-list">
+                              {#each sg.resources as r}
+                                <div class="mikan-resource-item">
+                                  <span class="mikan-resource-name">{r.name}</span>
+                                  <span class="mikan-resource-meta">{r.size} · {r.date}</span>
+                                </div>
+                              {/each}
+                              {#if sg.resources.length === 0}
+                                <div class="mikan-resource-empty">
+                                  {tr('mikan.noResources')}
+                                </div>
+                              {/if}
+                              {#if sg.resources.length > 0 && !fullResourcesLoaded.has(selectedSubgroupIdx)}
+                                <button
+                                  class="mikan-load-full-btn"
+                                  disabled={loadingFullSubgroup === selectedSubgroupIdx}
+                                  onclick={() => loadFullResources(selectedSubgroupIdx)}
+                                >
+                                  {#if loadingFullSubgroup === selectedSubgroupIdx}
+                                    <svg class="spinning" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                      <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+                                    </svg>
+                                    {tr('common.loading')}
+                                  {:else}
+                                    {tr('mikan.loadFull')}
+                                  {/if}
+                                </button>
+                              {/if}
                             </div>
-                          {/each}
+                          {/if}
                         </div>
                       </div>
                     {/if}

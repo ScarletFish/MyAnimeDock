@@ -63,6 +63,6 @@ export function loadReduceMotion(configCache) {
  * Apply detail-title-bg setting to document.
  */
 export function applyDetailTitleBg() {
-  var on = localStorage.getItem('myAnimDock_detailTitleBg') === 'on';
+  var on = localStorage.getItem('myAnimDock_detailTitleBg') === 'true';
   document.documentElement.setAttribute('data-detail-title-bg', on ? 'on' : '');
 }

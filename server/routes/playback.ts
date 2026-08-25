@@ -261,19 +261,19 @@ function handleThumbnail(req: any, res: any, state: State) {
   const params = new URL(req.url, 'http://localhost').searchParams;
   const videoPath = params.get('path');
   const timeRaw = params.get('time');
-  logger.info(`[THUMB-DEBUG] req.url=${req.url}`);
-  logger.info(`[THUMB-DEBUG] videoPath=${videoPath} timeRaw=${timeRaw}`);
-  logger.info(`[THUMB-DEBUG] exists=${videoPath ? fs.existsSync(videoPath) : 'n/a'}`);
+  logger.debug(`[THUMB-DEBUG] req.url=${req.url}`);
+  logger.debug(`[THUMB-DEBUG] videoPath=${videoPath} timeRaw=${timeRaw}`);
+  logger.debug(`[THUMB-DEBUG] exists=${videoPath ? fs.existsSync(videoPath) : 'n/a'}`);
   if (!videoPath || !fs.existsSync(videoPath)) { jsonResp(res, 404, { error: 'File not found' }); return; }
 
   if (timeRaw === 'mid') {
     // 与缩略图队列共享缓存键：命中直接返回，避免重复跑 ffmpeg + 时长探测
     const cached = _thumbPath(videoPath, THUMB_HASH_SEED);
-    logger.info(`[THUMB-DEBUG] mid cached=${fs.existsSync(cached)} path=${cached}`);
+    logger.debug(`[THUMB-DEBUG] mid cached=${fs.existsSync(cached)} path=${cached}`);
     if (fs.existsSync(cached)) { serveImage(cached, req.url, res); return; }
     // cache miss → 走统一队列（single-flight + 并发闸门），不再直连 spawn
     _probeDuration(videoPath, (dur) => {
-      logger.info(`[THUMB-DEBUG] mid probed dur=${dur}`);
+      logger.debug(`[THUMB-DEBUG] mid probed dur=${dur}`);
       if (!dur) { jsonResp(res, 500, { error: 'thumbnail generation failed' }); return; }
       const time = Math.floor(dur * THUMB_MIDPOINT_RATIO);
       if (!state.thumbnailQueue) { jsonResp(res, 500, { error: 'thumbnail generation failed' }); return; }
@@ -288,7 +288,7 @@ function handleThumbnail(req: any, res: any, state: State) {
   } else {
     const time = parseFloat(timeRaw ?? '');
     if (Number.isNaN(time)) { jsonResp(res, 400, { error: 'invalid time' }); return; }
-    logger.info(`[THUMB-DEBUG] exit time=${time} cacheKey=${String(time)}`);
+    logger.debug(`[THUMB-DEBUG] exit time=${time} cacheKey=${String(time)}`);
     // 自定义 time 也走统一队列（single-flight + 并发闸门），不再直连 spawn
     if (!state.thumbnailQueue) { jsonResp(res, 500, { error: 'thumbnail generation failed' }); return; }
     state.thumbnailQueue.ensureGenerated(videoPath, time, String(time), 30000)

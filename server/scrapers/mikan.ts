@@ -1,7 +1,7 @@
 // server/scrapers/mikan.ts — 蜜柑计划抓取器
 import { fetchWithTimeout, USER_AGENT } from '../lib/http-fetch';
 import { Logger } from '../logger';
-import type { MikanBangumi, MikanSubtitleGroup, MikanSubtitleGroupInfo, MikanBangumiDetail } from '../types';
+import type { MikanBangumi, MikanSubgroupWithResources, MikanBangumiDetail } from '../types';
 
 const logger: Logger = require('../logger').child('[MIKAN]');
 
@@ -62,90 +62,103 @@ function parseWeeklyBangumi(html: string): Map<number, MikanBangumi[]> {
 /**
  * 从详情页HTML中提取字幕组信息（id, name, rssUrl）
  */
-function parseSubgroups(html: string): MikanSubtitleGroupInfo[] {
-  const subgroups: MikanSubtitleGroupInfo[] = [];
+function parseSubgroups(html: string): Array<{ id: number; name: string }> {
+  const subgroups: Array<{ id: number; name: string }> = [];
   // 匹配: <a class="subgroup-name subgroup-370" data-anchor="#370">LoliHouse</a>
-  // 和: <a href="/RSS/Bangumi?bangumiId=3941&subgroupid=370" class="mikan-rss"
   const regex = /class="subgroup-name subgroup-(\d+)"[^>]*>([\s\S]*?)<\/a>/g;
   let match;
   while ((match = regex.exec(html)) !== null) {
     const id = parseInt(match[1], 10);
     const name = decodeHtmlEntities(match[2].replace(/<[^>]*>/g, '').trim());
-    const rssUrl = `/RSS/Bangumi?bangumiId=0&subgroupid=${id}`; // bangumiId 由调用方替换
-    subgroups.push({ id, name, rssUrl });
+    subgroups.push({ id, name });
   }
   return subgroups;
 }
 
 /**
  * 从详情页HTML中提取字幕组资源
- * 实际结构: <tr> 包含 <input data-magnet="...">, 资源名在第二个 <td> 的 <a> 文本中
+ * HTML结构: 每个字幕组有一个 <div class="subgroup-scroll-top-{id}"> 到 <div class="subgroup-scroll-end-{id}"> 的区间
+ * 资源在区间内的 <tr> 中
  */
-function parseDetailPage(html: string): MikanSubtitleGroup[] {
-  const resources: MikanSubtitleGroup[] = [];
+function parseDetailPage(html: string): Array<{
+  name: string;
+  size: string;
+  date: string;
+  downloadUrl: string;
+  type: 'magnet' | 'torrent';
+  subgroupName: string;
+  subgroupIdx: number;
+}> {
+  const resources: Array<{
+    name: string;
+    size: string;
+    date: string;
+    downloadUrl: string;
+    type: 'magnet' | 'torrent';
+    subgroupName: string;
+    subgroupIdx: number;
+  }> = [];
   
   // 先提取字幕组信息
   const subgroups = parseSubgroups(html);
-  const subgroupMap = new Map<number, MikanSubtitleGroupInfo>();
-  for (const sg of subgroups) {
-    subgroupMap.set(sg.id, sg);
-  }
   
-  // 匹配每个 <tr> 行
-  const rowRegex = /<tr>\s*<td>([\s\S]*?)<\/tr>/g;
-  let rowMatch;
-  
-  while ((rowMatch = rowRegex.exec(html)) !== null) {
-    const rowHtml = rowMatch[1];
+  // 按字幕组分段提取资源
+  // 每个字幕组的区间: <div class="subgroup-scroll-top-{id}"> ... <div class="subgroup-scroll-end-{id}">
+  for (let i = 0; i < subgroups.length; i++) {
+    const sg = subgroups[i];
+    const startMarker = `subgroup-scroll-top-${sg.id}`;
+    const endMarker = `subgroup-scroll-end-${sg.id}`;
     
-    // 提取磁力链接（从 input 的 data-magnet 属性）
-    const magnetMatch = rowHtml.match(/data-magnet="([^"]+)"/);
-    if (!magnetMatch) continue;
+    const startIdx = html.indexOf(startMarker);
+    const endIdx = html.indexOf(endMarker);
     
-    // 解码HTML实体（&amp; → &）
-    const magnet = magnetMatch[1].replace(/&amp;/g, '&');
+    if (startIdx === -1 || endIdx === -1) continue;
     
-    // 提取所有 td 内容
-    const tdContents: string[] = [];
-    const tdRegex = /<td>([\s\S]*?)<\/td>/g;
-    let tdMatch;
-    while ((tdMatch = tdRegex.exec(rowHtml)) !== null) {
-      tdContents.push(tdMatch[1]);
-    }
+    const sectionHtml = html.slice(startIdx, endIdx);
     
-    // td[0]: 资源名链接 (包含 <a class="magnet-link-wrap">)
-    // td[1]: 文件大小
-    // td[2]: 日期
-    // td[3]: 下载链接
-    // td[4]: 播放链接
+    // 在该区间内匹配 <tr> 行
+    const rowRegex = /<tr>\s*<td>([\s\S]*?)<\/tr>/g;
+    let rowMatch;
     
-    const name = tdContents[0] ? decodeHtmlEntities(tdContents[0].replace(/<[^>]*>/g, '').replace(/\[复制磁连\]/g, '').trim()) : '';
-    const size = tdContents[1] ? tdContents[1].trim() : '';
-    const date = tdContents[2] ? tdContents[2].trim() : '';
-    
-    // 提取 torrent 链接
-    const torrentMatch = rowHtml.match(/href="(\/Download\/[^"]*\.torrent)"/);
-    
-    // 根据资源名匹配字幕组（如 [喵萌奶茶屋] 开头 → 找到对应 subgroup）
-    let subgroupName = '';
-    let subgroupRss = '';
-    for (const sg of subgroups) {
-      if (name.includes(sg.name) || name.includes(`[${sg.name}]`)) {
-        subgroupName = sg.name;
-        subgroupRss = sg.rssUrl;
-        break;
+    while ((rowMatch = rowRegex.exec(sectionHtml)) !== null) {
+      const rowHtml = rowMatch[1];
+      
+      // 提取磁力链接（从 input 的 data-magnet 属性）
+      const magnetMatch = rowHtml.match(/data-magnet="([^"]+)"/);
+      if (!magnetMatch) continue;
+      
+      // 解码HTML实体（&amp; → &）
+      const magnet = magnetMatch[1].replace(/&amp;/g, '&');
+      
+      // 提取所有 td 内容
+      const tdContents: string[] = [];
+      const tdRegex = /<td>([\s\S]*?)<\/td>/g;
+      let tdMatch;
+      while ((tdMatch = tdRegex.exec(rowHtml)) !== null) {
+        tdContents.push(tdMatch[1]);
       }
+      
+      // td[0]: 资源名链接
+      // td[1]: 文件大小
+      // td[2]: 日期
+      
+      const name = tdContents[0] ? decodeHtmlEntities(tdContents[0].replace(/<[^>]*>/g, '').replace(/\[复制磁连\]/g, '').trim()) : '';
+      const size = tdContents[1] ? tdContents[1].trim() : '';
+      const date = tdContents[2] ? tdContents[2].trim() : '';
+      
+      // 提取 torrent 链接
+      const torrentMatch = rowHtml.match(/href="(\/Download\/[^"]*\.torrent)"/);
+      
+      resources.push({
+        name,
+        size,
+        date,
+        downloadUrl: torrentMatch ? `https://mikanime.tv${torrentMatch[1]}` : magnet,
+        type: torrentMatch ? 'torrent' : 'magnet',
+        subgroupName: sg.name,
+        subgroupIdx: i,
+      });
     }
-    
-    resources.push({
-      name,
-      size,
-      date,
-      downloadUrl: torrentMatch ? `https://mikanime.tv${torrentMatch[1]}` : magnet,
-      type: torrentMatch ? 'torrent' : 'magnet',
-      subgroupName,
-      subgroupRss,
-    });
   }
   
   return resources;
@@ -221,6 +234,10 @@ export async function getBangumiResources(detailUrl: string, mirror: string): Pr
   const bangumiIdMatch = detailUrl.match(/bangumiId=(\d+)/) || detailUrl.match(/\/Bangumi\/(\d+)/);
   const bangumiId = bangumiIdMatch ? bangumiIdMatch[1] : '';
   
+  // 提取 Bangumi ID（从 bgm.tv/subject/xxx 链接）
+  const bgmLinkMatch = html.match(/bgm\.tv\/subject\/(\d+)/);
+  const bgmId = bgmLinkMatch ? bgmLinkMatch[1] : '';
+  
   // 提取番名（从 <title> 或 og:title）
   const titleMatch = html.match(/<title>([^<]*)<\/title>/) || html.match(/property="og:title"[^>]*content="([^"]*)"/);
   const name = titleMatch ? decodeHtmlEntities(titleMatch[1].replace(/ - Mikan Project$/, '').replace(/^Mikan Project - /, '').trim()) : '';
@@ -228,19 +245,37 @@ export async function getBangumiResources(detailUrl: string, mirror: string): Pr
   // 提取封面
   const cover = parseCover(html);
   
-  // 提取字幕组
-  const subgroups = parseSubgroups(html).map(sg => ({
-    ...sg,
-    rssUrl: `/RSS/Bangumi?bangumiId=${bangumiId}&subgroupid=${sg.id}`,
-  }));
+  // 提取字幕组和资源
+  const subgroupsRaw = parseSubgroups(html);
+  const resourcesRaw = parseDetailPage(html);
   
-  // 提取资源
-  const resources = parseDetailPage(html).map(r => ({
-    ...r,
-    subgroupRss: (r.subgroupRss || '').replace(/bangumiId=\d+/, `bangumiId=${bangumiId}`),
-  }));
+  // 按字幕组索引分组资源
+  const resourcesBySubgroupIdx = new Map<number, typeof resourcesRaw>();
+  for (const r of resourcesRaw) {
+    const arr = resourcesBySubgroupIdx.get(r.subgroupIdx) || [];
+    arr.push(r);
+    resourcesBySubgroupIdx.set(r.subgroupIdx, arr);
+  }
   
-  return { name, cover, subgroups, resources };
+  // 构建新的返回结构：字幕组包含各自资源
+  const subgroups: MikanSubgroupWithResources[] = subgroupsRaw.map((sg, idx) => {
+    const resources = (resourcesBySubgroupIdx.get(idx) || []).map(r => ({
+      name: r.name,
+      size: r.size,
+      date: r.date,
+      downloadUrl: r.downloadUrl,
+      type: r.type,
+    }));
+    logger.info(`[MIKAN] Subgroup "${sg.name}": ${resources.length} resources`);
+    return {
+      id: sg.id,
+      name: sg.name,
+      rssUrl: `/RSS/Bangumi?bangumiId=${bangumiId}&subgroupid=${sg.id}`,
+      resources,
+    };
+  });
+  
+  return { name, cover, bgmId, subgroups };
 }
 
 export default {

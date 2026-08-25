@@ -147,6 +147,7 @@ export interface AppData {
 export interface MikanBangumi {
   name: string;
   detailUrl: string;
+  cover: string;
 }
 
 export interface MikanSubtitleGroupInfo {

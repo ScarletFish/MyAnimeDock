@@ -99,6 +99,55 @@
   line-height: 1.4;
 }
 
+/* ─── Icon Button ─── */
+@utility btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--fg-muted);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+
+  & svg {
+    width: 15px;
+    height: 15px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  &:hover {
+    color: var(--fg-primary);
+    border-color: var(--border-hover);
+    background: var(--bg-surface);
+  }
+
+  &:disabled,
+  &.disabled {
+    opacity: 0.3;
+    cursor: default;
+    pointer-events: none;
+  }
+}
+
+@utility btn-icon-sm {
+  width: 24px;
+  height: 24px;
+
+  & svg {
+    width: 13px;
+    height: 13px;
+  }
+}
+
 /* ─── Back Button ─── */
 @utility btn-back {
   display: inline-flex;

@@ -11,6 +11,7 @@
   import { tr } from '../lib/anime-utils.js';
   import { API as api } from '../lib/api.js';
   import { settingsOpen } from './Settings.svelte';
+  import MikanModal, { mikanModalOpen } from './MikanModal.svelte';
 
   let configured = $state(false);
   let loading = $state(true);
@@ -183,6 +184,12 @@
   <div class="view-header">
     <h1>{tr('nav.download')}</h1>
     <div class="download-push">
+      <button class="btn-icon mikan-trigger" onclick={() => mikanModalOpen.set(true)} data-tooltip="蜜柑计划">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+      </button>
       <input
         type="text"
         class="download-magnet-input"
@@ -301,3 +308,5 @@
     {/if}
   {/if}
 </section>
+
+<MikanModal />

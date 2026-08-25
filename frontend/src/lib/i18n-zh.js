@@ -105,6 +105,12 @@ export const I18N_ZH = {
   'settings.qbFailed': '连接失败',
   // 蜜柑计划
   'settings.mikanMirrorHint': '国内用户使用 https://mikanime.tv，海外用户使用 https://mikanani.me',
+  'mikan.title': '蜜柑计划',
+  'mikan.loadFailed': '加载失败：{{error}}',
+  'mikan.loadResourcesFailed': '加载资源失败：{{error}}',
+  'mikan.copyRss': '复制RSS',
+  'mikan.rssCopied': 'RSS链接已复制',
+  'mikan.copyFailed': '复制失败',
   'settings.visual': '视觉',
   'settings.titleBackground': '标题背景',
   'settings.cardTitle': '卡片常显标题',

@@ -20,6 +20,11 @@
   display: flex;
   gap: var(--space-2);
   margin-left: auto;
+  align-items: center;
+}
+
+.mikan-trigger {
+  flex-shrink: 0;
 }
 
 .download-magnet-input {
@@ -270,33 +275,6 @@
   display: flex;
   gap: var(--space-1);
   flex-shrink: 0;
-}
-
-.download-item-actions .btn-icon {
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: none;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  color: var(--fg-muted);
-  cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-out);
-}
-
-.download-item-actions .btn-icon:hover {
-  color: var(--fg-primary);
-  border-color: var(--border-hover);
-  background: var(--bg-surface);
-}
-
-.download-item-actions .btn-icon:disabled {
-  opacity: 0.3;
-  cursor: default;
-  pointer-events: none;
 }
 
 .download-item-actions .btn-danger {

@@ -34,13 +34,20 @@ function parseWeeklyBangumi(html: string): Map<number, MikanBangumi[]> {
     
     // 匹配 <a> 标签中的番剧信息
     // 格式: <a href="/Home/Bangumi/3941" target="_blank" class="an-text" title="番剧名">番剧名</a>
+    // 封面在附近: <img data-src="/images/Bangumi/xxx.jpg" ...>
     const bangumiRegex = /<a\s+href="(\/Home\/Bangumi\/\d+)"[^>]*class="an-text"[^>]*title="([^"]*)"[^>]*>[^<]*<\/a>/g;
     let bangumiMatch;
     
     while ((bangumiMatch = bangumiRegex.exec(dayHtml)) !== null) {
+      // 向前找封面图
+      const beforeHtml = dayHtml.slice(Math.max(0, bangumiMatch.index - 500), bangumiMatch.index);
+      const coverMatch = beforeHtml.match(/data-src="([^"]*\/images\/Bangumi\/[^"]*)"/);
+      const cover = coverMatch ? coverMatch[1] : '';
+      
       bangumiList.push({
         name: decodeHtmlEntities(bangumiMatch[2]),
         detailUrl: bangumiMatch[1],
+        cover,
       });
     }
     

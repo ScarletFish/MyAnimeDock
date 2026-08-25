@@ -141,3 +141,31 @@ export async function qbResumeAll(port: number, username: string, password: stri
 export async function qbGetTransfer(port: number, username: string, password: string): Promise<any> {
   return qbRequest(port, username, password, 'GET', '/api/v2/transfer/info');
 }
+
+// ── RSS API ──
+
+export async function qbAddRssFeed(port: number, username: string, password: string, url: string, path?: string): Promise<void> {
+  const params = new URLSearchParams({ url });
+  if (path) params.set('path', path);
+  await qbRequest(port, username, password, 'POST', '/api/v2/rss/addFeed', params.toString(), 'application/x-www-form-urlencoded');
+}
+
+export async function qbRemoveRssItem(port: number, username: string, password: string, path: string): Promise<void> {
+  await qbRequest(port, username, password, 'POST', '/api/v2/rss/removeItem', `path=${encodeURIComponent(path)}`, 'application/x-www-form-urlencoded');
+}
+
+export async function qbSetRssRule(port: number, username: string, password: string, ruleName: string, ruleDef: Record<string, any>): Promise<void> {
+  const params = new URLSearchParams({
+    ruleName,
+    ruleDef: JSON.stringify(ruleDef),
+  });
+  await qbRequest(port, username, password, 'POST', '/api/v2/rss/setRule', params.toString(), 'application/x-www-form-urlencoded');
+}
+
+export async function qbRemoveRssRule(port: number, username: string, password: string, ruleName: string): Promise<void> {
+  await qbRequest(port, username, password, 'POST', '/api/v2/rss/removeRule', `ruleName=${encodeURIComponent(ruleName)}`, 'application/x-www-form-urlencoded');
+}
+
+export async function qbGetRssRules(port: number, username: string, password: string): Promise<Record<string, any>> {
+  return qbRequest(port, username, password, 'GET', '/api/v2/rss/rules');
+}

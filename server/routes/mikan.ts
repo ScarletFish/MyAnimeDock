@@ -1,7 +1,9 @@
 // server/routes/mikan.ts — 蜜柑计划 API 路由
-import { jsonResp } from '../lib/utils';
+import { jsonResp, readBody } from '../lib/utils';
+import { qbAddRssFeed, qbRemoveRssItem, qbSetRssRule, qbRemoveRssRule } from '../lib/qb-client';
 import { getWeeklyBangumi, getSeasonBangumi, getBangumiResources, getSubgroupFullResources } from '../scrapers/mikan';
 import type { ServerState, MikanBangumi } from '../types';
+import crypto from 'crypto';
 
 interface MikanDayGroup {
   dayOfWeek: number;
@@ -131,9 +133,140 @@ async function handleMikanBangumiFull(req: any, res: any, state: ServerState) {
   }
 }
 
+/**
+ * POST /api/mikan/subscribe
+ * 订阅字幕组 RSS
+ */
+async function handleMikanSubscribe(req: any, res: any, state: ServerState) {
+  const { logger, config, db } = state;
+  try {
+    const body = JSON.parse(await readBody(req));
+    const { animeId, bgmId, name, subgroupId, subgroupName, rssUrl, mustContain, mustNotContain } = body;
+
+    if (!animeId || !name || !subgroupId || !rssUrl) {
+      jsonResp(res, 400, { error: 'animeId, name, subgroupId, rssUrl are required' });
+      return;
+    }
+
+    // 构造完整 RSS URL
+    const fullRssUrl = `https://mikanime.tv${rssUrl}`;
+    const savePath = `${config.mediaDir}\\${name}`;
+    const ruleName = `mikan_${animeId}`;
+
+    // 1. 添加 RSS feed 到 qBittorrent
+    await qbAddRssFeed(config.qbPort, config.qbUsername, config.qbPassword, fullRssUrl);
+
+    // 2. 设置自动下载规则
+    const ruleDef: Record<string, any> = {
+      enabled: true,
+      mustContain: mustContain || '',
+      mustNotContain: mustNotContain || '',
+      useRegex: true,
+      affectedFeeds: [fullRssUrl],
+      savePath,
+      assignedCategory: 'anime',
+      addPaused: false,
+    };
+    await qbSetRssRule(config.qbPort, config.qbUsername, config.qbPassword, ruleName, ruleDef);
+
+    // 3. 保存到数据库
+    const id = crypto.randomUUID();
+    db.upsertMikanSubscription({
+      id,
+      animeId,
+      bgmId: bgmId || null,
+      name,
+      subgroupId,
+      subgroupName,
+      rssUrl: fullRssUrl,
+      savePath,
+      mustContain: mustContain || null,
+      mustNotContain: mustNotContain || null,
+    });
+
+    logger.info(`[MIKAN] Subscribed: ${name} / ${subgroupName}`);
+    jsonResp(res, 200, { ok: true, subscriptionId: id });
+  } catch (e: any) {
+    logger.error('[MIKAN] Subscribe failed:', e);
+    jsonResp(res, 500, { error: e.message });
+  }
+}
+
+/**
+ * POST /api/mikan/unsubscribe
+ * 取消订阅
+ */
+async function handleMikanUnsubscribe(req: any, res: any, state: ServerState) {
+  const { logger, config, db } = state;
+  try {
+    const body = JSON.parse(await readBody(req));
+    const { subscriptionId, animeId } = body;
+
+    const targetId = subscriptionId || animeId;
+    if (!targetId) {
+      jsonResp(res, 400, { error: 'subscriptionId or animeId is required' });
+      return;
+    }
+
+    // 查找订阅记录
+    const sub = subscriptionId
+      ? db.getMikanSubscriptionById(subscriptionId)
+      : db.getMikanSubscription(animeId);
+
+    if (!sub) {
+      jsonResp(res, 404, { error: 'Subscription not found' });
+      return;
+    }
+
+    // 从 qBittorrent 移除规则和 RSS
+    const ruleName = `mikan_${sub.animeId}`;
+    try {
+      await qbRemoveRssRule(config.qbPort, config.qbUsername, config.qbPassword, ruleName);
+    } catch { /* rule 可能不存在 */ }
+    try {
+      await qbRemoveRssItem(config.qbPort, config.qbUsername, config.qbPassword, sub.rssUrl);
+    } catch { /* feed 可能不存在 */ }
+
+    // 从数据库删除
+    db.deleteMikanSubscription(sub.animeId);
+
+    logger.info(`[MIKAN] Unsubscribed: ${sub.name} / ${sub.subgroupName}`);
+    jsonResp(res, 200, { ok: true });
+  } catch (e: any) {
+    logger.error('[MIKAN] Unsubscribe failed:', e);
+    jsonResp(res, 500, { error: e.message });
+  }
+}
+
+/**
+ * GET /api/mikan/subscription?animeId=xxx
+ * 查询订阅状态
+ */
+async function handleMikanSubscription(req: any, res: any, state: ServerState) {
+  const { logger, db } = state;
+  try {
+    const url = new URL(req.url || '', 'http://localhost');
+    const animeId = url.searchParams.get('animeId');
+
+    if (!animeId) {
+      jsonResp(res, 400, { error: 'animeId is required' });
+      return;
+    }
+
+    const sub = db.getMikanSubscription(animeId);
+    jsonResp(res, 200, sub || null);
+  } catch (e: any) {
+    logger.error('[MIKAN] Query subscription failed:', e);
+    jsonResp(res, 500, { error: e.message });
+  }
+}
+
 module.exports = {
   handleMikanWeekly,
   handleMikanSeason,
   handleMikanBangumi,
   handleMikanBangumiFull,
+  handleMikanSubscribe,
+  handleMikanUnsubscribe,
+  handleMikanSubscription,
 };

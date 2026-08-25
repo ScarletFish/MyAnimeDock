@@ -368,6 +368,9 @@ const routeTable = [
   { method: 'GET', path: '/api/mikan/season', handler: H.handleMikanSeason },
   { method: 'GET', path: '/api/mikan/bangumi/full', handler: H.handleMikanBangumiFull },
   { method: 'GET', path: '/api/mikan/bangumi', handler: H.handleMikanBangumi },
+  { method: 'POST', path: '/api/mikan/subscribe', handler: H.handleMikanSubscribe },
+  { method: 'POST', path: '/api/mikan/unsubscribe', handler: H.handleMikanUnsubscribe },
+  { method: 'GET', path: '/api/mikan/subscription', handler: H.handleMikanSubscription },
   // Covers
   { method: 'GET', prefix: '/covers/', handler: handleCoverImage },
   // Banners

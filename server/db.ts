@@ -111,6 +111,9 @@ const INIT_SQL = [
   `CREATE INDEX IF NOT EXISTS "MyList_status_idx" ON "MyList"("status")`,
   `CREATE TABLE IF NOT EXISTS "ScannedTree" ("id" TEXT NOT NULL PRIMARY KEY DEFAULT 'current', "data" TEXT NOT NULL, "updatedAt" DATETIME NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS "Config" ("id" TEXT NOT NULL PRIMARY KEY DEFAULT 'singleton', "data" TEXT NOT NULL, "updatedAt" DATETIME NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS "MikanSubscription" ("id" TEXT NOT NULL PRIMARY KEY, "animeId" TEXT NOT NULL, "bgmId" TEXT, "name" TEXT NOT NULL, "subgroupId" INTEGER NOT NULL, "subgroupName" TEXT NOT NULL, "rssUrl" TEXT NOT NULL, "savePath" TEXT NOT NULL, "mustContain" TEXT, "mustNotContain" TEXT, "createdAt" DATETIME NOT NULL DEFAULT (unixepoch() * 1000), "updatedAt" DATETIME NOT NULL)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "MikanSubscription_animeId_key" ON "MikanSubscription"("animeId")`,
+  `CREATE INDEX IF NOT EXISTS "MikanSubscription_bgmId_idx" ON "MikanSubscription"("bgmId")`,
 ];
 
 // ─── 单例数据库连接 ───
@@ -786,6 +789,31 @@ async function reset() {
   d.prepare(`DELETE FROM MyList`).run();
 }
 
+// ─── MikanSubscription CRUD ───
+
+function getMikanSubscription(animeId: string): any {
+  return getDb().prepare(`SELECT * FROM MikanSubscription WHERE "animeId" = ?`).get(animeId);
+}
+
+function getMikanSubscriptionById(id: string): any {
+  return getDb().prepare(`SELECT * FROM MikanSubscription WHERE "id" = ?`).get(id);
+}
+
+function upsertMikanSubscription(sub: { id: string; animeId: string; bgmId?: string; name: string; subgroupId: number; subgroupName: string; rssUrl: string; savePath: string; mustContain?: string; mustNotContain?: string }): void {
+  const d = getDb();
+  d.prepare(`INSERT INTO MikanSubscription ("id","animeId","bgmId","name","subgroupId","subgroupName","rssUrl","savePath","mustContain","mustNotContain","createdAt","updatedAt")
+    VALUES (@id,@animeId,@bgmId,@name,@subgroupId,@subgroupName,@rssUrl,@savePath,@mustContain,@mustNotContain, unixepoch()*1000, unixepoch()*1000)
+    ON CONFLICT("animeId") DO UPDATE SET "bgmId"=@bgmId,"name"=@name,"subgroupId"=@subgroupId,"subgroupName"=@subgroupName,"rssUrl"=@rssUrl,"savePath"=@savePath,"mustContain"=@mustContain,"mustNotContain"=@mustNotContain,"updatedAt"=unixepoch()*1000`).run(sub);
+}
+
+function deleteMikanSubscription(animeId: string): void {
+  getDb().prepare(`DELETE FROM MikanSubscription WHERE "animeId" = ?`).run(animeId);
+}
+
+function deleteMikanSubscriptionById(id: string): void {
+  getDb().prepare(`DELETE FROM MikanSubscription WHERE "id" = ?`).run(id);
+}
+
 export {
   loadData,
   saveAll,
@@ -804,4 +832,9 @@ export {
   clearSessions,
   vacuum,
   reset,
+  getMikanSubscription,
+  getMikanSubscriptionById,
+  upsertMikanSubscription,
+  deleteMikanSubscription,
+  deleteMikanSubscriptionById,
 };

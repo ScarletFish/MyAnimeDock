@@ -10,6 +10,7 @@
   import { tr } from '../lib/anime-utils.js';
   import { API as api } from '../lib/api.js';
   import { initScrollDots } from '../lib/scroll-dots.js';
+  import MikanSubscribeModal from '../components/MikanSubscribeModal.svelte';
 
   let open = $state(false);
   let weeklyAnime = $state([]);
@@ -22,6 +23,10 @@
   let scrollEls = $state({});
   let loadingFullSubgroup = $state(null);
   let fullResourcesLoaded = $state(new Set());
+
+  // Subscribe modal state
+  let subscribeModalOpen = $state(false);
+  let subscribeTarget = $state(null);
 
   const DAY_NAMES = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
   const MIKAN_BASE = 'https://mikanime.tv';
@@ -102,25 +107,10 @@
     }
   }
 
-  async function subscribe(subgroup) {
+  function openSubscribeModal(subgroup) {
     if (!bangumiDetail || !expandedAnime) return;
-    
-    subscribing = subgroup.id;
-    try {
-      await api.post('/api/mikan/subscribe', {
-        animeId: expandedAnime.detailUrl,
-        bgmId: bangumiDetail.bgmId,
-        name: bangumiDetail.name,
-        subgroupId: subgroup.id,
-        subgroupName: subgroup.name,
-        rssUrl: subgroup.rssUrl,
-      });
-      showToast(tr('mikan.subscribed', { name: subgroup.name }), 'success');
-    } catch (e) {
-      showToast(tr('mikan.subscribeFailed', { error: e.message }), 'error');
-    } finally {
-      subscribing = null;
-    }
+    subscribeTarget = subgroup;
+    subscribeModalOpen = true;
   }
 
   function getDayGroups() {
@@ -269,7 +259,7 @@
                                 <button
                                   class="btn btn-sm btn-outline"
                                   disabled={subscribing === sg.id}
-                                  onclick={(e) => { e.stopPropagation(); subscribe(sg); }}
+                                  onclick={(e) => { e.stopPropagation(); openSubscribeModal(sg); }}
                                 >
                                   {#if subscribing === sg.id}
                                     ...
@@ -329,3 +319,11 @@
     </div>
   </div>
 {/if}
+
+<MikanSubscribeModal
+  bind:open={subscribeModalOpen}
+  anime={expandedAnime}
+  subgroup={subscribeTarget}
+  {bangumiDetail}
+  onSubscribed={() => { /* 可选：刷新状态 */ }}
+/>

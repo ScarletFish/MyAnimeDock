@@ -8,7 +8,7 @@
 .ws-header { margin-bottom: var(--space-3); }
 
 .ws-header h3 {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: calc(1.25rem * var(--scale));
   font-weight: var(--fw-semibold);
   letter-spacing: -0.01em;

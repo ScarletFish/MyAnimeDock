@@ -76,7 +76,7 @@
   }
 
   .gray-cover-text {
-    font-family: var(--font-display);
+    font-family: var(--font-body);
     font-size: var(--text-3xl);
     font-weight: var(--fw-bold);
     color: var(--fg-muted);

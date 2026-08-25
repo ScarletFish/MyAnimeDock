@@ -144,7 +144,7 @@
   gap: var(--space-4);
 }
 .detail-info-panel h2 {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: calc(clamp(1.25rem, 2vw, 1.6rem) * var(--scale));
   font-weight: var(--fw-bold);
   letter-spacing: -0.02em;
@@ -219,7 +219,7 @@
   border-bottom: 1px solid rgba(var(--accent-secondary-rgb), 0.15);
 }
 .detail-episodes-header h3 {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: calc(1.563rem * var(--scale));
   font-weight: var(--fw-semibold);
   letter-spacing: -0.01em;
@@ -247,7 +247,7 @@
 }
 #detailCover .gray-cover-text,
 #svelte-detailCover .gray-cover-text {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: calc(3.125rem * var(--scale));
   font-weight: var(--fw-bold);
   color: var(--fg-muted);

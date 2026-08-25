@@ -19,7 +19,7 @@
 }
 
 .episode-list-header h3 {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: calc(1.313rem * var(--scale));
   font-weight: var(--fw-semibold);
   letter-spacing: -0.01em;

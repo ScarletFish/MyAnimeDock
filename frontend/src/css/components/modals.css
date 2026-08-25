@@ -47,7 +47,7 @@ body:has(#modal-root .modal-overlay.show) > :not(#modal-root):not(#globalTooltip
   }
 
   h2 {
-    font-family: var(--font-display);
+    font-family: var(--font-body);
     font-size: var(--text-2xl);
     font-weight: var(--fw-bold);
     margin-bottom: var(--space-6);
@@ -151,7 +151,7 @@ body:has(#modal-root .modal-overlay.show) > :not(#modal-root):not(#globalTooltip
   height: 100%;
 }
 .library-empty-title {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: var(--text-2xl);
   font-weight: var(--fw-bold);
   color: var(--fg-primary);
@@ -225,7 +225,7 @@ body:has(#modal-root .modal-overlay.show) > :not(#modal-root):not(#globalTooltip
 }
 .settings-header-top h2 {
   margin: 0; padding-left: var(--space-3);
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: var(--text-xl); font-weight: var(--fw-bold);
   letter-spacing: -0.01em; color: var(--fg-primary); position: relative;
 }
@@ -332,7 +332,7 @@ body:has(#modal-root .modal-overlay.show) > :not(#modal-root):not(#globalTooltip
   margin: 0 0 var(--space-5);
 }
 .status-modal-heading {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: var(--text-xl); font-weight: var(--fw-bold);
   color: var(--accent-soft);
   margin: 0; padding: 0;
@@ -370,13 +370,4 @@ body:has(#modal-root .modal-overlay.show) > :not(#modal-root):not(#globalTooltip
   background: var(--bg-elevated);
   border-color: rgba(var(--accent-rgb), 0.4);
   box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.07);
-}
-.status-modal .btn-spinner {
-  display: inline-block;
-  width: 14px; height: 14px;
-  margin-right: var(--space-2);
-  border: 2px solid currentColor;
-  border-right-color: transparent;
-  border-radius: 50%;
-  vertical-align: -2px;
 }

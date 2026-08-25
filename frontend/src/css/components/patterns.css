@@ -147,7 +147,7 @@
 }
 
 @utility section-title {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: var(--text-lg);
   font-weight: var(--fw-bold);
   color: var(--fg-primary);

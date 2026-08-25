@@ -257,7 +257,7 @@
   justify-content: center;
   border-radius: var(--radius-sm);
   background: rgba(var(--accent-rgb), 0.08);
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: var(--text-compact-md);
   font-weight: var(--fw-bold);
   color: var(--fg-muted);

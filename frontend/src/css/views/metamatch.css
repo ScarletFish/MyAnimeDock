@@ -21,7 +21,7 @@
   gap: var(--space-4);
 }
 .mm-hero-title {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: calc(clamp(1.3rem, 2.2vw, 1.6rem) * var(--scale));
   font-weight: var(--fw-bold);
   letter-spacing: -0.02em;
@@ -642,7 +642,7 @@
   background: var(--bg-surface);
 }
 .modal-m-topbar h2 {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: calc(clamp(1.1rem, 1.8vw, 1.3rem) * var(--scale));
   font-weight: var(--fw-bold); letter-spacing: -0.02em;
   color: var(--fg-primary); margin: 0;

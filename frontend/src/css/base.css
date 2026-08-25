@@ -53,6 +53,11 @@ html {
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 @keyframes cardReveal {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -70,6 +75,16 @@ html {
 
 .spin {
   animation: spin 1s linear infinite;
+}
+
+.btn-spinner {
+  display: inline-block;
+  width: 14px; height: 14px;
+  margin-right: var(--space-2);
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  vertical-align: -2px;
 }
 
 
@@ -94,7 +109,7 @@ html {
 }
 
 .view-header h1 {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: calc(clamp(1.3rem, 2.2vw, 1.6rem) * var(--scale));
   font-weight: var(--fw-bold);
   letter-spacing: -0.02em;
@@ -106,7 +121,7 @@ html {
   margin-bottom: var(--space-3);
 }
 .dashboard-section-title {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: var(--text-xl);
   font-weight: var(--fw-bold);
   letter-spacing: -0.01em;

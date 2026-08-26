@@ -247,20 +247,22 @@
           </Popover.Trigger>
           <Popover.Portal to="#modal-root">
             <Popover.Content class="mikan-season-dd" side="bottom" sideOffset={4}>
-              {#each yearOptions as year}
-                <div class="mikan-season-dd-year">{year}</div>
-                <div class="mikan-season-dd-row">
-                  {#each SEASONS as s}
-                    <button
-                      class="mikan-season-dd-item"
-                      class:active={year === selectedYear && s === selectedSeason}
-                      onclick={() => selectSeason(year, s)}
-                    >
-                      {s}
-                    </button>
-                  {/each}
-                </div>
-              {/each}
+              <div class="mikan-season-dd-inner">
+                {#each yearOptions as year}
+                  <div class="mikan-season-dd-year">{year}</div>
+                  <div class="mikan-season-dd-row">
+                    {#each SEASONS as s}
+                      <button
+                        class="mikan-season-dd-item"
+                        class:active={year === selectedYear && s === selectedSeason}
+                        onclick={() => selectSeason(year, s)}
+                      >
+                        {s}
+                      </button>
+                    {/each}
+                  </div>
+                {/each}
+              </div>
             </Popover.Content>
           </Popover.Portal>
         </Popover.Root>

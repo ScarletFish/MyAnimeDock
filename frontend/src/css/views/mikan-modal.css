@@ -44,13 +44,17 @@
   z-index: 300;
   min-width: 200px;
   max-height: 360px;
-  overflow-y: auto;
+  overflow: hidden;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
   padding: var(--space-2);
   animation: fadeIn 0.12s ease;
+}
+.mikan-season-dd-inner {
+  max-height: 360px;
+  overflow-y: auto;
 }
 
 .mikan-season-dd-year {

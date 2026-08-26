@@ -7,8 +7,11 @@
   .sidebar { border-right-color: var(--border); }
   .sidebar-brand { border-bottom-color: var(--border); }
   .sidebar-bottom { border-top-color: var(--border); }
-  ::-webkit-scrollbar-thumb { background: var(--bg-surface); }
-  ::-webkit-scrollbar-thumb:hover { background: var(--fg-muted); }
+  ::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.15); }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.28); }
+  @supports not selector(::-webkit-scrollbar) {
+    & { scrollbar-color: rgba(0, 0, 0, 0.15) transparent; }
+  }
 
   /* ─── Nav ─── */
   .nav-btn:hover {

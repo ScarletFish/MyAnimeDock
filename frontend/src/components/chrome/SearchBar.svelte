@@ -311,6 +311,7 @@
     />
   </div>
   <div class="titlebar__search-results" id="globalSearchResults" class:hidden={!open}>
+    <div class="titlebar__search-results-inner">
     {#if filtered.anime.length === 0 && filtered.tags.length === 0 && filtered.settings.length === 0}
       <div class="titlebar__search-empty">{tr('search.noResults')}</div>
     {:else}
@@ -365,5 +366,6 @@
         {/each}
       {/if}
     {/if}
+    </div>
   </div>
 </div>

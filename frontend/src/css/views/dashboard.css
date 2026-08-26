@@ -48,20 +48,6 @@
   padding: var(--space-2) 0;
 }
 
-/* ─── Horizontal Scroll ─── */
-.dashboard-hscroll {
-  display: flex;
-  gap: var(--space-4);
-  overflow-x: auto;
-  padding-bottom: var(--space-2);
-  scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
-  -webkit-overflow-scrolling: touch;
-}
-.dashboard-hscroll::-webkit-scrollbar { height: 4px; }
-.dashboard-hscroll::-webkit-scrollbar-track { background: transparent; }
-.dashboard-hscroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: var(--radius-xs); }
-
 .dashboard-card {
   flex-shrink: 0;
   width: 160px;

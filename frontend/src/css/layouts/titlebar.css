@@ -185,10 +185,13 @@
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
   max-height: 360px;
-  overflow-y: auto;
+  overflow: hidden;
   z-index: 999;
-  /* 打开时淡入 + 轻微上移（display:none→block 时重播一次） */
-  animation: search-dropdown-in 0.15s ease-out;
+}
+.titlebar__search-results-inner {
+  max-height: 360px;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 .titlebar__search-results.hidden { display: none !important; }
 
@@ -332,8 +335,3 @@
   width: 14px;
   height: 14px;
 }
-
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--bg-surface); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--fg-muted); }

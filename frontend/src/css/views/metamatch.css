@@ -534,11 +534,7 @@
   flex: 1; overflow-y: auto;
   padding: var(--space-4);
   display: flex; flex-direction: column; gap: 0;
-  scrollbar-width: thin; scrollbar-color: var(--border) transparent;
 }
-.mm-panel-scroll::-webkit-scrollbar { width: 6px; }
-.mm-panel-scroll::-webkit-scrollbar-track { background: transparent; }
-.mm-panel-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 .mm-panel-scroll > * + * {
   border-top: var(--space-025) solid var(--border);
   padding-top: var(--space-4);
@@ -683,7 +679,6 @@
 .modal-m-body .mm-left .mm-list {
   flex: 1; overflow-y: auto;
   padding: var(--space-2) var(--space-3) var(--space-2) var(--space-5);
-  scrollbar-width: thin; scrollbar-color: var(--border) transparent;
 }
 .modal-m-body .mm-left .mm-list-empty { flex: 1; }
 .modal-m-body .mm-panel { height: 100%; }
@@ -701,7 +696,6 @@
 }
 .mm-panel-synclog-entries {
   flex: 1; overflow-y: auto; padding: var(--space-1) 0;
-  scrollbar-width: thin; scrollbar-color: var(--border) transparent;
 }
 .mm-panel-synclog-entry {
   display: flex; align-items: flex-start; gap: 8px;

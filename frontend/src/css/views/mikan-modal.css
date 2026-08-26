@@ -51,7 +51,6 @@
   box-shadow: var(--shadow-lg);
   padding: var(--space-2);
   animation: fadeIn 0.12s ease;
-  scrollbar-width: thin;
 }
 
 .mikan-season-dd-year {
@@ -389,11 +388,6 @@
   flex: 1;
   overflow-y: auto;
   padding: var(--space-1) 0;
-  scrollbar-width: none;
-}
-
-.mikan-resource-list::-webkit-scrollbar {
-  display: none;
 }
 
 .mikan-resource-item {

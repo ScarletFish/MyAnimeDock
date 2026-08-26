@@ -409,10 +409,6 @@
   background: var(--bg-elevated);
 }
 
-.mikan-resource-item:hover {
-  background: var(--bg-elevated);
-}
-
 .mikan-resource-name {
   color: var(--fg-primary);
   overflow-wrap: break-word;

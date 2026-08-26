@@ -13,26 +13,41 @@
     onSubscribed = null,
   } = $props();
 
-  let selectedTags = $state(new Set(['simplified', 'halfEpisode']));
+  let selectedLangs = $state(new Set(['simplified']));
+  let selectedTags = $state(new Set(['halfEpisode']));
   let subscribing = $state(false);
   let config = $state(null);
   let addDdOpen = $state(false);
 
+  const LANG_OPTIONS = [
+    { key: 'simplified', regex: '简' },
+    { key: 'traditional', regex: '繁' },
+    { key: 'japanese', regex: '日' },
+    { key: 'simplifiedTraditional', regex: '简繁' },
+  ];
+  const LANG_LABELS = { simplified: 'mikan.simplified', traditional: 'mikan.traditional', japanese: 'mikan.japanese', simplifiedTraditional: 'mikan.simplifiedTraditional' };
+
   const PRESET_TAGS = [
-    { key: 'simplified', group: 'lang', regex: '简体' },
-    { key: 'traditional', group: 'lang', regex: '繁体' },
-    { key: 'simplifiedTraditional', group: 'lang', regex: '简繁' },
     { key: '1080p', group: 'quality', regex: '1080p' },
     { key: '720p', group: 'quality', regex: '720p' },
     { key: '4k', group: 'quality', regex: '4K' },
     { key: 'mkv', group: 'format', regex: '\\.mkv' },
     { key: 'mp4', group: 'format', regex: '\\.mp4' },
+    { key: 'internalSub', group: 'subtitle', regex: '内封' },
+    { key: 'embeddedSub', group: 'subtitle', regex: '内嵌' },
     { key: 'halfEpisode', group: 'exclude', regex: '\\.5', isExclude: true },
+    { key: 'episodeRange', group: 'exclude', regex: '\\d+[~-]\\d+', isExclude: true },
     { key: 'collection', group: 'exclude', regex: '合集', isExclude: true },
   ];
 
-  const GROUP_LABELS = { lang: 'mikan.lang', quality: 'mikan.quality', format: 'mikan.format', exclude: 'mikan.exclude' };
-  const GROUP_ORDER = ['lang', 'quality', 'format', 'exclude'];
+  const TAG_LABELS = {
+    '1080p': 'mikan.1080p', '720p': 'mikan.720p', '4k': 'mikan.4k',
+    mkv: 'mikan.mkv', mp4: 'mikan.mp4',
+    internalSub: 'mikan.internalSub', embeddedSub: 'mikan.embeddedSub',
+    halfEpisode: 'mikan.halfEpisode', episodeRange: 'mikan.episodeRange', collection: 'mikan.collection',
+  };
+  const GROUP_LABELS = { quality: 'mikan.quality', format: 'mikan.format', subtitle: 'mikan.subtitle', exclude: 'mikan.exclude' };
+  const GROUP_ORDER = ['quality', 'format', 'subtitle', 'exclude'];
 
   let downloadPath = $derived(
     config?.mediaDir && bangumiDetail?.name
@@ -40,15 +55,21 @@
       : ''
   );
 
+  let langRegex = $derived(
+    LANG_OPTIONS.filter(l => selectedLangs.has(l.key)).map(l => l.regex).join('|')
+  );
+
   let availableOptions = $derived(
     PRESET_TAGS.filter(t => !selectedTags.has(t.key))
   );
 
   let mustContain = $derived.by(() => {
-    return PRESET_TAGS
+    const parts = [];
+    if (langRegex) parts.push(langRegex);
+    PRESET_TAGS
       .filter(t => !t.isExclude && selectedTags.has(t.key))
-      .map(t => t.regex)
-      .join('|');
+      .forEach(t => parts.push(t.regex));
+    return parts.join('|');
   });
 
   let mustNotContain = $derived.by(() => {
@@ -60,12 +81,20 @@
 
   $effect(() => {
     if (!open) {
-      selectedTags = new Set(['simplified', 'halfEpisode']);
+      selectedLangs = new Set(['simplified']);
+      selectedTags = new Set(['halfEpisode', 'collection']);
       addDdOpen = false;
       return;
     }
     api.get('/api/config').then(cfg => { config = cfg; }).catch(() => {});
   });
+
+  function toggleLang(key) {
+    const next = new Set(selectedLangs);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    if (next.size > 0) selectedLangs = next;
+  }
 
   function toggleTag(key) {
     const next = new Set(selectedTags);
@@ -136,41 +165,55 @@
           {/if}
         </div>
 
-        <div class="mikan-subscribe-tags">
-          {#each selectedTags as key}
-            {@const tag = PRESET_TAGS.find(t => t.key === key)}
-            {#if tag}
-              <button class="tag-pill" class:tag-pill--exclude={tag.isExclude} onclick={() => toggleTag(key)}>
-                {tag.regex}
-                <svg class="tag-pill-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        <div class="mikan-subscribe-filter">
+          <div class="mikan-subscribe-filter-label">{tr('mikan.lang')}</div>
+          <div class="mikan-subscribe-tags">
+            {#each LANG_OPTIONS as opt}
+              <button class="tag-pill" class:active={selectedLangs.has(opt.key)} onclick={() => toggleLang(opt.key)}>
+                {tr(LANG_LABELS[opt.key])}
               </button>
-            {/if}
-          {/each}
+            {/each}
+          </div>
+        </div>
 
-          {#if availableOptions.length > 0}
-            <Select.Root type="single" bind:value={() => null, onAddSelect} bind:open={addDdOpen}>
-              <Select.Trigger class="tag-pill tag-pill--add">
-                +
-              </Select.Trigger>
-              <Select.Portal to="#modal-root">
-                <Select.Content class="mikan-add-dd" side="bottom" sideOffset={4}>
-                  {#each GROUP_ORDER as group}
-                    {@const groupTags = availableOptions.filter(t => t.group === group)}
-                    {#if groupTags.length > 0}
-                      <Select.Group>
-                        <div class="mikan-add-dd-label">{tr(GROUP_LABELS[group])}</div>
-                        {#each groupTags as tag}
-                          <Select.Item value={tag.key} class="mikan-add-dd-item">
-                            {tag.regex}
-                          </Select.Item>
-                        {/each}
-                      </Select.Group>
-                    {/if}
-                  {/each}
-                </Select.Content>
-              </Select.Portal>
-            </Select.Root>
-          {/if}
+        <div class="mikan-subscribe-filter">
+          <div class="mikan-subscribe-filter-label">{tr('mikan.filter')}</div>
+          <div class="mikan-subscribe-tags">
+            {#each [...selectedTags] as key}
+              {@const tag = PRESET_TAGS.find(t => t.key === key)}
+              {#if tag}
+                <button class="tag-pill" class:tag-pill--exclude={tag.isExclude} onclick={() => toggleTag(key)}>
+                  {TAG_LABELS[key] ? tr(TAG_LABELS[key]) : tag.regex}
+                  <svg class="tag-pill-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              {/if}
+            {/each}
+
+            {#if availableOptions.length > 0}
+              <Select.Root type="single" bind:value={() => null, onAddSelect} bind:open={addDdOpen}>
+                <Select.Trigger class="tag-pill tag-pill--add">
+                  +
+                </Select.Trigger>
+                <Select.Portal to="#modal-root">
+                  <Select.Content class="mikan-add-dd" side="bottom" sideOffset={4}>
+                    {#each GROUP_ORDER as group}
+                      {@const groupTags = availableOptions.filter(t => t.group === group)}
+                      {#if groupTags.length > 0}
+                        <Select.Group class="mikan-add-dd-group">
+                          <div class="mikan-add-dd-label">{tr(GROUP_LABELS[group])}</div>
+                          {#each groupTags as tag}
+                            <Select.Item value={tag.key} class="mikan-add-dd-item">
+                              {TAG_LABELS[tag.key] ? tr(TAG_LABELS[tag.key]) : tag.regex}
+                            </Select.Item>
+                          {/each}
+                        </Select.Group>
+                      {/if}
+                    {/each}
+                  </Select.Content>
+                </Select.Portal>
+              </Select.Root>
+            {/if}
+          </div>
         </div>
 
         <div class="mikan-subscribe-footer">

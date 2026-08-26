@@ -9,8 +9,23 @@ const QB_BASE = (port: number) => `http://localhost:${port}`;
 let cachedSid: string | null = null;
 let cachedPort: number = 0;
 let cachedCookieName: string = 'SID';
+const loginPromises = new Map<number, Promise<string>>();
 
 async function qbLogin(port: number, username: string, password: string): Promise<string> {
+  // 如果同一 port 正在登录，复用 promise
+  const pending = loginPromises.get(port);
+  if (pending) return pending;
+
+  const promise = doLogin(port, username, password);
+  loginPromises.set(port, promise);
+  try {
+    return await promise;
+  } finally {
+    loginPromises.delete(port);
+  }
+}
+
+async function doLogin(port: number, username: string, password: string): Promise<string> {
   const body = `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`;
   const res = await nodeFetch(`${QB_BASE(port)}/api/v2/auth/login`, {
     method: 'POST',
@@ -21,7 +36,6 @@ async function qbLogin(port: number, username: string, password: string): Promis
     body,
   });
   const text = await res.text();
-  logger.debug(`qB login response: status=${res.status}, body=${text}, set-cookie=${JSON.stringify(res.headers?.['set-cookie'])}`);
   if (!res.ok) throw new Error(`qB login failed: ${res.status} - ${text}`);
   const setCookie = res.headers?.['set-cookie'];
   if (!setCookie) throw new Error('qB login: no Set-Cookie header');
@@ -37,7 +51,7 @@ async function qbLogin(port: number, username: string, password: string): Promis
   cachedSid = sid;
   cachedPort = port;
   cachedCookieName = cookieName;
-  logger.info(`Logged in to qB (port ${port})`);
+  logger.debug(`Logged in to qB (port ${port})`);
   return sid;
 }
 
@@ -67,7 +81,7 @@ async function qbRequest(
   });
   // SID expired → re-login once
   if (res.status === 403) {
-    logger.info('SID expired, re-logging in...');
+    logger.debug('SID expired, re-logging in...');
     await qbLogin(port, username, password);
     headers.Cookie = `${cachedCookieName}=${cachedSid}`;
     const retry = await nodeFetch(`${QB_BASE(port)}${apiPath}`, { method, headers, body });

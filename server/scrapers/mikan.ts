@@ -207,18 +207,13 @@ export async function getWeeklyBangumi(mirror: string): Promise<Map<number, Mika
 }
 
 /**
- * 获取指定季度的番剧列表
+ * 获取指定季度的番剧列表（通过 AJAX 接口）
  * @param year 年份，如 2026
  * @param season 季度：春/夏/秋/冬
  */
 export async function getSeasonBangumi(year: number, season: string, mirror: string): Promise<Map<number, MikanBangumi[]>> {
-  // 蜜柑计划季度筛选通过JavaScript参数实现
-  // 需要模拟AJAX请求或解析页面中的数据
-  const html = await fetchWithFallback('/', mirror);
-  
-  // TODO: 实现季度筛选逻辑
-  // 目前先返回一周新番
-  logger.warn('Season filter not yet implemented, returning weekly bangumi');
+  const path = `/Home/BangumiCoverFlowByDayOfWeek?year=${year}&seasonStr=${encodeURIComponent(season)}`;
+  const html = await fetchWithFallback(path, mirror);
   return parseWeeklyBangumi(html);
 }
 
@@ -343,7 +338,7 @@ export async function getBangumiResources(detailUrl: string, mirror: string): Pr
       downloadUrl: r.downloadUrl,
       type: r.type,
     }));
-    logger.info(`[MIKAN] Subgroup "${sg.name}": ${resources.length} resources (initial)`);
+    logger.debug(`[MIKAN] Subgroup "${sg.name}": ${resources.length} resources (initial)`);
     return {
       id: sg.id,
       name: sg.name,

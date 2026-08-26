@@ -158,9 +158,13 @@
     }
   }
 
-  onMount(() => {
+  onMount(async () => {
     document.addEventListener('visibilitychange', handleVisibility);
     loading = false;
+    try {
+      const cfg = await api.get('/api/config');
+      configured = !!(cfg.qbPort && cfg.qbUsername);
+    } catch {}
   });
 
   onDestroy(() => {

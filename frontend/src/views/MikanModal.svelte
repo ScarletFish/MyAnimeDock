@@ -10,6 +10,7 @@
   import { tr } from '../lib/anime-utils.js';
   import { API as api } from '../lib/api.js';
   import { initScrollDots } from '../lib/scroll-dots.js';
+  import { Select, Popover } from 'bits-ui';
   import MikanSubscribeModal from '../components/MikanSubscribeModal.svelte';
 
   let open = $state(false);
@@ -30,6 +31,21 @@
 
   const DAY_NAMES = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
   const MIKAN_BASE = 'https://mikanime.tv';
+  const SEASONS = ['春', '夏', '秋', '冬'];
+
+  // 当前季度
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+  const currentSeason = currentMonth >= 4 && currentMonth <= 6 ? '春' : currentMonth >= 7 && currentMonth <= 9 ? '夏' : currentMonth >= 10 && currentMonth <= 12 ? '秋' : '冬';
+
+  let selectedYear = $state(currentYear);
+  let selectedSeason = $state(currentSeason);
+
+  const yearOptions = Array.from({ length: currentYear - 2012 + 1 }, (_, i) => currentYear - i);
+
+  // bits-ui Popover: 年份+季度网格
+  let seasonLabel = $derived(`${selectedYear} ${selectedSeason}季番组`);
 
   // 订阅 store
   $effect(() => {
@@ -68,9 +84,12 @@
   async function loadWeeklyAnime() {
     loading = true;
     try {
-      const resp = await api.get('/api/mikan/weekly');
+      const resp = await api.get(`/api/mikan/season?year=${selectedYear}&season=${encodeURIComponent(selectedSeason)}`);
       weeklyAnime = Array.isArray(resp) ? resp : [];
-      // 数据加载后初始化圆点
+      expandedAnime = null;
+      bangumiDetail = null;
+      selectedSubgroupIdx = 0;
+      fullResourcesLoaded = new Set();
       requestAnimationFrame(() => {
         for (let i = 0; i < 7; i++) {
           initDotsForDay(i);
@@ -81,6 +100,12 @@
     } finally {
       loading = false;
     }
+  }
+
+  function selectSeason(y, s) {
+    selectedYear = y;
+    selectedSeason = s;
+    loadWeeklyAnime();
   }
 
   async function toggleAnime(anime, dayIdx) {
@@ -180,6 +205,30 @@
       <button class="modal-close-btn" onclick={close} aria-label="关闭">✕</button>
       <div class="modal-header">
         <h2>{tr('mikan.title')}</h2>
+        <Popover.Root>
+          <Popover.Trigger class="mikan-season-btn">
+            {seasonLabel}
+            <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </Popover.Trigger>
+          <Popover.Portal to="#modal-root">
+            <Popover.Content class="mikan-season-dd" side="bottom" sideOffset={4}>
+              {#each yearOptions as year}
+                <div class="mikan-season-dd-year">{year}</div>
+                <div class="mikan-season-dd-row">
+                  {#each SEASONS as s}
+                    <button
+                      class="mikan-season-dd-item"
+                      class:active={year === selectedYear && s === selectedSeason}
+                      onclick={() => selectSeason(year, s)}
+                    >
+                      {s}
+                    </button>
+                  {/each}
+                </div>
+              {/each}
+            </Popover.Content>
+          </Popover.Portal>
+        </Popover.Root>
       </div>
 
       {#if loading}
@@ -192,6 +241,9 @@
         </div>
       {:else}
         <div class="mikan-days">
+          {#if getDayGroups().every(g => g.bangumi.length === 0)}
+            <div class="mikan-empty">{tr('mikan.noSeasonData')}</div>
+          {/if}
           {#each getDayGroups() as group, dayIdx}
             {#if group.bangumi.length > 0}
               <div class="mikan-day-section" id="mikan-day-{dayIdx}">

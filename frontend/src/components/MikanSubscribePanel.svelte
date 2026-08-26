@@ -123,7 +123,7 @@
     const next = new Set(selectedLangs);
     if (next.has(key)) next.delete(key);
     else next.add(key);
-    if (next.size > 0) selectedLangs = next;
+    selectedLangs = next;
   }
 
   function toggleTag(key) {

@@ -49,10 +49,10 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
-  padding: var(--space-2);
   animation: fadeIn 0.12s ease;
 }
 .mikan-season-dd-inner {
+  padding: var(--space-2);
   max-height: 360px;
   overflow-y: auto;
 }

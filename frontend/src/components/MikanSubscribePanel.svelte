@@ -1,4 +1,5 @@
 <script>
+  import { onMount } from 'svelte';
   import { showToast } from './Toast.svelte';
   import { tr } from '../lib/anime-utils.js';
   import { API as api } from '../lib/api.js';
@@ -110,6 +111,12 @@
 
   $effect(() => {
     if (onPreview) onPreview(preview);
+  });
+
+  onMount(() => {
+    const gsap = globalThis.gsap;
+    if (!gsap) return;
+    gsap.fromTo('.mikan-panel', { opacity: 0, x: -12 }, { opacity: 1, x: 0, duration: 0.25, ease: 'power2.out' });
   });
 
   function toggleLang(key) {

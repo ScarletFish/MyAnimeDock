@@ -159,8 +159,7 @@ export async function qbGetTransfer(port: number, username: string, password: st
 // ── RSS API ──
 
 export async function qbAddRssFeed(port: number, username: string, password: string, url: string, path?: string): Promise<void> {
-  const params = new URLSearchParams({ url });
-  if (path) params.set('path', path);
+  const params = new URLSearchParams({ url, path: path || '' });
   await qbRequest(port, username, password, 'POST', '/api/v2/rss/addFeed', params.toString(), 'application/x-www-form-urlencoded');
 }
 
@@ -182,4 +181,18 @@ export async function qbRemoveRssRule(port: number, username: string, password: 
 
 export async function qbGetRssRules(port: number, username: string, password: string): Promise<Record<string, any>> {
   return qbRequest(port, username, password, 'GET', '/api/v2/rss/rules');
+}
+
+export async function qbGetRssItems(port: number, username: string, password: string): Promise<Record<string, any>> {
+  return qbRequest(port, username, password, 'GET', '/api/v2/rss/items');
+}
+
+export async function qbRemoveRssFeedByUrl(port: number, username: string, password: string, feedUrl: string): Promise<void> {
+  const items = await qbGetRssItems(port, username, password);
+  for (const [path, info] of Object.entries(items)) {
+    if (typeof info === 'string' && info === feedUrl) {
+      await qbRemoveRssItem(port, username, password, path);
+      return;
+    }
+  }
 }

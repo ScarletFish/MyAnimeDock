@@ -20,12 +20,16 @@
   let addDdOpen = $state(false);
 
   const LANG_OPTIONS = [
-    { key: 'simplified', regex: '简' },
-    { key: 'traditional', regex: '繁' },
-    { key: 'japanese', regex: '日' },
-    { key: 'simplifiedTraditional', regex: '简繁' },
+    { key: 'simplified', label: 'mikan.simplified', bit: 1 },
+    { key: 'traditional', label: 'mikan.traditional', bit: 2 },
+    { key: 'japanese', label: 'mikan.japanese', bit: 4 },
   ];
-  const LANG_LABELS = { simplified: 'mikan.simplified', traditional: 'mikan.traditional', japanese: 'mikan.japanese', simplifiedTraditional: 'mikan.simplifiedTraditional' };
+  // Mikan 实际使用的语言组合词 (name → bitmask)
+  const LANG_COMPOUNDS = [
+    { name: '简日', mask: 1 | 4 },   // simplified | japanese
+    { name: '繁日', mask: 2 | 4 },   // traditional | japanese
+    { name: '简繁日', mask: 1 | 2 | 4 }, // all three
+  ];
 
   const PRESET_TAGS = [
     { key: '1080p', group: 'quality', regex: '1080p' },
@@ -55,8 +59,8 @@
       : ''
   );
 
-  let langRegex = $derived(
-    LANG_OPTIONS.filter(l => selectedLangs.has(l.key)).map(l => l.regex).join('|')
+  let langMask = $derived(
+    LANG_OPTIONS.filter(l => selectedLangs.has(l.key)).reduce((m, l) => m | l.bit, 0)
   );
 
   let availableOptions = $derived(
@@ -65,18 +69,27 @@
 
   let mustContain = $derived.by(() => {
     const parts = [];
-    if (langRegex) parts.push(langRegex);
-    PRESET_TAGS
-      .filter(t => !t.isExclude && selectedTags.has(t.key))
-      .forEach(t => parts.push(t.regex));
-    return parts.join('|');
+    // 语言：精确匹配（组合词 bitmask === 选中 bitmask）
+    const matched = LANG_COMPOUNDS.filter(c => c.mask === langMask);
+    if (matched.length > 0) parts.push(matched.map(c => c.name).join('|'));
+    // 其他标签：AND 逻辑
+    for (const t of PRESET_TAGS) {
+      if (!t.isExclude && selectedTags.has(t.key)) parts.push(t.regex);
+    }
+    return parts.length > 0 ? parts.join('|') : '';
   });
 
   let mustNotContain = $derived.by(() => {
-    return PRESET_TAGS
-      .filter(t => t.isExclude && selectedTags.has(t.key))
-      .map(t => t.regex)
-      .join('|');
+    const parts = [];
+    // 语言排除：包含任何未选语言的组合词（bitmask & ~langMask ≠ 0）
+    for (const c of LANG_COMPOUNDS) {
+      if (c.mask & ~langMask) parts.push(c.name);
+    }
+    // 其他排除：OR 逻辑
+    for (const t of PRESET_TAGS) {
+      if (t.isExclude && selectedTags.has(t.key)) parts.push(t.regex);
+    }
+    return parts.join('|');
   });
 
   $effect(() => {
@@ -170,7 +183,7 @@
           <div class="mikan-subscribe-tags">
             {#each LANG_OPTIONS as opt}
               <button class="tag-pill" class:active={selectedLangs.has(opt.key)} onclick={() => toggleLang(opt.key)}>
-                {tr(LANG_LABELS[opt.key])}
+                {tr(opt.label)}
               </button>
             {/each}
           </div>

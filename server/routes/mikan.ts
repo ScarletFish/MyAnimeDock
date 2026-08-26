@@ -1,6 +1,6 @@
 // server/routes/mikan.ts — 蜜柑计划 API 路由
 import { jsonResp, readBody } from '../lib/utils';
-import { qbAddRssFeed, qbRemoveRssItem, qbSetRssRule, qbRemoveRssRule } from '../lib/qb-client';
+import { qbAddRssFeed, qbRemoveRssFeedByUrl, qbSetRssRule, qbRemoveRssRule } from '../lib/qb-client';
 import { getWeeklyBangumi, getSeasonBangumi, getBangumiResources, getSubgroupFullResources } from '../scrapers/mikan';
 import type { ServerState, MikanBangumi } from '../types';
 import crypto from 'crypto';
@@ -78,7 +78,7 @@ async function handleMikanSeason(req: any, res: any, state: ServerState) {
  * 获取番剧详情页的字幕组资源
  */
 async function handleMikanBangumi(req: any, res: any, state: ServerState) {
-  const { logger, config } = state;
+  const { logger, config, db } = state;
   try {
     const url = new URL(req.url || '', 'http://localhost');
     const name = url.searchParams.get('name');
@@ -91,6 +91,15 @@ async function handleMikanBangumi(req: any, res: any, state: ServerState) {
     
     if (detailUrl) {
       const detail = await getBangumiResources(detailUrl, config.mikanMirror);
+      // 附加订阅状态
+      if (detail.bgmId) {
+        const subs = db.getMikanSubscriptionsByBgmId(detail.bgmId);
+        const subMap = new Map(subs.map((s: any) => [s.subgroupId, s]));
+        for (const sg of detail.subgroups) {
+          const sub = subMap.get(sg.id);
+          (sg as any).subscription = sub ? { id: sub.id, name: sub.name } : null;
+        }
+      }
       jsonResp(res, 200, detail);
       return;
     }
@@ -150,11 +159,11 @@ async function handleMikanSubscribe(req: any, res: any, state: ServerState) {
 
     // 构造完整 RSS URL
     const fullRssUrl = `https://mikanime.tv${rssUrl}`;
-    const savePath = `${config.mediaDir}\\${name}`;
+    const savePath = `${config.mediaDir}/${name}`.replace(/\\/g, '/');
     const ruleName = `mikan_${animeId}`;
 
-    // 1. 添加 RSS feed 到 qBittorrent
-    await qbAddRssFeed(config.qbPort, config.qbUsername, config.qbPassword, fullRssUrl);
+    // 1. 添加 RSS feed 到 qBittorrent（path 为 RSS 树文件夹）
+    await qbAddRssFeed(config.qbPort, config.qbUsername, config.qbPassword, fullRssUrl, 'Mikan');
 
     // 2. 设置自动下载规则
     const ruleDef: Record<string, any> = {
@@ -162,10 +171,15 @@ async function handleMikanSubscribe(req: any, res: any, state: ServerState) {
       mustContain: mustContain || '',
       mustNotContain: mustNotContain || '',
       useRegex: true,
+      episodeFilter: '',
+      smartFilter: false,
+      previouslyMatchedEpisodes: [],
       affectedFeeds: [fullRssUrl],
-      savePath,
-      assignedCategory: 'anime',
+      ignoreDays: 0,
+      lastMatch: '',
       addPaused: false,
+      assignedCategory: 'anime-mikan',
+      savePath,
     };
     await qbSetRssRule(config.qbPort, config.qbUsername, config.qbPassword, ruleName, ruleDef);
 
@@ -218,13 +232,13 @@ async function handleMikanUnsubscribe(req: any, res: any, state: ServerState) {
       return;
     }
 
-    // 从 qBittorrent 移除规则和 RSS
+    // 从 qBittorrent 移除规则和 RSS feed
     const ruleName = `mikan_${sub.animeId}`;
     try {
       await qbRemoveRssRule(config.qbPort, config.qbUsername, config.qbPassword, ruleName);
     } catch { /* rule 可能不存在 */ }
     try {
-      await qbRemoveRssItem(config.qbPort, config.qbUsername, config.qbPassword, sub.rssUrl);
+      await qbRemoveRssFeedByUrl(config.qbPort, config.qbUsername, config.qbPassword, sub.rssUrl);
     } catch { /* feed 可能不存在 */ }
 
     // 从数据库删除

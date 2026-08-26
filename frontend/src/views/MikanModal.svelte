@@ -7,6 +7,7 @@
   import { onMount } from 'svelte';
   import { portal } from '../lib/portal.js';
   import { showToast } from '../components/Toast.svelte';
+  import { showConfirm } from '../components/ConfirmDialog.svelte';
   import { tr } from '../lib/anime-utils.js';
   import { API as api } from '../lib/api.js';
   import { initScrollDots } from '../lib/scroll-dots.js';
@@ -136,6 +137,21 @@
     if (!bangumiDetail || !expandedAnime) return;
     subscribeTarget = subgroup;
     subscribeModalOpen = true;
+  }
+
+  async function unsubscribe(subgroup) {
+    if (!subgroup.subscription) return;
+    const confirmed = await showConfirm(tr('mikan.unsubscribeConfirm'));
+    if (!confirmed) return;
+    try {
+      await api.post('/api/mikan/unsubscribe', { subscriptionId: subgroup.subscription.id });
+      // 更新本地状态
+      const sg = bangumiDetail.subgroups.find(s => s.id === subgroup.id);
+      if (sg) sg.subscription = null;
+      showToast(tr('mikan.unsubscribed'), 'success');
+    } catch (e) {
+      showToast(tr('mikan.unsubscribeFailed', { error: e.message }), 'error');
+    }
   }
 
   function getDayGroups() {
@@ -308,17 +324,26 @@
                                 onkeydown={(e) => { if (e.key === 'Enter') selectedSubgroupIdx = idx; }}
                               >
                                 <span class="mikan-subgroup-name">{sg.name}</span>
-                                <button
-                                  class="btn btn-sm btn-outline"
-                                  disabled={subscribing === sg.id}
-                                  onclick={(e) => { e.stopPropagation(); openSubscribeModal(sg); }}
-                                >
-                                  {#if subscribing === sg.id}
-                                    ...
-                                  {:else}
-                                    {tr('mikan.subscribe')}
-                                  {/if}
-                                </button>
+                                {#if sg.subscription}
+                                  <button
+                                    class="btn btn-sm btn-outline btn-subscribed"
+                                    onclick={(e) => { e.stopPropagation(); unsubscribe(sg); }}
+                                  >
+                                    {tr('mikan.subscribed')}
+                                  </button>
+                                {:else}
+                                  <button
+                                    class="btn btn-sm btn-outline"
+                                    disabled={subscribing === sg.id}
+                                    onclick={(e) => { e.stopPropagation(); openSubscribeModal(sg); }}
+                                  >
+                                    {#if subscribing === sg.id}
+                                      ...
+                                    {:else}
+                                      {tr('mikan.subscribe')}
+                                    {/if}
+                                  </button>
+                                {/if}
                               </div>
                             {/each}
                           </div>

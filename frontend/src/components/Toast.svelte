@@ -1,3 +1,7 @@
+<script>
+  import { portal } from '../lib/portal.js';
+</script>
+
 <script module>
   // ─── Svelte 版 Toast（复用现有 toast.css 类名）───
   import { writable } from 'svelte/store';
@@ -74,7 +78,8 @@
   }
 </script>
 
-<div class="toast-container" id="svelteToastContainer" role="alert" aria-live="polite">
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+<div class="toast-container" id="svelteToastContainer" role="alert" aria-live="polite" use:portal>
   {#each $toasts as toast (toast.id)}
     <div
       class="toast"

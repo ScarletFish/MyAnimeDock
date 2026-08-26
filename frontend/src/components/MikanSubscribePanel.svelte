@@ -72,7 +72,7 @@
 
   let mustContain = $derived.by(() => {
     const parts = [];
-    const matched = LANG_COMPOUNDS.filter(c => c.mask === langMask);
+    const matched = LANG_COMPOUNDS.filter(c => (c.mask & langMask) === langMask);
     if (matched.length > 0) parts.push(matched.map(c => c.name).join('|'));
     for (const t of INCLUDE_TAGS) {
       if (selectedTags.has(t.key)) parts.push(t.regex);

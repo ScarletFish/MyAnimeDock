@@ -121,6 +121,8 @@ export const I18N_ZH = {
   'mikan.subgroup': '字幕组',
   'mikan.savePath': '下载到',
   'mikan.filter': '筛选',
+  'mikan.mustContain': '必须包含',
+  'mikan.matchCount': '条匹配',
   'mikan.addFilter': '添加',
   'mikan.lang': '语言',
   'mikan.quality': '画质',

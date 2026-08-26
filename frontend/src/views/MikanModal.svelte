@@ -12,7 +12,7 @@
   import { API as api } from '../lib/api.js';
   import { initScrollDots } from '../lib/scroll-dots.js';
   import { Select, Popover } from 'bits-ui';
-  import MikanSubscribeModal from '../components/MikanSubscribeModal.svelte';
+  import MikanSubscribePanel from '../components/MikanSubscribePanel.svelte';
 
   let open = $state(false);
   let weeklyAnime = $state([]);
@@ -26,9 +26,10 @@
   let loadingFullSubgroup = $state(null);
   let fullResourcesLoaded = $state(new Set());
 
-  // Subscribe modal state
-  let subscribeModalOpen = $state(false);
+  // Subscribe panel state
+  let subscribeMode = $state(false);
   let subscribeTarget = $state(null);
+  let preview = $state({ matched: [], excluded: [], unmatched: [], total: 0 });
 
   const DAY_NAMES = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
   const MIKAN_BASE = 'https://mikanime.tv';
@@ -65,6 +66,9 @@
       bangumiDetail = null;
       selectedSubgroupIdx = 0;
       fullResourcesLoaded = new Set();
+      subscribeMode = false;
+      subscribeTarget = null;
+      preview = { matched: [], excluded: [], unmatched: [], total: 0 };
     }
   });
 
@@ -72,7 +76,10 @@
   $effect(() => {
     if (!open) return;
     function onKey(e) {
-      if (e.key === 'Escape') close();
+      if (e.key === 'Escape') {
+        if (subscribeMode) exitSubscribeMode();
+        else close();
+      }
     }
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
@@ -91,6 +98,9 @@
       bangumiDetail = null;
       selectedSubgroupIdx = 0;
       fullResourcesLoaded = new Set();
+      subscribeMode = false;
+      subscribeTarget = null;
+      preview = { matched: [], excluded: [], unmatched: [], total: 0 };
       requestAnimationFrame(() => {
         for (let i = 0; i < 7; i++) {
           initDotsForDay(i);
@@ -110,6 +120,9 @@
   }
 
   async function toggleAnime(anime, dayIdx) {
+    // 退出订阅模式
+    if (subscribeMode) exitSubscribeMode();
+
     // 点击已展开的则收起
     if (expandedAnime?.detailUrl === anime.detailUrl) {
       expandedAnime = null;
@@ -136,7 +149,13 @@
   function openSubscribeModal(subgroup) {
     if (!bangumiDetail || !expandedAnime) return;
     subscribeTarget = subgroup;
-    subscribeModalOpen = true;
+    subscribeMode = true;
+  }
+
+  function exitSubscribeMode() {
+    subscribeMode = false;
+    subscribeTarget = null;
+    preview = { matched: [], excluded: [], unmatched: [], total: 0 };
   }
 
   async function unsubscribe(subgroup) {
@@ -310,43 +329,55 @@
                       </div>
                     {:else if bangumiDetail}
                       <div class="mikan-split">
-                        <!-- 左栏：字幕组列表 -->
+                        <!-- 左栏：字幕组列表 / 订阅面板 -->
                         <div class="mikan-split-left">
-                          <div class="mikan-split-left-title">{bangumiDetail.name}</div>
-                          <div class="mikan-subgroup-list">
-                            {#each bangumiDetail.subgroups as sg, idx}
-                              <div
-                                class="mikan-subgroup-item"
-                                class:selected={selectedSubgroupIdx === idx}
-                                onclick={() => selectedSubgroupIdx = idx}
-                                role="button"
-                                tabindex="0"
-                                onkeydown={(e) => { if (e.key === 'Enter') selectedSubgroupIdx = idx; }}
-                              >
-                                <span class="mikan-subgroup-name">{sg.name}</span>
-                                {#if sg.subscription}
-                                  <button
-                                    class="btn btn-sm btn-outline btn-subscribed"
-                                    onclick={(e) => { e.stopPropagation(); unsubscribe(sg); }}
-                                  >
-                                    {tr('mikan.subscribed')}
-                                  </button>
-                                {:else}
-                                  <button
-                                    class="btn btn-sm btn-outline"
-                                    disabled={subscribing === sg.id}
-                                    onclick={(e) => { e.stopPropagation(); openSubscribeModal(sg); }}
-                                  >
-                                    {#if subscribing === sg.id}
-                                      ...
-                                    {:else}
-                                      {tr('mikan.subscribe')}
-                                    {/if}
-                                  </button>
-                                {/if}
-                              </div>
-                            {/each}
-                          </div>
+                          {#if subscribeMode}
+                            <MikanSubscribePanel
+                              resources={bangumiDetail.subgroups[selectedSubgroupIdx]?.resources || []}
+                              subgroup={subscribeTarget}
+                              anime={expandedAnime}
+                              {bangumiDetail}
+                              onPreview={(p) => { preview = p; }}
+                              onConfirm={exitSubscribeMode}
+                              onCancel={exitSubscribeMode}
+                            />
+                          {:else}
+                            <div class="mikan-split-left-title">{bangumiDetail.name}</div>
+                            <div class="mikan-subgroup-list">
+                              {#each bangumiDetail.subgroups as sg, idx}
+                                <div
+                                  class="mikan-subgroup-item"
+                                  class:selected={selectedSubgroupIdx === idx}
+                                  onclick={() => selectedSubgroupIdx = idx}
+                                  role="button"
+                                  tabindex="0"
+                                  onkeydown={(e) => { if (e.key === 'Enter') selectedSubgroupIdx = idx; }}
+                                >
+                                  <span class="mikan-subgroup-name">{sg.name}</span>
+                                  {#if sg.subscription}
+                                    <button
+                                      class="btn btn-sm btn-outline btn-subscribed"
+                                      onclick={(e) => { e.stopPropagation(); unsubscribe(sg); }}
+                                    >
+                                      {tr('mikan.subscribed')}
+                                    </button>
+                                  {:else}
+                                    <button
+                                      class="btn btn-sm btn-outline"
+                                      disabled={subscribing === sg.id}
+                                      onclick={(e) => { e.stopPropagation(); openSubscribeModal(sg); }}
+                                    >
+                                      {#if subscribing === sg.id}
+                                        ...
+                                      {:else}
+                                        {tr('mikan.subscribe')}
+                                      {/if}
+                                    </button>
+                                  {/if}
+                                </div>
+                              {/each}
+                            </div>
+                          {/if}
                         </div>
 
                         <!-- 右栏：资源列表 -->
@@ -355,7 +386,13 @@
                             {@const sg = bangumiDetail.subgroups[selectedSubgroupIdx]}
                             <div class="mikan-resource-list">
                               {#each sg.resources as r}
-                                <div class="mikan-resource-item">
+                                {@const isMatched = subscribeMode && preview.matched.includes(r)}
+                                {@const isExcluded = subscribeMode && preview.excluded.includes(r)}
+                                <div
+                                  class="mikan-resource-item"
+                                  class:mikan-resource--matched={isMatched}
+                                  class:mikan-resource--excluded={isExcluded}
+                                >
                                   <span class="mikan-resource-name">{r.name}</span>
                                   <span class="mikan-resource-meta">{r.size} · {r.date}</span>
                                 </div>
@@ -397,10 +434,4 @@
   </div>
 {/if}
 
-<MikanSubscribeModal
-  bind:open={subscribeModalOpen}
-  anime={expandedAnime}
-  subgroup={subscribeTarget}
-  {bangumiDetail}
-  onSubscribed={() => { /* 可选：刷新状态 */ }}
-/>
+

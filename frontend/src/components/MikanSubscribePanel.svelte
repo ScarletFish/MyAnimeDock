@@ -16,6 +16,7 @@
   } = $props();
 
   let selectedLangs = $state(new Set(['simplified']));
+  let excludedLangs = $state(new Set());
   let selectedTags = $state(new Set(['halfEpisode', 'collection']));
   let subscribing = $state(false);
   let config = $state(null);
@@ -37,8 +38,8 @@
     { key: '1080p', group: 'quality', regex: '1080p' },
     { key: '720p', group: 'quality', regex: '720p' },
     { key: '4k', group: 'quality', regex: '4K' },
-    { key: 'mkv', group: 'format', regex: '\\.mkv' },
-    { key: 'mp4', group: 'format', regex: '\\.mp4' },
+    { key: 'mkv', group: 'format', regex: 'mkv' },
+    { key: 'mp4', group: 'format', regex: 'mp4' },
     { key: 'internalSub', group: 'subtitle', regex: '内封' },
     { key: 'embeddedSub', group: 'subtitle', regex: '内嵌' },
   ];
@@ -66,14 +67,31 @@
     EXCLUDE_TAGS.filter(t => !selectedTags.has(t.key))
   );
 
+  let availableExcludeLangOptions = $derived(
+    LANG_OPTIONS.filter(l => !excludedLangs.has(l.key))
+  );
+
   let langMask = $derived(
     LANG_OPTIONS.filter(l => selectedLangs.has(l.key)).reduce((m, l) => m | l.bit, 0)
   );
 
+  let excludedLangMask = $derived(
+    LANG_OPTIONS.filter(l => excludedLangs.has(l.key)).reduce((m, l) => m | l.bit, 0)
+  );
+
   let mustContain = $derived.by(() => {
     const parts = [];
-    const matched = LANG_COMPOUNDS.filter(c => (c.mask & langMask) === langMask);
-    if (matched.length > 0) parts.push(matched.map(c => c.name).join('|'));
+    if (langMask) {
+      const chars = [];
+      if (langMask & 1) chars.push('简');
+      if (langMask & 2) chars.push('繁');
+      if (langMask & 4) chars.push('日');
+      if (chars.length === 1) {
+        parts.push(chars[0]);
+      } else {
+        parts.push(chars.map(c => `(?=.*${c})`).join(''));
+      }
+    }
     for (const t of INCLUDE_TAGS) {
       if (selectedTags.has(t.key)) parts.push(t.regex);
     }
@@ -84,8 +102,10 @@
 
   let mustNotContain = $derived.by(() => {
     const parts = [];
-    for (const c of LANG_COMPOUNDS) {
-      if (c.mask & ~langMask) parts.push(c.name);
+    if (excludedLangMask) {
+      if (excludedLangMask & 1) parts.push('简');
+      if (excludedLangMask & 2) parts.push('繁');
+      if (excludedLangMask & 4) parts.push('日');
     }
     for (const t of EXCLUDE_TAGS) {
       if (selectedTags.has(t.key)) parts.push(t.regex);
@@ -126,6 +146,13 @@
     selectedLangs = next;
   }
 
+  function toggleExcludeLang(key) {
+    const next = new Set(excludedLangs);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    excludedLangs = next;
+  }
+
   function toggleTag(key) {
     const next = new Set(selectedTags);
     if (next.has(key)) next.delete(key);
@@ -138,7 +165,13 @@
   }
 
   function onExcludeSelect(val) {
-    if (val) selectedTags = new Set([...selectedTags, val]);
+    if (!val) return;
+    const lang = LANG_OPTIONS.find(l => l.key === val);
+    if (lang) {
+      excludedLangs = new Set([...excludedLangs, val]);
+    } else {
+      selectedTags = new Set([...selectedTags, val]);
+    }
   }
 
   async function confirm() {
@@ -218,6 +251,16 @@
   <div class="mikan-panel-section">
     <div class="mikan-panel-section-label">{tr('mikan.exclude')}</div>
     <div class="mikan-panel-tags">
+      {#each [...excludedLangs] as key}
+        {@const opt = LANG_OPTIONS.find(l => l.key === key)}
+        {#if opt}
+          <button class="tag-pill tag-pill--exclude" onclick={() => toggleExcludeLang(key)}>
+            {tr(opt.label)}
+            <svg class="tag-pill-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        {/if}
+      {/each}
+
       {#each [...selectedTags] as key}
         {@const tag = EXCLUDE_TAGS.find(t => t.key === key)}
         {#if tag}
@@ -228,16 +271,31 @@
         {/if}
       {/each}
 
-      {#if availableExcludeOptions.length > 0}
+      {#if availableExcludeLangOptions.length > 0 || availableExcludeOptions.length > 0}
         <Select.Root type="single" bind:value={() => null, onExcludeSelect} bind:open={excludeDdOpen}>
           <Select.Trigger class="tag-pill tag-pill--add">+</Select.Trigger>
           <Select.Portal to="#modal-root">
             <Select.Content class="mikan-add-dd" side="bottom" sideOffset={4}>
-              {#each availableExcludeOptions as tag}
-                <Select.Item value={tag.key} class="mikan-add-dd-item">
-                  {TAG_LABELS[tag.key] ? tr(TAG_LABELS[tag.key]) : tag.regex}
-                </Select.Item>
-              {/each}
+              {#if availableExcludeLangOptions.length > 0}
+                <Select.Group class="mikan-add-dd-group">
+                  <div class="mikan-add-dd-label">{tr('mikan.lang')}</div>
+                  {#each availableExcludeLangOptions as opt}
+                    <Select.Item value={opt.key} class="mikan-add-dd-item">
+                      {tr(opt.label)}
+                    </Select.Item>
+                  {/each}
+                </Select.Group>
+              {/if}
+              {#if availableExcludeOptions.length > 0}
+                <Select.Group class="mikan-add-dd-group">
+                  <div class="mikan-add-dd-label">{tr('mikan.exclude')}</div>
+                  {#each availableExcludeOptions as tag}
+                    <Select.Item value={tag.key} class="mikan-add-dd-item">
+                      {TAG_LABELS[tag.key] ? tr(TAG_LABELS[tag.key]) : tag.regex}
+                    </Select.Item>
+                  {/each}
+                </Select.Group>
+              {/if}
             </Select.Content>
           </Select.Portal>
         </Select.Root>

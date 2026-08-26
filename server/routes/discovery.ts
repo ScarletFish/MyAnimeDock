@@ -148,13 +148,14 @@ async function handleBrowse(req: any, res: any, state: State) {
           if (scannedNode) scannedNode.excluded = false;
           continue;
         }
+        const sub = db.getMikanSubscriptionByName(folderName);
         const anime: any = {
           id: crypto.randomUUID(),
           folderPath, folderName, title: parsedTitle,
           season: parsedSeason || null, specialSuffix: specialSuffix || null,
           importedAt: new Date().toISOString(), downloaded: true,
           anilistId: scannedNode?.anilistId || null,
-          bangumiId: scannedNode?.bangumiId || null,
+          bangumiId: scannedNode?.bangumiId || (sub?.bgmId ? Number(sub.bgmId) : null),
           bangumiTitle: scannedNode?.bangumiTitle || null,
           bangumiTitleJp: scannedNode?.bangumiTitleJp || null,
           summary: scannedNode?.summary || null,

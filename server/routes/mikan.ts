@@ -147,7 +147,7 @@ async function handleMikanBangumiFull(req: any, res: any, state: ServerState) {
  * 订阅字幕组 RSS
  */
 async function handleMikanSubscribe(req: any, res: any, state: ServerState) {
-  const { logger, config, db } = state;
+  const { logger, config, db, data } = state;
   try {
     const body = JSON.parse(await readBody(req));
     const { animeId, bgmId, name, subgroupId, subgroupName, rssUrl, mustContain, mustNotContain } = body;
@@ -197,6 +197,17 @@ async function handleMikanSubscribe(req: any, res: any, state: ServerState) {
       mustContain: mustContain || null,
       mustNotContain: mustNotContain || null,
     });
+
+    // 反查已有 anime，补写 bangumiId
+    if (bgmId) {
+      const existing = data.library.find((a: any) => a.folderName === name && !a.bangumiId);
+      if (existing) {
+        existing.bangumiId = Number(bgmId);
+        db.saveLibrary(data, new Set([existing.id])).catch((e: any) => {
+          logger.error('[MIKAN] Failed to save bangumiId to existing anime:', e.message);
+        });
+      }
+    }
 
     logger.info(`[MIKAN] Subscribed: ${name} / ${subgroupName}`);
     jsonResp(res, 200, { ok: true, subscriptionId: id });

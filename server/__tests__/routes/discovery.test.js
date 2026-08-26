@@ -292,6 +292,7 @@ describe('discovery route handlers', () => {
         db: {
           saveLibrary: async () => { savedLib = true; },
           saveMyList: async () => { savedMyList = true; },
+          getMikanSubscriptionByName: () => null,
         },
       });
       const req = mockReq({
@@ -320,6 +321,7 @@ describe('discovery route handlers', () => {
         db: {
           saveLibrary: async () => {},
           saveMyList: async () => {},
+          getMikanSubscriptionByName: () => null,
         },
       });
       const req = mockReq({

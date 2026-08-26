@@ -126,6 +126,7 @@ function mockState(overrides = {}) {
       updatePlaySession: async () => {},
       updateMyListItem: async () => {},
       deletePlaySession: async () => {},
+      getMikanSubscriptionByName: () => null,
     },
     logger: {
       info: () => {},

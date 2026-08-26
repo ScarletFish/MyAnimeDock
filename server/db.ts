@@ -803,6 +803,10 @@ function getMikanSubscriptionsByBgmId(bgmId: string): any[] {
   return getDb().prepare(`SELECT * FROM MikanSubscription WHERE "bgmId" = ?`).all(bgmId);
 }
 
+function getMikanSubscriptionByName(name: string): any {
+  return getDb().prepare(`SELECT * FROM MikanSubscription WHERE "name" = ?`).get(name);
+}
+
 function upsertMikanSubscription(sub: { id: string; animeId: string; bgmId?: string; name: string; subgroupId: number; subgroupName: string; rssUrl: string; savePath: string; mustContain?: string; mustNotContain?: string }): void {
   const d = getDb();
   d.prepare(`INSERT INTO MikanSubscription ("id","animeId","bgmId","name","subgroupId","subgroupName","rssUrl","savePath","mustContain","mustNotContain","createdAt","updatedAt")
@@ -839,6 +843,7 @@ export {
   getMikanSubscription,
   getMikanSubscriptionById,
   getMikanSubscriptionsByBgmId,
+  getMikanSubscriptionByName,
   upsertMikanSubscription,
   deleteMikanSubscription,
   deleteMikanSubscriptionById,

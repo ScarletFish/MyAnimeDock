@@ -596,7 +596,7 @@
 
 .tag-pill.active {
   background: var(--accent);
-  color: var(--fg-primary);
+  color: var(--bg-deep);
   font-weight: var(--fw-medium);
 }
 

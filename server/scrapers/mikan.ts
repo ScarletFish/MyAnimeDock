@@ -338,7 +338,7 @@ export async function getBangumiResources(detailUrl: string, mirror: string): Pr
       downloadUrl: r.downloadUrl,
       type: r.type,
     }));
-    logger.debug(`[MIKAN] Subgroup "${sg.name}": ${resources.length} resources (initial)`);
+
     return {
       id: sg.id,
       name: sg.name,

@@ -4,7 +4,7 @@
 </script>
 
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { portal } from '../lib/portal.js';
   import { showToast } from '../components/Toast.svelte';
   import { showConfirm } from '../components/ConfirmDialog.svelte';
@@ -25,6 +25,7 @@
   let scrollEls = $state({});
   let loadingFullSubgroup = $state(null);
   let fullResourcesLoaded = $state(new Set());
+  let detailPanelEl = $state(null);
 
   // Subscribe panel state
   let subscribeMode = $state(false);
@@ -139,6 +140,8 @@
     try {
       const resp = await api.get(`/api/mikan/bangumi?url=${encodeURIComponent(anime.detailUrl)}`);
       bangumiDetail = resp;
+      await tick();
+      detailPanelEl?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     } catch (e) {
       showToast(tr('mikan.loadResourcesFailed', { error: e.message }), 'error');
     } finally {
@@ -199,7 +202,7 @@
         fullResourcesLoaded = new Set([...fullResourcesLoaded, sgIdx]);
       }
     } catch (e) {
-      showToast(tr('mikan.loadFullFailed', { error: e.message }), 'error');
+      showToast(tr('mikan.loadMoreFailed', { error: e.message }), 'error');
     } finally {
       loadingFullSubgroup = null;
     }
@@ -320,7 +323,7 @@
                 </div>
 
                 {#if expandedAnime && group.bangumi.some(a => a.detailUrl === expandedAnime.detailUrl)}
-                  <div class="mikan-detail-panel">
+                  <div class="mikan-detail-panel" bind:this={detailPanelEl}>
                     {#if loadingDetail}
                       <div class="mikan-detail-loading">
                         <svg class="spinning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -387,7 +390,7 @@
                           {#if bangumiDetail.subgroups[selectedSubgroupIdx]}
                             {@const sg = bangumiDetail.subgroups[selectedSubgroupIdx]}
                             <div class="mikan-resource-list">
-                              {#each sg.resources as r}
+                              {#each (fullResourcesLoaded.has(selectedSubgroupIdx) ? sg.resources : sg.resources.slice(0, 9)) as r}
                                 {@const isMatched = subscribeMode && preview.matched.includes(r)}
                                 {@const isExcluded = subscribeMode && preview.excluded.includes(r)}
                                 <div
@@ -404,7 +407,7 @@
                                   {tr('mikan.noResources')}
                                 </div>
                               {/if}
-                              {#if sg.resources.length > 0 && !fullResourcesLoaded.has(selectedSubgroupIdx)}
+                              {#if !fullResourcesLoaded.has(selectedSubgroupIdx) && sg.resources.length > 9}
                                 <button
                                   class="mikan-load-full-btn"
                                   disabled={loadingFullSubgroup === selectedSubgroupIdx}
@@ -416,7 +419,7 @@
                                     </svg>
                                     {tr('common.loading')}
                                   {:else}
-                                    {tr('mikan.loadFull')}
+                                    {tr('mikan.loadMore')}
                                   {/if}
                                 </button>
                               {/if}

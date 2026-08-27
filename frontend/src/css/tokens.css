@@ -31,6 +31,9 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
   --error-rgb: 239, 68, 68;
   --info: #a78bfa;
 
+  --status-completed: #8e9aaf;
+  --status-completed-rgb: 142, 154, 175;
+
   --border: rgba(225, 58, 90, 0.08);
   --border-hover: rgba(225, 58, 90, 0.16);
 

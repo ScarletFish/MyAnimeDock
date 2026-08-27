@@ -102,6 +102,25 @@ async function parseResponse(res: any): Promise<any> {
   }
 }
 
+// 默认用最新 v5 的 stop/start；若 404（4.4–4.6 只认 pause/resume）则回退旧命名。
+// 覆盖：v5 / pre-4.4（stop/start）、4.4–4.6（pause/resume）。
+async function qbRequestWithLegacy(
+  port: number, username: string, password: string,
+  method: string, primaryPath: string, legacyPath: string,
+  body?: string, contentType?: string,
+): Promise<any> {
+  try {
+    return await qbRequest(port, username, password, method, primaryPath, body, contentType);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes('404') && msg.includes(primaryPath)) {
+      logger.debug(`qB endpoint ${primaryPath} returned 404, falling back to legacy ${legacyPath}`);
+      return await qbRequest(port, username, password, method, legacyPath, body, contentType);
+    }
+    throw err;
+  }
+}
+
 // ── Public API ──
 
 export async function qbTestConnection(port: number, username: string, password: string): Promise<{ ok: boolean; version?: string; error?: string }> {
@@ -129,11 +148,11 @@ export async function qbAddTorrent(port: number, username: string, password: str
 }
 
 export async function qbPauseTorrent(port: number, username: string, password: string, hashes: string): Promise<void> {
-  await qbRequest(port, username, password, 'POST', '/api/v2/torrents/pause', `hashes=${hashes}`, 'application/x-www-form-urlencoded');
+  await qbRequestWithLegacy(port, username, password, 'POST', '/api/v2/torrents/stop', '/api/v2/torrents/pause', `hashes=${hashes}`, 'application/x-www-form-urlencoded');
 }
 
 export async function qbResumeTorrent(port: number, username: string, password: string, hashes: string): Promise<void> {
-  await qbRequest(port, username, password, 'POST', '/api/v2/torrents/resume', `hashes=${hashes}`, 'application/x-www-form-urlencoded');
+  await qbRequestWithLegacy(port, username, password, 'POST', '/api/v2/torrents/start', '/api/v2/torrents/resume', `hashes=${hashes}`, 'application/x-www-form-urlencoded');
 }
 
 export async function qbDeleteTorrent(port: number, username: string, password: string, hashes: string, deleteFiles = false): Promise<void> {
@@ -145,11 +164,11 @@ export async function qbSetDownloadLimit(port: number, username: string, passwor
 }
 
 export async function qbPauseAll(port: number, username: string, password: string): Promise<void> {
-  await qbRequest(port, username, password, 'POST', '/api/v2/torrents/pause', 'hashes=all', 'application/x-www-form-urlencoded');
+  await qbRequestWithLegacy(port, username, password, 'POST', '/api/v2/torrents/stop', '/api/v2/torrents/pause', 'hashes=all', 'application/x-www-form-urlencoded');
 }
 
 export async function qbResumeAll(port: number, username: string, password: string): Promise<void> {
-  await qbRequest(port, username, password, 'POST', '/api/v2/torrents/resume', 'hashes=all', 'application/x-www-form-urlencoded');
+  await qbRequestWithLegacy(port, username, password, 'POST', '/api/v2/torrents/start', '/api/v2/torrents/resume', 'hashes=all', 'application/x-www-form-urlencoded');
 }
 
 export async function qbGetTransfer(port: number, username: string, password: string): Promise<any> {

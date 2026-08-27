@@ -112,6 +112,25 @@
   margin: 0;
 }
 
+/* ─── Filter Bar ─── */
+
+.download-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+  flex-shrink: 0;
+}
+
+.download-filtered-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8) var(--space-4);
+  color: var(--fg-muted);
+  font-size: var(--text-body);
+}
+
 /* ─── Torrent Item ─── */
 
 .download-item {
@@ -199,14 +218,16 @@
 /* ─── Status Badge ─── */
 
 .download-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: var(--text-sm);
   font-weight: var(--fw-medium);
   padding: var(--space-050) var(--space-2);
   border-radius: var(--radius-pill);
   white-space: nowrap;
   flex-shrink: 0;
-  width: 56px;
-  text-align: center;
+  min-width: 56px;
 }
 
 .qb-status--downloading {
@@ -217,6 +238,11 @@
 .qb-status--uploading {
   color: var(--success);
   background: rgba(var(--success-rgb), 0.12);
+}
+
+.qb-status--completed {
+  color: var(--status-completed);
+  background: rgba(var(--status-completed-rgb), 0.12);
 }
 
 .qb-status--waiting {

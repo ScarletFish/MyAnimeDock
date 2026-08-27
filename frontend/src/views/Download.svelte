@@ -15,30 +15,73 @@
 
   let configured = $state(false);
   let loading = $state(true);
-  let transfer = $state(null);
   let torrents = $state([]);
   let magnetInput = $state('');
   let adding = $state(false);
   let es = $state(null);
   let prevOpen = $state(false);
 
+  let sourceFilter = $state('all');
+  let statusFilter = $state('all');
+  const filteredTorrents = $derived(
+    torrents.filter((t) => {
+      const srcOk = sourceFilter === 'all'
+        || (sourceFilter === 'anime-mikan' ? t.category === 'anime-mikan' : t.category !== 'anime-mikan');
+      const stOk = statusFilter === 'all' || getStatusInfo(t.state).label === statusFilter;
+      return srcOk && stOk;
+    })
+  );
+
+  const footerStats = $derived.by(() => {
+    let dlSpeed = 0, upSpeed = 0, downloaded = 0, uploaded = 0;
+    for (const t of filteredTorrents) {
+      dlSpeed += t.dlspeed || 0;
+      upSpeed += t.upspeed || 0;
+      downloaded += t.downloaded || 0;
+      uploaded += t.uploaded || 0;
+    }
+    return { dlSpeed, upSpeed, downloaded, uploaded };
+  });
+
   const STATUS_MAP = {
     downloading: { label: '下载中', cls: 'qb-status--downloading' },
+    metaDL: { label: '下载中', cls: 'qb-status--downloading' },
+    allocating: { label: '下载中', cls: 'qb-status--downloading' },
+    forcedDL: { label: '下载中', cls: 'qb-status--downloading' },
     uploading: { label: '做种', cls: 'qb-status--uploading' },
     stalledUP: { label: '做种', cls: 'qb-status--uploading' },
+    forcedUP: { label: '做种', cls: 'qb-status--uploading' },
+    stoppedUP: { label: '已完成', cls: 'qb-status--completed' },
+    pausedUP: { label: '已完成', cls: 'qb-status--completed' },
+    queuedUP: { label: '已完成', cls: 'qb-status--completed' },
     stalledDL: { label: '等待', cls: 'qb-status--waiting' },
     queuedDL: { label: '等待', cls: 'qb-status--waiting' },
     pausedDL: { label: '已暂停', cls: 'qb-status--paused' },
-    pausedUP: { label: '已暂停', cls: 'qb-status--paused' },
+    stoppedDL: { label: '已暂停', cls: 'qb-status--paused' },
     error: { label: '出错', cls: 'qb-status--error' },
     missingFiles: { label: '出错', cls: 'qb-status--error' },
     checkingUP: { label: '校验中', cls: 'qb-status--checking' },
     checkingDL: { label: '校验中', cls: 'qb-status--checking' },
+    checkingResumeData: { label: '校验中', cls: 'qb-status--checking' },
     unknown: { label: '未知', cls: 'qb-status--unknown' },
+    moving: { label: '移动中', cls: 'qb-status--waiting' },
   };
 
   function getStatusInfo(state) {
     return STATUS_MAP[state] || STATUS_MAP.unknown;
+  }
+
+  // qBittorrent v5 把 pausedDL/pausedUP 改名为 stoppedDL/stoppedUP；
+  // 队列中(queued*)也属非活动态，应显示"恢复"
+  function isTorrentPaused(state) {
+    return ['pausedDL', 'pausedUP', 'stoppedDL', 'stoppedUP', 'queuedDL', 'queuedUP'].includes(state);
+  }
+
+  // 乐观更新：预判动作后的状态，先给即时反馈（验证阶段会被真实状态覆盖）
+  function optimisticState(t, willPause) {
+    const upStates = ['uploading', 'stalledUP', 'forcedUP', 'stoppedUP', 'pausedUP', 'queuedUP'];
+    if (willPause) return upStates.includes(t.state) ? 'stoppedUP' : 'stoppedDL';
+    return upStates.includes(t.state) ? 'uploading' : 'downloading';
   }
 
   function formatSpeed(bytesPerSec) {
@@ -66,11 +109,7 @@
   async function loadData() {
     if (!configured) return;
     try {
-      const [tInfo, tList] = await Promise.all([
-        api.get('/api/qb/transfer'),
-        api.get('/api/qb/torrents'),
-      ]);
-      transfer = tInfo;
+      const tList = await api.get('/api/qb/torrents');
       torrents = tList || [];
     } catch (e) {
       // qB 可能未运行
@@ -93,13 +132,17 @@
   }
 
   async function togglePause(torrent) {
-    const isPaused = torrent.state?.includes('paused');
+    const isPaused = isTorrentPaused(torrent.state);
     try {
       await api.post('/api/qb/action', {
         action: isPaused ? 'resume' : 'pause',
         hashes: torrent.hash,
       });
-      await loadData();
+      // 预判：立即把本地状态翻成期望值，先给即时反馈；真实状态由 2s SSE 纠正
+      const willPause = !isPaused;
+      torrents = torrents.map((x) =>
+        x.hash === torrent.hash ? { ...x, state: optimisticState(x, willPause) } : x,
+      );
     } catch (e) {
       showToast(tr('download.actionFailed', { error: e.message }), 'error');
     }
@@ -131,7 +174,6 @@
       try {
         const payload = JSON.parse(e.data);
         configured = payload.configured;
-        transfer = payload.transfer;
         torrents = payload.torrents || [];
       } catch {}
     };
@@ -232,6 +274,23 @@
       </button>
     </div>
   {:else}
+    {#if torrents.length > 0}
+      <div class="download-filters">
+        <div class="filter-group" role="group" aria-label="来源">
+          <button class="filter-btn {sourceFilter === 'all' ? 'filter-btn--active' : ''}" onclick={() => sourceFilter = 'all'}>{tr('download.filterAll')}</button>
+          <button class="filter-btn {sourceFilter === 'anime-mikan' ? 'filter-btn--active' : ''}" onclick={() => sourceFilter = 'anime-mikan'}>{tr('download.filterSubscribed')}</button>
+          <button class="filter-btn {sourceFilter === 'manual' ? 'filter-btn--active' : ''}" onclick={() => sourceFilter = 'manual'}>{tr('download.filterManual')}</button>
+        </div>
+        <div class="filter-group" role="group" aria-label="状态">
+          <button class="filter-btn {statusFilter === 'all' ? 'filter-btn--active' : ''}" onclick={() => statusFilter = 'all'}>{tr('download.filterAll')}</button>
+          <button class="filter-btn {statusFilter === '下载中' ? 'filter-btn--active' : ''}" onclick={() => statusFilter = '下载中'}>{tr('download.filterDownloading')}</button>
+          <button class="filter-btn {statusFilter === '做种' ? 'filter-btn--active' : ''}" onclick={() => statusFilter = '做种'}>{tr('download.filterSeeding')}</button>
+          <button class="filter-btn {statusFilter === '已完成' ? 'filter-btn--active' : ''}" onclick={() => statusFilter = '已完成'}>{tr('download.filterCompleted')}</button>
+          <button class="filter-btn {statusFilter === '已暂停' ? 'filter-btn--active' : ''}" onclick={() => statusFilter = '已暂停'}>{tr('download.filterPaused')}</button>
+          <button class="filter-btn {statusFilter === '出错' ? 'filter-btn--active' : ''}" onclick={() => statusFilter = '出错'}>{tr('download.filterError')}</button>
+        </div>
+      </div>
+    {/if}
     <div class="download-list">
       {#if torrents.length === 0}
         <div class="download-empty">
@@ -242,8 +301,12 @@
           </svg>
           <p>{tr('download.empty')}</p>
         </div>
+      {:else if filteredTorrents.length === 0}
+        <div class="download-filtered-empty">
+          <p>{tr('download.filterEmpty')}</p>
+        </div>
       {:else}
-        {#each torrents as t (t.hash)}
+        {#each filteredTorrents as t (t.hash)}
           {@const statusInfo = getStatusInfo(t.state)}
           <div class="download-item">
             <div class="download-item-main">
@@ -272,8 +335,8 @@
                 {/if}
               </div>
               <div class="download-item-actions">
-                <button class="btn-icon" onclick={() => togglePause(t)} data-tooltip={t.state?.includes('paused') ? tr('download.resume') : tr('download.pause')}>
-                  {#if t.state?.includes('paused')}
+                <button class="btn-icon" onclick={() => togglePause(t)} data-tooltip={isTorrentPaused(t.state) ? tr('download.resume') : tr('download.pause')}>
+                  {#if isTorrentPaused(t.state)}
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                   {:else}
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
@@ -289,24 +352,24 @@
       {/if}
     </div>
 
-    {#if transfer}
+    {#if filteredTorrents.length > 0}
       <div class="download-footer">
         <div class="download-footer-stat">
           <span class="download-footer-label">↓</span>
-          <span class="download-footer-value download-speed-down">{formatSpeed(transfer.dl_info_speed)}</span>
+          <span class="download-footer-value download-speed-down">{formatSpeed(footerStats.dlSpeed)}</span>
         </div>
         <div class="download-footer-stat">
           <span class="download-footer-label">↑</span>
-          <span class="download-footer-value download-speed-up">{formatSpeed(transfer.up_info_speed)}</span>
+          <span class="download-footer-value download-speed-up">{formatSpeed(footerStats.upSpeed)}</span>
         </div>
         <div class="download-footer-divider"></div>
         <div class="download-footer-stat">
           <span class="download-footer-label">{tr('download.totalDownloaded')}</span>
-          <span class="download-footer-value">{formatSize(transfer.dl_info_data)}</span>
+          <span class="download-footer-value">{formatSize(footerStats.downloaded)}</span>
         </div>
         <div class="download-footer-stat">
           <span class="download-footer-label">{tr('download.totalUploaded')}</span>
-          <span class="download-footer-value">{formatSize(transfer.up_info_data)}</span>
+          <span class="download-footer-value">{formatSize(footerStats.uploaded)}</span>
         </div>
       </div>
     {/if}

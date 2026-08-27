@@ -51,6 +51,7 @@ cd server && npm test      # 测试（先自动跑 tsc）
 - **backdrop-filter 在 release 失效**: WebView2 透明窗口下 backdrop-filter 无像素可采样（dev 正常、release 失效）；弹窗模糊用 portal 到 `#modal-root` + `body:has(...) > :not(#modal-root) { filter: blur() }`（详见 `docs/dev/frontend.md`）
 - **"先找后写"三步协议**: 新增 CSS 前先查已有组件和 token，禁止写死值。完成后跑 `npm run check:frontend` 验证（详见 `docs/dev/frontend.md` 必读章节）
 - **同类修第二处先提取**: 修 bug/写功能时，如果同样的模式出现第二处，**先提取公共抽象再继续**，不要逐个复制粘贴
+- **不为尚未发生的情况预先打补丁**: 不要为"可能需要的兼容性/边界情况"提前写代码或写冗长文档；等出现真实 issue 再修。先解决当下问题，避免过度设计（YAGNI）
 - **改前端后跑 `npm run check:frontend`**: 勿只跑其中一条，否则 dist 过期"改了没生效"
 - **CSS 子文件结构**: 勿改 `styles.css`（仅入口）；视图样式放 `views/*.css`，小组件用 `@utility` 放 `patterns.css`，主题特有放 `layouts/` 和 `components/`
 - **Grid 列公式**: 在 `frontend/src/lib/grid.js` 的 `GRID_CARD_MIN`/`GRID_CARD_MAX`，不通过 CSS utility 控制

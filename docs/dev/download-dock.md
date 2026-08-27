@@ -54,6 +54,10 @@ qB 所有 API 请求（包括登录）必须带 `Referer` 头，值为 qB WebUI 
 - `cachedCookieName` — cookie 名（`SID` 或 `QBT_SID_<port>`）
 - `cachedPort` — 端口，变化时强制重新登录
 
+### 版本约束
+
+**默认目标：qBittorrent v5.x（最新稳定版）。** 端点用 `torrents/stop`/`torrents/start`，暂停态 state 为 `stoppedDL`/`stoppedUP`；前端 `isTorrentPaused()` 同时匹配 `stopped*`/`paused*`/`queued*`。旧版本兼容问题等出现 issue 再修。
+
 ### 常见错误排查
 
 | 现象 | 原因 | 解决 |

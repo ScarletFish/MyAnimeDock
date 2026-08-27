@@ -178,6 +178,10 @@ Response: {
 }
 ```
 
+### 读取接口缓存（已实现）
+
+浏览用的三个读接口（`/api/mikan/season`、`/api/mikan/bangumi`、`/api/mikan/bangumi/full`）在服务端有 30 分钟进程内 TTL 缓存，按请求 URL 作 key；详情面板刷新按钮带 `?refresh=1` 绕过缓存。订阅状态（`/api/mikan/subscription`）读本地 DB，不缓存。详见 `docs/dev/mikan-integration.md` 十一、数据缓存。
+
 ## UI 设计
 
 ### 订阅按钮（在字幕组列表中）

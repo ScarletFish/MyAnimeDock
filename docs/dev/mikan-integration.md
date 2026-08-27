@@ -75,7 +75,8 @@ qBittorrent → 处理下载
 ### 2. 字幕组资源模块
 
 **后端API**：
-- `GET /api/mikan/bangumi?name=番剧名` → 获取该番剧的所有字幕组资源
+- `GET /api/mikan/bangumi?url=/Home/Bangumi/{id}` → 获取该番剧的所有字幕组资源（含每组前 15 条）
+- `GET /api/mikan/bangumi/full?url=/Home/Bangumi/{id}&subgroupId={id}` → 获取指定字幕组的全量资源（AJAX，慢但全）
 
 **实现逻辑**：
 1. 用番剧名字搜索蜜柑计划（`/Home/Search?searchstr=名字`）
@@ -203,7 +204,34 @@ npm run check:frontend
 4. 验证字幕组资源获取
 5. 验证下载功能
 
-## 十一、相关文档
+## 十一、数据缓存（已实现）
+
+蜜柑页面的核心低频操作是「订阅一次」，订阅后新话由 qBittorrent RSS 规则自动下载，因此读接口只需防重复抓取/被限流 + 二次打开快，不需实时追更。
+
+### 缓存范围
+
+服务端进程内 `Map`（按请求 URL 含 query 作 key），覆盖三个从蜜柑实时抓取的读接口：
+
+| 接口 | 缓存 key |
+|------|----------|
+| `GET /api/mikan/season?year=&season=` | `mikan:season:{year}:{season}` |
+| `GET /api/mikan/bangumi?url=` | `mikan:bangumi:{url}` |
+| `GET /api/mikan/bangumi/full?url=&subgroupId=` | `mikan:full:{url}:{subgroupId}` |
+
+`handleMikanWeekly` 未缓存（前端不使用）。POST 订阅/取消订阅、`/api/mikan/subscription`（读本地 DB）不缓存。
+
+### 策略
+
+- **TTL 30 分钟**，命中不续期（固定窗口）。
+- 仅缓存成功响应；抓取失败不写入（按现状直接报错）。空结果也按成功缓存（避免空轮询）。
+- **手动刷新**：详情面板刷新按钮 → 请求带 `?refresh=1`，绕过缓存重新抓取并回填；详情刷新同时令该番剧的全量资源缓存（`mikan:full:{url}:*`）失效，保证「加载更多」也最新。
+- **订阅状态不进缓存**：详情接口每次实时读本地 DB（`getMikanSubscriptionsByBgmId`）后附加到响应，避免订阅后 stale。
+
+### 实现位置
+
+- `server/routes/mikan.ts`：复用 `lib/utils` 的 `createTimedCache` 包一层 keyed 缓存。
+
+## 十二、相关文档
 
 - `docs/dev/download-dock.md` - qBittorrent集成文档
 - `docs/dev/backend.md` - 后端开发规范

@@ -26,6 +26,8 @@
   let loadingFullSubgroup = $state(null);
   let fullResourcesLoaded = $state(new Set());
   let detailPanelEl = $state(null);
+  let refreshingDetail = $state(false);
+  let forceFullFresh = $state(false);
 
   // Subscribe panel state
   let subscribeMode = $state(false);
@@ -149,6 +151,24 @@
     }
   }
 
+  async function refreshDetail() {
+    if (!expandedAnime?.detailUrl || refreshingDetail) return;
+    refreshingDetail = true;
+    forceFullFresh = true;
+    const url = expandedAnime.detailUrl;
+    try {
+      const resp = await api.get(`/api/mikan/bangumi?url=${encodeURIComponent(url)}&refresh=1`);
+      bangumiDetail = resp;
+      fullResourcesLoaded = new Set();
+      await tick();
+      detailPanelEl?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    } catch (e) {
+      showToast(tr('mikan.loadResourcesFailed', { error: e.message }), 'error');
+    } finally {
+      refreshingDetail = false;
+    }
+  }
+
   function openSubscribeModal(subgroup) {
     if (!bangumiDetail || !expandedAnime) return;
     subscribeTarget = subgroup;
@@ -196,10 +216,12 @@
 
     loadingFullSubgroup = sgIdx;
     try {
-      const resources = await api.get(`/api/mikan/bangumi/full?url=${encodeURIComponent(expandedAnime.detailUrl)}&subgroupId=${sg.id}`);
+      const refreshParam = forceFullFresh ? '&refresh=1' : '';
+      const resources = await api.get(`/api/mikan/bangumi/full?url=${encodeURIComponent(expandedAnime.detailUrl)}&subgroupId=${sg.id}${refreshParam}`);
       if (Array.isArray(resources) && resources.length > 0) {
         bangumiDetail.subgroups[sgIdx].resources = resources;
         fullResourcesLoaded = new Set([...fullResourcesLoaded, sgIdx]);
+        forceFullFresh = false;
       }
     } catch (e) {
       showToast(tr('mikan.loadMoreFailed', { error: e.message }), 'error');
@@ -346,9 +368,28 @@
                               onConfirm={exitSubscribeMode}
                               onCancel={exitSubscribeMode}
                             />
-                          {:else}
-                            <div class="mikan-split-left-title">{bangumiDetail.name}</div>
-                            <div class="mikan-subgroup-list">
+                           {:else}
+                             <div class="mikan-split-left-head">
+                               <div class="mikan-split-left-title">{bangumiDetail.name}</div>
+                               <button
+                                 class="mikan-refresh-btn"
+                                 onclick={refreshDetail}
+                                 disabled={refreshingDetail}
+                                 aria-label={tr('mikan.refresh')}
+                                 title={tr('mikan.refresh')}
+                               >
+                                 {#if refreshingDetail}
+                                   <svg class="spinning" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                     <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+                                   </svg>
+                                 {:else}
+                                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                     <path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/>
+                                   </svg>
+                                 {/if}
+                               </button>
+                             </div>
+                             <div class="mikan-subgroup-list">
                               {#each bangumiDetail.subgroups as sg, idx}
                                 <div
                                   class="mikan-subgroup-item"

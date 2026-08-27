@@ -147,6 +147,7 @@ export const I18N_ZH = {
   'mikan.noResources': '暂无资源',
   'mikan.noSeasonData': '该季度暂无数据',
   'mikan.loadMore': '加载更多',
+  'mikan.refresh': '刷新',
   'mikan.loadMoreFailed': '加载更多失败：{{error}}',
   'settings.visual': '视觉',
   'settings.titleBackground': '标题背景',

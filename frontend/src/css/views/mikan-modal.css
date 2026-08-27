@@ -322,15 +322,48 @@
   overflow: hidden;
 }
 
+.mikan-split-left-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border);
+}
+
 .mikan-split-left-title {
   font-size: var(--text-sm);
   font-weight: var(--fw-semibold);
   color: var(--fg-muted);
-  padding-bottom: var(--space-2);
-  border-bottom: 1px solid var(--border);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.mikan-refresh-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--fg-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mikan-refresh-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.06);
+}
+
+.mikan-refresh-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .mikan-subgroup-list {

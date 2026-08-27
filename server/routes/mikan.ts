@@ -1,9 +1,37 @@
 // server/routes/mikan.ts — 蜜柑计划 API 路由
-import { jsonResp, readBody } from '../lib/utils';
+import { jsonResp, readBody, createTimedCache } from '../lib/utils';
 import { qbAddRssFeed, qbRemoveRssFeedByUrl, qbSetRssRule, qbRemoveRssRule } from '../lib/qb-client';
 import { getWeeklyBangumi, getSeasonBangumi, getBangumiResources, getSubgroupFullResources } from '../scrapers/mikan';
-import type { ServerState, MikanBangumi } from '../types';
+import type { ServerState, MikanBangumi, MikanBangumiDetail, MikanResource } from '../types';
 import crypto from 'crypto';
+
+// 进程内 TTL 缓存（复用 lib/utils 的 createTimedCache 单槽，包一层按 URL 作 key）
+// 仅缓存成功响应；抓取失败不写入，按现状直接报错。命中不续期（固定 30min 窗口）。
+const MIKAN_TTL = 30 * 60 * 1000;
+interface CacheSlot { get(): unknown; set(v: unknown): void; clear(): void; }
+const mikanCache = new Map<string, CacheSlot>();
+
+function cacheGet<T>(key: string): T | null {
+  const slot = mikanCache.get(key);
+  if (!slot) return null;
+  const v = slot.get();
+  return v === null ? null : (v as T);
+}
+
+function cacheSet<T>(key: string, value: T): void {
+  let slot = mikanCache.get(key);
+  if (!slot) {
+    slot = createTimedCache<unknown>(MIKAN_TTL) as unknown as CacheSlot;
+    mikanCache.set(key, slot);
+  }
+  slot.set(value as unknown);
+}
+
+function cacheDelete(prefix: string): void {
+  for (const k of mikanCache.keys()) {
+    if (k.startsWith(prefix)) mikanCache.delete(k);
+  }
+}
 
 interface MikanDayGroup {
   dayOfWeek: number;
@@ -55,9 +83,15 @@ async function handleMikanSeason(req: any, res: any, state: ServerState) {
       jsonResp(res, 400, { error: 'Invalid season parameter. Must be: 春/夏/秋/冬' });
       return;
     }
-    
-    const seasonBangumi = await getSeasonBangumi(year, season, config.mikanMirror);
-    
+
+    const refresh = url.searchParams.get('refresh') === '1';
+    const cacheKey = `mikan:season:${year}:${season}`;
+    let seasonBangumi = refresh ? null : cacheGet<Map<number, MikanBangumi[]>>(cacheKey);
+    if (!seasonBangumi) {
+      seasonBangumi = await getSeasonBangumi(year, season, config.mikanMirror);
+      cacheSet(cacheKey, seasonBangumi);
+    }
+
     const result: MikanDayGroup[] = [];
     seasonBangumi.forEach((bangumiList, dayOfWeek) => {
       result.push({
@@ -90,8 +124,16 @@ async function handleMikanBangumi(req: any, res: any, state: ServerState) {
     }
     
     if (detailUrl) {
-      const detail = await getBangumiResources(detailUrl, config.mikanMirror);
-      // 附加订阅状态
+      const refresh = url.searchParams.get('refresh') === '1';
+      const cacheKey = `mikan:bangumi:${detailUrl}`;
+      let detail = refresh ? null : cacheGet<MikanBangumiDetail>(cacheKey);
+      if (!detail) {
+        detail = await getBangumiResources(detailUrl, config.mikanMirror);
+        cacheSet(cacheKey, detail);
+      }
+      // 详情刷新时同步让该番剧的全量资源缓存失效，保证「加载更多」也最新
+      if (refresh) cacheDelete(`mikan:full:${detailUrl}:`);
+      // 订阅状态读本地 DB，每次实时附加，不进缓存（避免订阅后 stale）
       if (detail.bgmId) {
         const subs = db.getMikanSubscriptionsByBgmId(detail.bgmId);
         const subMap = new Map(subs.map((s: any) => [s.subgroupId, s]));
@@ -133,8 +175,14 @@ async function handleMikanBangumiFull(req: any, res: any, state: ServerState) {
       jsonResp(res, 400, { error: 'subgroupId must be a number' });
       return;
     }
-    
-    const resources = await getSubgroupFullResources(detailUrl, subgroupId, config.mikanMirror);
+
+    const refresh = url.searchParams.get('refresh') === '1';
+    const cacheKey = `mikan:full:${detailUrl}:${subgroupId}`;
+    let resources = refresh ? null : cacheGet<MikanResource[]>(cacheKey);
+    if (!resources) {
+      resources = await getSubgroupFullResources(detailUrl, subgroupId, config.mikanMirror);
+      cacheSet(cacheKey, resources);
+    }
     jsonResp(res, 200, resources);
   } catch (e: any) {
     logger.error('[MIKAN]', e);

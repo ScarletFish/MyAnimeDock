@@ -34,6 +34,12 @@ export interface MikanTagLibrary {
   include: MikanTagEntry[]; // 必需项 → mustContain
   exclude: MikanTagEntry[]; // 排除项 → mustNotContain
 }
+export interface MikanLangOption {
+  key: string;
+  label: string;   // 显示名，可为 i18n key 或纯文本（面板用 tr() 解析）
+  bit: number;     // 位掩码标识，唯一；新增时取下一个 2 的幂
+  regex: string;   // 订阅筛选时注入 mustContain/mustNotContain 的正则
+}
 export interface ConfigShape {
   mediaDir: string;
   playerMode: string;
@@ -51,6 +57,11 @@ export interface ConfigShape {
   mikanMirror: string;
   // 蜜柑正则 Tag 库（订阅筛选用）
   mikanTagLibrary: MikanTagLibrary;
+  // 蜜柑语言选项（字幕语言筛选用）
+  mikanLangOptions: MikanLangOption[];
+  // 蜜柑订阅默认必选项 / 排除项（key 列表）
+  mikanDefaultRequired: string[];
+  mikanDefaultExcluded: string[];
   // 运行时由 server.ts / routes 注入的字段（可选）
   reduceMotion?: boolean;
   bangumiAccessToken?: string;
@@ -93,6 +104,13 @@ const DEFAULT_CONFIG: ConfigShape = {
       { key: 'collection', name: '合集', regex: '合集' },
     ],
   },
+  mikanLangOptions: [
+    { key: 'simplified', label: 'mikan.simplified', bit: 1, regex: '简' },
+    { key: 'traditional', label: 'mikan.traditional', bit: 2, regex: '繁' },
+    { key: 'japanese', label: 'mikan.japanese', bit: 4, regex: '日' },
+  ],
+  mikanDefaultRequired: ['simplified'],
+  mikanDefaultExcluded: ['halfEpisode', 'collection'],
 };
 
 function loadConfig(): ConfigShape {

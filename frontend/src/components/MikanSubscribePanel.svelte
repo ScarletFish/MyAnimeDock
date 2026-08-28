@@ -4,6 +4,7 @@
   import { tr } from '../lib/anime-utils.js';
   import { API as api } from '../lib/api.js';
   import { Select } from 'bits-ui';
+  import MikanTagEditorModal from './MikanTagEditorModal.svelte';
 
   let {
     resources = [],
@@ -22,12 +23,15 @@
   let config = $state(null);
   let addDdOpen = $state(false);
   let excludeDdOpen = $state(false);
+  let editorOpen = $state(false);
+  let editorMode = $state('include');
 
-  const LANG_OPTIONS = [
-    { key: 'simplified', label: 'mikan.simplified', bit: 1 },
-    { key: 'traditional', label: 'mikan.traditional', bit: 2 },
-    { key: 'japanese', label: 'mikan.japanese', bit: 4 },
+  const DEFAULT_LANG_OPTIONS = [
+    { key: 'simplified', label: 'mikan.simplified', bit: 1, regex: '简' },
+    { key: 'traditional', label: 'mikan.traditional', bit: 2, regex: '繁' },
+    { key: 'japanese', label: 'mikan.japanese', bit: 4, regex: '日' },
   ];
+  let langOptions = $derived(config?.mikanLangOptions || DEFAULT_LANG_OPTIONS);
   const LANG_COMPOUNDS = [
     { name: '简日', mask: 1 | 4 },
     { name: '繁日', mask: 2 | 4 },
@@ -47,24 +51,24 @@
   );
 
   let availableExcludeLangOptions = $derived(
-    LANG_OPTIONS.filter(l => !excludedLangs.has(l.key))
+    langOptions.filter(l => !excludedLangs.has(l.key))
   );
 
   let langMask = $derived(
-    LANG_OPTIONS.filter(l => selectedLangs.has(l.key)).reduce((m, l) => m | l.bit, 0)
+    langOptions.filter(l => selectedLangs.has(l.key)).reduce((m, l) => m | l.bit, 0)
   );
 
   let excludedLangMask = $derived(
-    LANG_OPTIONS.filter(l => excludedLangs.has(l.key)).reduce((m, l) => m | l.bit, 0)
+    langOptions.filter(l => excludedLangs.has(l.key)).reduce((m, l) => m | l.bit, 0)
   );
 
   let mustContain = $derived.by(() => {
     const parts = [];
     if (langMask) {
       const chars = [];
-      if (langMask & 1) chars.push('简');
-      if (langMask & 2) chars.push('繁');
-      if (langMask & 4) chars.push('日');
+      for (const l of langOptions) {
+        if (selectedLangs.has(l.key)) chars.push(l.regex);
+      }
       if (chars.length === 1) {
         parts.push(chars[0]);
       } else {
@@ -82,9 +86,9 @@
   let mustNotContain = $derived.by(() => {
     const parts = [];
     if (excludedLangMask) {
-      if (excludedLangMask & 1) parts.push('简');
-      if (excludedLangMask & 2) parts.push('繁');
-      if (excludedLangMask & 4) parts.push('日');
+      for (const l of langOptions) {
+        if (excludedLangs.has(l.key)) parts.push(l.regex);
+      }
     }
     for (const t of excludeTags) {
       if (selectedTags.has(t.key)) parts.push(t.regex);
@@ -95,9 +99,9 @@
   let containTokens = $derived.by(() => {
     const t = [];
     if (langMask) {
-      if (langMask & 1) t.push('简');
-      if (langMask & 2) t.push('繁');
-      if (langMask & 4) t.push('日');
+      for (const l of langOptions) {
+        if (selectedLangs.has(l.key)) t.push(l.regex);
+      }
     }
     for (const tag of includeTags) if (selectedTags.has(tag.key)) t.push(tag.regex);
     return t;
@@ -106,9 +110,9 @@
   let notContainTokens = $derived.by(() => {
     const t = [];
     if (excludedLangMask) {
-      if (excludedLangMask & 1) t.push('简');
-      if (excludedLangMask & 2) t.push('繁');
-      if (excludedLangMask & 4) t.push('日');
+      for (const l of langOptions) {
+        if (excludedLangs.has(l.key)) t.push(l.regex);
+      }
     }
     for (const tag of excludeTags) if (selectedTags.has(tag.key)) t.push(tag.regex);
     return t;
@@ -164,7 +168,15 @@
   });
 
   onMount(async () => {
-    try { config = await api.get('/api/config'); } catch {}
+    try {
+      config = await api.get('/api/config');
+      const langKeys = new Set((config?.mikanLangOptions || DEFAULT_LANG_OPTIONS).map((l) => l.key));
+      const req = config?.mikanDefaultRequired || ['simplified'];
+      const excl = config?.mikanDefaultExcluded || ['halfEpisode', 'collection'];
+      selectedTags = new Set([...req, ...excl]);
+      selectedLangs = new Set(req.filter((k) => langKeys.has(k)));
+      excludedLangs = new Set(excl.filter((k) => langKeys.has(k)));
+    } catch {}
     const gsap = globalThis.gsap;
     if (!gsap) return;
     gsap.fromTo('.mikan-panel', { opacity: 0, x: -12 }, { opacity: 1, x: 0, duration: 0.25, ease: 'power2.out' });
@@ -192,16 +204,39 @@
   }
 
   function onIncludeSelect(val) {
+    if (val === '__new__') { editorMode = 'include'; editorOpen = true; return; }
     if (val) selectedTags = new Set([...selectedTags, val]);
   }
 
   function onExcludeSelect(val) {
+    if (val === '__new__') { editorMode = 'exclude'; editorOpen = true; return; }
     if (!val) return;
-    const lang = LANG_OPTIONS.find(l => l.key === val);
+    const lang = langOptions.find(l => l.key === val);
     if (lang) {
       excludedLangs = new Set([...excludedLangs, val]);
     } else {
       selectedTags = new Set([...selectedTags, val]);
+    }
+  }
+
+  async function handleNewTag(data) {
+    try {
+      const lib = config?.mikanTagLibrary || { include: [], exclude: [] };
+      const arr = (editorMode === 'include' ? lib.include : lib.exclude).slice();
+      const i = arr.findIndex(t => t.key === data.key);
+      if (i >= 0) arr[i] = data;
+      else arr.push(data);
+      const updated = {
+        include: editorMode === 'include' ? arr : lib.include,
+        exclude: editorMode === 'exclude' ? arr : lib.exclude,
+      };
+      await api.post('/api/config', { mikanTagLibrary: updated });
+      config = { ...config, mikanTagLibrary: updated };
+      selectedTags = new Set([...selectedTags, data.key]);
+      editorOpen = false;
+      showToast(tr('mikan.subscribed', { name: data.name }), 'success');
+    } catch (e) {
+      showToast(tr('mikan.subscribeFailed', { error: e.message }), 'error');
     }
   }
 
@@ -238,7 +273,7 @@
   <div class="mikan-panel-section">
     <div class="mikan-panel-section-label">{tr('mikan.mustContain')}</div>
     <div class="mikan-panel-tags">
-      {#each LANG_OPTIONS as opt}
+      {#each langOptions as opt}
         <button class="tag-pill" class:active={selectedLangs.has(opt.key)} onclick={() => toggleLang(opt.key)}>
           {tr(opt.label)}
         </button>
@@ -259,6 +294,7 @@
           <Select.Trigger class="tag-pill tag-pill--add">+</Select.Trigger>
           <Select.Portal to="#modal-root">
             <Select.Content class="mikan-add-dd" side="bottom" sideOffset={4}>
+              <Select.Item value="__new__" class="mikan-add-dd-item">{tr('mikan.newTag')}</Select.Item>
               {#each availableIncludeOptions as tag}
                 <Select.Item value={tag.key} class="mikan-add-dd-item">{tag.name}</Select.Item>
               {/each}
@@ -273,7 +309,7 @@
     <div class="mikan-panel-section-label">{tr('mikan.exclude')}</div>
     <div class="mikan-panel-tags">
       {#each [...excludedLangs] as key}
-        {@const opt = LANG_OPTIONS.find(l => l.key === key)}
+        {@const opt = langOptions.find(l => l.key === key)}
         {#if opt}
           <button class="tag-pill tag-pill--exclude" onclick={() => toggleExcludeLang(key)}>
             {tr(opt.label)}
@@ -297,6 +333,7 @@
           <Select.Trigger class="tag-pill tag-pill--add">+</Select.Trigger>
           <Select.Portal to="#modal-root">
             <Select.Content class="mikan-add-dd" side="bottom" sideOffset={4}>
+              <Select.Item value="__new__" class="mikan-add-dd-item">{tr('mikan.newTag')}</Select.Item>
               {#if availableExcludeLangOptions.length > 0}
                 <Select.Group class="mikan-add-dd-group">
                   <div class="mikan-add-dd-label">{tr('mikan.lang')}</div>
@@ -336,3 +373,11 @@
     </button>
   </div>
 </div>
+
+<MikanTagEditorModal
+  open={editorOpen}
+  mode={editorMode}
+  tag={null}
+  onCancel={() => editorOpen = false}
+  onSave={handleNewTag}
+/>

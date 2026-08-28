@@ -26,6 +26,8 @@
   import { tr } from '../lib/anime-utils.js';
   import { API as api } from '../lib/api.js';
   import { portal } from '../lib/portal.js';
+  import MikanTagEditorModal from '../components/MikanTagEditorModal.svelte';
+  import { Select } from 'bits-ui';
   import { applyDetailTitleBg } from '../lib/theme.js';
   import { cardTitleLibrary, cardTitleMylist, finishConfirmMode, detailTitleBg } from '../lib/ui-state.js';
 
@@ -77,6 +79,7 @@
   let mikanMirror = $state('https://mikanime.tv');
   let mikanInclude = $state([]);
   let mikanExclude = $state([]);
+  let mikanLangOptions = $state([]);
 
   function isRegexValid(r) {
     try {
@@ -85,6 +88,80 @@
     } catch {
       return false;
     }
+  }
+
+  // 蜜柑正则 Tag 库编辑器（弹窗）
+  let editorOpen = $state(false);
+  let editorMode = $state('include');
+  let editorTag = $state(null);
+
+  function openEditor(mode, tag) {
+    editorMode = mode;
+    editorTag = tag;
+    editorOpen = true;
+  }
+
+  // 语言编辑器：复用弹窗，但传入显示名（tr(label)）而非 i18n key
+  function openLangEditor(lang) {
+    openEditor('lang', lang ? { key: lang.key, name: tr(lang.label), regex: lang.regex } : null);
+  }
+
+  function nextLangBit() {
+    const bits = mikanLangOptions.map((l) => l.bit);
+    let b = 1;
+    while (bits.includes(b)) b <<= 1;
+    return b;
+  }
+
+  function handleTagSave(data) {
+    if (editorMode === 'include') {
+      const i = mikanInclude.findIndex((t) => t.key === data.key);
+      mikanInclude = i >= 0 ? mikanInclude.map((t) => (t.key === data.key ? data : t)) : [...mikanInclude, data];
+    } else if (editorMode === 'exclude') {
+      const i = mikanExclude.findIndex((t) => t.key === data.key);
+      mikanExclude = i >= 0 ? mikanExclude.map((t) => (t.key === data.key ? data : t)) : [...mikanExclude, data];
+    } else if (editorMode === 'lang') {
+      const i = mikanLangOptions.findIndex((l) => l.key === data.key);
+      const saved = { key: data.key, label: data.name, regex: data.regex };
+      if (i >= 0) {
+        const existing = mikanLangOptions[i];
+        mikanLangOptions = mikanLangOptions.map((l) => (l.key === data.key ? { ...saved, bit: existing.bit } : l));
+      } else {
+        mikanLangOptions = [...mikanLangOptions, { ...saved, bit: nextLangBit() }];
+      }
+    }
+    editorOpen = false;
+  }
+
+  function handleTagDelete(key) {
+    if (editorMode === 'include') mikanInclude = mikanInclude.filter((t) => t.key !== key);
+    else if (editorMode === 'exclude') mikanExclude = mikanExclude.filter((t) => t.key !== key);
+    else if (editorMode === 'lang') mikanLangOptions = mikanLangOptions.filter((l) => l.key !== key);
+    editorOpen = false;
+  }
+
+  // ─── 默认启用（引用已有 tag / 语言，不新建）───
+  let mikanDefaultRequired = $state([]);
+  let mikanDefaultExcluded = $state([]);
+
+  function defaultItemName(key) {
+    const lang = mikanLangOptions.find((l) => l.key === key);
+    if (lang) return tr(lang.label);
+    const tag = [...mikanInclude, ...mikanExclude].find((t) => t.key === key);
+    return tag ? tag.name : key;
+  }
+
+  function addDefaultRequired(key) {
+    if (key && !mikanDefaultRequired.includes(key)) mikanDefaultRequired = [...mikanDefaultRequired, key];
+  }
+  function addDefaultExcluded(key) {
+    if (key && !mikanDefaultExcluded.includes(key)) mikanDefaultExcluded = [...mikanDefaultExcluded, key];
+  }
+  function removeDefaultRequired(key) {
+    mikanDefaultRequired = mikanDefaultRequired.filter((k) => k !== key);
+  }
+  function removeDefaultExcluded(key) {
+    mikanDefaultExcluded = mikanDefaultExcluded.filter((k) => k !== key);
   }
 
   let configCache = $state(null);
@@ -186,6 +263,9 @@
       mikanMirror = config.mikanMirror || 'https://mikanime.tv';
       mikanInclude = config.mikanTagLibrary?.include || [];
       mikanExclude = config.mikanTagLibrary?.exclude || [];
+      mikanLangOptions = config.mikanLangOptions || [];
+      mikanDefaultRequired = config.mikanDefaultRequired || [];
+      mikanDefaultExcluded = config.mikanDefaultExcluded || [];
 
       let mode = get(finishConfirmMode);
       if (mode === 'on') mode = 'prompt';
@@ -226,7 +306,7 @@
       return;
     }
     // 蜜柑正则 Tag 库：校验每条正则是否合法
-    for (const tag of [...mikanInclude, ...mikanExclude]) {
+    for (const tag of [...mikanInclude, ...mikanExclude, ...mikanLangOptions]) {
       if (!isRegexValid(tag.regex)) {
         errorMsg = tr('settings.mikanTagInvalidRegex');
         return;
@@ -261,6 +341,9 @@
         qbPassword: qbPassword || '',
         mikanMirror: mikanMirror.trim() || 'https://mikanime.tv',
         mikanTagLibrary: { include: mikanInclude, exclude: mikanExclude },
+        mikanLangOptions,
+        mikanDefaultRequired,
+        mikanDefaultExcluded,
         ...(bangumiClientId ? { bangumiClientId } : {}),
         ...(secretToSend ? { bangumiClientSecret: secretToSend } : {}),
       });
@@ -964,33 +1047,105 @@
           </div>
           <div class="form-group">
             <label>{tr('settings.mikanTagLibrary')}</label>
-            <p class="form-hint mt-0">{tr('settings.mikanTagHint')}</p>
 
-            <div class="mikan-tag-block">
-              <h4 class="mikan-tag-heading">{tr('settings.mikanTagInclude')}</h4>
-              {#each mikanInclude as tag, i (tag.key)}
-                <div class="mikan-tag-row">
-                  <input type="text" class="mikan-tag-name" placeholder={tr('settings.mikanTagName')} bind:value={tag.name}>
-                  <input type="text" class="mikan-tag-regex" placeholder={tr('settings.mikanTagRegex')} bind:value={tag.regex} class:invalid={!isRegexValid(tag.regex)}>
-                  <button class="btn btn-sm btn-outline" onclick={() => { mikanInclude = mikanInclude.filter((_, j) => j !== i); }}>{tr('settings.mikanTagDelete')}</button>
-                </div>
-                {#if !isRegexValid(tag.regex)}<span class="field-error">{tr('settings.mikanTagInvalidRegex')}</span>{/if}
-              {/each}
-              <button class="btn btn-sm btn-outline mikan-tag-add" onclick={() => { mikanInclude = [...mikanInclude, { key: crypto.randomUUID(), name: '', regex: '' }]; }}>{tr('settings.mikanTagAdd')}</button>
+            <div class="mikan-lib-block">
+              <h4 class="mikan-lib-heading">{tr('settings.mikanLangHeading')}</h4>
+              <div class="mikan-lib-chips">
+                {#each mikanLangOptions as lang (lang.key)}
+                  <button class="tag-pill" onclick={() => openLangEditor(lang)}>{tr(lang.label)}</button>
+                {/each}
+                <button class="tag-pill tag-pill--add" onclick={() => openLangEditor(null)}>+</button>
+              </div>
             </div>
 
-            <div class="mikan-tag-block">
-              <h4 class="mikan-tag-heading">{tr('settings.mikanTagExclude')}</h4>
-              {#each mikanExclude as tag, i (tag.key)}
-                <div class="mikan-tag-row">
-                  <input type="text" class="mikan-tag-name" placeholder={tr('settings.mikanTagName')} bind:value={tag.name}>
-                  <input type="text" class="mikan-tag-regex" placeholder={tr('settings.mikanTagRegex')} bind:value={tag.regex} class:invalid={!isRegexValid(tag.regex)}>
-                  <button class="btn btn-sm btn-outline" onclick={() => { mikanExclude = mikanExclude.filter((_, j) => j !== i); }}>{tr('settings.mikanTagDelete')}</button>
-                </div>
-                {#if !isRegexValid(tag.regex)}<span class="field-error">{tr('settings.mikanTagInvalidRegex')}</span>{/if}
-              {/each}
-              <button class="btn btn-sm btn-outline mikan-tag-add" onclick={() => { mikanExclude = [...mikanExclude, { key: crypto.randomUUID(), name: '', regex: '' }]; }}>{tr('settings.mikanTagAdd')}</button>
+            <div class="mikan-lib-block">
+              <h4 class="mikan-lib-heading">{tr('settings.mikanTagInclude')}</h4>
+              <div class="mikan-lib-chips">
+                {#each mikanInclude as tag (tag.key)}
+                  <button class="tag-pill" onclick={() => openEditor('include', tag)}>{tag.name}</button>
+                {/each}
+                <button class="tag-pill tag-pill--add" onclick={() => openEditor('include', null)}>+</button>
+              </div>
             </div>
+
+            <div class="mikan-lib-block">
+              <h4 class="mikan-lib-heading">{tr('settings.mikanTagExclude')}</h4>
+              <div class="mikan-lib-chips">
+                {#each mikanExclude as tag (tag.key)}
+                  <button class="tag-pill tag-pill--exclude" onclick={() => openEditor('exclude', tag)}>{tag.name}</button>
+                {/each}
+                <button class="tag-pill tag-pill--add" onclick={() => openEditor('exclude', null)}>+</button>
+              </div>
+            </div>
+
+            <div class="mikan-lib-block mikan-default-block">
+              <h4 class="mikan-lib-heading">{tr('settings.mikanDefault')}</h4>
+
+              <div class="mikan-lib-sub">
+                <span class="mikan-lib-sub-label">{tr('settings.mikanDefaultRequired')}</span>
+                <div class="mikan-lib-chips">
+                  {#each mikanDefaultRequired as key (key)}
+                    <button class="tag-pill" onclick={() => removeDefaultRequired(key)}>{defaultItemName(key)} ✕</button>
+                  {/each}
+                  <Select.Root type="single" bind:value={() => null, addDefaultRequired}>
+                    <Select.Trigger class="tag-pill tag-pill--add">+</Select.Trigger>
+                    <Select.Portal to="#modal-root">
+                      <Select.Content class="mikan-add-dd" side="bottom" sideOffset={4}>
+                        <Select.Group class="mikan-add-dd-group">
+                          <div class="mikan-add-dd-label">{tr('settings.mikanTagInclude')}</div>
+                          {#each mikanInclude.filter(t => !mikanDefaultRequired.includes(t.key) && !mikanDefaultExcluded.includes(t.key)) as tag}
+                            <Select.Item value={tag.key} class="mikan-add-dd-item">{tag.name}</Select.Item>
+                          {/each}
+                        </Select.Group>
+                        <Select.Group class="mikan-add-dd-group">
+                          <div class="mikan-add-dd-label">{tr('mikan.lang')}</div>
+                          {#each mikanLangOptions.filter(l => !mikanDefaultRequired.includes(l.key) && !mikanDefaultExcluded.includes(l.key)) as lang}
+                            <Select.Item value={lang.key} class="mikan-add-dd-item">{tr(lang.label)}</Select.Item>
+                          {/each}
+                        </Select.Group>
+                      </Select.Content>
+                    </Select.Portal>
+                  </Select.Root>
+                </div>
+              </div>
+
+              <div class="mikan-lib-sub">
+                <span class="mikan-lib-sub-label">{tr('settings.mikanDefaultExcluded')}</span>
+                <div class="mikan-lib-chips">
+                  {#each mikanDefaultExcluded as key (key)}
+                    <button class="tag-pill tag-pill--exclude" onclick={() => removeDefaultExcluded(key)}>{defaultItemName(key)} ✕</button>
+                  {/each}
+                  <Select.Root type="single" bind:value={() => null, addDefaultExcluded}>
+                    <Select.Trigger class="tag-pill tag-pill--add">+</Select.Trigger>
+                    <Select.Portal to="#modal-root">
+                      <Select.Content class="mikan-add-dd" side="bottom" sideOffset={4}>
+                        <Select.Group class="mikan-add-dd-group">
+                          <div class="mikan-add-dd-label">{tr('settings.mikanTagExclude')}</div>
+                          {#each mikanExclude.filter(t => !mikanDefaultExcluded.includes(t.key) && !mikanDefaultRequired.includes(t.key)) as tag}
+                            <Select.Item value={tag.key} class="mikan-add-dd-item">{tag.name}</Select.Item>
+                          {/each}
+                        </Select.Group>
+                        <Select.Group class="mikan-add-dd-group">
+                          <div class="mikan-add-dd-label">{tr('mikan.lang')}</div>
+                          {#each mikanLangOptions.filter(l => !mikanDefaultExcluded.includes(l.key) && !mikanDefaultRequired.includes(l.key)) as lang}
+                            <Select.Item value={lang.key} class="mikan-add-dd-item">{tr(lang.label)}</Select.Item>
+                          {/each}
+                        </Select.Group>
+                      </Select.Content>
+                    </Select.Portal>
+                  </Select.Root>
+                </div>
+              </div>
+            </div>
+
+            <MikanTagEditorModal
+              open={editorOpen}
+              mode={editorMode}
+              tag={editorTag}
+              onSave={handleTagSave}
+              onDelete={handleTagDelete}
+              onCancel={() => editorOpen = false}
+            />
           </div>
         </div>
 
@@ -1099,27 +1254,37 @@
 {/if}
 
 <style>
-  .mikan-tag-block {
-    margin-top: 0.75rem;
-    padding: 0.75rem;
-    background: var(--bg-elevated);
-    border-radius: 8px;
-  }
-  .mikan-tag-heading {
+  .mikan-lib-block { margin-top: 0.75rem; }
+  .mikan-lib-block + .mikan-lib-block { margin-top: 0.5rem; }
+  .mikan-lib-heading {
     margin: 0 0 0.5rem;
     font-size: 0.85rem;
     font-weight: 600;
-    color: var(--text3);
+    color: var(--fg-muted);
     letter-spacing: 0.02em;
   }
-  .mikan-tag-row {
+  .mikan-lib-chips {
     display: flex;
-    gap: 0.5rem;
-    align-items: center;
-    margin-bottom: 0.5rem;
+    flex-wrap: wrap;
+    gap: var(--space-2);
   }
-  .mikan-tag-name { flex: 1 1 40%; min-width: 0; }
-  .mikan-tag-regex { flex: 1 1 60%; min-width: 0; }
-  .mikan-tag-add { margin-top: 0.25rem; }
-  .mikan-tag-block + .mikan-tag-block { margin-top: 0.75rem; }
+  .mikan-lib-chips .tag-pill {
+    font-size: var(--text-base);
+    padding: var(--space-2) var(--space-3);
+  }
+  .mikan-lib-chips .tag-pill--add {
+    padding: 0;
+    flex: 0 0 auto;
+  }
+  .mikan-default-block .mikan-lib-sub {
+    margin-top: var(--space-4);
+  }
+  .mikan-lib-sub-label {
+    display: block;
+    margin-bottom: var(--space-2);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--fg-muted);
+    letter-spacing: 0.02em;
+  }
 </style>

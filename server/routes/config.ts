@@ -19,6 +19,13 @@ const mikanTagLibrarySchema = z.object({
   include: z.array(mikanTagEntrySchema),
   exclude: z.array(mikanTagEntrySchema),
 }).optional();
+const mikanLangOptionSchema = z.object({
+  key: z.string(),
+  label: z.string(),
+  bit: z.number().int(),
+  regex: z.string().refine((r) => { try { new RegExp(r); return true; } catch { return false; } }, '正则表达式无效'),
+});
+const mikanLangOptionsSchema = z.array(mikanLangOptionSchema).optional();
 const ConfigUpdateSchema = z.object({
   mediaDir: z.string().optional(),
   playerMode: z.string().optional(),
@@ -36,6 +43,9 @@ const ConfigUpdateSchema = z.object({
   bangumiClientSecret: z.string().optional(),
   mikanMirror: z.string().optional(),
   mikanTagLibrary: mikanTagLibrarySchema,
+  mikanLangOptions: mikanLangOptionsSchema,
+  mikanDefaultRequired: z.array(z.string()).optional(),
+  mikanDefaultExcluded: z.array(z.string()).optional(),
 });
 
 // ── 单字段校验 schema ──
@@ -90,6 +100,9 @@ const FIELD_MAP: Record<string, (v: unknown) => unknown> = {
   qbPassword:    v => v,
   mikanMirror:   v => v,
   mikanTagLibrary: v => v,
+  mikanLangOptions: v => v,
+  mikanDefaultRequired: v => v,
+  mikanDefaultExcluded: v => v,
 };
 
 function handleGetConfig(req: any, res: any, state: State) {

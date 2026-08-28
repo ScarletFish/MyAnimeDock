@@ -113,20 +113,71 @@
     return parts.join('|');
   });
 
+  let containTokens = $derived.by(() => {
+    const t = [];
+    if (langMask) {
+      if (langMask & 1) t.push('简');
+      if (langMask & 2) t.push('繁');
+      if (langMask & 4) t.push('日');
+    }
+    for (const tag of INCLUDE_TAGS) if (selectedTags.has(tag.key)) t.push(tag.regex);
+    return t;
+  });
+
+  let notContainTokens = $derived.by(() => {
+    const t = [];
+    if (excludedLangMask) {
+      if (excludedLangMask & 1) t.push('简');
+      if (excludedLangMask & 2) t.push('繁');
+      if (excludedLangMask & 4) t.push('日');
+    }
+    for (const tag of EXCLUDE_TAGS) if (selectedTags.has(tag.key)) t.push(tag.regex);
+    return t;
+  });
+
+  function buildSegments(name, re, type) {
+    if (!re) return [{ text: name, type: 'normal' }];
+    const segs = [];
+    let last = 0;
+    let m;
+    re.lastIndex = 0;
+    while ((m = re.exec(name)) !== null) {
+      if (m.index > last) segs.push({ text: name.slice(last, m.index), type: 'normal' });
+      segs.push({ text: m[0], type });
+      last = m.index + m[0].length;
+      if (m[0].length === 0) re.lastIndex++; // guard zero-width
+    }
+    if (last < name.length) segs.push({ text: name.slice(last), type: 'normal' });
+    return segs.length ? segs : [{ text: name, type: 'normal' }];
+  }
+
   let preview = $derived.by(() => {
-    if (!resources.length) return { matched: [], excluded: [], unmatched: [], total: 0 };
+    if (!resources.length) return { matched: [], excluded: [], unmatched: [], total: 0, segments: new Map(), hasFilter: false };
 
     const containRe = mustContain ? new RegExp(mustContain, 'i') : null;
     const notContainRe = mustNotContain ? new RegExp(mustNotContain, 'i') : null;
 
+    const segContainRe = containTokens.length ? new RegExp(containTokens.join('|'), 'gi') : null;
+    const segNotContainRe = notContainTokens.length ? new RegExp(notContainTokens.join('|'), 'gi') : null;
+
     const matched = [], excluded = [], unmatched = [];
+    const segmentsMap = new Map();
     for (const r of resources) {
       const name = r.name;
-      if (notContainRe && notContainRe.test(name)) { excluded.push(r); continue; }
-      if (!containRe || containRe.test(name)) { matched.push(r); continue; }
+      if (notContainRe && notContainRe.test(name)) {
+        excluded.push(r);
+        segmentsMap.set(r, buildSegments(name, segNotContainRe, 'excluded'));
+        continue;
+      }
+      if (!containRe || containRe.test(name)) {
+        matched.push(r);
+        segmentsMap.set(r, segContainRe ? buildSegments(name, segContainRe, 'matched') : [{ text: name, type: 'normal' }]);
+        continue;
+      }
       unmatched.push(r);
+      segmentsMap.set(r, [{ text: name, type: 'normal' }]);
     }
-    return { matched, excluded, unmatched, total: resources.length };
+    return { matched, excluded, unmatched, total: resources.length, segments: segmentsMap, hasFilter: !!(mustContain || mustNotContain) };
   });
 
   $effect(() => {

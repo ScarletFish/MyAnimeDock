@@ -432,14 +432,11 @@
                             {@const sg = bangumiDetail.subgroups[selectedSubgroupIdx]}
                             <div class="mikan-resource-list">
                               {#each (fullResourcesLoaded.has(selectedSubgroupIdx) ? sg.resources : sg.resources.slice(0, 9)) as r}
-                                {@const isMatched = subscribeMode && preview.matched.includes(r)}
-                                {@const isExcluded = subscribeMode && preview.excluded.includes(r)}
-                                <div
-                                  class="mikan-resource-item"
-                                  class:mikan-resource--matched={isMatched}
-                                  class:mikan-resource--excluded={isExcluded}
-                                >
-                                  <span class="mikan-resource-name">{r.name}</span>
+                                {@const segs = preview.segments?.get(r) || [{ text: r.name, type: 'normal' }]}
+                                {@const isHit = preview.hasFilter && preview.matched.includes(r)}
+                                {@const isExcluded = preview.hasFilter && preview.excluded.includes(r)}
+                                <div class="mikan-resource-item" class:mikan-resource--hit={isHit} class:mikan-resource--excluded={isExcluded}>
+                                  <span class="mikan-resource-name">{#if isExcluded}{r.name}{:else}{#each segs as s}{#if s.type === 'normal'}{s.text}{:else}<mark class={"mikan-hl-" + s.type}>{s.text}</mark>{/if}{/each}{/if}</span>
                                   <span class="mikan-resource-meta">{r.size} · {r.date}</span>
                                 </div>
                               {/each}

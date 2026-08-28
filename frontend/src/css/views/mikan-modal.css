@@ -446,6 +446,10 @@
   background: var(--bg-elevated);
 }
 
+.mikan-resource--hit {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
 .mikan-resource-name {
   color: var(--fg-primary);
   overflow-wrap: break-word;
@@ -799,8 +803,10 @@
 }
 
 /* ─── Resource match states ─── */
-.mikan-resource--matched .mikan-resource-name {
+.mikan-hl-matched {
   color: var(--accent);
+  font-weight: var(--fw-semibold);
+  background: transparent;
 }
 
 .mikan-resource--excluded {

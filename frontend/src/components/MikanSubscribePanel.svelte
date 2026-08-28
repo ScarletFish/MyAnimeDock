@@ -27,9 +27,9 @@
   let editorMode = $state('include');
 
   const DEFAULT_LANG_OPTIONS = [
-    { key: 'simplified', label: 'mikan.simplified', bit: 1, regex: '简' },
-    { key: 'traditional', label: 'mikan.traditional', bit: 2, regex: '繁' },
-    { key: 'japanese', label: 'mikan.japanese', bit: 4, regex: '日' },
+    { key: 'simplified', label: '简', bit: 1, regex: '简' },
+    { key: 'traditional', label: '繁', bit: 2, regex: '繁' },
+    { key: 'japanese', label: '日', bit: 4, regex: '日' },
   ];
   let langOptions = $derived(config?.mikanLangOptions || DEFAULT_LANG_OPTIONS);
   const LANG_COMPOUNDS = [
@@ -173,7 +173,9 @@
       const langKeys = new Set((config?.mikanLangOptions || DEFAULT_LANG_OPTIONS).map((l) => l.key));
       const req = config?.mikanDefaultRequired || ['simplified'];
       const excl = config?.mikanDefaultExcluded || ['halfEpisode', 'collection'];
-      selectedTags = new Set([...req, ...excl]);
+      // 语言 key 归入语言集合；其余归入 Tag 集合。悬空 key（如手改配置删了被引用项）
+      // 由渲染处 includeTags/excludeTags.find 守卫自然忽略，不显示也不影响正则。
+      selectedTags = new Set([...req, ...excl].filter((k) => !langKeys.has(k)));
       selectedLangs = new Set(req.filter((k) => langKeys.has(k)));
       excludedLangs = new Set(excl.filter((k) => langKeys.has(k)));
     } catch {}
@@ -275,7 +277,7 @@
     <div class="mikan-panel-tags">
       {#each langOptions as opt}
         <button class="tag-pill" class:active={selectedLangs.has(opt.key)} onclick={() => toggleLang(opt.key)}>
-          {tr(opt.label)}
+          {opt.label}
         </button>
       {/each}
 
@@ -312,7 +314,7 @@
         {@const opt = langOptions.find(l => l.key === key)}
         {#if opt}
           <button class="tag-pill tag-pill--exclude" onclick={() => toggleExcludeLang(key)}>
-            {tr(opt.label)}
+            {opt.label}
             <svg class="tag-pill-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         {/if}
@@ -339,7 +341,7 @@
                   <div class="mikan-add-dd-label">{tr('mikan.lang')}</div>
                   {#each availableExcludeLangOptions as opt}
                     <Select.Item value={opt.key} class="mikan-add-dd-item">
-                      {tr(opt.label)}
+                      {opt.label}
                     </Select.Item>
                   {/each}
                 </Select.Group>

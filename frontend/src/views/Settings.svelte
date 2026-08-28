@@ -101,9 +101,9 @@
     editorOpen = true;
   }
 
-  // 语言编辑器：复用弹窗，但传入显示名（tr(label)）而非 i18n key
+  // 语言编辑器：复用弹窗，直接传入 label（纯文本，非 i18n key）
   function openLangEditor(lang) {
-    openEditor('lang', lang ? { key: lang.key, name: tr(lang.label), regex: lang.regex } : null);
+    openEditor('lang', lang ? { key: lang.key, name: lang.label, regex: lang.regex } : null);
   }
 
   function nextLangBit() {
@@ -137,6 +137,9 @@
     if (editorMode === 'include') mikanInclude = mikanInclude.filter((t) => t.key !== key);
     else if (editorMode === 'exclude') mikanExclude = mikanExclude.filter((t) => t.key !== key);
     else if (editorMode === 'lang') mikanLangOptions = mikanLangOptions.filter((l) => l.key !== key);
+    // 级联：被删项若被默认启用引用，一并移出，避免悬空引用
+    mikanDefaultRequired = mikanDefaultRequired.filter((k) => k !== key);
+    mikanDefaultExcluded = mikanDefaultExcluded.filter((k) => k !== key);
     editorOpen = false;
   }
 
@@ -146,7 +149,7 @@
 
   function defaultItemName(key) {
     const lang = mikanLangOptions.find((l) => l.key === key);
-    if (lang) return tr(lang.label);
+    if (lang) return lang.label;
     const tag = [...mikanInclude, ...mikanExclude].find((t) => t.key === key);
     return tag ? tag.name : key;
   }
@@ -1052,7 +1055,7 @@
               <h4 class="mikan-lib-heading">{tr('settings.mikanLangHeading')}</h4>
               <div class="mikan-lib-chips">
                 {#each mikanLangOptions as lang (lang.key)}
-                  <button class="tag-pill" onclick={() => openLangEditor(lang)}>{tr(lang.label)}</button>
+                  <button class="tag-pill" onclick={() => openLangEditor(lang)}>{lang.label}</button>
                 {/each}
                 <button class="tag-pill tag-pill--add" onclick={() => openLangEditor(null)}>+</button>
               </div>
@@ -1100,7 +1103,7 @@
                         <Select.Group class="mikan-add-dd-group">
                           <div class="mikan-add-dd-label">{tr('mikan.lang')}</div>
                           {#each mikanLangOptions.filter(l => !mikanDefaultRequired.includes(l.key) && !mikanDefaultExcluded.includes(l.key)) as lang}
-                            <Select.Item value={lang.key} class="mikan-add-dd-item">{tr(lang.label)}</Select.Item>
+                            <Select.Item value={lang.key} class="mikan-add-dd-item">{lang.label}</Select.Item>
                           {/each}
                         </Select.Group>
                       </Select.Content>
@@ -1128,7 +1131,7 @@
                         <Select.Group class="mikan-add-dd-group">
                           <div class="mikan-add-dd-label">{tr('mikan.lang')}</div>
                           {#each mikanLangOptions.filter(l => !mikanDefaultExcluded.includes(l.key) && !mikanDefaultRequired.includes(l.key)) as lang}
-                            <Select.Item value={lang.key} class="mikan-add-dd-item">{tr(lang.label)}</Select.Item>
+                            <Select.Item value={lang.key} class="mikan-add-dd-item">{lang.label}</Select.Item>
                           {/each}
                         </Select.Group>
                       </Select.Content>

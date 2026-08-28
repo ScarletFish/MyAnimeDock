@@ -105,9 +105,9 @@ const DEFAULT_CONFIG: ConfigShape = {
     ],
   },
   mikanLangOptions: [
-    { key: 'simplified', label: 'mikan.simplified', bit: 1, regex: '简' },
-    { key: 'traditional', label: 'mikan.traditional', bit: 2, regex: '繁' },
-    { key: 'japanese', label: 'mikan.japanese', bit: 4, regex: '日' },
+    { key: 'simplified', label: '简', bit: 1, regex: '简' },
+    { key: 'traditional', label: '繁', bit: 2, regex: '繁' },
+    { key: 'japanese', label: '日', bit: 4, regex: '日' },
   ],
   mikanDefaultRequired: ['simplified'],
   mikanDefaultExcluded: ['halfEpisode', 'collection'],

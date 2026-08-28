@@ -139,10 +139,16 @@
   border-radius: var(--radius-md);
   padding: var(--space-3) var(--space-4);
   transition: border-color var(--duration-fast) var(--ease-out);
+  cursor: pointer;
 }
 
 .download-item:hover {
   border-color: rgba(var(--accent-rgb), 0.2);
+}
+
+.download-item.expanded {
+  border-color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.08);
 }
 
 .download-item-main {
@@ -370,6 +376,127 @@
   width: 1px;
   height: 16px;
   background: var(--border);
+}
+
+/* ─── Inline Detail Accordion ─── */
+
+.download-detail {
+  margin-top: var(--space-2);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  box-shadow: inset 3px 0 0 var(--accent), var(--shadow-sm);
+}
+
+.download-detail-grid {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+
+.download-detail-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-050);
+  min-width: 0;
+}
+
+.download-detail-field--path {
+  flex: 1 1 auto;
+}
+
+.download-detail-short {
+  flex: 0 1 auto;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  align-items: flex-start;
+}
+
+.download-detail-short .download-detail-field {
+  flex: 0 0 84px;
+}
+
+.download-detail-short .download-detail-field--date {
+  flex-basis: 104px;
+}
+
+.download-detail-label {
+  font-size: var(--text-xs);
+  color: var(--fg-muted);
+}
+
+.download-detail-value {
+  font-size: var(--text-sm);
+  color: var(--fg-primary);
+  word-break: break-all;
+  font-variant-numeric: tabular-nums;
+}
+
+.download-files-toggle {
+  margin-top: var(--space-3);
+  align-self: flex-start;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--fg-secondary);
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+
+.download-files-toggle:hover {
+  border-color: var(--accent);
+  color: var(--fg-primary);
+}
+
+.download-file-list {
+  margin-top: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-height: calc(9 * (var(--text-sm) * 1.5 + var(--space-1) * 2) + 8 * var(--space-1));
+  overflow-y: auto;
+  list-style: none;
+  padding: var(--space-2);
+}
+
+.download-file-row {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  font-size: var(--text-sm);
+  padding: var(--space-1) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.download-file-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--fg-primary);
+}
+
+.download-file-size,
+.download-file-progress {
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.download-detail-loading,
+.download-detail-empty {
+  color: var(--fg-muted);
+  font-size: var(--text-sm);
+  padding: var(--space-2) 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 /* ─── Spinning Animation ─── */

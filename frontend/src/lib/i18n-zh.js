@@ -623,4 +623,11 @@ export const I18N_ZH = {
   'download.confirmDelete': '确认删除种子「{{name}}」？',
   'download.torrentDeleted': '种子已删除',
   'download.actionFailed': '操作失败：{{error}}',
+  'download.detailPath': '保存路径',
+  'download.detailRatio': '分享率',
+  'download.detailEta': '剩余时间',
+  'download.detailAdded': '添加时间',
+  'download.detailSeeding': '做种时间',
+  'download.detailFiles': '文件 ({{count}})',
+  'download.detailNoFiles': '暂无文件信息',
 };

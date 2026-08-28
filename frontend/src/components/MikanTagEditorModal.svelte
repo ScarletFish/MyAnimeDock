@@ -1,5 +1,5 @@
 <script>
-  import { tr } from '../lib/anime-utils.js';
+  import { tr, isRegexValid } from '../lib/anime-utils.js';
   import { portal } from '../lib/portal.js';
 
   let {
@@ -29,14 +29,6 @@
       : (mode === 'lang' ? tr('mikan.editLang') : tr('mikan.editTag'))
   );
 
-  function isRegexValid(r) {
-    try {
-      new RegExp(r);
-      return true;
-    } catch {
-      return false;
-    }
-  }
   const regexInvalid = $derived(!isRegexValid(regex));
 </script>
 

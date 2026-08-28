@@ -9,6 +9,11 @@ export function tr(key, options) {
   return typeof globalThis.t === 'function' ? globalThis.t(key, options) : key;
 }
 
+export function isRegexValid(r) {
+  if (!r) return false;
+  try { new RegExp(r); return true; } catch { return false; }
+}
+
 export function basename(p) {
   if (!p) return '';
   return p.split(/[\\/]/).pop();

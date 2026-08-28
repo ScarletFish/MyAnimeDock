@@ -1285,8 +1285,8 @@
   .mikan-lib-sub-label {
     display: block;
     margin-bottom: var(--space-2);
-    font-size: var(--text-sm);
-    font-weight: 600;
+    font-size: var(--text-xs);
+    font-weight: var(--fw-semibold);
     color: var(--fg-muted);
     letter-spacing: 0.02em;
   }

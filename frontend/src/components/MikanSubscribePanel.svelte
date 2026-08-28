@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { showToast } from './Toast.svelte';
-  import { tr } from '../lib/anime-utils.js';
+  import { tr, isRegexValid } from '../lib/anime-utils.js';
   import { API as api } from '../lib/api.js';
   import { Select } from 'bits-ui';
   import MikanTagEditorModal from './MikanTagEditorModal.svelte';
@@ -25,6 +25,9 @@
   let excludeDdOpen = $state(false);
   let editorOpen = $state(false);
   let editorMode = $state('include');
+
+  let manualMust = $state('');
+  let manualExclude = $state('');
 
   const DEFAULT_LANG_OPTIONS = [
     { key: 'simplified', label: '简', bit: 1, regex: '简' },
@@ -78,6 +81,7 @@
     for (const t of includeTags) {
       if (selectedTags.has(t.key)) parts.push(t.regex);
     }
+    if (manualMust.trim()) parts.push(manualMust.trim());
     if (parts.length === 0) return '';
     if (parts.length === 1) return parts[0];
     return parts.map(p => `(?=.*${p})`).join('');
@@ -93,6 +97,7 @@
     for (const t of excludeTags) {
       if (selectedTags.has(t.key)) parts.push(t.regex);
     }
+    if (manualExclude.trim()) parts.push(manualExclude.trim());
     return parts.join('|');
   });
 
@@ -104,6 +109,7 @@
       }
     }
     for (const tag of includeTags) if (selectedTags.has(tag.key)) t.push(tag.regex);
+    if (manualMust.trim()) t.push(manualMust.trim());
     return t;
   });
 
@@ -115,8 +121,13 @@
       }
     }
     for (const tag of excludeTags) if (selectedTags.has(tag.key)) t.push(tag.regex);
+    if (manualExclude.trim()) t.push(manualExclude.trim());
     return t;
   });
+
+  const manualMustValid = $derived(manualMust.trim() === '' || isRegexValid(manualMust.trim()));
+  const manualExcludeValid = $derived(manualExclude.trim() === '' || isRegexValid(manualExclude.trim()));
+  const manualValid = $derived(manualMustValid && manualExcludeValid);
 
   function buildSegments(name, re, type) {
     if (!re) return [{ text: name, type: 'normal' }];
@@ -305,6 +316,11 @@
         </Select.Root>
       {/if}
     </div>
+    <div class="mikan-panel-manual">
+      <label class="mikan-panel-section-label">{tr('mikan.manualMust')}</label>
+      <input class="mikan-panel-manual-input" type="text" placeholder={tr('mikan.manualMustPlaceholder')} bind:value={manualMust} class:invalid={!manualMustValid} />
+      {#if !manualMustValid}<span class="field-error">{tr('settings.mikanTagInvalidRegex')}</span>{/if}
+    </div>
   </div>
 
   <div class="mikan-panel-section">
@@ -356,6 +372,11 @@
         </Select.Root>
       {/if}
     </div>
+    <div class="mikan-panel-manual">
+      <label class="mikan-panel-section-label">{tr('mikan.manualExclude')}</label>
+      <input class="mikan-panel-manual-input" type="text" placeholder={tr('mikan.manualExcludePlaceholder')} bind:value={manualExclude} class:invalid={!manualExcludeValid} />
+      {#if !manualExcludeValid}<span class="field-error">{tr('settings.mikanTagInvalidRegex')}</span>{/if}
+    </div>
   </div>
 
   <div class="mikan-panel-preview">
@@ -367,7 +388,7 @@
 
   <div class="mikan-panel-footer">
     <button class="btn btn-outline btn-sm" onclick={onCancel}>{tr('common.cancel')}</button>
-    <button class="btn btn-primary btn-sm" onclick={confirm} disabled={subscribing} aria-busy={subscribing}>
+    <button class="btn btn-primary btn-sm" onclick={confirm}               disabled={subscribing || !manualValid} aria-busy={subscribing}>
       {#if subscribing}
         <span class="btn-spinner spin" aria-hidden="true"></span>
       {/if}
@@ -383,3 +404,32 @@
   onCancel={() => editorOpen = false}
   onSave={handleNewTag}
 />
+
+<style>
+  .mikan-panel-manual { margin-top: var(--space-3); }
+  .mikan-panel-manual-input {
+    width: 100%;
+    background: var(--bg-deep);
+    border: 1px solid var(--border);
+    color: var(--fg-primary);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    transition: all var(--duration-fast) var(--ease-out);
+  }
+  .mikan-panel-manual-input::placeholder { color: var(--fg-muted); }
+  .mikan-panel-manual-input:focus {
+    outline: none;
+    border-color: rgba(var(--accent-rgb), 0.4);
+    box-shadow: inset 0 1px 0 rgba(var(--accent-rgb), 0.03), 0 0 0 3px rgba(var(--accent-rgb), 0.07);
+    background: var(--bg-elevated);
+  }
+  .mikan-panel-manual-input.invalid {
+    border-color: var(--error);
+    box-shadow: 0 0 0 1px var(--error);
+  }
+  .mikan-panel-manual-input.invalid:focus {
+    box-shadow: 0 0 0 1px var(--error), 0 0 0 3px rgba(var(--error-rgb), 0.15);
+  }
+</style>

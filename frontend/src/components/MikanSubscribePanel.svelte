@@ -34,37 +34,16 @@
     { name: '简繁日', mask: 1 | 2 | 4 },
   ];
 
-  const INCLUDE_TAGS = [
-    { key: '1080p', group: 'quality', regex: '1080p' },
-    { key: '720p', group: 'quality', regex: '720p' },
-    { key: '4k', group: 'quality', regex: '4K' },
-    { key: 'mkv', group: 'format', regex: 'mkv' },
-    { key: 'mp4', group: 'format', regex: 'mp4' },
-    { key: 'internalSub', group: 'subtitle', regex: '内封' },
-    { key: 'embeddedSub', group: 'subtitle', regex: '内嵌' },
-  ];
-
-  const EXCLUDE_TAGS = [
-    { key: 'halfEpisode', regex: '\\.5' },
-    { key: 'episodeRange', regex: '\\d+[~-]\\d+' },
-    { key: 'collection', regex: '合集' },
-  ];
-
-  const TAG_LABELS = {
-    '1080p': 'mikan.1080p', '720p': 'mikan.720p', '4k': 'mikan.4k',
-    mkv: 'mikan.mkv', mp4: 'mikan.mp4',
-    internalSub: 'mikan.internalSub', embeddedSub: 'mikan.embeddedSub',
-    halfEpisode: 'mikan.halfEpisode', episodeRange: 'mikan.episodeRange', collection: 'mikan.collection',
-  };
-  const GROUP_LABELS = { quality: 'mikan.quality', format: 'mikan.format', subtitle: 'mikan.subtitle' };
-  const GROUP_ORDER = ['quality', 'format', 'subtitle'];
+  let tagLibrary = $derived(config?.mikanTagLibrary || { include: [], exclude: [] });
+  let includeTags = $derived(tagLibrary.include);
+  let excludeTags = $derived(tagLibrary.exclude);
 
   let availableIncludeOptions = $derived(
-    INCLUDE_TAGS.filter(t => !selectedTags.has(t.key))
+    includeTags.filter(t => !selectedTags.has(t.key))
   );
 
   let availableExcludeOptions = $derived(
-    EXCLUDE_TAGS.filter(t => !selectedTags.has(t.key))
+    excludeTags.filter(t => !selectedTags.has(t.key))
   );
 
   let availableExcludeLangOptions = $derived(
@@ -92,7 +71,7 @@
         parts.push(chars.map(c => `(?=.*${c})`).join(''));
       }
     }
-    for (const t of INCLUDE_TAGS) {
+    for (const t of includeTags) {
       if (selectedTags.has(t.key)) parts.push(t.regex);
     }
     if (parts.length === 0) return '';
@@ -107,7 +86,7 @@
       if (excludedLangMask & 2) parts.push('繁');
       if (excludedLangMask & 4) parts.push('日');
     }
-    for (const t of EXCLUDE_TAGS) {
+    for (const t of excludeTags) {
       if (selectedTags.has(t.key)) parts.push(t.regex);
     }
     return parts.join('|');
@@ -120,7 +99,7 @@
       if (langMask & 2) t.push('繁');
       if (langMask & 4) t.push('日');
     }
-    for (const tag of INCLUDE_TAGS) if (selectedTags.has(tag.key)) t.push(tag.regex);
+    for (const tag of includeTags) if (selectedTags.has(tag.key)) t.push(tag.regex);
     return t;
   });
 
@@ -131,7 +110,7 @@
       if (excludedLangMask & 2) t.push('繁');
       if (excludedLangMask & 4) t.push('日');
     }
-    for (const tag of EXCLUDE_TAGS) if (selectedTags.has(tag.key)) t.push(tag.regex);
+    for (const tag of excludeTags) if (selectedTags.has(tag.key)) t.push(tag.regex);
     return t;
   });
 
@@ -184,7 +163,8 @@
     if (onPreview) onPreview(preview);
   });
 
-  onMount(() => {
+  onMount(async () => {
+    try { config = await api.get('/api/config'); } catch {}
     const gsap = globalThis.gsap;
     if (!gsap) return;
     gsap.fromTo('.mikan-panel', { opacity: 0, x: -12 }, { opacity: 1, x: 0, duration: 0.25, ease: 'power2.out' });
@@ -265,10 +245,10 @@
       {/each}
 
       {#each [...selectedTags] as key}
-        {@const tag = INCLUDE_TAGS.find(t => t.key === key)}
+        {@const tag = includeTags.find(t => t.key === key)}
         {#if tag}
           <button class="tag-pill" onclick={() => toggleTag(key)}>
-            {TAG_LABELS[key] ? tr(TAG_LABELS[key]) : tag.regex}
+            {tag.name}
             <svg class="tag-pill-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         {/if}
@@ -279,18 +259,8 @@
           <Select.Trigger class="tag-pill tag-pill--add">+</Select.Trigger>
           <Select.Portal to="#modal-root">
             <Select.Content class="mikan-add-dd" side="bottom" sideOffset={4}>
-              {#each GROUP_ORDER as group}
-                {@const groupTags = availableIncludeOptions.filter(t => t.group === group)}
-                {#if groupTags.length > 0}
-                  <Select.Group class="mikan-add-dd-group">
-                    <div class="mikan-add-dd-label">{tr(GROUP_LABELS[group])}</div>
-                    {#each groupTags as tag}
-                      <Select.Item value={tag.key} class="mikan-add-dd-item">
-                        {TAG_LABELS[tag.key] ? tr(TAG_LABELS[tag.key]) : tag.regex}
-                      </Select.Item>
-                    {/each}
-                  </Select.Group>
-                {/if}
+              {#each availableIncludeOptions as tag}
+                <Select.Item value={tag.key} class="mikan-add-dd-item">{tag.name}</Select.Item>
               {/each}
             </Select.Content>
           </Select.Portal>
@@ -313,10 +283,10 @@
       {/each}
 
       {#each [...selectedTags] as key}
-        {@const tag = EXCLUDE_TAGS.find(t => t.key === key)}
+        {@const tag = excludeTags.find(t => t.key === key)}
         {#if tag}
           <button class="tag-pill tag-pill--exclude" onclick={() => toggleTag(key)}>
-            {TAG_LABELS[key] ? tr(TAG_LABELS[key]) : tag.regex}
+            {tag.name}
             <svg class="tag-pill-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         {/if}
@@ -338,14 +308,9 @@
                 </Select.Group>
               {/if}
               {#if availableExcludeOptions.length > 0}
-                <Select.Group class="mikan-add-dd-group">
-                  <div class="mikan-add-dd-label">{tr('mikan.exclude')}</div>
-                  {#each availableExcludeOptions as tag}
-                    <Select.Item value={tag.key} class="mikan-add-dd-item">
-                      {TAG_LABELS[tag.key] ? tr(TAG_LABELS[tag.key]) : tag.regex}
-                    </Select.Item>
-                  {/each}
-                </Select.Group>
+                {#each availableExcludeOptions as tag}
+                  <Select.Item value={tag.key} class="mikan-add-dd-item">{tag.name}</Select.Item>
+                {/each}
               {/if}
             </Select.Content>
           </Select.Portal>

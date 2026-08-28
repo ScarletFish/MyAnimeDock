@@ -105,6 +105,16 @@ export const I18N_ZH = {
   'settings.qbFailed': '连接失败',
   // 蜜柑计划
   'settings.mikanMirrorHint': '国内用户使用 https://mikanime.tv，海外用户使用 https://mikanani.me',
+  // 蜜柑正则 Tag 库
+  'settings.mikanTagLibrary': '蜜柑正则 Tag 库',
+  'settings.mikanTagHint': '管理订阅筛选用的正则表达式。必需项匹配后才会下载，排除项匹配则跳过。',
+  'settings.mikanTagInclude': '必需项（必须包含）',
+  'settings.mikanTagExclude': '排除项（必须排除）',
+  'settings.mikanTagName': '名称',
+  'settings.mikanTagRegex': '正则',
+  'settings.mikanTagAdd': '添加字段',
+  'settings.mikanTagDelete': '删除',
+  'settings.mikanTagInvalidRegex': '正则表达式无效',
   'mikan.title': '蜜柑计划',
   'mikan.loadFailed': '加载失败：{{error}}',
   'mikan.loadResourcesFailed': '加载资源失败：{{error}}',

@@ -25,6 +25,15 @@ const PORT = 3456;
 const MAX_PLAY_SESSIONS = 5000;
 
 // --- Default config ---
+export interface MikanTagEntry {
+  key: string;   // 唯一 id（种子项沿用旧 key，用户新增用 uuid）
+  name: string;  // 展示名
+  regex: string; // 用于筛选的正则
+}
+export interface MikanTagLibrary {
+  include: MikanTagEntry[]; // 必需项 → mustContain
+  exclude: MikanTagEntry[]; // 排除项 → mustNotContain
+}
 export interface ConfigShape {
   mediaDir: string;
   playerMode: string;
@@ -40,6 +49,8 @@ export interface ConfigShape {
   qbPassword: string;
   // 蜜柑计划镜像
   mikanMirror: string;
+  // 蜜柑正则 Tag 库（订阅筛选用）
+  mikanTagLibrary: MikanTagLibrary;
   // 运行时由 server.ts / routes 注入的字段（可选）
   reduceMotion?: boolean;
   bangumiAccessToken?: string;
@@ -65,6 +76,23 @@ const DEFAULT_CONFIG: ConfigShape = {
   qbUsername: 'admin',
   qbPassword: '',
   mikanMirror: 'https://mikanime.tv',
+  // 种子：沿用原 MikanSubscribePanel 写死的 INCLUDE_TAGS / EXCLUDE_TAGS
+  mikanTagLibrary: {
+    include: [
+      { key: '1080p', name: '1080p', regex: '1080p' },
+      { key: '720p', name: '720p', regex: '720p' },
+      { key: '4k', name: '4K', regex: '4K' },
+      { key: 'mkv', name: 'mkv', regex: 'mkv' },
+      { key: 'mp4', name: 'mp4', regex: 'mp4' },
+      { key: 'internalSub', name: '内封字幕', regex: '内封' },
+      { key: 'embeddedSub', name: '内嵌字幕', regex: '内嵌' },
+    ],
+    exclude: [
+      { key: 'halfEpisode', name: '半集', regex: '\\.5' },
+      { key: 'episodeRange', name: '多集合集', regex: '\\d+[~-]\\d+' },
+      { key: 'collection', name: '合集', regex: '合集' },
+    ],
+  },
 };
 
 function loadConfig(): ConfigShape {

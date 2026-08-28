@@ -75,6 +75,17 @@
   let qbStatus = $state(null); // { ok, version, error } | null
   // 蜜柑计划
   let mikanMirror = $state('https://mikanime.tv');
+  let mikanInclude = $state([]);
+  let mikanExclude = $state([]);
+
+  function isRegexValid(r) {
+    try {
+      new RegExp(r);
+      return true;
+    } catch {
+      return false;
+    }
+  }
 
   let configCache = $state(null);
   let authPollTimer = null;
@@ -173,6 +184,8 @@
 
       // 蜜柑计划
       mikanMirror = config.mikanMirror || 'https://mikanime.tv';
+      mikanInclude = config.mikanTagLibrary?.include || [];
+      mikanExclude = config.mikanTagLibrary?.exclude || [];
 
       let mode = get(finishConfirmMode);
       if (mode === 'on') mode = 'prompt';
@@ -212,6 +225,13 @@
       errorMsg = tr('app.enterMediaDirPath');
       return;
     }
+    // 蜜柑正则 Tag 库：校验每条正则是否合法
+    for (const tag of [...mikanInclude, ...mikanExclude]) {
+      if (!isRegexValid(tag.regex)) {
+        errorMsg = tr('settings.mikanTagInvalidRegex');
+        return;
+      }
+    }
     if (Object.keys(fieldErrors).length > 0) return;
 
     const rawTheme = document.documentElement.getAttribute('data-theme') || 'dark';
@@ -240,6 +260,7 @@
         qbUsername: qbUsername || 'admin',
         qbPassword: qbPassword || '',
         mikanMirror: mikanMirror.trim() || 'https://mikanime.tv',
+        mikanTagLibrary: { include: mikanInclude, exclude: mikanExclude },
         ...(bangumiClientId ? { bangumiClientId } : {}),
         ...(secretToSend ? { bangumiClientSecret: secretToSend } : {}),
       });
@@ -879,11 +900,6 @@
         <!-- Tab: 下载器 -->
         <div class="settings-panel" class:active={activeTab === 'downloader'} id="tab-downloader">
           <div class="form-group">
-            <label>蜜柑计划</label>
-            <p class="form-hint mt-0">{tr('settings.mikanMirrorHint')}</p>
-            <input type="text" id="mikanMirror" placeholder="https://mikanime.tv" bind:value={mikanMirror}>
-          </div>
-          <div class="form-group">
             <label>qBittorrent</label>
             <div class="qb-config">
               <div class="form-group">
@@ -939,6 +955,41 @@
                   {/if}
                 </div>
               </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>蜜柑计划</label>
+            <p class="form-hint mt-0">{tr('settings.mikanMirrorHint')}</p>
+            <input type="text" id="mikanMirror" placeholder="https://mikanime.tv" bind:value={mikanMirror}>
+          </div>
+          <div class="form-group">
+            <label>{tr('settings.mikanTagLibrary')}</label>
+            <p class="form-hint mt-0">{tr('settings.mikanTagHint')}</p>
+
+            <div class="mikan-tag-block">
+              <h4 class="mikan-tag-heading">{tr('settings.mikanTagInclude')}</h4>
+              {#each mikanInclude as tag, i (tag.key)}
+                <div class="mikan-tag-row">
+                  <input type="text" class="mikan-tag-name" placeholder={tr('settings.mikanTagName')} bind:value={tag.name}>
+                  <input type="text" class="mikan-tag-regex" placeholder={tr('settings.mikanTagRegex')} bind:value={tag.regex} class:invalid={!isRegexValid(tag.regex)}>
+                  <button class="btn btn-sm btn-outline" onclick={() => { mikanInclude = mikanInclude.filter((_, j) => j !== i); }}>{tr('settings.mikanTagDelete')}</button>
+                </div>
+                {#if !isRegexValid(tag.regex)}<span class="field-error">{tr('settings.mikanTagInvalidRegex')}</span>{/if}
+              {/each}
+              <button class="btn btn-sm btn-outline mikan-tag-add" onclick={() => { mikanInclude = [...mikanInclude, { key: crypto.randomUUID(), name: '', regex: '' }]; }}>{tr('settings.mikanTagAdd')}</button>
+            </div>
+
+            <div class="mikan-tag-block">
+              <h4 class="mikan-tag-heading">{tr('settings.mikanTagExclude')}</h4>
+              {#each mikanExclude as tag, i (tag.key)}
+                <div class="mikan-tag-row">
+                  <input type="text" class="mikan-tag-name" placeholder={tr('settings.mikanTagName')} bind:value={tag.name}>
+                  <input type="text" class="mikan-tag-regex" placeholder={tr('settings.mikanTagRegex')} bind:value={tag.regex} class:invalid={!isRegexValid(tag.regex)}>
+                  <button class="btn btn-sm btn-outline" onclick={() => { mikanExclude = mikanExclude.filter((_, j) => j !== i); }}>{tr('settings.mikanTagDelete')}</button>
+                </div>
+                {#if !isRegexValid(tag.regex)}<span class="field-error">{tr('settings.mikanTagInvalidRegex')}</span>{/if}
+              {/each}
+              <button class="btn btn-sm btn-outline mikan-tag-add" onclick={() => { mikanExclude = [...mikanExclude, { key: crypto.randomUUID(), name: '', regex: '' }]; }}>{tr('settings.mikanTagAdd')}</button>
             </div>
           </div>
         </div>
@@ -1046,3 +1097,29 @@
     </div>
   </div>
 {/if}
+
+<style>
+  .mikan-tag-block {
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+    background: var(--bg-elevated);
+    border-radius: 8px;
+  }
+  .mikan-tag-heading {
+    margin: 0 0 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text3);
+    letter-spacing: 0.02em;
+  }
+  .mikan-tag-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 0.5rem;
+  }
+  .mikan-tag-name { flex: 1 1 40%; min-width: 0; }
+  .mikan-tag-regex { flex: 1 1 60%; min-width: 0; }
+  .mikan-tag-add { margin-top: 0.25rem; }
+  .mikan-tag-block + .mikan-tag-block { margin-top: 0.75rem; }
+</style>

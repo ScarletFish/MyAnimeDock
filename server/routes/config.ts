@@ -10,6 +10,15 @@ import * as registry from '../players/registry';
 type State = any;
 
 // ── Zod schema: 前端发来的配置更新（所有字段可选） ──
+const mikanTagEntrySchema = z.object({
+  key: z.string(),
+  name: z.string(),
+  regex: z.string().refine((r) => { try { new RegExp(r); return true; } catch { return false; } }, '正则表达式无效'),
+});
+const mikanTagLibrarySchema = z.object({
+  include: z.array(mikanTagEntrySchema),
+  exclude: z.array(mikanTagEntrySchema),
+}).optional();
 const ConfigUpdateSchema = z.object({
   mediaDir: z.string().optional(),
   playerMode: z.string().optional(),
@@ -26,6 +35,7 @@ const ConfigUpdateSchema = z.object({
   bangumiClientId: z.string().optional(),
   bangumiClientSecret: z.string().optional(),
   mikanMirror: z.string().optional(),
+  mikanTagLibrary: mikanTagLibrarySchema,
 });
 
 // ── 单字段校验 schema ──
@@ -79,6 +89,7 @@ const FIELD_MAP: Record<string, (v: unknown) => unknown> = {
   qbUsername:    v => v,
   qbPassword:    v => v,
   mikanMirror:   v => v,
+  mikanTagLibrary: v => v,
 };
 
 function handleGetConfig(req: any, res: any, state: State) {

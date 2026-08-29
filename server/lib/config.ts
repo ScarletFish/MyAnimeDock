@@ -1,6 +1,7 @@
 // server/lib/config.ts — 路径、配置管理
 import * as path from 'path';
 import * as fs from 'fs';
+import crypto from 'crypto';
 import { SERVER_ROOT, PROJECT_ROOT } from './paths';
 
 // ── 引导日志（写入 %TEMP%，崩溃也不丢）──
@@ -23,6 +24,34 @@ const CONFIG_PATH = path.join(DATA_DIR, 'config.json');
 const SCANNED_TREE_PATH = path.join(DATA_DIR, 'scanned-tree.json');
 const PORT = 3456;
 const MAX_PLAY_SESSIONS = 5000;
+
+// ── qB 密码落盘加密（AES-256-GCM，密钥内置源码）──
+// 威胁模型：单机本地 + LAN 私用，防配置文件意外外传/误读为明文；不防本机恶意软件。
+// 内存中 qbPassword 始终为明文（供 qB 鉴权），仅写盘时加密、读盘时解密。
+const QB_ENC_KEY = crypto.scryptSync('my-anime-dock::qb-password', 'my-anime-dock::static-salt', 32);
+const QB_ENC_PREFIX = 'enc:';
+
+function encryptQbPassword(plain: string): string {
+  if (!plain) return '';
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', QB_ENC_KEY, iv);
+  const enc = Buffer.concat([cipher.update(plain, 'utf8'), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return QB_ENC_PREFIX + iv.toString('hex') + ':' + tag.toString('hex') + ':' + enc.toString('hex');
+}
+
+function decryptQbPassword(stored: string): string {
+  if (!stored || !stored.startsWith(QB_ENC_PREFIX)) return stored; // 空或旧明文：原样返回
+  const parts = stored.slice(QB_ENC_PREFIX.length).split(':');
+  if (parts.length !== 3) return stored; // 格式异常兜底
+  try {
+    const decipher = crypto.createDecipheriv('aes-256-gcm', QB_ENC_KEY, Buffer.from(parts[0], 'hex'));
+    decipher.setAuthTag(Buffer.from(parts[1], 'hex'));
+    return Buffer.concat([decipher.update(Buffer.from(parts[2], 'hex')), decipher.final()]).toString('utf8');
+  } catch {
+    return stored; // 解密失败兜底（避免启动崩溃）
+  }
+}
 
 // --- Default config ---
 export interface MikanTagEntry {
@@ -123,6 +152,15 @@ function loadConfig(): ConfigShape {
   try {
     const raw = fs.readFileSync(CONFIG_PATH, 'utf-8');
     const cfg = JSON.parse(raw);
+    let needPersist = false;
+    // qB 密码：磁盘密文 → 内存明文；旧明文保留明文并标记迁移
+    if (typeof cfg.qbPassword === 'string' && cfg.qbPassword) {
+      if (cfg.qbPassword.startsWith(QB_ENC_PREFIX)) {
+        cfg.qbPassword = decryptQbPassword(cfg.qbPassword);
+      } else {
+        needPersist = true;
+      }
+    }
     // Migrate legacy format → apiSources
     if (!cfg.apiSources && cfg.scrapers) {
       const sources = [];
@@ -137,14 +175,21 @@ function loadConfig(): ConfigShape {
       delete cfg.scrapers;
       saveConfig(cfg);
     }
-    return { ...DEFAULT_CONFIG, ...cfg };
+    const merged = { ...DEFAULT_CONFIG, ...cfg };
+    if (needPersist) saveConfig(merged);
+    return merged;
   } catch (e) {
     return { ...DEFAULT_CONFIG };
   }
 }
 
 function saveConfig(cfg: ConfigShape): void {
-  fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2), 'utf-8');
+  const out: ConfigShape = { ...cfg };
+  // 仅加密内存中的明文密码；已加密或空值原样写盘（幂等，避免重复加密）
+  if (typeof out.qbPassword === 'string' && out.qbPassword && !out.qbPassword.startsWith(QB_ENC_PREFIX)) {
+    out.qbPassword = encryptQbPassword(out.qbPassword);
+  }
+  fs.writeFileSync(CONFIG_PATH, JSON.stringify(out, null, 2), 'utf-8');
 }
 
 function loadScannedTree(): unknown[] {

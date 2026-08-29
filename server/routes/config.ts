@@ -113,7 +113,8 @@ function handleGetConfig(req: any, res: any, state: State) {
     const firstRun = !config.mediaDir && (!data?.library || data.library.length === 0);
     // 附上可用播放器列表供前端渲染选择器
     const players = registry.getAvailable(config);
-    jsonResp(res, 200, { ...config, players, dirValid, firstRun, autoImport: { count: 0, message: '' } });
+    const { qbPassword, ...configWithoutPw } = config;
+    jsonResp(res, 200, { ...configWithoutPw, qbPasswordSet: !!qbPassword, players, dirValid, firstRun, autoImport: { count: 0, message: '' } });
 }
 
 function handleGetNotifications(req: any, res: any, state: State) {
@@ -155,9 +156,13 @@ async function handlePostConfig(req: any, res: any, state: State) {
         // 通用字段：声明式赋值
         const raw = parsed as Record<string, unknown>;
         for (const [key, transform] of Object.entries(FIELD_MAP)) {
-            if (raw[key] !== undefined) {
-                (config as any)[key] = transform(raw[key]);
+            if (raw[key] === undefined) continue;
+            if (key === 'qbPassword') {
+                const v = raw[key];
+                if (typeof v === 'string' && v.length > 0) config.qbPassword = v; // 空字符串 = 不修改
+                continue;
             }
+            (config as any)[key] = transform(raw[key]);
         }
 
         // 副作用：bangumiPersonal 同步
@@ -171,7 +176,8 @@ async function handlePostConfig(req: any, res: any, state: State) {
         }
 
         saveConfig(config);
-        jsonResp(res, 200, { ok: true, ...config });
+        const { qbPassword, ...configWithoutPw } = config;
+        jsonResp(res, 200, { ok: true, ...configWithoutPw, qbPasswordSet: !!qbPassword });
     } catch (e) {
         jsonResp(res, 400, { error: 'Invalid request body' });
     }

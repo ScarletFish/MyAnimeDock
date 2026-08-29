@@ -73,6 +73,7 @@
   let qbPort = $state(8080);
   let qbUsername = $state('admin');
   let qbPassword = $state('');
+  let qbPasswordSet = $state(false);
   let showPassword = $state(false);
   let qbStatus = $state(null); // { ok, version, error } | null
   // 蜜柑计划
@@ -259,7 +260,8 @@
       // qBittorrent
       qbPort = config.qbPort || 8080;
       qbUsername = config.qbUsername || 'admin';
-      qbPassword = config.qbPassword || '';
+      qbPassword = '';
+      qbPasswordSet = !!config.qbPasswordSet;
       qbStatus = null;
 
       // 蜜柑计划
@@ -1014,6 +1016,9 @@
                     {/if}
                   </button>
                 </div>
+                {#if qbPasswordSet}
+                  <p class="form-hint">{tr('settings.qbPasswordSetHint')}</p>
+                {/if}
               </div>
               <div class="form-group">
                 <label>{tr('settings.qbTest')}</label>

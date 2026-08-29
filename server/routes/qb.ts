@@ -18,6 +18,7 @@ async function handleQbTest(req: any, res: any, state: State) {
       port = Number(body.port) || 8080;
       username = String(body.username || 'admin');
       password = String(body.password || '');
+      if (!password) password = getCreds(state).password; // 前端未填密码时用已存密码
     } else {
       ({ port, username, password } = getCreds(state));
     }

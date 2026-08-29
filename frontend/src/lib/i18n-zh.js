@@ -100,6 +100,7 @@ export const I18N_ZH = {
   'settings.qbPort': '端口',
   'settings.qbUsername': '用户名',
   'settings.qbPassword': '密码',
+  'settings.qbPasswordSetHint': '已设置（留空则不修改）',
   'settings.qbTest': '测试连接',
   'settings.qbConnected': '已连接 qBittorrent {{version}}',
   'settings.qbFailed': '连接失败',

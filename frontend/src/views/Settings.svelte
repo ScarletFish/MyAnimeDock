@@ -1051,39 +1051,39 @@
           <div class="form-group">
             <label>{tr('settings.mikanTagLibrary')}</label>
 
-            <div class="mikan-lib-block">
-              <h4 class="mikan-lib-heading">{tr('settings.mikanLangHeading')}</h4>
-              <div class="mikan-lib-chips">
-                {#each mikanLangOptions as lang (lang.key)}
-                  <button class="tag-pill" onclick={() => openLangEditor(lang)}>{lang.label}</button>
-                {/each}
-                <button class="tag-pill tag-pill--add" onclick={() => openLangEditor(null)}>+</button>
+            <div class="mikan-lib-source">
+              <div class="mikan-lib-block">
+                <h4 class="mikan-lib-heading">{tr('settings.mikanLangHeading')}</h4>
+                <div class="mikan-lib-chips">
+                  {#each mikanLangOptions as lang (lang.key)}
+                    <button class="tag-pill" onclick={() => openLangEditor(lang)}>{lang.label}</button>
+                  {/each}
+                  <button class="tag-pill tag-pill--add" onclick={() => openLangEditor(null)}>+</button>
+                </div>
               </div>
-            </div>
 
-            <div class="mikan-lib-block">
-              <h4 class="mikan-lib-heading">{tr('settings.mikanTagInclude')}</h4>
-              <div class="mikan-lib-chips">
-                {#each mikanInclude as tag (tag.key)}
-                  <button class="tag-pill" onclick={() => openEditor('include', tag)}>{tag.name}</button>
-                {/each}
-                <button class="tag-pill tag-pill--add" onclick={() => openEditor('include', null)}>+</button>
+              <div class="mikan-lib-block">
+                <h4 class="mikan-lib-heading">{tr('settings.mikanTagInclude')}</h4>
+                <div class="mikan-lib-chips">
+                  {#each mikanInclude as tag (tag.key)}
+                    <button class="tag-pill" onclick={() => openEditor('include', tag)}>{tag.name}</button>
+                  {/each}
+                  <button class="tag-pill tag-pill--add" onclick={() => openEditor('include', null)}>+</button>
+                </div>
               </div>
-            </div>
 
-            <div class="mikan-lib-block">
-              <h4 class="mikan-lib-heading">{tr('settings.mikanTagExclude')}</h4>
-              <div class="mikan-lib-chips">
-                {#each mikanExclude as tag (tag.key)}
-                  <button class="tag-pill tag-pill--exclude" onclick={() => openEditor('exclude', tag)}>{tag.name}</button>
-                {/each}
-                <button class="tag-pill tag-pill--add" onclick={() => openEditor('exclude', null)}>+</button>
+              <div class="mikan-lib-block">
+                <h4 class="mikan-lib-heading">{tr('settings.mikanTagExclude')}</h4>
+                <div class="mikan-lib-chips">
+                  {#each mikanExclude as tag (tag.key)}
+                    <button class="tag-pill tag-pill--exclude" onclick={() => openEditor('exclude', tag)}>{tag.name}</button>
+                  {/each}
+                  <button class="tag-pill tag-pill--add" onclick={() => openEditor('exclude', null)}>+</button>
+                </div>
               </div>
             </div>
 
             <div class="mikan-lib-block mikan-default-block">
-              <h4 class="mikan-lib-heading">{tr('settings.mikanDefault')}</h4>
-
               <div class="mikan-lib-sub">
                 <span class="mikan-lib-sub-label">{tr('settings.mikanDefaultRequired')}</span>
                 <div class="mikan-lib-chips">
@@ -1289,5 +1289,40 @@
     font-weight: var(--fw-semibold);
     color: var(--fg-muted);
     letter-spacing: 0.02em;
+  }
+
+  /* ── 分区容器：源定义区 vs 默认引用区 ── */
+  .mikan-lib-source {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+  }
+  .mikan-lib-source .mikan-lib-block { margin-top: 0; }
+  .mikan-lib-source .mikan-lib-block + .mikan-lib-block { margin-top: var(--space-3); }
+
+  .mikan-default-block {
+    margin-top: var(--space-4);
+    padding: var(--space-4);
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+  }
+
+  /* ── 引用芯片视觉降级（非新增、非 +）：幽灵描边，从属于源定义 ── */
+  .mikan-default-block .mikan-lib-chips .tag-pill:not(.tag-pill--add) {
+    background: transparent;
+    border: 1px dashed var(--fg-muted);
+    color: var(--fg-muted);
+  }
+  .mikan-default-block .mikan-lib-chips .tag-pill--exclude:not(.tag-pill--add) {
+    background: transparent;
+    border-color: rgba(var(--warning-rgb), 0.55);
+    color: var(--warning);
+  }
+  .mikan-default-block .mikan-lib-chips .tag-pill:not(.tag-pill--add):hover {
+    border-color: var(--accent);
+    color: var(--accent-soft);
+    background: rgba(var(--accent-rgb), 0.06);
   }
 </style>

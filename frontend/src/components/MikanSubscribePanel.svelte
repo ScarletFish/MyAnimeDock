@@ -317,7 +317,6 @@
       {/if}
     </div>
     <div class="mikan-panel-manual">
-      <label class="mikan-panel-section-label">{tr('mikan.manualMust')}</label>
       <input class="mikan-panel-manual-input" type="text" placeholder={tr('mikan.manualMustPlaceholder')} bind:value={manualMust} class:invalid={!manualMustValid} />
       {#if !manualMustValid}<span class="field-error">{tr('settings.mikanTagInvalidRegex')}</span>{/if}
     </div>
@@ -373,7 +372,6 @@
       {/if}
     </div>
     <div class="mikan-panel-manual">
-      <label class="mikan-panel-section-label">{tr('mikan.manualExclude')}</label>
       <input class="mikan-panel-manual-input" type="text" placeholder={tr('mikan.manualExcludePlaceholder')} bind:value={manualExclude} class:invalid={!manualExcludeValid} />
       {#if !manualExcludeValid}<span class="field-error">{tr('settings.mikanTagInvalidRegex')}</span>{/if}
     </div>

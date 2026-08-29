@@ -18,7 +18,7 @@
 
   let selectedLangs = $state(new Set(['simplified']));
   let excludedLangs = $state(new Set());
-  let selectedTags = $state(new Set(['halfEpisode', 'collection']));
+  let selectedTags = $state(new Set(['halfEpisode']));
   let subscribing = $state(false);
   let config = $state(null);
   let addDdOpen = $state(false);
@@ -30,9 +30,9 @@
   let manualExclude = $state('');
 
   const DEFAULT_LANG_OPTIONS = [
-    { key: 'simplified', label: '简', bit: 1, regex: '简' },
-    { key: 'traditional', label: '繁', bit: 2, regex: '繁' },
-    { key: 'japanese', label: '日', bit: 4, regex: '日' },
+    { key: 'simplified', label: '简', bit: 1, regex: '简|CHS|GB|简体|简中' },
+    { key: 'traditional', label: '繁', bit: 2, regex: '繁|CHT|BIG5|繁体|繁中' },
+    { key: 'japanese', label: '日', bit: 4, regex: '日|JPN' },
   ];
   let langOptions = $derived(config?.mikanLangOptions || DEFAULT_LANG_OPTIONS);
   const LANG_COMPOUNDS = [
@@ -183,7 +183,7 @@
       config = await api.get('/api/config');
       const langKeys = new Set((config?.mikanLangOptions || DEFAULT_LANG_OPTIONS).map((l) => l.key));
       const req = config?.mikanDefaultRequired || ['simplified'];
-      const excl = config?.mikanDefaultExcluded || ['halfEpisode', 'collection'];
+      const excl = config?.mikanDefaultExcluded || ['halfEpisode', 'raw', 'lowRes480p'];
       // 语言 key 归入语言集合；其余归入 Tag 集合。悬空 key（如手改配置删了被引用项）
       // 由渲染处 includeTags/excludeTags.find 守卫自然忽略，不显示也不影响正则。
       selectedTags = new Set([...req, ...excl].filter((k) => !langKeys.has(k)));

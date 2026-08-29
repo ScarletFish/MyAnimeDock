@@ -90,27 +90,33 @@ const DEFAULT_CONFIG: ConfigShape = {
   // 种子：沿用原 MikanSubscribePanel 写死的 INCLUDE_TAGS / EXCLUDE_TAGS
   mikanTagLibrary: {
     include: [
-      { key: '1080p', name: '1080p', regex: '1080p' },
-      { key: '720p', name: '720p', regex: '720p' },
-      { key: '4k', name: '4K', regex: '4K' },
-      { key: 'mkv', name: 'mkv', regex: 'mkv' },
-      { key: 'mp4', name: 'mp4', regex: 'mp4' },
+      { key: '1080p', name: '1080p', regex: '\\b1080p\\b|\\b1920x1080\\b' },
+      { key: '720p', name: '720p', regex: '\\b720p\\b|\\b1280x720\\b' },
+      { key: '2160p', name: '2160p (4K)', regex: '\\b2160p\\b|\\b3840x2160\\b|\\b4K\\b' },
+      { key: 'mkv', name: 'MKV', regex: 'MKV' },
+      { key: 'mp4', name: 'MP4', regex: 'MP4' },
+      { key: 'web', name: 'WEB', regex: 'WEB' },
+      { key: 'bdrip', name: 'BDRip', regex: 'BDRip' },
+      { key: 'cr', name: 'CR', regex: 'CR' },
+      { key: 'abema', name: 'ABEMA', regex: 'ABEMA' },
+      { key: 'baha', name: 'BAHA', regex: 'BAHA' },
       { key: 'internalSub', name: '内封字幕', regex: '内封' },
       { key: 'embeddedSub', name: '内嵌字幕', regex: '内嵌' },
     ],
     exclude: [
       { key: 'halfEpisode', name: '半集', regex: '\\.5' },
       { key: 'episodeRange', name: '多集合集', regex: '\\d+[~-]\\d+' },
-      { key: 'collection', name: '合集', regex: '合集' },
+      { key: 'raw', name: 'RAW(生肉)', regex: 'RAW' },
+      { key: 'lowRes480p', name: '480p', regex: '\\b480p\\b' },
     ],
   },
   mikanLangOptions: [
-    { key: 'simplified', label: '简', bit: 1, regex: '简' },
-    { key: 'traditional', label: '繁', bit: 2, regex: '繁' },
-    { key: 'japanese', label: '日', bit: 4, regex: '日' },
+    { key: 'simplified', label: '简', bit: 1, regex: '简|CHS|GB|简体|简中' },
+    { key: 'traditional', label: '繁', bit: 2, regex: '繁|CHT|BIG5|繁体|繁中' },
+    { key: 'japanese', label: '日', bit: 4, regex: '日|JPN' },
   ],
   mikanDefaultRequired: ['simplified'],
-  mikanDefaultExcluded: ['halfEpisode', 'collection'],
+  mikanDefaultExcluded: ['halfEpisode', 'raw', 'lowRes480p'],
 };
 
 function loadConfig(): ConfigShape {

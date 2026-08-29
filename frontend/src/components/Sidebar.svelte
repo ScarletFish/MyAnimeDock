@@ -8,6 +8,7 @@
   import { showView } from '../lib/router.js';
   import { openVisualDock } from './ThemeDock.svelte';
   import { settingsOpen } from '../views/Settings.svelte';
+  import BrandMark from './BrandMark.svelte';
 
   let tipEl = null;
   let tipTextEl = null;
@@ -64,10 +65,7 @@
 <aside class="sidebar">
   <div class="sidebar-brand" onclick={() => openVisualDock()} onmouseenter={(e) => scheduleShow(e.currentTarget)} onmouseleave={hideTip} data-tip="主题与视觉设置" data-i18n-attr="nav.themeVisual:data-tip" role="button" tabindex="0">
     <div class="sidebar-brand-icon theme-indicator">
-      <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="MyAnimeDock">
-        <rect x="0" y="0" width="16" height="16" rx="3" fill="var(--accent)" stroke="var(--border)" stroke-width="0.5"/>
-        <text x="8" y="13" font-family="Georgia, 'Times New Roman', serif" font-weight="700" font-size="12" fill="var(--bg-elevated)" text-anchor="middle">D</text>
-      </svg>
+      <BrandMark />
     </div>
   </div>
   <nav class="sidebar-nav">

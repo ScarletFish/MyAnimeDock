@@ -28,6 +28,7 @@
   import { portal } from '../lib/portal.js';
   import MikanTagEditorModal from '../components/MikanTagEditorModal.svelte';
   import { Select } from 'bits-ui';
+  import BrandMark from '../components/BrandMark.svelte';
   import { applyDetailTitleBg } from '../lib/theme.js';
   import { cardTitleLibrary, cardTitleMylist, finishConfirmMode, detailTitleBg } from '../lib/ui-state.js';
 
@@ -838,7 +839,7 @@
             data-tooltip={tr('nav.themeVisual')}
             aria-label={tr('nav.themeVisual')}
           >
-            <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="16" height="16" rx="3" fill="var(--accent)" stroke="var(--accent)" stroke-width="0.5"/><text x="8" y="13" font-family="Georgia,'Times New Roman',serif" font-weight="700" font-size="12" fill="var(--bg-elevated)" text-anchor="middle">D</text></svg>
+            <BrandMark />
             <span>{tr('settings.visual')}</span>
           </button>
         </div>

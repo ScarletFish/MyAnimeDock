@@ -36,8 +36,8 @@
   position: fixed; bottom: 0; left: 50%; transform: translateX(-50%) translateY(100%);
   z-index: 100;
   width: 1000px;
-  background: rgba(var(--bg-rgb), 0.96);
-  border: 1px solid rgba(var(--accent-rgb), 0.5); border-bottom: none;
+  background: var(--surface-float);
+  border: 1px solid rgba(var(--accent-rgb), var(--alpha-intense)); border-bottom: none;
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   padding: var(--space-4) var(--space-6);
   transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.4s ease, color 0.4s ease;
@@ -87,7 +87,7 @@ input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none; appearance: none;
   width: 18px; height: 18px; border-radius: 50%;
   background: var(--accent-gradient); cursor: pointer;
-  box-shadow: 0 0 16px rgba(var(--accent-rgb), 0.3);
+  box-shadow: 0 0 16px rgba(var(--accent-rgb), var(--alpha-strong));
   border: 2px solid var(--bg-elevated);
 }
 

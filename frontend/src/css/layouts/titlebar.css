@@ -44,9 +44,9 @@
   height: 1px;
   background: linear-gradient(90deg,
     transparent 0%,
-    rgba(var(--accent-rgb), 0.12) 30%,
-    rgba(var(--accent-rgb), 0.2) 50%,
-    rgba(var(--accent-rgb), 0.12) 70%,
+    rgba(var(--accent-rgb), var(--alpha-subtle)) 30%,
+    rgba(var(--accent-rgb), var(--alpha-emphasis)) 50%,
+    rgba(var(--accent-rgb), var(--alpha-subtle)) 70%,
     transparent 100%
   );
   opacity: 0.6;
@@ -148,7 +148,7 @@
   background: var(--overlay-glass-hover);
 }
 .titlebar__search-wrap:focus-within {
-  border-color: rgba(var(--accent-rgb), 0.4);
+  border-color: rgba(var(--accent-rgb), var(--alpha-strong));
 }
 
 .titlebar__search-icon {
@@ -227,7 +227,7 @@
 }
 .titlebar__search-item:hover,
 .titlebar__search-item.highlighted {
-  background: rgba(var(--accent-rgb), 0.07);
+  background: rgba(var(--accent-rgb), var(--alpha-faint));
   border-left-color: var(--accent);
 }
 
@@ -240,7 +240,7 @@
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-sm);
-  background: rgba(var(--accent-rgb), 0.08);
+  background: rgba(var(--accent-rgb), var(--alpha-faint));
   color: var(--fg-muted);
 }
 .titlebar__search-item-icon svg {
@@ -257,7 +257,7 @@
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-sm);
-  background: rgba(var(--accent-rgb), 0.08);
+  background: rgba(var(--accent-rgb), var(--alpha-faint));
   font-family: var(--font-body);
   font-size: var(--text-compact-md);
   font-weight: var(--fw-bold);

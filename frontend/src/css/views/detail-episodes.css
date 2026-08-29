@@ -56,10 +56,10 @@
     border-color 0.25s var(--ease-out);
 }
 .episode-card:hover {
-  border-color: rgba(var(--accent-rgb), 0.25);
+  border-color: rgba(var(--accent-rgb), var(--alpha-emphasis));
   box-shadow:
     var(--shadow-xl, 0 var(--space-3) 40px rgba(0, 0, 0, 0.5)),
-    0 0 60px rgba(var(--accent-rgb), 0.06);
+    0 0 60px rgba(var(--accent-rgb), var(--alpha-faint));
 }
 .episode-card:active {
   box-shadow: var(--shadow-sm);
@@ -164,7 +164,7 @@
   height: calc(65px * var(--scale));
   border-radius: 50%;
   background: var(--overlay-dark-soft);
-  border: 2px solid rgba(var(--accent-rgb), 0.25);
+  border: 2px solid rgba(var(--accent-rgb), var(--alpha-emphasis));
   color: var(--on-image);
   display: flex;
   align-items: center;
@@ -186,7 +186,7 @@
 .episode-card-play:hover {
   background: var(--accent);
   border-color: var(--accent);
-  box-shadow: 0 0 32px rgba(var(--accent-rgb), 0.55);
+  box-shadow: 0 0 32px rgba(var(--accent-rgb), var(--alpha-intense));
 }
 .episode-card-play:active {
   transform: translate(-50%, -50%) scale(0.92);

@@ -21,7 +21,7 @@ const args = process.argv.slice(2);
 const QUIET = args.includes('--quiet');
 const STRICT = args.includes('--strict');
 
-const SCAN_DIRS = ['src/css/views', 'src/css/layouts', 'src/css/components'];
+const SCAN_DIRS = ['src/css', 'src/css/views', 'src/css/layouts', 'src/css/components'];
 
 // ─── Helpers ───
 
@@ -110,8 +110,8 @@ const rules = [
   },
   {
     label: 'COLOR',
-    severity: 'warn',
-    match: line => /^\s*(color|background|background-color|border-color|outline-color)\s*:/.test(line),
+    severity: 'error',
+    match: line => /^\s*(background|[\w-]*color)\s*:/.test(line),
     check: line => {
       const val = valueOf(line);
       if (!val) return false;
@@ -153,7 +153,7 @@ const rules = [
   },
   {
     label: 'BOX-SHADOW',
-    severity: 'warn',
+    severity: 'error',
     match: line => /^\s*box-shadow\s*:/.test(line),
     check: line => {
       const val = valueOf(line);
@@ -167,7 +167,7 @@ const rules = [
   },
   {
     label: 'BORDER-SHORTHAND',
-    severity: 'warn',
+    severity: 'error',
     match: line => /^\s*border\s*:/.test(line) && !/border-radius|border-color|border-width|border-style/.test(line),
     check: line => {
       const val = valueOf(line);
@@ -177,6 +177,13 @@ const rules = [
       return hasRawColor(val);
     },
     msg: line => `  Use var(--border) or var(--border-color) for: ${clean(line).slice(0, 120)}`,
+  },
+  {
+    label: 'LITERAL-ALPHA',
+    severity: 'error',
+    match: line => /rgba?\s*\(/.test(line) && /var\(--[a-zA-Z0-9_-]+-rgb\)/.test(line) && !/box-shadow/.test(line),
+    check: line => /rgba?\s*\(\s*var\(--[a-zA-Z0-9_-]+-rgb\)\s*,\s*[\d.]+\s*\)/.test(line),
+    msg: line => `  Use a color token (e.g. --accent-soft) instead of literal alpha on var(): ${clean(line).slice(0, 120)}`,
   },
   {
     label: 'GHOST-TOKEN',
@@ -233,6 +240,7 @@ for (const dir of SCAN_DIRS) {
   const files = readdirSync(absDir).filter(f => f.endsWith('.css'));
 
   for (const file of files) {
+    if (file === 'tokens.css') continue;
     const filePath = resolve(absDir, file);
     const content = readFileSync(filePath, 'utf-8');
     // Split by any line ending (handles CRLF)

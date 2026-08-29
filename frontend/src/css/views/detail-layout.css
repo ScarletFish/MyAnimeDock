@@ -102,7 +102,7 @@
   background: var(--bg-card);
   box-shadow:
     0 8px 40px rgba(0, 0, 0, 0.5),
-    0 0 60px rgba(var(--accent-rgb), 0.06);
+    0 0 60px rgba(var(--accent-rgb), var(--alpha-faint));
   border: 1px solid var(--border);
   position: relative;
   transform-origin: center center;
@@ -113,7 +113,7 @@
   position: absolute;
   bottom: 0; left: 0; right: 0;
   height: 50%;
-  background: radial-gradient(ellipse 80% 100% at 50% 100%, rgba(var(--accent-rgb), 0.10) 0%, transparent 70%);
+  background: radial-gradient(ellipse 80% 100% at 50% 100%, rgba(var(--accent-rgb), var(--alpha-subtle)) 0%, transparent 70%);
   pointer-events: none;
   z-index: 1;
 }
@@ -123,7 +123,7 @@
   inset: 0;
   border-radius: var(--radius-lg);
   padding: var(--space-025);
-  background: linear-gradient(135deg, transparent 30%, rgba(var(--accent-rgb), 0.2) 100%);
+  background: linear-gradient(135deg, transparent 30%, rgba(var(--accent-rgb), var(--alpha-emphasis)) 100%);
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
@@ -216,7 +216,7 @@
   gap: var(--space-3);
   margin-bottom: var(--space-5);
   padding-bottom: var(--space-3);
-  border-bottom: 1px solid rgba(var(--accent-secondary-rgb), 0.15);
+  border-bottom: 1px solid rgba(var(--accent-secondary-rgb), var(--alpha-subtle));
 }
 .detail-episodes-header h3 {
   font-family: var(--font-body);

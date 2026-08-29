@@ -143,12 +143,12 @@
 }
 
 .download-item:hover {
-  border-color: rgba(var(--accent-rgb), 0.2);
+  border-color: rgba(var(--accent-rgb), var(--alpha-emphasis));
 }
 
 .download-item.expanded {
   border-color: var(--accent);
-  background: rgba(var(--accent-rgb), 0.08);
+  background: rgba(var(--accent-rgb), var(--alpha-faint));
 }
 
 .download-item-main {
@@ -238,17 +238,17 @@
 
 .qb-status--downloading {
   color: var(--accent);
-  background: rgba(var(--accent-rgb), 0.12);
+  background: rgba(var(--accent-rgb), var(--alpha-subtle));
 }
 
 .qb-status--uploading {
   color: var(--success);
-  background: rgba(var(--success-rgb), 0.12);
+  background: rgba(var(--success-rgb), var(--alpha-subtle));
 }
 
 .qb-status--completed {
   color: var(--status-completed);
-  background: rgba(var(--status-completed-rgb), 0.12);
+  background: rgba(var(--status-completed-rgb), var(--alpha-subtle));
 }
 
 .qb-status--waiting {
@@ -258,17 +258,17 @@
 
 .qb-status--paused {
   color: var(--warning);
-  background: rgba(var(--warning-rgb), 0.12);
+  background: rgba(var(--warning-rgb), var(--alpha-subtle));
 }
 
 .qb-status--error {
   color: var(--error);
-  background: rgba(var(--error-rgb), 0.12);
+  background: rgba(var(--error-rgb), var(--alpha-subtle));
 }
 
 .qb-status--checking {
   color: var(--info);
-  background: rgba(var(--accent-rgb), 0.08);
+  background: rgba(var(--accent-rgb), var(--alpha-faint));
 }
 
 .qb-status--unknown {
@@ -316,7 +316,7 @@
 .download-item-actions .btn-danger:hover {
   color: var(--error);
   border-color: var(--error);
-  background: rgba(var(--error-rgb), 0.08);
+  background: rgba(var(--error-rgb), var(--alpha-faint));
 }
 
 /* ─── Footer Stats (sticky bottom) ─── */
@@ -330,7 +330,7 @@
   gap: var(--space-6);
   padding: var(--space-3) var(--space-4);
   background: var(--bg-elevated);
-  border: 1px solid rgba(var(--accent-rgb), 0.15);
+  border: 1px solid rgba(var(--accent-rgb), var(--alpha-subtle));
   border-radius: var(--radius-md);
   margin-top: var(--space-2);
   z-index: 5;
@@ -346,9 +346,9 @@
   height: 1px;
   background: linear-gradient(90deg,
     transparent 0%,
-    rgba(var(--accent-rgb), 0.25) 30%,
-    rgba(var(--accent-rgb), 0.45) 50%,
-    rgba(var(--accent-rgb), 0.25) 70%,
+    rgba(var(--accent-rgb), var(--alpha-emphasis)) 30%,
+    rgba(var(--accent-rgb), var(--alpha-intense)) 50%,
+    rgba(var(--accent-rgb), var(--alpha-emphasis)) 70%,
     transparent 100%
   );
   pointer-events: none;

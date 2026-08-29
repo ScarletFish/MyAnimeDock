@@ -16,12 +16,27 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
 
   --accent: #e13a5a;
   --accent-soft: #ff6b8a;
-  --accent-glow: rgba(var(--accent-rgb), 0.3);
+  --accent-glow: rgba(var(--accent-rgb), var(--alpha-strong));
   --accent-gradient: linear-gradient(135deg, #e13a5a, #ff2d55);
   --accent-secondary: #e8505a;
 
   --accent-rgb: 225, 58, 90;
   --accent-secondary-rgb: 232, 80, 90;
+
+  /* Color-agnostic alpha scale — compose with any --*-rgb to re-theme */
+  --alpha-faint: 0.06;     /* ~0.03–0.08 */
+  --alpha-subtle: 0.12;    /* ~0.10–0.15 */
+  --alpha-emphasis: 0.22;  /* ~0.20–0.25 */
+  --alpha-strong: 0.40;    /* ~0.30–0.40 glows */
+  --alpha-intense: 0.50;   /* ~0.45–0.55 glows/shadows */
+
+  /* Accent semantic colors composed from the alpha scale */
+  --accent-faint: rgba(var(--accent-rgb), var(--alpha-faint));
+  --accent-subtle: rgba(var(--accent-rgb), var(--alpha-subtle));
+  --accent-emphasis: rgba(var(--accent-rgb), var(--alpha-emphasis));
+  --accent-strong: rgba(var(--accent-rgb), var(--alpha-strong));
+  --surface-float: rgba(var(--bg-rgb), 0.95);        /* floating surfaces: 0.94/0.96 → 0.95 */
+  --accent-secondary-subtle: rgba(var(--accent-secondary-rgb), var(--alpha-subtle));
 
   --success: #22c55e;
   --success-rgb: 34, 197, 94;
@@ -466,8 +481,8 @@ body::before {
   inset: 0;
   z-index: -2;
   background:
-    radial-gradient(ellipse 80% 60% at 0% 20%, rgba(var(--accent-rgb), 0.08) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 50% at 100% 80%, rgba(var(--accent-secondary-rgb), 0.04) 0%, transparent 50%),
+    radial-gradient(ellipse 80% 60% at 0% 20%, rgba(var(--accent-rgb), var(--alpha-faint)) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 100% 80%, rgba(var(--accent-secondary-rgb), var(--alpha-faint)) 0%, transparent 50%),
     var(--bg-deep);
 }
 

@@ -63,8 +63,8 @@ input[type="radio"] { accent-color: var(--accent); }
 }
 .search-input:focus {
   outline: none;
-  border-color: rgba(var(--accent-rgb), 0.4);
-  box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.08);
+  border-color: rgba(var(--accent-rgb), var(--alpha-strong));
+  box-shadow: 0 0 0 4px rgba(var(--accent-rgb), var(--alpha-faint));
 }
 .search-input::placeholder { color: var(--fg-muted); }
 
@@ -99,14 +99,14 @@ input[type="radio"] { accent-color: var(--accent); }
 .form-group select:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: rgba(var(--accent-rgb), 0.4);
-  box-shadow: inset 0 1px 0 rgba(var(--accent-rgb), 0.03), 0 0 0 3px rgba(var(--accent-rgb), 0.07);
+  border-color: rgba(var(--accent-rgb), var(--alpha-strong));
+  box-shadow: inset 0 1px 0 rgba(var(--accent-rgb), var(--alpha-faint)), 0 0 0 3px rgba(var(--accent-rgb), var(--alpha-faint));
   background: var(--bg-elevated);
 }
 .form-group input:hover,
 .form-group select:hover,
 .form-group textarea:hover {
-  border-color: rgba(var(--accent-rgb), 0.2);
+  border-color: rgba(var(--accent-rgb), var(--alpha-emphasis));
   background: var(--bg-elevated);
 }
 .form-group textarea { resize: vertical; min-height: 90px; }
@@ -125,7 +125,7 @@ input[type="radio"] { accent-color: var(--accent); }
 }
 .form-group input.invalid:focus,
 .form-group textarea.invalid:focus {
-  box-shadow: 0 0 0 1px var(--error), 0 0 0 3px rgba(var(--error-rgb), 0.15);
+  box-shadow: 0 0 0 1px var(--error), 0 0 0 3px rgba(var(--error-rgb), var(--alpha-subtle));
 }
 
 /* ─── Number Stepper ─── */
@@ -133,8 +133,8 @@ input[type="radio"] { accent-color: var(--accent); }
   display: inline-flex;
   align-items: center;
   gap: 0;
-  background: rgba(var(--accent-rgb), 0.06);
-  border: 1px solid rgba(var(--accent-rgb), 0.1);
+  background: rgba(var(--accent-rgb), var(--alpha-faint));
+  border: 1px solid rgba(var(--accent-rgb), var(--alpha-subtle));
   border-radius: var(--radius-sm);
   overflow: hidden;
   height: 40px;
@@ -149,8 +149,8 @@ input[type="radio"] { accent-color: var(--accent); }
   cursor: pointer; transition: all 0.15s var(--ease-out);
   padding: 0; line-height: 1;
 }
-.num-stepper-btn:hover { background: rgba(var(--accent-rgb), 0.1); color: var(--fg-primary); }
-.num-stepper-btn:active { background: rgba(var(--accent-rgb), 0.06); }
+.num-stepper-btn:hover { background: rgba(var(--accent-rgb), var(--alpha-subtle)); color: var(--fg-primary); }
+.num-stepper-btn:active { background: rgba(var(--accent-rgb), var(--alpha-faint)); }
 .num-stepper-val {
   flex: 1; text-align: center;
   font-size: var(--text-base);
@@ -164,8 +164,8 @@ input[type="radio"] { accent-color: var(--accent); }
   display: flex;
   align-items: center;
   gap: 0;
-  background: rgba(var(--accent-rgb), 0.06);
-  border: 1px solid rgba(var(--accent-rgb), 0.1);
+  background: rgba(var(--accent-rgb), var(--alpha-faint));
+  border: 1px solid rgba(var(--accent-rgb), var(--alpha-subtle));
   border-radius: var(--radius-sm);
   overflow: hidden;
   height: 40px;
@@ -182,7 +182,7 @@ input[type="radio"] { accent-color: var(--accent); }
 .date-seg--m { width: 2rem; }
 .date-seg--d { width: 2rem; }
 .date-seg::placeholder { color: var(--fg-muted); opacity: 0.5; }
-.date-seg:focus { background: rgba(var(--accent-rgb), 0.1); }
+.date-seg:focus { background: rgba(var(--accent-rgb), var(--alpha-subtle)); }
 .date-sep { color: var(--fg-muted); font-size: var(--text-base); font-weight: var(--fw-semibold); user-select: none; padding: 0 2px; }
 
 /* 日期校验失败：红框提示 */
@@ -190,13 +190,13 @@ input[type="radio"] { accent-color: var(--accent); }
   border-color: var(--error);
   box-shadow: 0 0 0 1px var(--error);
 }
-.date-segments.invalid .date-seg:focus { background: rgba(var(--error-rgb), 0.1); }
+.date-segments.invalid .date-seg:focus { background: rgba(var(--error-rgb), var(--alpha-subtle)); }
 
 /* ─── Notes Input ─── */
 .notes-input {
   width: 100%; height: 40px;
-  background: rgba(var(--accent-rgb), 0.06);
-  border: 1px solid rgba(var(--accent-rgb), 0.1);
+  background: rgba(var(--accent-rgb), var(--alpha-faint));
+  border: 1px solid rgba(var(--accent-rgb), var(--alpha-subtle));
   border-radius: var(--radius-sm);
   color: var(--fg-primary);
   font-size: var(--text-base); font-family: var(--font-body);
@@ -205,7 +205,7 @@ input[type="radio"] { accent-color: var(--accent); }
   box-sizing: border-box;
 }
 .notes-input::placeholder { color: var(--fg-secondary); opacity: 0.6; }
-.notes-input:focus { background: rgba(var(--accent-rgb), 0.1); border-color: rgba(var(--accent-rgb), 0.2); }
+.notes-input:focus { background: rgba(var(--accent-rgb), var(--alpha-subtle)); border-color: rgba(var(--accent-rgb), var(--alpha-emphasis)); }
 
 /* ─── DB Management ─── */
 .db-info-grid {
@@ -266,7 +266,7 @@ input[type="radio"] { accent-color: var(--accent); }
 }
 .input-with-btn .btn-sm:hover {
   background: var(--bg-surface);
-  border-color: rgba(var(--accent-rgb), 0.35);
+  border-color: rgba(var(--accent-rgb), var(--alpha-strong));
   color: var(--fg-primary);
 }
 
@@ -316,7 +316,7 @@ input[type="radio"] { accent-color: var(--accent); }
 
   &:has(input:checked) {
     color: var(--fg-primary);
-    background: rgba(var(--accent-rgb), 0.1);
+    background: rgba(var(--accent-rgb), var(--alpha-subtle));
     font-weight: var(--fw-semibold);
   }
 

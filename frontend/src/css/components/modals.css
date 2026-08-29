@@ -216,7 +216,7 @@ body:has(#modal-root .modal-overlay.show) > :not(#modal-root):not(#globalTooltip
 .status-modal-footer .btn { padding: var(--space-2) var(--space-8); font-size: var(--text-base); }
 
 /* ─── Settings Modal — Tabbed Layout ─── */
-.modal.modal--settings { padding: 0; max-width: 640px; }
+.modal.modal--settings { padding: 0; max-width: 640px; border: none; }
 .settings-header { padding: var(--space-6) var(--space-6) 0; }
 
 .settings-header-top {
@@ -312,13 +312,13 @@ body:has(#modal-root .modal-overlay.show) > :not(#modal-root):not(#globalTooltip
   color: var(--fg-muted); cursor: pointer;
   transition: all 0.2s var(--ease-out);
 }
-.status-modal-close:hover { color: var(--fg-primary); background: rgba(var(--accent-rgb), 0.08); }
+.status-modal-close:hover { color: var(--fg-primary); background: rgba(var(--accent-rgb), var(--alpha-faint)); }
 .status-modal-close svg { width: 16px; height: 16px; }
 
 .status-modal-inner {
   position: relative; z-index: 1;
   background: transparent;
-  border: 1px solid rgba(var(--accent-rgb), 0.06);
+  border: 1px solid rgba(var(--accent-rgb), var(--alpha-faint));
   padding: var(--space-6) var(--space-6) var(--space-5);
   border-radius: var(--radius-lg);
   color: var(--fg-secondary);
@@ -368,6 +368,6 @@ body:has(#modal-root .modal-overlay.show) > :not(#modal-root):not(#globalTooltip
 .status-modal .date-segments:focus-within,
 .status-modal .notes-input:focus {
   background: var(--bg-elevated);
-  border-color: rgba(var(--accent-rgb), 0.4);
-  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.07);
+  border-color: rgba(var(--accent-rgb), var(--alpha-strong));
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), var(--alpha-faint));
 }

@@ -104,7 +104,7 @@
 
 .filter-btn--active {
   color: var(--accent);
-  background: rgba(var(--accent-rgb), 0.08);
+  background: rgba(var(--accent-rgb), var(--alpha-faint));
 }
 
 /* ─── Discovery Actions Bar ─── */
@@ -118,7 +118,7 @@
   margin-bottom: var(--space-6);
   padding: var(--space-3) var(--space-4);
   background: var(--bg-elevated);
-  border: 1px solid rgba(var(--accent-rgb), 0.15);
+  border: 1px solid rgba(var(--accent-rgb), var(--alpha-subtle));
   border-radius: var(--radius-md);
   position: sticky;
   top: 0;
@@ -135,16 +135,16 @@
   height: 1px;
   background: linear-gradient(90deg,
     transparent 0%,
-    rgba(var(--accent-rgb), 0.25) 30%,
-    rgba(var(--accent-rgb), 0.45) 50%,
-    rgba(var(--accent-rgb), 0.25) 70%,
+    rgba(var(--accent-rgb), var(--alpha-emphasis)) 30%,
+    rgba(var(--accent-rgb), var(--alpha-intense)) 50%,
+    rgba(var(--accent-rgb), var(--alpha-emphasis)) 70%,
     transparent 100%
   );
   pointer-events: none;
 }
 
 .discovery-actions--stuck {
-  box-shadow: var(--shadow-md), 0 2px 12px rgba(var(--accent-rgb), 0.08);
+  box-shadow: var(--shadow-md), 0 2px 12px rgba(var(--accent-rgb), var(--alpha-faint));
 }
 
 @utility discovery-actions-left {
@@ -174,7 +174,7 @@
 }
 
 .discovery-card:hover {
-  border-color: rgba(var(--accent-rgb), 0.25);
+  border-color: rgba(var(--accent-rgb), var(--alpha-emphasis));
 }
 
 .discovery-card--imported {
@@ -249,10 +249,10 @@
   width: 20px;
   height: 20px;
   border-radius: var(--radius-sm);
-  border: 2px solid rgba(var(--accent-rgb), 0.55);
+  border: 2px solid rgba(var(--accent-rgb), var(--alpha-intense));
   flex-shrink: 0;
   transition: all var(--duration-fast) var(--ease-spring);
-  background: rgba(var(--accent-rgb), 0.15);
+  background: rgba(var(--accent-rgb), var(--alpha-subtle));
 }
 
 .discovery-cb-visual svg {
@@ -263,7 +263,7 @@
 
 .discovery-card-row:hover .discovery-cb-visual {
   border-color: var(--accent);
-  background: rgba(var(--accent-rgb), 0.22);
+  background: rgba(var(--accent-rgb), var(--alpha-emphasis));
 }
 
 .discovery-cb:checked ~ .discovery-cb-visual {
@@ -356,20 +356,20 @@
 
 .discovery-card-unlink:hover {
   color: var(--error);
-  border-color: rgba(var(--error-rgb), 0.3);
-  background: rgba(var(--error-rgb), 0.06);
+  border-color: rgba(var(--error-rgb), var(--alpha-strong));
+  background: rgba(var(--error-rgb), var(--alpha-faint));
 }
 
 .discovery-card-exclude:hover {
   color: var(--warning);
-  border-color: rgba(var(--warning-rgb), 0.3);
-  background: rgba(var(--warning-rgb), 0.06);
+  border-color: rgba(var(--warning-rgb), var(--alpha-strong));
+  background: rgba(var(--warning-rgb), var(--alpha-faint));
 }
 
 .discovery-card-unexclude:hover {
   color: var(--success);
-  border-color: rgba(var(--success-rgb), 0.3);
-  background: rgba(var(--success-rgb), 0.06);
+  border-color: rgba(var(--success-rgb), var(--alpha-strong));
+  background: rgba(var(--success-rgb), var(--alpha-faint));
 }
 
 @utility discovery-card-meta {
@@ -395,17 +395,17 @@
 }
 
 .discovery-badge--new {
-  background: rgba(var(--accent-rgb), 0.12);
+  background: rgba(var(--accent-rgb), var(--alpha-subtle));
   color: var(--accent);
 }
 
 .discovery-badge--imported {
-  background: rgba(var(--accent-rgb), 0.06);
+  background: rgba(var(--accent-rgb), var(--alpha-faint));
   color: var(--fg-muted);
 }
 
 .discovery-badge--excluded {
-  background: rgba(var(--warning-rgb), 0.15);
+  background: rgba(var(--warning-rgb), var(--alpha-subtle));
   color: var(--warning);
 }
 
@@ -467,7 +467,7 @@
 }
 
 .discovery-card-file:hover {
-  background: rgba(var(--accent-rgb), 0.04);
+  background: rgba(var(--accent-rgb), var(--alpha-faint));
 }
 
 @utility discovery-sibling-group {
@@ -531,7 +531,7 @@
 }
 
 .tag--meta {
-  background: rgba(var(--accent-secondary-rgb), 0.15);
+  background: rgba(var(--accent-secondary-rgb), var(--alpha-subtle));
   color: var(--accent-secondary);
 }
 

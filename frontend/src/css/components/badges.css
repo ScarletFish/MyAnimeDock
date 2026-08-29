@@ -10,7 +10,7 @@
   font-weight: var(--fw-semibold);
   background: var(--accent);
   color: white;
-  box-shadow: 0 0 var(--space-3) rgba(var(--accent-rgb), 0.2);
+  box-shadow: 0 0 var(--space-3) rgba(var(--accent-rgb), var(--alpha-emphasis));
 }
 
 @utility season-badge {
@@ -21,9 +21,9 @@
   border-radius: var(--radius-pill);
   font-size: var(--text-xs);
   font-weight: var(--fw-semibold);
-  background: rgba(var(--accent-rgb), 0.15);
+  background: rgba(var(--accent-rgb), var(--alpha-subtle));
   color: var(--accent-soft);
-  border: 1px solid rgba(var(--accent-rgb), 0.15);
+  border: 1px solid rgba(var(--accent-rgb), var(--alpha-subtle));
 }
 
 /* ─── User rating badge (card overlay, anime-card hover interaction) ─── */

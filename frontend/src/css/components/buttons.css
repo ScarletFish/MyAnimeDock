@@ -16,9 +16,9 @@
   }
 
   &:hover {
-    border-color: rgba(var(--accent-rgb), 0.15);
+    border-color: rgba(var(--accent-rgb), var(--alpha-subtle));
     color: var(--fg-primary);
-    background: rgba(var(--accent-rgb), 0.03);
+    background: rgba(var(--accent-rgb), var(--alpha-faint));
   }
 
   &:active {
@@ -53,17 +53,17 @@
 
   &:hover {
     border-color: var(--accent);
-    background: rgba(var(--accent-rgb), 0.10);
+    background: rgba(var(--accent-rgb), var(--alpha-subtle));
     color: var(--accent);
   }
 }
 
 @utility btn-danger {
-  border-color: rgba(var(--accent-rgb), 0.3);
+  border-color: rgba(var(--accent-rgb), var(--alpha-strong));
   color: var(--error);
 
   &:hover {
-    background: rgba(var(--accent-rgb), 0.10);
+    background: rgba(var(--accent-rgb), var(--alpha-subtle));
     border-color: var(--error);
     color: var(--error);
   }

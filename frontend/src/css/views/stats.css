@@ -22,7 +22,7 @@
 }
 
 .stats-card:hover {
-  border-color: rgba(var(--accent-rgb), 0.15);
+  border-color: rgba(var(--accent-rgb), var(--alpha-subtle));
 }
 
 .stats-card-header {

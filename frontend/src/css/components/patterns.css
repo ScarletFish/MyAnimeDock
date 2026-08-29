@@ -104,21 +104,21 @@
   border-radius: var(--radius-pill);
   font-size: calc(0.86rem * var(--scale));
   font-weight: var(--fw-medium);
-  background: rgba(var(--accent-rgb), 0.1);
+  background: rgba(var(--accent-rgb), var(--alpha-subtle));
   color: var(--accent-soft);
   white-space: nowrap;
 }
 .tag-pill--warn {
-  background: rgba(var(--warning-rgb), 0.12);
+  background: rgba(var(--warning-rgb), var(--alpha-subtle));
   color: var(--warning);
 }
 .tag-pill--more {
-  background: rgba(var(--accent-rgb), 0.06);
+  background: rgba(var(--accent-rgb), var(--alpha-faint));
   color: var(--fg-muted);
   cursor: pointer;
 }
 .tag-pill--more:hover {
-  background: rgba(var(--accent-rgb), 0.1);
+  background: rgba(var(--accent-rgb), var(--alpha-subtle));
   color: var(--fg-secondary);
 }
 
@@ -188,7 +188,7 @@
 
   &:hover {
     color: var(--fg-primary);
-    background: rgba(var(--accent-rgb), 0.03);
+    background: rgba(var(--accent-rgb), var(--alpha-faint));
   }
 
   &.active {
@@ -291,6 +291,6 @@
 
 /* ─── Tag Pill — secondary accent ─── */
 .tag-pill--secondary {
-  background: rgba(var(--accent-secondary-rgb), 0.1);
+  background: rgba(var(--accent-secondary-rgb), var(--alpha-subtle));
   color: var(--accent-secondary);
 }

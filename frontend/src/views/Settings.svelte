@@ -1001,7 +1001,7 @@
               <div class="form-group">
                 <label>{tr('settings.qbPassword')}</label>
                 <div class="password-input-wrapper">
-                  <input type={showPassword ? 'text' : 'password'} id="qbPassword" bind:value={qbPassword}>
+                  <input type={showPassword ? 'text' : 'password'} id="qbPassword" bind:value={qbPassword} placeholder={qbPasswordSet ? tr('settings.qbPasswordSetHint') : ''}>
                   <button type="button" class="password-toggle-btn" onclick={() => showPassword = !showPassword}>
                     {#if showPassword}
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1016,9 +1016,6 @@
                     {/if}
                   </button>
                 </div>
-                {#if qbPasswordSet}
-                  <p class="form-hint">{tr('settings.qbPasswordSetHint')}</p>
-                {/if}
               </div>
               <div class="form-group">
                 <label>{tr('settings.qbTest')}</label>

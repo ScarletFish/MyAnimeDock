@@ -112,6 +112,7 @@ export const I18N_ZH = {
   'settings.mikanLangHeading': '语言',
   'settings.mikanDefaultRequired': '默认必需',
   'settings.mikanDefaultExcluded': '默认排除',
+  'settings.mikanTagRegexHint': '筛选词按正则解析：()[]{} .*+?|^$\\ 等为特殊字符。',
   'settings.mikanTagName': '名称',
   'settings.mikanTagRegex': '正则',
   'settings.mikanTagAdd': '添加字段',

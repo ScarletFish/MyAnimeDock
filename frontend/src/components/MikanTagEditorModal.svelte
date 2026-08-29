@@ -59,6 +59,7 @@
         {#if regexInvalid}
           <span class="field-error">{tr('settings.mikanTagInvalidRegex')}</span>
         {/if}
+        <p class="form-hint" style="margin-top: var(--space-2)">{tr('settings.mikanTagRegexHint')}</p>
       </div>
 
       <div class="mikan-tag-editor-actions">

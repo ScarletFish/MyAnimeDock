@@ -75,7 +75,7 @@
       if (chars.length === 1) {
         parts.push(chars[0]);
       } else {
-        parts.push(chars.map(c => `(?=.*${c})`).join(''));
+        parts.push(chars.map(c => `(?=.*(?:${c}))`).join(''));
       }
     }
     for (const t of includeTags) {
@@ -84,7 +84,7 @@
     if (manualMust.trim()) parts.push(manualMust.trim());
     if (parts.length === 0) return '';
     if (parts.length === 1) return parts[0];
-    return parts.map(p => `(?=.*${p})`).join('');
+    return parts.map(p => `(?=.*(?:${p}))`).join('');
   });
 
   let mustNotContain = $derived.by(() => {

@@ -217,10 +217,8 @@
 
   /* ─── Toast ─── */
   .toast {
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    border-color: rgba(0, 0, 0, 0.06);
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(0, 0, 0, 0.06);
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   }
 
@@ -239,9 +237,9 @@
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
   }
   .detail-info-line {
-    background: rgba(255, 255, 255, 0.45);
-    backdrop-filter: blur(8px);
-    border-color: rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(8px);
+  border-color: rgba(0, 0, 0, 0.08);
   }
   .detail-info-line .info-tag {
     background: rgba(var(--accent-secondary-rgb), 0.08);
@@ -367,7 +365,7 @@
   .mm-panel { box-shadow: -2px 0 12px rgba(0, 0, 0, 0.06); }
   .mm-panel-header-area { background: var(--bg-card); }
   .mm-panel-cover-sm { background: var(--bg-card); }
-  .mm-panel-cover-status { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+  .mm-panel-cover-status {}
   .mm-panel-summary { background: var(--bg-card); }
   .mm-fix-search input { background: var(--bg-card); }
   .mm-list-search { background: var(--bg-elevated); }

@@ -52,8 +52,6 @@
   gap: var(--space-250);
   padding: var(--space-3) var(--space-350) var(--space-3) 0;
   background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);

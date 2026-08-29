@@ -36,9 +36,8 @@
   position: fixed; bottom: 0; left: 50%; transform: translateX(-50%) translateY(100%);
   z-index: 100;
   width: 1000px;
-  background: rgba(var(--bg-rgb), 0.88);
-  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--border); border-bottom: none;
+  background: rgba(var(--bg-rgb), 0.96);
+  border: 1px solid rgba(var(--accent-rgb), 0.5); border-bottom: none;
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   padding: var(--space-4) var(--space-6);
   transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.4s ease, color 0.4s ease;

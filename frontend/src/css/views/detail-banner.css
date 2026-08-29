@@ -204,7 +204,6 @@
 }
 .relation-badge--rating {
   background: var(--overlay-dark);
-  backdrop-filter: blur(4px);
   font-weight: var(--fw-bold);
 }
 .relation-card-title {

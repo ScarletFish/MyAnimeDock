@@ -6,8 +6,6 @@
 .sidebar {
   width: 3.75rem;
   background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
@@ -153,8 +151,6 @@
 }
 .sidebar-tooltip-text {
   background: var(--glass-bg);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: var(--space-1) var(--space-3);
@@ -174,8 +170,6 @@
   background: var(--glass-bg);
   border-left: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
 }
 
 /* ─── Global Tooltip (styled replacement for native title) ─── */

@@ -428,7 +428,6 @@
   display: flex; align-items: center; gap: 4px;
   padding: var(--space-050) var(--space-2); border-radius: var(--radius-sm);
   font-size: var(--text-2xs); font-weight: var(--fw-semibold);
-  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
   line-height: 1;
 }
 .mm-panel-cover-status--matched { @apply mm-status-matched; background-color: rgba(34, 197, 94, 0.2); color: #22c55e; }
@@ -614,7 +613,6 @@
   display: none;
   align-items: center;
   justify-content: center;
-  backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
   background: var(--overlay-dark-soft);
 }
 .modal-overlay--metamatch.show { display: flex; }

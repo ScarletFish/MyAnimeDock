@@ -62,8 +62,6 @@
   background: var(--overlay-dark-soft);
   color: var(--fg-muted);
   cursor: pointer;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
   padding: 0;
   line-height: 0;
   opacity: 0;

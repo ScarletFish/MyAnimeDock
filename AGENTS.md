@@ -48,7 +48,7 @@ cd server && npm test      # 测试（先自动跑 tsc）
 - **缩略图**: 依赖 ffmpeg PATH，首次延迟
 - **封面路径**: `localCover` 绝对路径；跨 DATA_DIR 迁移由 `server.ts` 的 `migrateLegacyDataPaths()` 启动钩子幂等重写（旧 `server/` 前缀 → 新 `data/`）
 - **CSS *禁止* `zoom`**: 用 `--scale` calc（详见 `docs/dev/frontend.md`）
-- **backdrop-filter 在 release 失效**: WebView2 透明窗口下 backdrop-filter 无像素可采样（dev 正常、release 失效）；弹窗模糊用 portal 到 `#modal-root` + `body:has(...) > :not(#modal-root) { filter: blur() }`（详见 `docs/dev/frontend.md`）
+- **禁止 `backdrop-filter`（扁平风、不依赖模糊）**: WebView2 透明窗口下 `backdrop-filter` 行为因元素而异（背后是图片可能生效、背后是文字/统一底/模态遮罩失效），且 dev/release 不一致。本项目全局禁止，唯一例外是已 release 验证的浅色 `.detail-info-line` 评分栏。模糊观感用 `--glass-bg`/`--overlay-*` 半透明实底；弹窗模糊用 portal 到 `#modal-root` + `body:has(...) > :not(#modal-root) { filter: blur() }`（详见 `docs/dev/frontend.md`）
 - **"先找后写"三步协议**: 新增 CSS 前先查已有组件和 token，禁止写死值。完成后跑 `npm run check:frontend` 验证（详见 `docs/dev/frontend.md` 必读章节）
 - **同类修第二处先提取**: 修 bug/写功能时，如果同样的模式出现第二处，**先提取公共抽象再继续**，不要逐个复制粘贴
 - **不为尚未发生的情况预先打补丁**: 不要为"可能需要的兼容性/边界情况"提前写代码或写冗长文档；等出现真实 issue 再修。先解决当下问题，避免过度设计（YAGNI）

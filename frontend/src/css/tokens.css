@@ -38,7 +38,6 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
   --border-hover: rgba(225, 58, 90, 0.16);
 
   --glass-bg: rgba(18, 18, 18, 0.82);
-  --glass-blur: blur(24px);
 
   --on-image: #ffffff;                          /* 图上/暗底前景文字 */
   --on-accent: #ffffff;                         /* accent 底上文字 */

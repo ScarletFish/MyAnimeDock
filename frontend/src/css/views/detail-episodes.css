@@ -115,8 +115,6 @@
   line-height: 1.4;
   pointer-events: none;
   user-select: none;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
 }
 
 /* ─── Watched tag (hover reveal; mirrors num badge metrics) ─── */
@@ -134,8 +132,6 @@
   line-height: 1.4;
   pointer-events: none;
   user-select: none;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
   opacity: 0;
   transition: opacity 0.3s var(--ease-out);
 }
@@ -168,8 +164,6 @@
   height: calc(65px * var(--scale));
   border-radius: 50%;
   background: var(--overlay-dark-soft);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   border: 2px solid rgba(var(--accent-rgb), 0.25);
   color: var(--on-image);
   display: flex;

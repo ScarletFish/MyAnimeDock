@@ -102,7 +102,7 @@ npm run check:css        # 仅扫描 views/ + layouts/ 的 token 合规性（che
 
 ### 弹窗模糊（release 兼容，必读）
 
-**坑**：Tauri release（WebView2 透明窗口）下 `backdrop-filter` 失效——它采样元素背后像素，透明窗口背后无可采样内容。dev（浏览器）正常、release 失效，导致弹窗背后无模糊、内容透出。
+**坑**：Tauri release（WebView2 透明窗口）下 `backdrop-filter` 行为因元素而异——背后是**图片**时可能生效，背后是**文字 / 统一底 / 模态遮罩**（portal 到 body 级）时失效，且 dev/release 表现不一致。本项目**扁平风、不依赖模糊，`backdrop-filter` 全局禁止**，唯一例外是已 release 验证的浅色 `.detail-info-line` 评分栏（勿动）。弹窗模糊改用下方 `body:has() > :not(#modal-root) { filter: blur() }` 方案。
 
 **已实现方案（勿改回）**：
 
@@ -114,7 +114,7 @@ npm run check:css        # 仅扫描 views/ + layouts/ 的 token 合规性（che
 
 - 新增弹窗组件必须加 `use:portal`，否则 release 下无模糊。
 - `filter: blur()` 模糊元素自身渲染内容，release 下可靠；`backdrop-filter` 依赖窗口背后像素，release 下不可靠。
-- 常驻元素（标题栏/侧边栏/toast）的 backdrop-filter 与弹窗无关，保留不动。
+  - **`backdrop-filter` 全局禁止**（本项目扁平风、不依赖模糊）：除已 release 验证的浅色 `.detail-info-line` 评分栏外，任何组件都不得新增 `backdrop-filter`。模糊观感一律用 `--glass-bg` / `--overlay-*` 等半透明实底实现；弹窗模糊用 `body:has() > :not(#modal-root) { filter: blur() }`。
 
 ---
 
@@ -426,7 +426,6 @@ Svelte 响应式自动处理视图更新：数据变化通过 store / `$state` �
 
 /* 玻璃效果 */
 --glass-bg: rgba(18, 18, 18, 0.82);       /* 毛玻璃背景色 */
---glass-blur: blur(24px);                 /* 毛玻璃模糊量 */
 
 /* 阴影 */
 --shadow-sm: 0 2px 8px rgba(0,0,0,0.5);   /* 小卡片阴影 */

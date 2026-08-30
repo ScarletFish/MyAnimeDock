@@ -158,10 +158,12 @@
 
   // ─── 选中标签：填入 `#中文名` 继续筛选（搜索双源匹配中英文）───
   function selectTag(tag) {
+    clearTimeout(searchTimer);
     query = '#' + tag.name;
     filtered = filterByQuery(query);
     open = true;
     highlighted = -1;
+    suppressNextDocClick = true;
     inputEl.focus();
   }
 

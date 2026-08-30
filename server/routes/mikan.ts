@@ -209,9 +209,17 @@ async function handleMikanSubscribe(req: any, res: any, state: ServerState) {
     const fullRssUrl = `https://mikanime.tv${rssUrl}`;
     const savePath = `${config.mediaDir}/${name}`.replace(/\\/g, '/');
     const ruleName = `mikan_${animeId}`;
+    // feed path 必须唯一（qB 同 path 只能有一个 feed），用 anime 名+subgroupId 区分
+    const feedPath = `Mikan/${name}_sg${subgroupId}`;
 
-    // 1. 添加 RSS feed 到 qBittorrent（path 为 RSS 树文件夹）
-    await qbAddRssFeed(config.qbPort, config.qbUsername, config.qbPassword, fullRssUrl, 'Mikan');
+    // 1. 添加 RSS feed 到 qBittorrent（path 为 RSS 树文件夹，必须唯一）
+    // 409 容忍：可能上次取消订阅时 feed 移除失败，或并发重复订阅
+    try {
+      await qbAddRssFeed(config.qbPort, config.qbUsername, config.qbPassword, fullRssUrl, feedPath);
+    } catch (feedErr: any) {
+      if (!feedErr?.message?.includes('409')) throw feedErr;
+      logger.debug(`[MIKAN] RSS feed already exists, continuing: ${fullRssUrl}`);
+    }
 
     // 2. 设置自动下载规则
     const ruleDef: Record<string, any> = {

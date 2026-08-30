@@ -209,7 +209,9 @@ export async function qbGetRssItems(port: number, username: string, password: st
 export async function qbRemoveRssFeedByUrl(port: number, username: string, password: string, feedUrl: string): Promise<void> {
   const items = await qbGetRssItems(port, username, password);
   for (const [path, info] of Object.entries(items)) {
-    if (typeof info === 'string' && info === feedUrl) {
+    // qB 返回 { uid, url } 对象或旧版字符串
+    const url = (info && typeof info === 'object' && 'url' in info) ? (info as any).url : (typeof info === 'string' ? info : null);
+    if (url === feedUrl) {
       await qbRemoveRssItem(port, username, password, path);
       return;
     }

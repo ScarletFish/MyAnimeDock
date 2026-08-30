@@ -4,15 +4,15 @@
 
   /* ─── Atmosphere & Layout ─── */
   body::before { background: var(--bg-deep); }
-  ::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.15); }
-  ::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.28); }
+  ::-webkit-scrollbar-thumb { background: rgba(0,0,0, var(--alpha-subtle)); }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0, var(--alpha-emphasis)); }
   @supports not selector(::-webkit-scrollbar) {
-    & { scrollbar-color: rgba(0, 0, 0, 0.15) transparent; }
+    & { scrollbar-color: rgba(0,0,0, var(--alpha-subtle)) transparent; }
   }
 
   /* ─── Nav ─── */
   .nav-btn:hover {
-    background: rgba(0, 0, 0, 0.05);
+    background: rgba(0,0,0, var(--alpha-faint));
     color: var(--accent);
   }
   .nav-btn.active { background: var(--accent-faint); }
@@ -27,22 +27,22 @@
   /* Explicit surface bg so all btn variants look uniform across containers;
      --bg-surface (#fff) matches .discovery-actions & .input-with-btn .btn-sm */
   .btn {
-    border-color: rgba(0, 0, 0, 0.16);
+    border-color: rgba(0,0,0, var(--alpha-subtle));
     background: var(--bg-surface);
   }
   .btn:hover:not(.btn-primary):not(.btn-outline):not(.btn-ghost):not(.btn-danger):not(.btn-accent) {
-    border-color: rgba(0, 0, 0, 0.28);
+    border-color: rgba(0,0,0, var(--alpha-emphasis));
   }
-  .btn-primary { background: var(--accent-gradient); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06); }
-  .btn-primary:hover { box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08); }
+  .btn-primary { background: var(--accent-gradient); box-shadow: 0 1px 3px rgba(0,0,0, var(--alpha-faint)); }
+  .btn-primary:hover { box-shadow: 0 2px 6px rgba(0,0,0, var(--alpha-faint)); }
   .btn-danger { border-color: rgba(var(--error-rgb), var(--alpha-emphasis)); }
   .btn-danger:hover { background: rgba(var(--error-rgb), var(--alpha-faint)); }
   .btn-ghost {
-    border-color: rgba(0, 0, 0, 0.16);
+    border-color: rgba(0,0,0, var(--alpha-subtle));
     color: var(--fg-secondary);
   }
   .btn-ghost:hover {
-    border-color: rgba(0, 0, 0, 0.28);
+    border-color: rgba(0,0,0, var(--alpha-emphasis));
     color: var(--fg-primary);
   }
   /* Outline buttons: accent border appears on hover only, matching the prior
@@ -57,7 +57,7 @@
   /* ─── Search ─── */
   .search-input {
     background: var(--bg-card);
-    border-color: rgba(0, 0, 0, 0.10);
+    border-color: rgba(0,0,0, var(--alpha-subtle));
   }
   .search-input:focus {
     border-color: var(--accent-strong);
@@ -69,7 +69,7 @@
   .form-group select,
   .form-group textarea {
     background: var(--bg-card);
-    border-color: rgba(0, 0, 0, 0.10);
+    border-color: rgba(0,0,0, var(--alpha-subtle));
   }
   .form-group input:focus,
   .form-group select:focus,
@@ -82,30 +82,30 @@
   .form-group textarea:hover {
     border-color: var(--accent-emphasis);
     background: var(--bg-elevated);
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 1px 4px rgba(0,0,0, var(--alpha-faint));
   }
 
   /* ─── Checkbox / Toggle ─── */
   .checkbox-visual {
     background: var(--bg-card);
-    border-color: rgba(0, 0, 0, 0.15);
+    border-color: rgba(0,0,0, var(--alpha-subtle));
   }
   .toggle-slider {
     background: var(--bg-card);
-    border-color: rgba(0, 0, 0, 0.15);
+    border-color: rgba(0,0,0, var(--alpha-subtle));
   }
-  .toggle-slider::before { background: rgba(0, 0, 0, 0.4); }
+  .toggle-slider::before { background: rgba(0,0,0, var(--alpha-strong)); }
 
   /* ─── Range ─── */
-  input[type="range"] { background: rgba(0, 0, 0, 0.10); }
+  input[type="range"] { background: rgba(0,0,0, var(--alpha-subtle)); }
 
   /* ─── Anime Card ─── */
   .anime-card {
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 1px 4px rgba(0,0,0, var(--alpha-faint));
     border-color: var(--border);
   }
   .anime-card:hover {
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 16px rgba(0,0,0, var(--alpha-subtle));
     border-color: var(--accent);
   }
 
@@ -113,18 +113,18 @@
   /* ─── Dashboard Cards (hover shadows) ─── */
   .dashboard-card:hover {
     border-color: var(--accent-subtle);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 2px 8px rgba(0,0,0, var(--alpha-faint));
   }
   .dashboard-card--hero:hover {
     border-color: var(--accent-subtle);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 4px 12px rgba(0,0,0, var(--alpha-faint));
   }
   .dashboard-continue-card {
     box-shadow: none;
   }
   .dashboard-continue-card:hover {
     border-color: var(--accent-subtle);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 2px 8px rgba(0,0,0, var(--alpha-faint));
   }
   /* 继续播放 label 压在暗色遮罩上，浅色主题的 --accent-soft 是深色变体 → 暗上叠暗；
      用 color-mix 把主题 accent 提亮，保留色相且自动适配各浅色主题（暗色模式不动） */
@@ -134,7 +134,7 @@
 
   /* ─── Detail View ─── */
   .detail-cover-wrap {
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 4px 16px rgba(0,0,0, var(--alpha-faint));
   }
   .detail-cover-wrap::before {
     background: transparent !important;
@@ -147,45 +147,45 @@
   /* ─── Context Menu ─── */
   .context-menu {
     box-shadow:
-      0 4px 16px rgba(0, 0, 0, 0.08);
+      0 4px 16px rgba(0,0,0, var(--alpha-faint));
   }
 
   /* ─── Episodes (light mode overrides for episode-card) ─── */
   .episode-card {
-    border-color: rgba(0, 0, 0, 0.08);
+    border-color: rgba(0,0,0, var(--alpha-faint));
   }
   .episode-card:hover {
     border-color: var(--accent-subtle);
     box-shadow:
-      0 8px 24px rgba(0, 0, 0, 0.1),
+      0 8px 24px rgba(0,0,0, var(--alpha-subtle)),
       0 0 40px var(--accent-faint);
   }
   .episode-card-play:hover {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 2px 8px rgba(0,0,0, var(--alpha-faint));
   }
   .episode-card-num,
   .episode-card-duration,
   .episode-card-watched {
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(0,0,0, var(--alpha-intense));
   }
 
   /* ─── Modal ─── */
-  .modal-overlay { background: rgba(0, 0, 0, 0.45); }
+  .modal-overlay { background: var(--scrim); }
   .modal {
     background: var(--bg-elevated);
-    border-color: rgba(0, 0, 0, 0.08);
-    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.12);
+    border-color: rgba(0,0,0, var(--alpha-faint));
+    box-shadow: 0 16px 48px rgba(0,0,0, var(--alpha-subtle));
   }
 .modal--settings {
   background: var(--bg-elevated);
-  box-shadow: 0 8px 48px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 48px rgba(0,0,0, var(--alpha-subtle));
 }
 
   /* ─── Toast ─── */
   .toast {
-  background: rgba(255, 255, 255, 0.95);
-  border-color: rgba(0, 0, 0, 0.06);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  background: var(--surface-float);
+  border-color: rgba(0,0,0, var(--alpha-faint));
+    box-shadow: 0 4px 16px rgba(0,0,0, var(--alpha-faint));
   }
 
   /* ─── Search Results ─── */
@@ -193,17 +193,17 @@
 
   /* ─── Detail View ─── */
   .detail-nav-arrow {
-    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.15));
+    filter: drop-shadow(0 2px 8px rgba(0,0,0, var(--alpha-subtle)));
     stroke: var(--fg-secondary);
   }
 
   .detail-cover-wrap {
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 4px 16px rgba(0,0,0, var(--alpha-faint));
   }
   .detail-info-line {
   background: rgba(255, 255, 255, 0.45);
   backdrop-filter: blur(8px);
-  border-color: rgba(0, 0, 0, 0.08);
+  border-color: rgba(0,0,0, var(--alpha-faint));
   }
 
   .detail-episodes-header { border-color: var(--accent-secondary-subtle); }
@@ -221,7 +221,7 @@
   &[data-detail-title-bg="on"] .detail-alias {
     width: fit-content;
     padding: 0 10px;
-    background: rgba(255,255,255,0.35);
+    background: rgba(255,255,255, var(--alpha-strong));
     border-radius: 4px;
   }
 
@@ -242,13 +242,13 @@
       transparent 100%
     );
   }
-  .discovery-badge--imported { background: rgba(0, 0, 0, 0.06); }
+  .discovery-badge--imported { background: rgba(0,0,0, var(--alpha-faint)); }
   .discovery-sibling-group::before { opacity: 0.5; }
   .discovery-card:hover { border-color: var(--accent-subtle); }
-  .discovery-card-toggle:hover { background: rgba(0, 0, 0, 0.03); }
+  .discovery-card-toggle:hover { background: rgba(0,0,0, var(--alpha-faint)); }
 
-  .discovery-card-file:hover { background: rgba(0, 0, 0, 0.04); }
-  .discovery-card-action { border-color: rgba(0, 0, 0, 0.10); }
+  .discovery-card-file:hover { background: rgba(0,0,0, var(--alpha-faint)); }
+  .discovery-card-action { border-color: rgba(0,0,0, var(--alpha-subtle)); }
   .discovery-card-unlink:hover {
     color: var(--error);
     border-color: rgba(var(--error-rgb), var(--alpha-emphasis));
@@ -266,32 +266,32 @@
   }
 
   /* ─── Filters ─── */
-  .filter-group { border-color: rgba(0, 0, 0, 0.10); }
+  .filter-group { border-color: rgba(0,0,0, var(--alpha-subtle)); }
   .filter-btn {
     color: var(--fg-secondary);
   }
   .filter-btn:hover {
-    background: rgba(0, 0, 0, 0.05);
+    background: rgba(0,0,0, var(--alpha-faint));
     color: var(--fg-primary);
   }
 
   /* ─── Context Menu ─── */
   .context-menu {
     background: #ffffff;
-    border-color: rgba(0, 0, 0, 0.06);
+    border-color: rgba(0,0,0, var(--alpha-faint));
     box-shadow:
-      0 2px 4px rgba(0, 0, 0, 0.04),
-      0 8px 24px rgba(0, 0, 0, 0.08),
-      0 16px 48px rgba(0, 0, 0, 0.06);
+      0 2px 4px rgba(0,0,0, var(--alpha-faint)),
+      0 8px 24px rgba(0,0,0, var(--alpha-faint)),
+      0 16px 48px rgba(0,0,0, var(--alpha-faint));
   }
-  .context-menu-item:hover { background: rgba(0, 0, 0, 0.05); }
+  .context-menu-item:hover { background: rgba(0,0,0, var(--alpha-faint)); }
 
   .context-menu-danger:hover { background: rgba(var(--error-rgb), var(--alpha-faint)); }
 
   /* ─── Theme Dock ─── */
   .theme-dock {
     background: var(--surface-float);
-    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 -4px 24px rgba(0,0,0, var(--alpha-faint));
   }
 
   /* ─── Metamatch (mm-*) ─── */
@@ -311,7 +311,7 @@
     box-shadow: inset 3px 0 0 var(--accent);
   }
 
-  .mm-panel { box-shadow: -2px 0 12px rgba(0, 0, 0, 0.06); }
+  .mm-panel { box-shadow: -2px 0 12px rgba(0,0,0, var(--alpha-faint)); }
 
   .mm-filter-dot--active { background: var(--accent-subtle); }
   .mm-progress-fill {
@@ -321,15 +321,15 @@
 
   /* ─── Status Modal Light ─── */
   .status-modal {
-    border-color: rgba(0, 0, 0, 0.08);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+    border-color: rgba(0,0,0, var(--alpha-faint));
+    box-shadow: 0 8px 32px rgba(0,0,0, var(--alpha-faint));
   }
   .status-modal-inner {
-    border-color: rgba(0, 0, 0, 0.08);
+    border-color: rgba(0,0,0, var(--alpha-faint));
   }
   .status-modal-close:hover {
     color: var(--fg-primary);
-    background: rgba(0, 0, 0, 0.04);
+    background: rgba(0,0,0, var(--alpha-faint));
   }
   .field-label {
     color: rgba(0,0,0,0.75);
@@ -338,17 +338,17 @@
   .num-stepper,
   .date-segments,
   .notes-input {
-    border-color: rgba(0, 0, 0, 0.1);
+    border-color: rgba(0,0,0, var(--alpha-subtle));
   }
   .status-dd-trigger:hover,
   .num-stepper-btn:hover {
-    background: rgba(0, 0, 0, 0.04);
-    border-color: rgba(0, 0, 0, 0.18);
+    background: rgba(0,0,0, var(--alpha-faint));
+    border-color: rgba(0,0,0, var(--alpha-emphasis));
   }
 
   /* ─── Status Dropdown Menu Light ─── */
   .status-dd-menu {
-    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.12);
+    box-shadow: 0 16px 48px rgba(0,0,0, var(--alpha-subtle));
   }
 
   /* ─── Kill Glows in Light Mode ─── */
@@ -356,7 +356,7 @@
     box-shadow: none;
   }
   input[type="range"]::-webkit-slider-thumb {
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 1px 3px rgba(0,0,0, var(--alpha-faint));
   }
   .mm-bento-glow {
     background: transparent !important;
@@ -370,22 +370,22 @@
 
   /* ─── Mikan 订阅页面 ─── */
   .mikan-resource-item {
-    border-bottom-color: rgba(0, 0, 0, 0.08);
+    border-bottom-color: rgba(0,0,0, var(--alpha-faint));
   }
   .mikan-resource-item:nth-child(even) {
-    background: rgba(0, 0, 0, 0.07);
+    background: rgba(0,0,0, var(--alpha-faint));
   }
   .mikan-subgroup-item:hover {
-    background: rgba(0, 0, 0, 0.04);
+    background: rgba(0,0,0, var(--alpha-faint));
   }
   .mikan-subgroup-item.selected {
     background: var(--accent-faint);
   }
   .mikan-detail-panel {
-    border: 1px solid rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(0,0,0, var(--alpha-faint));
   }
   .mikan-split-left {
-    border-right-color: rgba(0, 0, 0, 0.08);
+    border-right-color: rgba(0,0,0, var(--alpha-faint));
   }
 
   /* ─── Reduced Motion ─── */

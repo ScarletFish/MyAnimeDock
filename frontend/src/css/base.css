@@ -7,7 +7,7 @@ html {
 /* Firefox: standard properties */
 @supports not selector(::-webkit-scrollbar) {
   html {
-    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+    scrollbar-color: rgba(255,255,255, var(--alpha-emphasis)) transparent;
     scrollbar-width: thin;
   }
 }
@@ -24,11 +24,11 @@ html {
   width: 0;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255,255,255, var(--alpha-emphasis));
   border-radius: var(--radius-pill);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.35);
+  background: rgba(255,255,255, var(--alpha-strong));
 }
 
 body {

@@ -111,7 +111,7 @@ const rules = [
   {
     label: 'COLOR',
     severity: 'error',
-    match: line => /^\s*(background|[\w-]*color)\s*:/.test(line),
+    match: line => /(?:^|[\s;{])(?:background|[\w-]*color)\s*:/.test(line),
     check: line => {
       const val = valueOf(line);
       if (!val) return false;
@@ -154,7 +154,7 @@ const rules = [
   {
     label: 'BOX-SHADOW',
     severity: 'error',
-    match: line => /^\s*box-shadow\s*:/.test(line),
+    match: line => /(?:^|[\s;{])box-shadow\s*:/.test(line),
     check: line => {
       const val = valueOf(line);
       if (!val) return false;
@@ -168,7 +168,7 @@ const rules = [
   {
     label: 'BORDER-SHORTHAND',
     severity: 'error',
-    match: line => /^\s*border\s*:/.test(line) && !/border-radius|border-color|border-width|border-style/.test(line),
+    match: line => /(?:^|[\s;{])border(?:-(?:top|right|bottom|left))?\s*:/i.test(line),
     check: line => {
       const val = valueOf(line);
       if (!val) return false;

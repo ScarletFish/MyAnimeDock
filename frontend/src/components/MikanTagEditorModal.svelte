@@ -13,8 +13,7 @@
 
   let name = $state('');
   let regex = $state('');
-  let pos = $state(null); // { x, y } | null = adjacent to settings
-  let drag = $state(null); // { startX, startY, origX, origY } | null
+  let pos = $state(null);
 
   // 打开时定位到设置弹窗右侧
   $effect(() => {
@@ -35,29 +34,6 @@
         pos = { x: window.innerWidth / 2, y: window.innerHeight / 3 };
       }
     }
-  });
-
-  function onHandleDown(e) {
-    e.preventDefault();
-    const rect = e.target.closest('.mikan-tag-editor').getBoundingClientRect();
-    drag = { startX: e.clientX, startY: e.clientY, origX: rect.left, origY: rect.top };
-  }
-
-  $effect(() => {
-    if (!drag) return;
-    function onMove(e) {
-      if (!drag) return;
-      const dx = e.clientX - drag.startX;
-      const dy = e.clientY - drag.startY;
-      pos = { x: drag.origX + dx, y: drag.origY + dy };
-    }
-    function onUp() { drag = null; }
-    document.addEventListener('pointermove', onMove);
-    document.addEventListener('pointerup', onUp);
-    return () => {
-      document.removeEventListener('pointermove', onMove);
-      document.removeEventListener('pointerup', onUp);
-    };
   });
 
   // 点击 tag editor 外部关闭
@@ -81,16 +57,12 @@
 </script>
 
 {#if open}
-  <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
     class="modal mikan-tag-editor"
     use:portal
     style={pos ? `left:${pos.x}px;top:${pos.y}px` : ''}
   >
-    <div class="mikan-tag-editor-drag-handle" onpointerdown={onHandleDown}>
-      <h3 class="mikan-tag-editor-title">{title}</h3>
-      <svg class="mikan-tag-editor-drag-icon" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="1.5"/><circle cx="15" cy="5" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="19" r="1.5"/><circle cx="15" cy="19" r="1.5"/></svg>
-    </div>
+    <h3 class="mikan-tag-editor-title">{title}</h3>
 
     <div class="form-group">
       <label for="mikanTagEditorName">{tr('settings.mikanTagName')}</label>
@@ -147,24 +119,8 @@
     transform: none;
     transition: none;
   }
-  .mikan-tag-editor-drag-handle {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    cursor: grab;
-    margin: calc(-1 * var(--space-6)) calc(-1 * var(--space-6)) var(--space-4);
-    padding: var(--space-2) var(--space-6);
-    border-bottom: 1px solid var(--border);
-  }
-  .mikan-tag-editor-drag-handle:active {
-    cursor: grabbing;
-  }
-  .mikan-tag-editor-drag-icon {
-    color: var(--fg-muted);
-    flex-shrink: 0;
-  }
   .mikan-tag-editor-title {
-    margin: 0;
+    margin: 0 0 var(--space-4);
     font-size: var(--text-lg);
     font-weight: var(--fw-bold);
     color: var(--fg-primary);

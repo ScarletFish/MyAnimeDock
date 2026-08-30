@@ -139,7 +139,7 @@
   left: calc(3.75rem + 8px);
   top: 0;
   pointer-events: none;
-  z-index: 270;
+  z-index: var(--z-modal);
   opacity: 0;
   transform: translateX(-4px) translateY(-50%);
   transition: opacity 0.2s ease, transform 0.2s ease;
@@ -175,7 +175,7 @@
 /* ─── Global Tooltip (styled replacement for native title) ─── */
 #globalTooltip {
   position: fixed;
-  z-index: 999;
+  z-index: var(--z-fixed);
   background: var(--bg-surface);
   color: var(--fg-primary);
   padding: var(--space-1) var(--space-3);

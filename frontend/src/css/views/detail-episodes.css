@@ -92,7 +92,7 @@
   position: absolute;
   inset: 0;
   background: linear-gradient(to top, var(--overlay-dark) 0%, var(--border) 40%, transparent 100%);
-  z-index: 1;
+  z-index: var(--z-base);
   transition: opacity 0.3s var(--ease-out);
 }
 
@@ -111,7 +111,7 @@
   color: var(--on-image);
   background: var(--overlay-dark);
   border-radius: var(--radius-sm);
-  z-index: 2;
+  z-index: var(--z-base);
   line-height: 1.4;
   pointer-events: none;
   user-select: none;
@@ -128,7 +128,7 @@
   color: var(--on-image);
   background: var(--overlay-dark);
   border-radius: var(--radius-sm);
-  z-index: 2;
+  z-index: var(--z-base);
   line-height: 1.4;
   pointer-events: none;
   user-select: none;
@@ -144,7 +144,7 @@
   height: 4px;
   background: var(--overlay-light-soft);
   overflow: hidden;
-  z-index: 3;
+  z-index: var(--z-base);
   opacity: 0;
   transition: opacity 0.3s var(--ease-out);
 }
@@ -170,7 +170,7 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  z-index: 4;
+  z-index: var(--z-base);
   opacity: 0;
   transition:
     opacity 0.3s var(--ease-out),

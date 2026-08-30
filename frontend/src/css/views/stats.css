@@ -129,7 +129,7 @@
 .stats-tooltip {
   display: none;
   position: fixed;
-  z-index: 9999;
+  z-index: var(--z-overlay);
   pointer-events: none;
   background: var(--bg-elevated, #2a2a3e);
   color: var(--fg-primary, #ede8e2);

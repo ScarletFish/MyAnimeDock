@@ -29,12 +29,12 @@
 
 /* ─── Theme Dock (Quick Visual Settings) ─── */
 .theme-dock-overlay {
-  position: fixed; inset: 0; z-index: 99; background: transparent; pointer-events: none;
+  position: fixed; inset: 0; z-index: var(--z-sidebar); background: transparent; pointer-events: none;
 }
 .theme-dock {
   --scale: 1;
   position: fixed; bottom: 0; left: 50%; transform: translateX(-50%) translateY(100%);
-  z-index: 100;
+  z-index: var(--z-sidebar);
   width: 1000px;
   background: var(--surface-float);
   border: 1px solid rgba(var(--accent-rgb), var(--alpha-intense)); border-bottom: none;

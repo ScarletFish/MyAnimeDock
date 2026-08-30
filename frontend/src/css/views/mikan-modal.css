@@ -41,7 +41,7 @@
 }
 
 .mikan-season-dd {
-  z-index: 300;
+  z-index: var(--z-toast);
   min-width: 200px;
   max-height: 360px;
   overflow: hidden;
@@ -513,7 +513,7 @@
   position: absolute;
   top: 0.75rem;
   right: 0.75rem;
-  z-index: 20;
+  z-index: var(--z-float);
   width: 28px;
   height: 28px;
   display: flex;
@@ -537,7 +537,7 @@
 
 .mikan-subscribe-inner {
   position: relative;
-  z-index: 1;
+  z-index: var(--z-base);
   padding: var(--space-6) var(--space-6) var(--space-5);
 }
 
@@ -678,7 +678,7 @@
 }
 
 .mikan-add-dd {
-  z-index: 260;
+  z-index: var(--z-modal);
   min-width: 160px;
   background: var(--bg-elevated);
   border: 1px solid var(--border);

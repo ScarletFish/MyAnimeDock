@@ -333,7 +333,7 @@
   border: 1px solid rgba(var(--accent-rgb), var(--alpha-subtle));
   border-radius: var(--radius-md);
   margin-top: var(--space-2);
-  z-index: 5;
+  z-index: var(--z-base);
   box-shadow: var(--shadow-sm);
 }
 

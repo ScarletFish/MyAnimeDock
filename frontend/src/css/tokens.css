@@ -101,6 +101,18 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
   --radius-lg: calc(1rem * var(--scale));
   --radius-pill: 999px;
 
+  /* ─── Z-Index ─── */
+  --z-base: 0;          /* 组件内部堆叠 */
+  --z-sticky: 10;       /* 粘性元素 */
+  --z-float: 50;        /* 组件浮层 */
+  --z-sidebar: 100;     /* 侧栏/主题控制 */
+  --z-dropdown: 200;    /* 下拉菜单 */
+  --z-modal: 250;       /* 模态弹窗 */
+  --z-toast: 300;       /* Toast 通知 */
+  --z-fixed: 400;       /* 固定定位元素 */
+  --z-overlay: 5000;    /* 全屏覆盖 */
+  --z-emergency: 9999;  /* 紧急覆盖 */
+
   --font-display: 'DM Sans', 'Noto Sans SC', 'Noto Sans JP', sans-serif;
   --font-body: 'DM Sans', 'Noto Sans SC', 'Noto Sans JP', sans-serif;
   --font-accent: 'DM Sans', 'Noto Sans SC', 'Noto Sans JP', sans-serif;

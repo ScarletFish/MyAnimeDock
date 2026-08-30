@@ -3,7 +3,7 @@
 .kbd-help-overlay {
   position: fixed;
   inset: 0;
-  z-index: 99998;
+  z-index: var(--z-emergency);
   display: flex;
   align-items: center;
   justify-content: center;

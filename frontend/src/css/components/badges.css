@@ -31,7 +31,7 @@
   position: absolute;
   bottom: 0.5rem;
   right: 0.5rem;
-  z-index: 3;
+  z-index: var(--z-base);
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
@@ -52,7 +52,7 @@
   position: absolute;
   bottom: 0.5rem;
   right: 0.5rem;
-  z-index: 2;
+  z-index: var(--z-base);
   width: 28px;
   height: 28px;
   display: flex;

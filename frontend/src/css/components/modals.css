@@ -9,7 +9,7 @@ body:has(#modal-root .modal-overlay.show) > :not(#modal-root):not(#globalTooltip
   position: fixed;
   inset: 0;
   background: var(--overlay-dark);
-  z-index: 250;
+  z-index: var(--z-modal);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -25,7 +25,7 @@ body:has(#modal-root .modal-overlay.show) > :not(#modal-root):not(#globalTooltip
 
 /* 确认弹窗：层级高于普通模态框（250），避免被设置等模态框遮挡 */
 @utility modal-overlay--confirm {
-  z-index: 260;
+  z-index: var(--z-modal);
 }
 
 @utility modal {
@@ -305,7 +305,7 @@ body:has(#modal-root .modal-overlay.show) > :not(#modal-root):not(#globalTooltip
   position: relative;
 }
 .status-modal-close {
-  position: absolute; top: 0.75rem; right: 0.75rem; z-index: 20;
+  position: absolute; top: 0.75rem; right: 0.75rem; z-index: var(--z-float);
   width: 28px; height: 28px;
   display: flex; align-items: center; justify-content: center;
   background: none; border: none; border-radius: var(--radius-sm);
@@ -316,7 +316,7 @@ body:has(#modal-root .modal-overlay.show) > :not(#modal-root):not(#globalTooltip
 .status-modal-close svg { width: 16px; height: 16px; }
 
 .status-modal-inner {
-  position: relative; z-index: 1;
+  position: relative; z-index: var(--z-base);
   background: transparent;
   border: 1px solid rgba(var(--accent-rgb), var(--alpha-faint));
   padding: var(--space-6) var(--space-6) var(--space-5);

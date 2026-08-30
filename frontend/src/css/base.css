@@ -192,7 +192,7 @@ html {
   border-radius: var(--radius-md);
   padding: var(--space-1);
   box-shadow: var(--shadow-md);
-  z-index: 10;
+  z-index: var(--z-sticky);
   display: none;
 }
 .library-sort-menu.open {

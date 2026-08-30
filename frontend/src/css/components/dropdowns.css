@@ -58,7 +58,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-md);
-  z-index: 200;
+  z-index: var(--z-dropdown);
   opacity: 0;
   visibility: hidden;
   transform: translateY(-4px);
@@ -99,7 +99,7 @@
 
 @utility context-menu {
   position: fixed;
-  z-index: 400;
+  z-index: var(--z-fixed);
   min-width: 160px;
   display: flex;
   flex-direction: column;
@@ -186,7 +186,7 @@
 }
 
 /* ─── Custom Status Dropdown (mylist status modal) ─── */
-.status-dd { position: relative; z-index: 10; }
+.status-dd { position: relative; z-index: var(--z-sticky); }
 .status-dd-trigger {
   width: 100%; display: flex; align-items: center; gap: 0.5rem;
   padding: 0 12px; height: 40px;
@@ -212,7 +212,7 @@
   background: var(--bg-elevated); border: 1px solid var(--border);
   border-radius: var(--radius-md); padding: 4px;
   box-shadow: var(--shadow-lg);
-  max-height: 280px; overflow-y: auto; z-index: 300;
+  max-height: 280px; overflow-y: auto; z-index: var(--z-toast);
   scrollbar-width: none; -ms-overflow-style: none;
   transform-origin: top center;
   animation: status-dd-in 0.18s var(--ease-out);
@@ -304,7 +304,7 @@
   pointer-events: none;
   transition: opacity 0.2s var(--ease-out), transform 0.2s var(--ease-out);
   box-shadow: var(--shadow-md);
-  z-index: 100;
+  z-index: var(--z-sidebar);
 }
 .player-dd.is-open .player-dd-menu {
   opacity: 1;

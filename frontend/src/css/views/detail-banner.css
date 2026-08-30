@@ -69,7 +69,7 @@
   position: absolute;
   top: 0; left: 0; right: 0;
   height: calc(375px * var(--scale));
-  z-index: 0;
+  z-index: var(--z-base);
   pointer-events: none;
   overflow: hidden;
   mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
@@ -97,7 +97,7 @@
 .detail-banner-left,
 .detail-banner-right {
   position: relative;
-  z-index: 1;
+  z-index: var(--z-base);
 }
 
 .detail-banner-left {

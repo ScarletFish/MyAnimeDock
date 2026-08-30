@@ -180,10 +180,6 @@
   display: flex;
   flex-direction: column;
   background: var(--bg-surface);
-  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-}
-.modal-m-body:has(.mm-panel.open) .mm-left {
-  border-radius: 0 0 0 var(--radius-lg);
 }
 .mm-list-header {
   display: flex;
@@ -386,16 +382,16 @@
 /* ─── Panel ─── */
 .mm-panel {
   width: 380px; flex-shrink: 0;
-  margin-right: -380px;
-  transition: margin-right 0.35s var(--ease-out);
+  position: absolute; top: 0; right: 0; bottom: 0;
+  transform: translateX(100%);
+  transition: transform 0.35s var(--ease-out);
   overflow: hidden;
   display: flex; flex-direction: column;
   background: var(--bg-surface);
   border-left: var(--space-025) solid var(--border);
   box-shadow: -4px 0 20px var(--overlay-dark);
-  border-radius: 0 0 var(--radius-lg) 0;
 }
-.mm-panel.open { margin-right: 0; }
+.mm-panel.open { transform: translateX(0); }
 .mm-panel-content {
   display: flex; flex-direction: column;
   overflow: hidden; flex: 1;
@@ -639,7 +635,6 @@
   display: flex; align-items: center; justify-content: space-between;
   padding: var(--space-3) var(--space-5); border-bottom: var(--space-025) solid var(--border);
   background: var(--bg-surface);
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
 .modal-m-topbar h2 {
   font-family: var(--font-body);
@@ -674,7 +669,7 @@
 .modal-m-filterbar .spacer { flex: 1; }
 .modal-m-filterbar .btn { padding: 7px 14px; font-size: var(--text-base); }
 .modal-m-body {
-  flex: 1; display: flex; min-height: 0; overflow: hidden;
+  flex: 1; display: flex; min-height: 0; overflow: visible; position: relative;
 }
 .modal-m-body .mm-left {
   flex: 1; min-width: 0;

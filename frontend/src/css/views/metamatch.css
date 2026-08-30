@@ -1,6 +1,6 @@
 /* ─── MetaMatch View ─── */
-@utility mm-status-matched { background: rgba(34, 197, 94, 0.12); color: var(--success); }
-@utility mm-status-failed { background: rgba(239, 68, 68, 0.12); color: var(--error); }
+@utility mm-status-matched { background: rgba(var(--success-rgb), var(--alpha-subtle)); color: var(--success); }
+@utility mm-status-failed { background: rgba(var(--error-rgb), var(--alpha-subtle)); color: var(--error); }
 @utility mm-status-matching { background: rgba(var(--accent-rgb), var(--alpha-subtle)); color: var(--accent); }
 @utility mm-status-pending { background: rgba(107, 96, 86, 0.15); color: var(--fg-muted); }
 @utility mm-panel-section-box {
@@ -79,11 +79,11 @@
 }
 .mm-bento-tile--total { grid-column: 1; }
 .mm-bento-tile--total .mm-bento-num { color: var(--fg-primary); }
-.mm-bento-tile--matched { grid-column: 2; border-color: rgba(34, 197, 94, 0.2); }
+.mm-bento-tile--matched { grid-column: 2; border-color: rgba(var(--success-rgb), var(--alpha-emphasis)); }
 .mm-bento-tile--matched .mm-bento-num { color: var(--success); }
 .mm-bento-glow {
   position: absolute; inset: 0;
-  background: radial-gradient(ellipse at 50% 120%, rgba(34, 197, 94, 0.08) 0%, transparent 70%);
+  background: radial-gradient(ellipse at 50% 120%, rgba(var(--success-rgb), var(--alpha-faint)) 0%, transparent 70%);
   pointer-events: none;
 }
 .mm-bento-tile--pending .mm-bento-num { color: var(--fg-muted); }
@@ -104,7 +104,7 @@
   0%, 100% { opacity: 0; transform: scale(1); }
   50% { opacity: 0.4; transform: scale(1.01); }
 }
-.mm-bento-tile--failed { border-color: rgba(239, 68, 68, 0.15); }
+.mm-bento-tile--failed { border-color: rgba(var(--error-rgb), var(--alpha-subtle)); }
 .mm-bento-tile--failed .mm-bento-num { color: var(--error); }
 
 /* ─── Progress Bar ─── */
@@ -371,12 +371,12 @@
 .mm-row-season {
   display: inline-flex; align-items: center;
   font-size: var(--text-2xs); padding: var(--space-025) 6px;
-  background: rgba(34, 197, 94, 0.1); color: var(--success);
+  background: rgba(var(--success-rgb), var(--alpha-subtle)); color: var(--success);
   border-radius: var(--radius-sm); font-weight: var(--fw-semibold);
   margin-left: var(--space-2); white-space: nowrap;
 }
 .mm-row-season--mismatch {
-  background: rgba(245, 158, 11, 0.12); color: var(--warning);
+  background: rgba(var(--warning-rgb), var(--alpha-subtle)); color: var(--warning);
 }
 
 /* ─── Panel ─── */
@@ -430,8 +430,8 @@
   font-size: var(--text-2xs); font-weight: var(--fw-semibold);
   line-height: 1;
 }
-.mm-panel-cover-status--matched { @apply mm-status-matched; background-color: rgba(34, 197, 94, 0.2); color: #22c55e; }
-.mm-panel-cover-status--failed { @apply mm-status-failed; background-color: rgba(239, 68, 68, 0.2); color: #ef4444; }
+.mm-panel-cover-status--matched { @apply mm-status-matched; background-color: rgba(var(--success-rgb), var(--alpha-emphasis)); color: var(--success); }
+.mm-panel-cover-status--failed { @apply mm-status-failed; background-color: rgba(var(--error-rgb), var(--alpha-emphasis)); color: var(--error); }
 .mm-panel-cover-status--matching { @apply mm-status-matching; background-color: rgba(var(--accent-rgb), var(--alpha-emphasis)); color: var(--accent); }
 .mm-panel-cover-status--pending { background: rgba(107, 96, 86, 0.2); color: var(--fg-muted); }
 .mm-panel-cover-status .mm-panel-status-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
@@ -442,7 +442,7 @@
 }
 .mm-panel-key-badge {
   font-size: var(--text-xs); font-weight: var(--fw-semibold);
-  padding: var(--space-050) var(--space-2); background: rgba(34, 197, 94, 0.1);
+  padding: var(--space-050) var(--space-2); background: rgba(var(--success-rgb), var(--alpha-subtle));
   color: var(--success); border-radius: var(--radius-sm);
 }
 .mm-panel-key-text { font-size: var(--text-sm); color: var(--fg-muted); }

@@ -16,7 +16,7 @@
     color: var(--accent);
   }
   .nav-btn.active { background: var(--accent-faint); }
-  .nav-btn-danger:hover { background: rgba(239, 68, 68, 0.05) !important; }
+  .nav-btn-danger:hover { background: rgba(var(--error-rgb), var(--alpha-faint)) !important; }
   .nav-btn::after {
     background: var(--bg-elevated);
     border-color: var(--border);
@@ -35,8 +35,8 @@
   }
   .btn-primary { background: var(--accent-gradient); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06); }
   .btn-primary:hover { box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08); }
-  .btn-danger { border-color: rgba(239, 68, 68, 0.20); }
-  .btn-danger:hover { background: rgba(239, 68, 68, 0.06); }
+  .btn-danger { border-color: rgba(var(--error-rgb), var(--alpha-emphasis)); }
+  .btn-danger:hover { background: rgba(var(--error-rgb), var(--alpha-faint)); }
   .btn-ghost {
     border-color: rgba(0, 0, 0, 0.16);
     color: var(--fg-secondary);
@@ -251,18 +251,18 @@
   .discovery-card-action { border-color: rgba(0, 0, 0, 0.10); }
   .discovery-card-unlink:hover {
     color: var(--error);
-    border-color: rgba(239, 68, 68, 0.25);
-    background: rgba(239, 68, 68, 0.05);
+    border-color: rgba(var(--error-rgb), var(--alpha-emphasis));
+    background: rgba(var(--error-rgb), var(--alpha-faint));
   }
   .discovery-card-exclude:hover {
     color: var(--warning);
-    border-color: rgba(245, 158, 11, 0.25);
-    background: rgba(245, 158, 11, 0.05);
+    border-color: rgba(var(--warning-rgb), var(--alpha-emphasis));
+    background: rgba(var(--warning-rgb), var(--alpha-faint));
   }
   .discovery-card-unexclude:hover {
     color: var(--success);
-    border-color: rgba(34, 197, 94, 0.25);
-    background: rgba(34, 197, 94, 0.05);
+    border-color: rgba(var(--success-rgb), var(--alpha-emphasis));
+    background: rgba(var(--success-rgb), var(--alpha-faint));
   }
 
   /* ─── Filters ─── */
@@ -286,7 +286,7 @@
   }
   .context-menu-item:hover { background: rgba(0, 0, 0, 0.05); }
 
-  .context-menu-danger:hover { background: rgba(239, 68, 68, 0.08); }
+  .context-menu-danger:hover { background: rgba(var(--error-rgb), var(--alpha-faint)); }
 
   /* ─── Theme Dock ─── */
   .theme-dock {

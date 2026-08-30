@@ -182,7 +182,7 @@
 @utility context-menu-danger {
   color: var(--error);
 
-  &:hover { background: rgba(239, 68, 68, 0.12); }
+  &:hover { background: rgba(var(--error-rgb), var(--alpha-subtle)); }
 }
 
 /* ─── Custom Status Dropdown (mylist status modal) ─── */

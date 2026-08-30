@@ -45,6 +45,14 @@
     border-color: rgba(0, 0, 0, 0.28);
     color: var(--fg-primary);
   }
+  /* Outline buttons: accent border appears on hover only, matching the prior
+     light-mode behavior. Static border stays neutral via the base .btn rule above;
+     background is kept unchanged on hover (overrides the accent-tinted hover bg
+     defined in buttons.css). */
+  .btn-outline:hover {
+    border-color: var(--accent);
+    background: var(--bg-surface);
+  }
 
   /* ─── Search ─── */
   .search-input {

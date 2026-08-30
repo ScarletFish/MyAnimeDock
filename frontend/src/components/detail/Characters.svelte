@@ -74,11 +74,19 @@
     if (!gridEl) return Promise.resolve();
     const imgs = gridEl.querySelectorAll('.detail-char-avatar');
     if (!imgs.length) return Promise.resolve();
-    const timeout = new Promise((r) => setTimeout(r, 3000));
+    // 任何一张失败 → 立即隐藏整个模块
+    const onFail = () => { visible = false; };
     const loadAll = Promise.all(Array.from(imgs).map((img) =>
-      img.complete ? Promise.resolve() : new Promise((r) => { img.onload = r; img.onerror = r; })
+      img.complete
+        ? (img.naturalWidth === 0 ? (onFail(), Promise.resolve()) : Promise.resolve())
+        : new Promise((r) => {
+            img.onload = r;
+            img.onerror = () => { onFail(); r(); };
+          })
     ));
-    return Promise.race([loadAll, timeout]);
+    // 兜底：1s 后若仍有未完成的 lazy 图片，直接隐藏（Edge/WebView2 延迟 onerror）
+    const safety = new Promise((r) => setTimeout(() => { onFail(); r(); }, 1000));
+    return Promise.race([loadAll, safety]);
   }
 
   onMount(() => {
@@ -132,7 +140,7 @@
           {@const cv = c.actors && c.actors[0] ? (c.actors[0].nameCn || c.actors[0].name) : null}
           <div class="detail-char-card">
             {#if c.image}
-              <img class="detail-char-avatar" src={c.image} alt="" loading="lazy" decoding="async" onerror={charAvatarFallback}>
+              <img class="detail-char-avatar" src={c.image} alt="" decoding="async" onerror={charAvatarFallback}>
             {:else}
               <div class="detail-char-avatar-placeholder">{name.charAt(0)}</div>
             {/if}

@@ -201,7 +201,7 @@
     box-shadow: 0 4px 16px rgba(0,0,0, var(--alpha-faint));
   }
   .detail-info-line {
-  background: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, var(--alpha-strong));
   backdrop-filter: blur(8px);
   border-color: rgba(0,0,0, var(--alpha-faint));
   }
@@ -228,7 +228,7 @@
   /* ─── Discovery ─── */
 
   .discovery-actions {
-    /* In light mode --bg-elevated = #ffffff = same as surface.
+    /* --bg-elevated (#fafafa) is slightly darker than surface (#ffffff).
        Border is the primary separator; bump opacity for visibility. */
     background: var(--bg-elevated);
     border-color: var(--accent-emphasis);
@@ -277,7 +277,7 @@
 
   /* ─── Context Menu ─── */
   .context-menu {
-    background: #ffffff;
+    background: var(--bg-elevated);
     border-color: rgba(0,0,0, var(--alpha-faint));
     box-shadow:
       0 2px 4px rgba(0,0,0, var(--alpha-faint)),
@@ -295,8 +295,7 @@
   }
 
   /* ─── Metamatch (mm-*) ─── */
-  .modal-overlay--metamatch .modal--metamatch { background: #e8e8e8; }
-
+  .modal--metamatch { background: var(--glass-bg); }
   .mm-batch-bar {
     background: var(--bg-elevated);
     border-color: var(--accent-subtle);
@@ -331,9 +330,7 @@
     color: var(--fg-primary);
     background: rgba(0,0,0, var(--alpha-faint));
   }
-  .field-label {
-    color: rgba(0,0,0,0.75);
-  }
+
   .status-dd-trigger,
   .num-stepper,
   .date-segments,

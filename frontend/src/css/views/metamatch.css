@@ -4,7 +4,7 @@
 @utility mm-status-matching { background: rgba(var(--accent-rgb), var(--alpha-subtle)); color: var(--accent); }
 @utility mm-status-pending { background: rgba(107, 96, 86, 0.15); color: var(--fg-muted); }
 @utility mm-panel-section-box {
-  background: var(--bg-surface); border-radius: var(--radius-sm);
+  background: var(--bg-surface); border-radius: var(--radius-lg);
   border-left: var(--space-050) solid rgba(var(--accent-rgb), var(--alpha-strong));
   padding: var(--space-3);
 }
@@ -180,6 +180,10 @@
   display: flex;
   flex-direction: column;
   background: var(--bg-surface);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+.modal-m-body:has(.mm-panel.open) .mm-left {
+  border-radius: 0 0 0 var(--radius-lg);
 }
 .mm-list-header {
   display: flex;
@@ -389,6 +393,7 @@
   background: var(--bg-surface);
   border-left: var(--space-025) solid var(--border);
   box-shadow: -4px 0 20px var(--overlay-dark);
+  border-radius: 0 0 var(--radius-lg) 0;
 }
 .mm-panel.open { margin-right: 0; }
 .mm-panel-content {
@@ -634,6 +639,7 @@
   display: flex; align-items: center; justify-content: space-between;
   padding: var(--space-3) var(--space-5); border-bottom: var(--space-025) solid var(--border);
   background: var(--bg-surface);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
 .modal-m-topbar h2 {
   font-family: var(--font-body);

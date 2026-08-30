@@ -140,7 +140,7 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
 [data-theme-mode="light"] {
   --bg-deep: #f2f2f2;
   --bg-base: #f7f7f7;
-  --bg-elevated: #ffffff;
+  --bg-elevated: #f0f0f0;
   --bg-surface: #ffffff;
   --bg-rgb: 255, 255, 255;
 
@@ -227,7 +227,7 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
   --border: rgba(0, 0, 0, 0.12);
   --border-hover: rgba(150, 122, 14, 0.25);
 
-  --bg-elevated: #ffffff;
+  --bg-elevated: #f0f0f0;
   --bg-surface: #ffffff;
   --glass-bg: rgba(255, 255, 255, 0.85);
   --overlay-glass: rgba(0, 0, 0, 0.04);
@@ -288,7 +288,7 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
   --border: rgba(0, 0, 0, 0.12);
   --border-hover: rgba(3, 105, 161, 0.25);
 
-  --bg-elevated: #ffffff;
+  --bg-elevated: #f0f0f0;
   --bg-surface: #ffffff;
   --glass-bg: rgba(255, 255, 255, 0.85);
   --overlay-glass: rgba(0, 0, 0, 0.04);
@@ -348,7 +348,7 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
   --border: rgba(0, 0, 0, 0.12);
   --border-hover: rgba(236, 72, 153, 0.25);
 
-  --bg-elevated: #ffffff;
+  --bg-elevated: #f0f0f0;
   --bg-surface: #ffffff;
   --glass-bg: rgba(255, 255, 255, 0.85);
   --overlay-glass: rgba(0, 0, 0, 0.04);
@@ -408,7 +408,7 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
   --border: rgba(0, 0, 0, 0.12);
   --border-hover: rgba(5, 128, 80, 0.25);
 
-  --bg-elevated: #ffffff;
+  --bg-elevated: #f0f0f0;
   --bg-surface: #ffffff;
   --glass-bg: rgba(255, 255, 255, 0.85);
   --overlay-glass: rgba(0, 0, 0, 0.04);
@@ -469,7 +469,7 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
   --border: rgba(0, 0, 0, 0.12);
   --border-hover: rgba(109, 40, 217, 0.25);
 
-  --bg-elevated: #ffffff;
+  --bg-elevated: #f0f0f0;
   --bg-surface: #ffffff;
   --glass-bg: rgba(255, 255, 255, 0.85);
   --overlay-glass: rgba(0, 0, 0, 0.04);

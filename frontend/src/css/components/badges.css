@@ -68,4 +68,4 @@
   transition: opacity 0.2s var(--ease-out), background 0.2s var(--ease-out);
 }
 .anime-card:hover .card-more-btn { opacity: 1; }
-.card-more-btn:hover { background: rgba(0, 0, 0, 0.8); color: white; }
+.card-more-btn:hover { background: var(--overlay-dark); color: white; }

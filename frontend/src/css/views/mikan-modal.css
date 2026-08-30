@@ -678,7 +678,7 @@
 }
 
 .mikan-add-dd {
-  z-index: var(--z-modal);
+  z-index: var(--z-toast);
   min-width: 160px;
   background: var(--bg-elevated);
   border: 1px solid var(--border);

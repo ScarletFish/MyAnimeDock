@@ -242,7 +242,7 @@ html {
   color: var(--fg-muted);
   background: var(--bg-elevated);
   padding: var(--space-025) var(--space-2);
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border);
 }
 

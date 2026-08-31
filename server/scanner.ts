@@ -113,9 +113,10 @@ export function parseFolderName(name: string): ParsedFolder {
     .replace(/第\d*期/g, '').replace(/Season\d*/gi, '').replace(/S\d+/gi, '').trim();
   if (cjkOnly) cjkTitle = cjkOnly;
 
-  // 4. If anitomy title has both CJK and Latin, use CJK part (Latin is usually truncated/wrong)
+  // 4. If original folder name has both CJK and Latin, use CJK part (Latin is usually truncated/wrong)
+  // Note: test against `base` not `anitomyTitle` — anitomy strips ～ and CJK characters
   let anitomyTitle: string = parsed.title?.trim() || base;
-  if (cjkTitle && anitomyTitle && /[\u4e00-\u9fff]/.test(anitomyTitle) && /[a-zA-Z]/.test(anitomyTitle)) {
+  if (cjkTitle && anitomyTitle && /[\u4e00-\u9fff]/.test(base) && /[a-zA-Z]/.test(base)) {
     anitomyTitle = cjkTitle;
   }
 
@@ -161,7 +162,12 @@ export function parseFolderName(name: string): ParsedFolder {
   const yearMatch = name.match(/\b(19\d{2}|20\d{2})\b/);
   if (yearMatch) result.year = parseInt(yearMatch[1]);
 
-  // 8. Clean title: strip season markers, special suffix, preserve punctuation
+  // 8. Extract special suffix (~...~) BEFORE stripping it from cleanTitle
+  result.specialSuffix = null;
+  const suffixMatch = (result.title || '').match(/([~～][^~～]*[~～])\s*$/);
+  if (suffixMatch) result.specialSuffix = suffixMatch[1].trim();
+
+  // 9. Clean title: strip season markers, special suffix, preserve punctuation
   let cleanTitle = result.title || '';
   cleanTitle = cleanTitle.replace(/\s*S\d+\s*$/i, '').trim();
   cleanTitle = cleanTitle.replace(/\s*Season\s*\d+\s*/i, '').trim();
@@ -172,13 +178,13 @@ export function parseFolderName(name: string): ParsedFolder {
   // Also strip S\d+ from result.title (not just cleanTitle), for cleaner display title
   result.title = (result.title || '').replace(/\s*S\d+\s*$/i, '').trim() || null;
 
-  // 9. Regex fallback for season (raw base, when anitomy missed)
+  // 10. Regex fallback for season (raw base, when anitomy missed)
   if (!result.season) {
     const sm = base.match(/(?:^|\s)Season\s*(\d+)/i) || base.match(/(?:^|\s)S(\d+)(?:\s|$)/i);
     if (sm) result.season = parseInt(sm[1]);
   }
 
-  // 10. Symbol-based season markers: ♪♪=2, ♪♪♪=3, ！！=2, etc.
+  // 11. Symbol-based season markers: ♪♪=2, ♪♪♪=3, ！！=2, etc.
   // Note: ? and ？ are excluded — they are part of actual titles (e.g. Gochuumon wa Usagi Desu ka??)
   if (!result.season) {
     const symbolMatch = base.match(/([！!♪♫★☆♥♡])\1+/);
@@ -188,13 +194,8 @@ export function parseFolderName(name: string): ParsedFolder {
     }
   }
 
-  // 11. Strip parenthetical metadata from cleanTitle only
+  // 12. Strip parenthetical metadata from cleanTitle only
   result.cleanTitle = result.cleanTitle.replace(/\([^)]*\)/g, '').trim();
-
-  // 12. Extract special suffix (~...~) for OVA/special detection (retain in title for display)
-  result.specialSuffix = null;
-  const suffixMatch = (result.title || '').match(/([~～][^~～]*[~～])\s*$/);
-  if (suffixMatch) result.specialSuffix = suffixMatch[1].trim();
 
   // 13. Trailing number 2-20 → season (only if not volume)
   const trailingNum = result.cleanTitle.match(/\s+(\d+)\s*$/);

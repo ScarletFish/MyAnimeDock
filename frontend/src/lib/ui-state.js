@@ -19,6 +19,7 @@ export const cardTitleLibrary = localStore('myAnimDock_cardTitle_library', false
 export const cardTitleMylist = localStore('myAnimDock_cardTitle_mylist', false);
 export const finishConfirmMode = localStore('myAnimDock_finishConfirm', 'prompt');
 export const detailTitleBg = localStore('myAnimDock_detailTitleBg', false);
+export const ignoreLocalFileMissing = localStore('myAnimDock_ignoreLocalFileMissing', false);
 
 // ─── 启动预取 promise（main.js 发起，Library.svelte 首次消费）───
 // 首屏并行：/api/library 不依赖 /api/config，启动时立即发起并缓存 promise，

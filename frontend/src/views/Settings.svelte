@@ -30,7 +30,7 @@
   import { Select } from 'bits-ui';
   import BrandMark from '../components/BrandMark.svelte';
   import { applyDetailTitleBg } from '../lib/theme.js';
-  import { cardTitleLibrary, cardTitleMylist, finishConfirmMode, detailTitleBg } from '../lib/ui-state.js';
+  import { cardTitleLibrary, cardTitleMylist, finishConfirmMode, detailTitleBg, ignoreLocalFileMissing } from '../lib/ui-state.js';
 
   // ─── 状态 ───
   let activeTab = $state('basic');
@@ -61,6 +61,7 @@
   let cardTitleLibraryLocal = $state(false);
   let cardTitleMylistLocal = $state(false);
   let detailTitleBgLocal = $state(false);
+  let ignoreLocalFileMissingLocal = $state(false);
   let finishConfirmModeLocal = $state('prompt');
   // dashboard layout
   let layout = $state([]);
@@ -258,6 +259,8 @@
       detailTitleBgLocal = get(detailTitleBg);
       applyDetailTitleBg();
 
+      ignoreLocalFileMissingLocal = get(ignoreLocalFileMissing);
+
       // qBittorrent
       qbPort = config.qbPort || 8080;
       qbUsername = config.qbUsername || 'admin';
@@ -358,6 +361,7 @@
       cardTitleMylist.set(cardTitleMylistLocal);
       detailTitleBg.set(detailTitleBgLocal);
       applyDetailTitleBg();
+      ignoreLocalFileMissing.set(ignoreLocalFileMissingLocal);
       finishConfirmMode.set(finishConfirmModeLocal);
 
       close();
@@ -984,6 +988,19 @@
               </div>
             </div>
           </div>
+          <div class="form-group">
+            <label>{tr('settings.ignoreLocalFileMissing')}</label>
+            <p class="form-hint mt-0">{tr('settings.ignoreLocalFileMissingHint')}</p>
+            <div class="dashboard-layout-list" style="margin-top:0.75rem">
+              <div class="dashboard-layout-item" style="cursor:default">
+                <label class="toggle-switch" style="margin:0">
+                  <input type="checkbox" id="settingsIgnoreLocalFileMissing" bind:checked={ignoreLocalFileMissingLocal}>
+                  <span class="toggle-slider"></span>
+                </label>
+                <span class="dashboard-layout-label">{tr('settings.ignoreLocalFileMissingLabel')}</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Tab: 下载器 -->
@@ -1258,6 +1275,7 @@
     </div>
   </div>
 {/if}
+
 
 <style>
   .mikan-lib-block { margin-top: 0.75rem; }

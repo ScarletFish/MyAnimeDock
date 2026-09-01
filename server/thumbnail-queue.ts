@@ -180,7 +180,7 @@ class ThumbnailQueue {
     for (const anime of library) {
       if (!anime?.episodes) continue;
       for (const ep of anime.episodes) {
-        if (!ep.filePath) continue;
+        if (!ep.filePath || !fs.existsSync(ep.filePath)) continue;
         // 缓存命中（文件名在 Set 中）→ 跳过；否则入队补全
         if (existing.has(this._thumbHash(ep.filePath) + '.jpg')) continue;
         const thumbPath = this._thumbPathFor(ep.filePath, THUMB_HASH_SEED);

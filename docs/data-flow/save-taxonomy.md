@@ -30,6 +30,7 @@
 | Delete anime | `db.saveLibrary()` + `db.saveMyList()` (status → completed) |
 | Fetch metadata | `db.saveLibrary()` + `saveScannedTree()` |
 | MyList status change | `db.saveMyList()` + `bangumiSync.pushStatusChange()` |
+| Detail page (lazy downloaded update) | `db.saveLibrary()` — 检测文件存在性与 DB 不一致时异步写入 |
 | Bangumi full sync | `bangumiSync.syncMyList()` (handles own persistence) |
 | Play start | `db.savePlaySessions()` + `db.updateEpisodesWatched()` (auto-mark) |
 | mpv final/error | `db.savePlaySessions()` |

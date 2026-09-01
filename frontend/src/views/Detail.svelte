@@ -44,7 +44,7 @@
   import { filterTags, tagZh } from '../lib/tag-utils.js';
   import { searchTag } from '../components/chrome/SearchBar.svelte';
   import { tr } from '../lib/anime-utils.js';
-  import { libraryData, mylistData, pendingAutoPlay, pendingFinishAnimeId, finishConfirmMode } from '../lib/ui-state.js';
+  import { libraryData, mylistData, pendingAutoPlay, pendingFinishAnimeId, finishConfirmMode, ignoreLocalFileMissing } from '../lib/ui-state.js';
   import { loadLibrary } from './Library.svelte';
   import { refreshDiscovery } from './Discovery.svelte';
   import { loadMyList } from './Mylist.svelte';
@@ -157,7 +157,7 @@
     resetDetailEnter();
     try {
       anime = await api.get('/api/anime/' + encodeURIComponent(id));
-      if (anime && anime.downloaded === false) {
+      if (anime && anime.downloaded === false && !get(ignoreLocalFileMissing)) {
         showToast(tr('detail.fileMissing'), 'warning');
       }
       bannerFailed = false;
@@ -457,7 +457,7 @@
     const detailSection = document.getElementById('svelte-detailView');
     if (detailSection) detailSection.style.visibility = 'hidden';
     anime = result;
-    if (result && result.downloaded === false) {
+    if (result && result.downloaded === false && !get(ignoreLocalFileMissing)) {
       showToast(tr('detail.fileMissing'), 'warning');
     }
     bannerFailed = false;

@@ -8,6 +8,14 @@ import { enrichAnime } from '../lib/enrich';
 import { computePinyinTitle } from '../lib/pinyin';
 import type { ServerState } from '../types';
 
+/**
+ * 计算动漫条目的本地文件是否存在。
+ * 读 DB 字段，不做磁盘检测；写入路径（详情页检测 + 删除）负责维护此字段。
+ */
+function hasLocalFiles(anime: any): boolean {
+  return !!anime.downloaded;
+}
+
 // Shared helper: resolve folder parsed for structural folders
 function resolveFolderParsed(anime: any) {
   const { parseFolderName } = require('../scanner') as typeof import('../scanner');
@@ -46,7 +54,7 @@ export function handleGetLibrary(req: any, res: any, state: ServerState) {
   data.library.forEach((a: any) => {
     enrichAnime(a, data);
   });
-  jsonResp(res, 200, data.library.filter((a: any) => a.downloaded !== false));
+  jsonResp(res, 200, data.library.filter((a: any) => hasLocalFiles(a)));
 }
 
 export async function handleGetAnimeDetail(req: any, res: any, state: ServerState) {
@@ -54,7 +62,16 @@ export async function handleGetAnimeDetail(req: any, res: any, state: ServerStat
   const id = decodeURIComponent(req.url.slice('/api/anime/'.length));
   const anime = data.library.find((a: any) => a.id === id);
   if (!anime) { jsonResp(res, 404, { error: 'Anime not found' }); return; }
-  anime.downloaded = fs.existsSync(anime.folderPath);
+
+  // 检测文件存在性，不一致时写 DB（懒维护 downloaded 字段）
+  const fileExists = !!anime.folderPath && fs.existsSync(anime.folderPath);
+  if (anime.downloaded !== fileExists) {
+    anime.downloaded = fileExists;
+    db.saveLibrary(data, new Set([anime.id])).catch((e: any) => {
+      logger.warn(`Failed to update downloaded for ${anime.title}: ${e.message}`);
+    });
+  }
+
   enrichAnime(anime, data);
 
   // 增量检测本地新集：对比文件夹中的视频文件与 DB 中 episodes，有新增则追加

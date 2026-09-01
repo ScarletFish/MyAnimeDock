@@ -117,7 +117,7 @@ frontend/
 │   │   ├── i18n-zh.js         #   i18n 文案字典（唯一，改文案只改这里）
 │   │   ├── i18n.js            #   i18next 初始化 + 全局 t() + data-i18n 绑定
 │   │   ├── router.js          #   showView 视图切换协调器 + 滚动状态
-│   │   ├── ui-state.js        #   跨组件 Svelte store（libraryData/mylistData/pendingAutoPlay/pendingFinishAnimeId）
+│   │   ├── ui-state.js        #   跨组件 Svelte store（libraryData/mylistData/pendingAutoPlay/pendingFinishAnimeId + librarySortMode/mylistSortMode）
 │   │   ├── theme.js           #   主题/缩放/reduce-motion 纯函数
 │   │   ├── grid.js            #   Grid 列公式（GRID_CARD_MIN/MAX + calcGridCols）
 │   │   ├── mpv-status.js      #   全局 mpv-status SSE 监听

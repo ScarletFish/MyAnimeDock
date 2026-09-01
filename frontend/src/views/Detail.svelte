@@ -43,8 +43,9 @@
   import { ANILIST_TAG_DATA } from '../lib/tag-data.js';
   import { filterTags, tagZh } from '../lib/tag-utils.js';
   import { searchTag } from '../components/chrome/SearchBar.svelte';
-  import { tr } from '../lib/anime-utils.js';
-  import { libraryData, mylistData, pendingAutoPlay, pendingFinishAnimeId, finishConfirmMode, ignoreLocalFileMissing } from '../lib/ui-state.js';
+  import { tr, STATUS_SECTIONS_LIBRARY } from '../lib/anime-utils.js';
+  import { sortAnimeItems } from '../lib/sort.js';
+  import { libraryData, mylistData, librarySortMode, mylistSortMode, pendingAutoPlay, pendingFinishAnimeId, finishConfirmMode, ignoreLocalFileMissing } from '../lib/ui-state.js';
   import { loadLibrary } from './Library.svelte';
   import { refreshDiscovery } from './Discovery.svelte';
   import { loadMyList } from './Mylist.svelte';
@@ -349,44 +350,66 @@
     showView(target);
   }
 
-  function findCurrentLibraryIndex() {
-    if (!anime) return -1;
+  // 按视图排序逻辑拍平后的列表，供左右导航 findIndex。
+  function getSortedLibraryData() {
     const ld = $libraryData;
-    if (!ld || !ld.length) return -1;
-    return ld.findIndex((a) => a.id === anime.id);
+    if (!ld || !ld.length) return ld;
+    const sortMode = get(librarySortMode);
+    const result = [];
+    STATUS_SECTIONS_LIBRARY.forEach((status) => {
+      result.push(...sortAnimeItems(
+        ld.filter((a) => (a.myListStatus || 'wish') === status),
+        sortMode
+      ));
+    });
+    return result;
+  }
+
+  function getSortedMylistData() {
+    const ml = $mylistData;
+    if (!ml || !ml.length) return ml;
+    return sortAnimeItems(ml, get(mylistSortMode));
   }
 
   function goPrev() {
     if (isSliding) return;
-    if (detailSourceView === 'mylist' && $mylistData && $mylistData.length > 0) {
-      const idx = $mylistData.findIndex((i) => i.id === anime.id);
+    if (detailSourceView === 'mylist') {
+      const sorted = getSortedMylistData();
+      if (!sorted || !sorted.length) return;
+      const idx = sorted.findIndex((i) => i.id === anime.id);
       if (idx === -1) return;
-      const prevIdx = idx === 0 ? $mylistData.length - 1 : idx - 1;
-      const prev = $mylistData[prevIdx];
+      const prevIdx = idx === 0 ? sorted.length - 1 : idx - 1;
+      const prev = sorted[prevIdx];
       if (prev) slideToAnime(prev.id, 'prev');
       return;
     }
-    const idx = findCurrentLibraryIndex();
+    const sorted = getSortedLibraryData();
+    if (!sorted || !sorted.length) return;
+    const idx = sorted.findIndex((a) => a.id === anime.id);
     if (idx === -1) return;
-    const prevIdx = idx === 0 ? $libraryData.length - 1 : idx - 1;
-    const prev = $libraryData[prevIdx];
+    const prevIdx = idx === 0 ? sorted.length - 1 : idx - 1;
+    const prev = sorted[prevIdx];
     if (prev) slideToAnime(prev.id, 'prev');
   }
 
   function goNext() {
     if (isSliding) return;
-    if (detailSourceView === 'mylist' && $mylistData && $mylistData.length > 0) {
-      const idx = $mylistData.findIndex((i) => i.id === anime.id);
+    if (detailSourceView === 'mylist') {
+      const sorted = getSortedMylistData();
+      if (!sorted || !sorted.length) return;
+      const idx = sorted.findIndex((i) => i.id === anime.id);
       if (idx === -1) return;
-      const nextIdx = idx === $mylistData.length - 1 ? 0 : idx + 1;
-      const next = $mylistData[nextIdx];
+      const nextIdx = idx === sorted.length - 1 ? 0 : idx + 1;
+      const next = sorted[nextIdx];
       if (next) slideToAnime(next.id, 'next');
       return;
     }
-    const idx = findCurrentLibraryIndex();
+    const sorted = getSortedLibraryData();
+    if (!sorted || !sorted.length) return;
+    const idx = sorted.findIndex((a) => a.id === anime.id);
     if (idx === -1) return;
-    const nextIdx = idx === $libraryData.length - 1 ? 0 : idx + 1;
-    const next = $libraryData[nextIdx];
+    const nextIdx = idx === sorted.length - 1 ? 0 : idx + 1;
+    const next = sorted[nextIdx];
     if (next) slideToAnime(next.id, 'next');
   }
 

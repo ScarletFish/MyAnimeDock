@@ -17,6 +17,7 @@
 
 <script>
   import { onMount, onDestroy, tick } from 'svelte';
+  import { get } from 'svelte/store';
   import { showToast } from '../components/Toast.svelte';
   import { showConfirm } from '../components/ConfirmDialog.svelte';
   import AnimeCard from '../components/AnimeCard.svelte';
@@ -26,7 +27,7 @@
   import { getStatusLabels, MYLIST_STATUS_ORDER, getAnimeSortOptions, sortAnimeItems } from '../lib/sort.js';
   import { calcGridCols, readScale } from '../lib/grid.js';
   import { tr } from '../lib/anime-utils.js';
-  import { mylistData, cardTitleMylist } from '../lib/ui-state.js';
+  import { mylistData, cardTitleMylist, mylistSortMode } from '../lib/ui-state.js';
   import { showDetail, getMyListScrollTop, __skipViewEnter } from '../lib/router.js';
   import { loadLibrary } from './Library.svelte';
   import { Select } from 'bits-ui';
@@ -34,7 +35,14 @@
 
   // ─── 状态 ───
   let mylistFilter = $state('all');
-  let sortMode = $state(localStorage.getItem('mylistSort') || 'name');
+  // ─── 排序（绑定全局 store，Detail 左右导航依赖此值）───
+  let sortMode = $state(get(mylistSortMode));
+  const unsubSort = mylistSortMode.subscribe((v) => { sortMode = v; });
+  onDestroy(unsubSort);
+  // bits-ui Select 内部管理 open/键盘导航/焦点；变更写回 store。
+  $effect(() => {
+    mylistSortMode.set(sortMode);
+  });
   let loading = $state(false);
 
   // 本次进入恢复的滚动位置 > 0（从视图中部返回）→ 模块纯淡入，抑制位移动画。
@@ -110,12 +118,6 @@
       showToast(tr('mylist.loadFailed', { message: e.message }), 'error');
     }
   }
-
-  // ─── 排序 ───
-  // bits-ui Select 内部管理 open/键盘导航/焦点；这里仅持久化选择。
-  $effect(() => {
-    localStorage.setItem('mylistSort', sortMode);
-  });
 
   // ─── 过滤 ───
   function setFilter(filter) {

@@ -2,11 +2,12 @@
   // ─── LocalAnimeSection（Svelte 迁移 Chunk C）───
   // Library 的「本地动漫模块」投影组件。只认 props，不查全局数组。
   import { onDestroy, tick } from 'svelte';
+  import { get } from 'svelte/store';
   import StatusSection from '../components/StatusSection.svelte';
   import AnimeCard from '../components/AnimeCard.svelte';
   import { getStatusLabels, getAnimeSortOptions, sortAnimeItems } from '../lib/sort.js';
   import { STATUS_SECTIONS_LIBRARY, navigateToDetail, tr } from '../lib/anime-utils.js';
-  import { cardTitleLibrary } from '../lib/ui-state.js';
+  import { cardTitleLibrary, librarySortMode } from '../lib/ui-state.js';
   import { Select } from 'bits-ui';
 
   let {
@@ -22,11 +23,13 @@
   const unsubCardTitle = cardTitleLibrary.subscribe((v) => { alwaysShowTitle = v; });
   onDestroy(unsubCardTitle);
 
-  // ─── 排序 ───
-  let sortMode = $state(localStorage.getItem('librarySort') || 'name');
-  // bits-ui Select 内部管理 open/键盘导航/焦点；这里仅持久化选择。
+  // ─── 排序（绑定全局 store，Detail 左右导航依赖此值）───
+  let sortMode = $state(get(librarySortMode));
+  const unsubSort = librarySortMode.subscribe((v) => { sortMode = v; });
+  onDestroy(unsubSort);
+  // bits-ui Select 内部管理 open/键盘导航/焦点；变更写回 store。
   $effect(() => {
-    localStorage.setItem('librarySort', sortMode);
+    librarySortMode.set(sortMode);
   });
 
   // ─── 状态分区 ───

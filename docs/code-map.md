@@ -8,6 +8,7 @@
 |------|---------|------|--------|
 | `local-store.js` | `localStore(key, fallback)` | localStorage ↔ writable 双向同步 store | ui-state.js |
 | `ui-state.js` | `libraryData`, `mylistData`, `pendingAutoPlay`, `pendingFinishAnimeId` | 跨组件共享状态（writable） | Library/Detail/SearchBar |
+| | `librarySortMode`, `mylistSortMode` | 排序模式 store（localStore 封装，Detail 左右导航依赖） | LocalAnimeSection/Mylist/Detail |
 | | `cardTitleLibrary`, `cardTitleMylist`, `finishConfirmMode`, `detailTitleBg`, `ignoreLocalFileMissing` | 设置项 store（localStore 封装） | Settings/LocalAnimeSection/Mylist/Detail |
 | | `startupLibraryPromise`, `setStartupLibraryPromise`, `consumeStartupLibraryPromise` | 启动预取 promise（省 RTT） | main.js → Library |
 | `api.js` | `API` (get/post/put/del) | HTTP 请求封装 | 全局 |

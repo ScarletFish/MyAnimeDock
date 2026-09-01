@@ -250,7 +250,7 @@ export function showView(view) {
 ### 数据状态管理
 
 - `frontend/src/lib/state.js` — `AppState`（`get`/`set`/`on`，通过 `CustomEvent('statechange')` 通知），用于跨模块的轻量共享数据
-- `frontend/src/lib/ui-state.js` — Svelte `writable` store，用于跨组件响应式共享：`libraryData` / `mylistData` / `pendingAutoPlay` / `pendingFinishAnimeId`
+- `frontend/src/lib/ui-state.js` — Svelte `writable` store，用于跨组件响应式共享：`libraryData` / `mylistData` / `pendingAutoPlay` / `pendingFinishAnimeId`；排序模式 store（`localStore` 封装）：`librarySortMode` / `mylistSortMode`（Detail 左右导航依赖）
 
 ```js
 // ui-state.js
@@ -258,6 +258,10 @@ export const libraryData = writable([]);
 export const mylistData = writable([]);
 export const pendingAutoPlay = writable(null);
 export const pendingFinishAnimeId = writable(null);
+
+// 排序模式（localStorage ↔ store 双向同步）
+export const librarySortMode = localStore('librarySort', 'name');
+export const mylistSortMode = localStore('mylistSort', 'name');
 ```
 
 ### 搜索

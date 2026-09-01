@@ -13,6 +13,11 @@ export const mylistData = writable([]);
 export const pendingAutoPlay = writable(null);
 export const pendingFinishAnimeId = writable(null);
 
+// ─── 排序模式（localStorage ↔ store 双向同步）───
+// LocalAnimeSection / Mylist 写入，Detail 读取用于左右导航顺序。
+export const librarySortMode = localStore('librarySort', 'name');
+export const mylistSortMode = localStore('mylistSort', 'name');
+
 // ─── 设置项（localStorage ↔ store 双向同步）───
 // Settings.svelte 写入，Library / Mylist / Detail 等视图响应式读取。
 export const cardTitleLibrary = localStore('myAnimDock_cardTitle_library', false);

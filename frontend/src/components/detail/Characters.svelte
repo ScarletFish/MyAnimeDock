@@ -4,7 +4,7 @@
   // 卡片 class="detail-char-card"（setEntranceDelays stagger 契约）。
   // 展开状态用 $state（随 {#key} 重挂载自然重置，替代 dataset.userToggled）。
   import { onMount } from 'svelte';
-  import { tr } from '../../lib/anime-utils.js';
+  import { tr, initialOf } from '../../lib/anime-utils.js';
 
   let { chars = [] } = $props();
 
@@ -16,8 +16,10 @@
   let resizeTimer = null;
   const MAX_GRID_HEIGHT = 10000;
 
-  function charAvatarFallback() {
-    visible = false;
+  /** 记录单张图片加载失败，模板据此显隐 img/首字母占位符（与详情页封面同模式） */
+  let failedImg = new Set();
+  function charAvatarFallback(e) {
+    failedImg.add(e.currentTarget.getAttribute('data-cid'));
   }
 
   function getCharGridRowHeight() {
@@ -70,25 +72,6 @@
     setTimeout(updateToggleVisibility, 50);
   }
 
-  function waitForCharImages() {
-    if (!gridEl) return Promise.resolve();
-    const imgs = gridEl.querySelectorAll('.detail-char-avatar');
-    if (!imgs.length) return Promise.resolve();
-    // 任何一张失败 → 立即隐藏整个模块
-    const onFail = () => { visible = false; };
-    const loadAll = Promise.all(Array.from(imgs).map((img) =>
-      img.complete
-        ? (img.naturalWidth === 0 ? (onFail(), Promise.resolve()) : Promise.resolve())
-        : new Promise((r) => {
-            img.onload = r;
-            img.onerror = () => { onFail(); r(); };
-          })
-    ));
-    // 兜底：1s 后若仍有未完成的 lazy 图片，直接隐藏（Edge/WebView2 延迟 onerror）
-    const safety = new Promise((r) => setTimeout(() => { onFail(); r(); }, 1000));
-    return Promise.race([loadAll, safety]);
-  }
-
   onMount(() => {
     // 窗口 resize → 重新 auto-expand（未手动切换时）
     const onResize = () => {
@@ -100,26 +83,11 @@
     };
     window.addEventListener('resize', onResize);
 
-    if (typeof navigator !== 'undefined' && navigator.onLine === false) { visible = false; return; }
     if (!chars.length) { visible = false; return; }
     visible = true;
     if (!gridEl) return;
-    // M2: 先设 maxHeight=scrollHeight 防跳动，等图加载后再 measureAndBalance
-    const needsClipping = gridEl.children.length > 6;
-    if (needsClipping) {
-      gridEl.style.maxHeight = gridEl.scrollHeight + 'px';
-    }
-    waitForCharImages().then(() => {
-      if (!visible) return;
-      if (userToggled) return;
-      if (needsClipping) {
-        autoExpandCharacters();
-      } else {
-        gridEl.style.maxHeight = '';
-        gridEl.style.overflow = '';
-      }
-      updateToggleVisibility();
-    });
+    autoExpandCharacters();
+    updateToggleVisibility();
 
     return () => {
       window.removeEventListener('resize', onResize);
@@ -139,10 +107,10 @@
           {@const name = c.nameCn || c.name}
           {@const cv = c.actors && c.actors[0] ? (c.actors[0].nameCn || c.actors[0].name) : null}
           <div class="detail-char-card">
-            {#if c.image}
-              <img class="detail-char-avatar" src={c.image} alt="" decoding="async" onerror={charAvatarFallback}>
+            {#if c.image && !failedImg.has(c.id)}
+              <img class="detail-char-avatar" src={c.image} alt="" data-cid={c.id} decoding="async" onerror={charAvatarFallback}>
             {:else}
-              <div class="detail-char-avatar-placeholder">{name.charAt(0)}</div>
+              <div class="detail-char-avatar-placeholder">{initialOf(name)}</div>
             {/if}
             <div class="detail-char-info">
               <div class="detail-char-name">{name}</div>

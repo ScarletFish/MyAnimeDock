@@ -178,7 +178,7 @@ export const I18N_ZH = {
   'settings.cardTitleHint': '是否在卡片底部始终显示标题文字',
   'settings.detailTitleBg': '详情页标题背景',
   'settings.detailTitleBgHint': '浅色模式下在标题文字后添加半透明白色背景，提升深色场景下的可读性',
-  'settings.ignoreLocalFileMissing': '隐藏本地文件缺失提示',
+  'settings.ignoreLocalFileMissing': '本地文件缺失提示',
   'settings.ignoreLocalFileMissingHint': '详情页不再弹出「本地文件缺失」的警告提示',
   'settings.ignoreLocalFileMissingLabel': '隐藏缺失提示',
   'settings.mediaDir': '媒体目录路径',

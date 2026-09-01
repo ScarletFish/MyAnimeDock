@@ -2,7 +2,7 @@
   // ─── MetaMatch 详情视图（纯展示 + 局部 fix search 状态）───
   // 对应 vanilla metamatch.js 的 mmRenderPanel / mmSearchForFix / mmFilterSummary。
   // fixResults / fixKeyword 为局部状态；onApplyFix(result) 上抛给父容器编排。
-  import { tr, basename } from '../../lib/anime-utils.js';
+  import { tr, basename, initialOf } from '../../lib/anime-utils.js';
   import { showToast } from '../../components/Toast.svelte';
   import { API as api } from '../../lib/api.js';
 
@@ -30,7 +30,7 @@
     return coverPath.startsWith('http') ? coverPath : '/covers/' + basename(coverPath) + '?w=400&q=75';
   });
   let coverAlt = $derived(item?.meta?.bangumiTitle || item?.title || tr('metamatch.coverAlt'));
-  let coverInitial = $derived((item?.title || '?')[0].toUpperCase());
+  let coverInitial = $derived(initialOf(item?.title));
 
   // ─── 季信息 ───
   let seasonInfo = $derived.by(() => {

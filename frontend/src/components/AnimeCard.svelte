@@ -2,7 +2,7 @@
   // ─── AnimeCard（Svelte 迁移 Chunk A）───
   // 基于 Mylist.svelte 的 card snippet（唯一无嵌套的正确结构）。
   // 只认 props，不查全局、不 import 全局，只发事件。
-  import { tr, coverSrc } from '../lib/anime-utils.js';
+  import { tr, coverSrc, initialOf } from '../lib/anime-utils.js';
 
   let {
     item,
@@ -32,7 +32,7 @@
   {#if cover}
     <img src={cover} loading="lazy" decoding="async" alt={title}>
   {:else}
-    <div class="gray-cover"><span class="gray-cover-text">{(title || '?')[0].toUpperCase()}</span></div>
+    <div class="gray-cover"><span class="gray-cover-text">{initialOf(title)}</span></div>
   {/if}
   {#if showMoreBtn}
     <div class="card-more-btn" data-tooltip={tr('ui.setStatusTooltip')} onclick={handleMore}>

@@ -43,7 +43,7 @@
   import { ANILIST_TAG_DATA } from '../lib/tag-data.js';
   import { filterTags, tagZh } from '../lib/tag-utils.js';
   import { searchTag } from '../components/chrome/SearchBar.svelte';
-  import { tr, STATUS_SECTIONS_LIBRARY } from '../lib/anime-utils.js';
+  import { tr, STATUS_SECTIONS_LIBRARY, initialOf } from '../lib/anime-utils.js';
   import { sortAnimeItems } from '../lib/sort.js';
   import { libraryData, mylistData, librarySortMode, mylistSortMode, pendingAutoPlay, pendingFinishAnimeId, finishConfirmMode, ignoreLocalFileMissing } from '../lib/ui-state.js';
   import { loadLibrary } from './Library.svelte';
@@ -81,7 +81,7 @@
 
   // Cover
   let localCover = $derived(anime?.localCover ? '/covers/' + path.basename(anime.localCover) + '?w=540&q=80' : '');
-  let coverInitial = $derived((anime?.bangumiTitle || anime?.title || '?')[0].toUpperCase());
+  let coverInitial = $derived(initialOf(anime?.bangumiTitle || anime?.title));
 
   // Alias
   let alias = $derived([anime?.bangumiTitleJp, anime?.romajiTitle].filter(Boolean).join(' / '));

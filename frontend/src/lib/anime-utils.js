@@ -23,6 +23,11 @@ export function coverSrc(item, size) {
   return item.localCover ? '/covers/' + basename(item.localCover) + '?w=' + size + '&q=75' : '';
 }
 
+/** 占位符首字母（无值时回退 '?'，统一转大写） */
+export function initialOf(title) {
+  return (title || '?')[0].toUpperCase();
+}
+
 export function localDateStr(isoStr) {
   var d = new Date(isoStr);
   return d.getFullYear() + '-' +

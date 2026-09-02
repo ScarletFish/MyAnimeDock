@@ -77,6 +77,8 @@ export interface ConfigShape {
   themeMode: string;
   autoMarkWatched: boolean;
   uiScale: number;
+  // 启动时窗口默认全屏（仅 Tauri 桌面端生效；浏览器 dev 模式无窗口可全屏）
+  startupFullscreen: boolean;
   apiSources: { type: string; url: string; key: string }[];
   // qBittorrent
   qbPort: number;
@@ -108,6 +110,7 @@ const DEFAULT_CONFIG: ConfigShape = {
   themeMode: 'dark',
   autoMarkWatched: true,
   uiScale: 1.0,
+  startupFullscreen: false,
   apiSources: [
     { type: 'bangumi', url: 'https://api.bangumi.lol', key: '' },
     { type: 'anilist', url: '', key: '' },

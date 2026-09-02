@@ -44,6 +44,7 @@
   let mpvPath = $state('');
   let playerDdOpen = $state(false);
   let autoMark = $state(true);
+  let startupFullscreen = $state(false);
   // scraper
   let bangumiUrl = $state('https://api.bgm.tv');
   let bangumiClientId = $state('');
@@ -242,6 +243,7 @@
       mediaDir = config.mediaDir || '';
       populatePlayerDropdown(config.players || [], config.playerMode || 'mpv', config.mpvPath || '');
       autoMark = config.autoMarkWatched !== false;
+      startupFullscreen = !!config.startupFullscreen;
       errorMsg = '';
 
       const sources = config.apiSources || [];
@@ -344,6 +346,7 @@
         uiScale: currentZoom,
         reduceMotion: document.documentElement.getAttribute('data-reduce-motion') === 'true',
         autoMarkWatched: autoMark,
+        startupFullscreen,
         apiSources,
         qbPort: Number(qbPort) || 8080,
         qbUsername: qbUsername || 'admin',
@@ -900,6 +903,18 @@
                   <span class="toggle-slider"></span>
                 </label>
                 <span class="dashboard-layout-label">{tr('settings.enableAutoMark')}</span>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>{tr('settings.startupFullscreen')}</label>
+            <div class="dashboard-layout-list" style="margin-top:0.5rem">
+              <div class="dashboard-layout-item" style="cursor:default">
+                <label class="toggle-switch" style="margin:0">
+                  <input type="checkbox" id="settingsStartupFullscreen" bind:checked={startupFullscreen}>
+                  <span class="toggle-slider"></span>
+                </label>
+                <span class="dashboard-layout-label">{tr(startupFullscreen ? 'settings.startupFullscreenMode' : 'settings.startupWindowMode')}</span>
               </div>
             </div>
           </div>

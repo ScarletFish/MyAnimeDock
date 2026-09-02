@@ -12,13 +12,13 @@ const lib = require('../../dist/routes/library');
 
 describe('library route handlers', () => {
   describe('handleGetLibrary', () => {
-    it('returns 200 with filtered library (downloaded !== false)', () => {
+    it('returns 200 with filtered library (only downloaded === true)', () => {
       const state = mockState({
         data: {
           library: [
             { id: '1', title: 'Anime A', downloaded: true },
             { id: '2', title: 'Anime B', downloaded: false },
-            { id: '3', title: 'Anime C' }, // undefined downloaded
+            { id: '3', title: 'Anime C' }, // undefined downloaded → 无本地文件语义，过滤
           ],
           myList: [
             { animeId: '1', status: 'watching' },
@@ -30,11 +30,9 @@ describe('library route handlers', () => {
       const res = mockRes();
       lib.handleGetLibrary(req, res, state);
       assert.strictEqual(res._status, 200);
-      assert.strictEqual(res._body.length, 2);
+      assert.strictEqual(res._body.length, 1);
       assert.strictEqual(res._body[0].id, '1');
       assert.strictEqual(res._body[0].myListStatus, 'watching');
-      assert.strictEqual(res._body[1].id, '3');
-      assert.strictEqual(res._body[1].myListStatus, 'completed');
     });
 
     it('returns 200 with empty array for empty library', () => {

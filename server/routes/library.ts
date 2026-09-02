@@ -11,6 +11,8 @@ import type { ServerState } from '../types';
 /**
  * 计算动漫条目的本地文件是否存在。
  * 读 DB 字段，不做磁盘检测；写入路径（详情页检测 + 删除）负责维护此字段。
+ * 语义（本地媒体库场景，209590e 有意收紧）：仅 downloaded === true 视为有文件；
+ * undefined（未写入/老数据）视为无文件一并过滤，保证列表实义为"本地存在"。
  */
 function hasLocalFiles(anime: any): boolean {
   return !!anime.downloaded;

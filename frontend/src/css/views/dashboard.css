@@ -221,8 +221,9 @@
 }
 
 /* ─── Continue Watching ─── */
-@media (max-width: 1400px) {
-  [data-section="continueWatch"] { --cols: 3; }
+[data-section="continueWatch"] {
+  /* 基准卡宽常量（档位门槛，随 1080P 实测校准）：JS 依它算整数列数，卡宽 calc 弹性均分 */
+  --card-w: 435px;
 }
 
 .dashboard-continue-scroll {

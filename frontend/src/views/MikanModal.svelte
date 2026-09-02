@@ -4,14 +4,13 @@
 </script>
 
 <script>
-  import { onMount, onDestroy, tick } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { portal } from '../lib/portal.js';
   import { showToast } from '../components/Toast.svelte';
   import { showConfirm } from '../components/ConfirmDialog.svelte';
   import { tr } from '../lib/anime-utils.js';
   import { API as api } from '../lib/api.js';
   import { initScrollDots } from '../lib/scroll-dots.js';
-  import { initHscrollAutoCols } from '../lib/hscroll-auto-cols.js';
   import { Select, Popover } from 'bits-ui';
   import MikanSubscribePanel from '../components/MikanSubscribePanel.svelte';
 
@@ -24,7 +23,6 @@
   let selectedSubgroupIdx = $state(0);
   let subscribing = $state(null);
   let scrollEls = $state({});
-  let stopAutoColsFns = [];
   let loadingFullSubgroup = $state(null);
   let fullResourcesLoaded = $state(new Set());
   let detailPanelEl = $state(null);
@@ -118,7 +116,6 @@
     await tick();
     for (let i = 0; i < WEEKDAY_SECTIONS; i++) {
       initDotsForDay(i);
-      initAutoColsForDay(i);
     }
   }
 
@@ -255,26 +252,6 @@
       });
     });
   }
-
-  // 初始化自动列数（.mikan-day-scroll 是自带 --cols 的 plain flex 容器）
-  function initAutoColsForDay(dayIdx) {
-    const scrollEl = scrollEls[dayIdx];
-    if (!scrollEl) return;
-    // 弹窗 #if open 会销毁/重建 DOM：重建前须断开旧 observer，
-    // 否则新元素永远接不上（守卫拦住重建）。
-    if (typeof stopAutoColsFns[dayIdx] === 'function') { stopAutoColsFns[dayIdx](); stopAutoColsFns[dayIdx] = null; }
-    stopAutoColsFns[dayIdx] = initHscrollAutoCols(scrollEl, {
-      cardSelector: '.mikan-anime-card',
-      onColsChange: () => scrollEl.dispatchEvent(new Event('scroll')),
-    });
-  }
-
-  onDestroy(() => {
-    for (const stop of stopAutoColsFns) {
-      if (typeof stop === 'function') stop();
-    }
-    stopAutoColsFns = [];
-  });
 </script>
 
 {#if open}

@@ -153,7 +153,8 @@
 
 #detailRelations, #detailRecommendations,
 #svelte-detailRelations, #svelte-detailRecommendations {
-  --cols: 7;
+  /* 基准卡宽常量（档位门槛，随 1080P 实测校准）：JS 依它算整数列数，卡宽 calc 弹性均分 */
+  --card-w: 235px;
   --gap: var(--space-3);
 }
 
@@ -163,10 +164,6 @@
   transition: transform 0.15s var(--ease-out);
   border-radius: var(--radius-md);
   overflow: hidden;
-}
-@media (max-width: 1439px) {
-  #detailRelations, #detailRecommendations,
-  #svelte-detailRelations, #svelte-detailRecommendations { --cols: 5; }
 }
 .relation-card:hover { transform: translateY(-3px); }
 .relation-card:active { transform: translateY(-1px); }

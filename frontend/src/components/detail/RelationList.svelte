@@ -13,9 +13,8 @@
 <script>
   // ─── 关联 / 推荐 横向滚动列表（声明式）───
   // kind: 'relations' | 'recommendations'。根为 .hscroll（保留 id 契约）。
-  import { onMount, onDestroy, tick } from 'svelte';
+  import { onMount } from 'svelte';
   import { initScrollDots } from '../../lib/scroll-dots.js';
-  import { initHscrollAutoCols } from '../../lib/hscroll-auto-cols.js';
   import { tr } from '../../lib/anime-utils.js';
   import { openDetail } from '../../views/Detail.svelte';
   import { API as api } from '../../lib/api.js';
@@ -26,8 +25,6 @@
   let loading = $state(true);
   let failed = $state(false);
   let scrollEl = $state(null);
-  let sectionEl = $state(null);
-  let stopAutoCols = null;
 
   const isRecs = $derived(kind === 'recommendations');
   const sectionId = $derived(isRecs ? 'svelte-detailRecommendations' : 'svelte-detailRelations');
@@ -57,23 +54,6 @@
     });
   }
 
-  // 自动列数：观察 .hscroll-section 容器宽度，列数变化时派发合成
-  // scroll 事件驱动 scroll-dots 重算可见页数。
-  // 用 $effect + tick：section 是 #if 条件渲染（loading→false 且 items>0 才出现），
-  // onMount 同步调用时 sectionEl 还是 null，必须等 DOM flush 后再接管。
-  $effect(() => {
-    const ready = !loading && !failed && items.length > 0;
-    if (!ready) return;
-    tick().then(() => {
-      if (!sectionEl) return;
-      if (typeof stopAutoCols === 'function') { stopAutoCols(); stopAutoCols = null; }
-      stopAutoCols = initHscrollAutoCols(sectionEl, {
-        cardSelector: '.relation-card',
-        onColsChange: () => scrollEl && scrollEl.dispatchEvent(new Event('scroll')),
-      });
-    });
-  });
-
   onMount(async () => {
     const cacheKey = kind + ':' + animeId;
     const cached = cacheGet(cacheKey);
@@ -95,14 +75,10 @@
       initDots();
     }
   });
-
-  onDestroy(() => {
-    if (typeof stopAutoCols === 'function') { stopAutoCols(); stopAutoCols = null; }
-  });
 </script>
 
 {#if !loading && !failed && items.length > 0}
-  <div id={sectionId} class="detail-section hscroll-section" bind:this={sectionEl}>
+  <div id={sectionId} class="detail-section hscroll-section">
     <div class="detail-section-header">
       <span class="detail-section-title">{tr(isRecs ? 'detail.recommendations' : 'detail.related', isRecs ? '推荐' : '关联作品')}</span>
     </div>

@@ -77,9 +77,24 @@ bindDom();
   showView('library');
   startGlobalMpvStatus();
 
-  // 通知 Tauri 窗口可以显示了（窗口先隐藏，页面就绪后再显示，避免启动闪烁）
+  // 通知 Tauri 窗口可以显示了（窗口先隐藏，页面就绪后再显示，避免启动闪烁）。
+  // 启动模式偏好（最大化）随 payload 传给 Rust：Rust 在 show() 前同步 maximize。
+  // 本应用是自绘标题栏（decorations(false)），"全屏"= 最大化（占满工作区、保留
+  // 原生可缩放/还原），而非传统独占全屏；隐藏窗口期异步调 maximize 在 show 时会失效。
+  //
+  // 时序约定：app-ready 等 Library 数据就绪信号（首屏渲染完成后）再发，
+  // 避免窗口显示瞬间还是骨架屏。列数是纯函数（--card-w 设计常量 + 容器宽），
+  // 不依赖窗口尺寸时序——窗口先被最大化到 2K 也不会影响任何测量锚定，
+  // 因此无需其它协调。（旧 hscroll-auto-cols 锚定链已删除）
   if (window.__TAURI__?.event?.emit) {
-    window.__TAURI__.event.emit('app-ready').catch(() => {});
+    let readyFired = false;
+    window.addEventListener('app:library-ready', () => {
+      if (readyFired) return;
+      readyFired = true;
+      window.__TAURI__.event
+        .emit('app-ready', { startupFullscreen: !!configCache?.startupFullscreen })
+        .catch(() => {});
+    });
   }
 
   if (configCache?.firstRun) {

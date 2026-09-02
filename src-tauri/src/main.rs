@@ -153,10 +153,25 @@ fn main() {
             bootstrap_log("setup() entered");
             let handle = app.handle();
 
-            // 前端渲染完成后显示窗口（窗口先隐藏，避免启动闪烁）
+            // 前端渲染完成后显示窗口（窗口先隐藏，避免启动闪烁）。
+            // 启动最大化偏好由前端随 app-ready payload 传入（{ startupFullscreen: bool }），
+            // 在 show() 之前同步 maximize —— 本窗口是自绘标题栏（decorations(false)），
+            // 玻璃无边框形态下"全屏"的期望是最大化（占满工作区、标题栏融入自绘栏、
+            // 保留原生可缩放/还原），而非传统独占全屏；独占全屏会丢失缩放能力。
+            // 注意：不能在前端隐藏窗口期异步调 maximize（show 时会失效）。
+            // 布局列数为纯函数（--card-w 设计常量 + 容器宽），不依赖窗口尺寸
+            // 时序，前端无需在最大化前完成任何锚定；前端仅保证 app-ready 携带
+            // 该 payload 时首屏已渲染完成（避免显示瞬间还是骨架屏）。
             let ready_handle = handle.clone();
-            handle.listen("app-ready", move |_| {
+            handle.listen("app-ready", move |event| {
                 if let Some(window) = ready_handle.get_webview_window("main") {
+                    let fullscreen = serde_json::from_str::<serde_json::Value>(event.payload())
+                        .ok()
+                        .and_then(|v| v.get("startupFullscreen").and_then(|b| b.as_bool()))
+                        .unwrap_or(false);
+                    if fullscreen {
+                        let _ = window.maximize();
+                    }
                     let _ = window.show();
                 }
             });

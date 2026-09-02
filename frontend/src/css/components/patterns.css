@@ -239,9 +239,9 @@
 
 /* ─── Horizontal Scroll Card ─── *
  * Usage: apply to cards inside .hscroll container.
- * Width auto-calculated from --cols variable (default 4).
- * 列数可被 lib/hscroll-auto-cols.js 接管：同步首算（DOM 就绪、paint 前）量得
- * 卡宽后锁定，再随容器宽度连续增减列数（卡宽保持首次渲染值，一帧到位）。
+ * 卡宽 = calc 弹性均分：按 --cols 把容器宽（扣除 gap）均分，每屏恰好整数张
+ * 完整卡片、铺满无空隙。--cols 由 scroll-dots.js 依"基准卡宽 --card-w + 容器宽"
+ * 计算写回（纯函数，无量测、无时序耦合）。--card-w 是档位门槛的基准常量。
  */
 @utility hscroll-card {
   flex-shrink: 0;
@@ -251,11 +251,11 @@
 
 /* ─── Horizontal Scroll Section ─── *
  * Wrapper for a paged horizontal scroll area.
- * 默认 --cols: 4；各分区可用 media query / data-cols 覆盖。
- * 被 initHscrollAutoCols 接管后 --cols 由 JS 依实测卡宽连续计算。
+ * --card-w: 基准卡宽常量（档位门槛），各分区覆盖（dashboard/detail/mikan CSS）。
+ * 列数由 scroll-dots.js 依 基准+容器宽 纯函数计算并写回 --cols，卡宽随之弹性均分。
  */
 .hscroll-section {
-  --cols: 4;
+  --card-w: 320px;
 }
 
 /* ─── Scroll Pagination Dots ─── *

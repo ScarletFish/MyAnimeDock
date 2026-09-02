@@ -73,7 +73,9 @@ const HAS_VAR = /\bvar\(--/;
 // Config-type custom properties set at call sites (not design tokens).
 // They are consumed with a fallback (var(--x, default)) and defined
 // per-instance via CSS or data-* attributes — exempt from GHOST-TOKEN.
-const CONFIG_VARS = new Set(['cols', 'gap']);
+// --card-w: hscroll 卡宽设计常量，由各分区定义（dashboard/detail/mikan），
+// scroll-dots.js 读它计算列数 —— 与 --cols/--gap 同类，由调用侧赋值。
+const CONFIG_VARS = new Set(['cols', 'gap', 'card-w']);
 
 /** Collect all --token references in a line */
 const VAR_REF = /var\(--([a-zA-Z0-9_-]+)/g;

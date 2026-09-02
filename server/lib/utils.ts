@@ -179,35 +179,6 @@ function jsonResp(res: any, code: number, obj: unknown): void {
   res.end(JSON.stringify(obj));
 }
 
-// --- 启动时清理超过 14 天的视频缩略图和封面缩放缓存 ---
-async function cleanupOldCache(dataDir: string): Promise<number> {
-  const dirs = [
-    path.join(dataDir, 'thumbs'),
-    path.join(dataDir, 'covers', '.resized'),
-  ];
-  const maxAge = 14 * 24 * 60 * 60 * 1000; // 14 days
-  const now = Date.now();
-  let total = 0;
-  for (const dir of dirs) {
-    try {
-      if (!fs.existsSync(dir)) continue;
-      const entries = await fs.promises.readdir(dir, { withFileTypes: true });
-      for (const entry of entries) {
-        if (!entry.isFile()) continue;
-        const fp = path.join(dir, entry.name);
-        try {
-          const stat = await fs.promises.stat(fp);
-          if ((now - stat.mtimeMs) > maxAge) {
-            await fs.promises.unlink(fp);
-            total++;
-          }
-        } catch (_) {}
-      }
-    } catch (_) {}
-  }
-  return total;
-}
-
 // --- TTL Cache (in-memory) ---
 function createTimedCache<T>(ttlMs: number): { get(): T | null; set(v: T): void; clear(): void } {
   let data: T | null = null, ts = 0;
@@ -273,7 +244,6 @@ export {
   preGenerateCovers,
   serveImage, serveRaw,
   readBody, jsonResp,
-  cleanupOldCache,
   createTimedCache,
   createPersistentCache,
 };

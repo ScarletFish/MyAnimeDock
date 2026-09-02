@@ -18,7 +18,7 @@ import {
 } from './lib/config';
 import { SERVER_ROOT } from './lib/paths';
 import {
-  mime, setFfmpegPath, serveImage, serveRaw, readBody, jsonResp, cleanupOldCache,
+  mime, setFfmpegPath, serveImage, serveRaw, readBody, jsonResp,
 } from './lib/utils';
 import { computePinyinTitle } from './lib/pinyin';
 import ThumbnailQueue = require('./thumbnail-queue');
@@ -487,9 +487,6 @@ async function init() {
   startupTime = startTime;
 
   // Phase 1: Parallel init
-  cleanupOldCache(DATA_DIR).then(total => {
-    if (total > 0) logger.info(`Cleaned ${total} expired cache files (>14d)`);
-  }).catch(e => logger.warn('Cache cleanup error:', e.message));
   await db.ensureSchema().catch((e: any) => logger.warn('Schema ensure skipped:', e.message));
 
   // Phase 2: Hydrate data

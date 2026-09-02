@@ -16,14 +16,6 @@
   let resizeTimer = null;
   const MAX_GRID_HEIGHT = 10000;
 
-  /** 记录单张图片加载失败，模板据此显隐 img/首字母占位符（与详情页封面同模式） */
-  // 用 $state 包裹：普通 Set 的 add() 不触发 Svelte 重渲染，会导致图片 404 时停留裂图
-  // 而非切换到首字母占位符。$state 代理 Set 的 add/delete/clear，has() 依赖会被追踪。
-  let failedImg = $state(new Set());
-  function charAvatarFallback(e) {
-    failedImg.add(e.currentTarget.getAttribute('data-cid'));
-  }
-
   function getCharGridRowHeight() {
     if (!gridEl || !gridEl.children[0]) return 104;
     return gridEl.children[0].offsetHeight + 8;
@@ -109,11 +101,12 @@
           {@const name = c.nameCn || c.name}
           {@const cv = c.actors && c.actors[0] ? (c.actors[0].nameCn || c.actors[0].name) : null}
           <div class="detail-char-card">
-            {#if c.image && !failedImg.has(c.id)}
-              <img class="detail-char-avatar" src={c.image} alt="" data-cid={c.id} decoding="async" onerror={charAvatarFallback}>
-            {:else}
+            <div class="detail-char-avatar-wrap">
               <div class="detail-char-avatar-placeholder">{initialOf(name)}</div>
-            {/if}
+              {#if c.image}
+                <img class="detail-char-avatar" src={c.image} alt="" loading="lazy" decoding="async" onload={(e) => e.currentTarget.classList.add('is-loaded')}>
+              {/if}
+            </div>
             <div class="detail-char-info">
               <div class="detail-char-name">{name}</div>
               {#if cv}<div class="detail-char-cv">{cv}</div>{/if}

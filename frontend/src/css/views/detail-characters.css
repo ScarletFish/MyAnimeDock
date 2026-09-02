@@ -70,21 +70,34 @@
   min-width: 0;
 }
 
-.detail-char-avatar {
+.detail-char-avatar-wrap {
+  position: relative;
   width: 60px;
   height: 80px;
+  flex-shrink: 0;
+}
+
+.detail-char-avatar {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   border-radius: var(--radius-sm);
   object-fit: cover;
   object-position: top center;
-  flex-shrink: 0;
   background: var(--bg-surface);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s var(--ease-out);
 }
+.detail-char-avatar.is-loaded { opacity: 1; }
 
 .detail-char-avatar-placeholder {
-  width: 60px;
-  height: 80px;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   border-radius: var(--radius-sm);
-  flex-shrink: 0;
   background: var(--bg-surface);
   display: flex;
   align-items: center;

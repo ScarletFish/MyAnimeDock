@@ -17,7 +17,9 @@
   const MAX_GRID_HEIGHT = 10000;
 
   /** 记录单张图片加载失败，模板据此显隐 img/首字母占位符（与详情页封面同模式） */
-  let failedImg = new Set();
+  // 用 $state 包裹：普通 Set 的 add() 不触发 Svelte 重渲染，会导致图片 404 时停留裂图
+  // 而非切换到首字母占位符。$state 代理 Set 的 add/delete/clear，has() 依赖会被追踪。
+  let failedImg = $state(new Set());
   function charAvatarFallback(e) {
     failedImg.add(e.currentTarget.getAttribute('data-cid'));
   }

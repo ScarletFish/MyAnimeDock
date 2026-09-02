@@ -27,6 +27,7 @@
   import LocalAnimeSection from './LocalAnimeSection.svelte';
   import { calcGridCols, readScale } from '../lib/grid.js';
   import { initScrollDots } from '../lib/scroll-dots.js';
+  import { initHscrollAutoCols } from '../lib/hscroll-auto-cols.js';
   import { getDashboardLayout } from '../lib/dashboard-layout.js';
   import { tr } from '../lib/anime-utils.js';
   import { libraryData, pendingAutoPlay, consumeStartupLibraryPromise } from '../lib/ui-state.js';
@@ -267,6 +268,27 @@
         dotsParent: header,
       });
     });
+  });
+
+  // ─── 继续观看：自动列数（随容器宽度连续变化）───
+  // 列数变化时派发合成 scroll 事件，驱动 scroll-dots 重算可见页数。
+  let stopContinueAutoCols = null;
+  $effect(() => {
+    if (loading) return;
+    tick().then(() => {
+      const scrollEl = document.querySelector('#svelte-libraryView .dashboard-continue-scroll');
+      if (!scrollEl) return;
+      const section = scrollEl.closest('.dashboard-section');
+      if (!section) return;
+      if (typeof stopContinueAutoCols === 'function') { stopContinueAutoCols(); stopContinueAutoCols = null; }
+      stopContinueAutoCols = initHscrollAutoCols(section, {
+        cardSelector: '.dashboard-continue-card',
+        onColsChange: () => scrollEl.dispatchEvent(new Event('scroll')),
+      });
+    });
+  });
+  onDestroy(() => {
+    if (typeof stopContinueAutoCols === 'function') { stopContinueAutoCols(); stopContinueAutoCols = null; }
   });
 
   // ─── 模块级 fade 入场：视图打开时稳定分区容器整块淡入（交错）───

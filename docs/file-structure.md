@@ -122,7 +122,7 @@ frontend/
 │   │   ├── grid.js            #   Grid 列公式（GRID_CARD_MIN/MAX + calcGridCols）
 │   │   ├── mpv-status.js      #   全局 mpv-status SSE 监听
 │   │   ├── sync-stream.js     #   MetaMatch SSE 流封装（+ sync-stream.test.js）
-│   │   ├── anime-utils.js / dashboard-layout.js / lazy-bg.js / scroll-dots.js / sort.js / tag-data.js / tauri-dialog.js / tooltip.js
+│   │   ├── anime-utils.js / dashboard-layout.js / hscroll-auto-cols.js / lazy-bg.js / scroll-dots.js / sort.js / tag-data.js / tauri-dialog.js / tooltip.js
 │   ├── components/            # Svelte 组件
 │   │   ├── Toast.svelte / Modal.svelte / ConfirmDialog.svelte / ContextMenu.svelte / KbdHelp.svelte / Onboarding.svelte / Sidebar.svelte / StatusModal.svelte / StatusSection.svelte / ThemeDock.svelte / AnimeCard.svelte
 │   │   ├── chrome/            #   Chrome.svelte / Titlebar.svelte / SearchBar.svelte

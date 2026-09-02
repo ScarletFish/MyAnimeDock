@@ -23,6 +23,7 @@
 | `sync-stream.js` | `createSyncStream(ids)` | MetaMatch SSE 流封装 | MetaMatch |
 | `mpv-status.js` | `startGlobalMpvStatus()` | 全局 mpv-status SSE 监听 | main.js |
 | `scroll-dots.js` | `initScrollDots(opts)` | 横向滚动分页圆点 | Library |
+| `hscroll-auto-cols.js` | `initHscrollAutoCols(el, opts)` | 水平滚动分区自动列数（卡宽锁定首渲染值，随宽度连续增减） | Library/EpisodeHeatmap/RelationList/MikanModal |
 | `tag-utils.js` | `filterTags`, `tagZh`, `tagSearchFields` | 标签工具 | Detail |
 | `tag-data.js` | `ANILIST_TAG_DATA` | AniList 标签中文映射 | Detail |
 | `i18n.js` | `initI18n()`, `bindDom()` | i18next 初始化 | main.js |

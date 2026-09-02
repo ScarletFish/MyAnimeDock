@@ -4,13 +4,14 @@
 </script>
 
 <script>
-  import { onMount, tick } from 'svelte';
+  import { onMount, onDestroy, tick } from 'svelte';
   import { portal } from '../lib/portal.js';
   import { showToast } from '../components/Toast.svelte';
   import { showConfirm } from '../components/ConfirmDialog.svelte';
   import { tr } from '../lib/anime-utils.js';
   import { API as api } from '../lib/api.js';
   import { initScrollDots } from '../lib/scroll-dots.js';
+  import { initHscrollAutoCols } from '../lib/hscroll-auto-cols.js';
   import { Select, Popover } from 'bits-ui';
   import MikanSubscribePanel from '../components/MikanSubscribePanel.svelte';
 
@@ -23,6 +24,7 @@
   let selectedSubgroupIdx = $state(0);
   let subscribing = $state(null);
   let scrollEls = $state({});
+  let stopAutoColsFns = [];
   let loadingFullSubgroup = $state(null);
   let fullResourcesLoaded = $state(new Set());
   let detailPanelEl = $state(null);
@@ -46,6 +48,9 @@
 
   let selectedYear = $state(currentYear);
   let selectedSeason = $state(currentSeason);
+
+  // 周番组固定按周一至周日 7 天分组
+  const WEEKDAY_SECTIONS = 7;
 
   const yearOptions = Array.from({ length: currentYear - 2012 + 1 }, (_, i) => currentYear - i);
 
@@ -104,15 +109,16 @@
       subscribeMode = false;
       subscribeTarget = null;
       preview = { matched: [], excluded: [], unmatched: [], total: 0 };
-      requestAnimationFrame(() => {
-        for (let i = 0; i < 7; i++) {
-          initDotsForDay(i);
-        }
-      });
     } catch (e) {
       showToast(tr('mikan.loadFailed', { error: e.message }), 'error');
     } finally {
       loading = false;
+    }
+    // loading=false 后才刷新 DOM；tick 后（paint 前）同步首算，一帧到位
+    await tick();
+    for (let i = 0; i < WEEKDAY_SECTIONS; i++) {
+      initDotsForDay(i);
+      initAutoColsForDay(i);
     }
   }
 
@@ -249,6 +255,26 @@
       });
     });
   }
+
+  // 初始化自动列数（.mikan-day-scroll 是自带 --cols 的 plain flex 容器）
+  function initAutoColsForDay(dayIdx) {
+    const scrollEl = scrollEls[dayIdx];
+    if (!scrollEl) return;
+    // 弹窗 #if open 会销毁/重建 DOM：重建前须断开旧 observer，
+    // 否则新元素永远接不上（守卫拦住重建）。
+    if (typeof stopAutoColsFns[dayIdx] === 'function') { stopAutoColsFns[dayIdx](); stopAutoColsFns[dayIdx] = null; }
+    stopAutoColsFns[dayIdx] = initHscrollAutoCols(scrollEl, {
+      cardSelector: '.mikan-anime-card',
+      onColsChange: () => scrollEl.dispatchEvent(new Event('scroll')),
+    });
+  }
+
+  onDestroy(() => {
+    for (const stop of stopAutoColsFns) {
+      if (typeof stop === 'function') stop();
+    }
+    stopAutoColsFns = [];
+  });
 </script>
 
 {#if open}

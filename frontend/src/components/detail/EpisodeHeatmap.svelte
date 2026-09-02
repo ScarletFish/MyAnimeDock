@@ -3,13 +3,15 @@
   // 根元素保留 id="svelte-episodeHeatmapGrid"（CSS/选择器契约）。
   // 缩略图全量预加载：首帧可见的立即加载，其余动画结束后（350ms）批量加载（见 loadVisibleThumbs）。
   // 写 inline style，满足 detail-episodes.css:88 opacity 规则。
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { initScrollDots } from '../../lib/scroll-dots.js';
+  import { initHscrollAutoCols } from '../../lib/hscroll-auto-cols.js';
   import { tr } from '../../lib/anime-utils.js';
 
   let { anime = null, episodes = [], lastPlayedEp = null, onPlay, onToggleWatched } = $props();
 
   let gridEl = $state(null);
+  let stopAutoCols = null;
 
   // 暴露给父组件：滚动到指定索引（playEpisodeFromCover 用）
   export function scrollToIndex(idx) {
@@ -71,6 +73,13 @@
       total: episodes.length,
       dotsParent: document.querySelector('#svelte-episodeHeatmap .episode-list-header'),
     });
+    // 自动列数：观察外层 .hscroll-section（#svelte-episodeHeatmap）宽度，
+    // 列数变化时派发合成 scroll 事件驱动 scroll-dots 重算页数。
+    const section = gridEl.closest('.hscroll-section') || gridEl;
+    stopAutoCols = initHscrollAutoCols(section, {
+      cardSelector: '.episode-card',
+      onColsChange: () => gridEl.dispatchEvent(new Event('scroll')),
+    });
     // 剧集列表是首屏模块：按当前集数索引优先加载视口内的缩略图，其余延迟到
     // 封面入场动画结束后批量加载（本地缓存命中 4-22ms，滚动不再逐张等 IO 触发）。
     const startIdx = scrollToLastPosition();
@@ -80,6 +89,10 @@
         setTimeout(loadAllThumbs, 350);
       });
     });
+  });
+
+  onDestroy(() => {
+    if (typeof stopAutoCols === 'function') { stopAutoCols(); stopAutoCols = null; }
   });
 
   // 按当前集数索引加载视口内卡片（最精准，不依赖几何测量）。

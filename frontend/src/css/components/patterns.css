@@ -240,8 +240,8 @@
 /* ─── Horizontal Scroll Card ─── *
  * Usage: apply to cards inside .hscroll container.
  * Width auto-calculated from --cols variable (default 4).
- * Responsive: set --cols on parent .hscroll-section via media query or data-cols.
- *   .hscroll-section { --cols: 3; }  // 3 cards per page
+ * 列数可被 lib/hscroll-auto-cols.js 接管：同步首算（DOM 就绪、paint 前）量得
+ * 卡宽后锁定，再随容器宽度连续增减列数（卡宽保持首次渲染值，一帧到位）。
  */
 @utility hscroll-card {
   flex-shrink: 0;
@@ -251,7 +251,8 @@
 
 /* ─── Horizontal Scroll Section ─── *
  * Wrapper for a paged horizontal scroll area.
- * Sets default --cols; override per-section via CSS or data-cols attribute.
+ * 默认 --cols: 4；各分区可用 media query / data-cols 覆盖。
+ * 被 initHscrollAutoCols 接管后 --cols 由 JS 依实测卡宽连续计算。
  */
 .hscroll-section {
   --cols: 4;

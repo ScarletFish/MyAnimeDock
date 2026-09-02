@@ -67,6 +67,32 @@
 - 圆点指示器由 `initScrollDots()`（`frontend/src/lib/scroll-dots.js`）在 Svelte 组件 `onMount` 中初始化，无需手动调用
 - 卡片宽度从 `--cols` 自动计算，无需手写 `calc()`
 
+**自动列数（可选增强）：** 想让列数随容器宽度连续变化（而非断点阶梯），用
+`initHscrollAutoCols()`（`frontend/src/lib/hscroll-auto-cols.js`）：
+
+```js
+// 必须在 DOM 就绪后同步调用（tick().then() 或 onMount），此时浏览器尚未 paint，
+// 测量卡宽 + 写回 --cols 在同一帧完成——首次绘制即最终列数（一帧到位，无闪烁）。
+import { tick } from 'svelte';
+import { initHscrollAutoCols } from '../../lib/hscroll-auto-cols.js';
+
+$effect(() => {
+  if (!ready) return; // 数据就绪（#if 条件渲染的分区必须等 DOM 出现）
+  tick().then(() => {
+    stop = initHscrollAutoCols(sectionEl, {
+      cardSelector: '.my-card', // 必须传真实的卡片类，卡片用 @apply hscroll-card 无字面 class
+      onColsChange: () => scrollEl.dispatchEvent(new Event('scroll')), // 联动 scroll-dots 重算页数
+    });
+  });
+});
+onDestroy(() => stop && (stop(), (stop = null)));
+```
+
+- 首次量得的卡宽即"目标卡宽"，此后列数 = round(容器宽/(卡宽+gap))，卡宽锁死不放宽
+- CSS 断点 `--cols` 保留作 JS 未加载时的基线；被接管后 JS 用 inline `--cols` 覆盖
+- 生命周期：组件销毁时清理（断开 observer + 移除 inline `--cols` 恢复基线）；`{#if}` 重建 DOM 的组件（如弹窗）重建前必须先停旧实例
+- 不宜接入：需要固定列数观感的分区、卡片尺寸应随容器缩放的分区
+
 ### Token 引用规则
 
 所有新增 CSS 必须用 `var(--xxx)` token，**禁止写死值**：
@@ -390,7 +416,7 @@ Svelte 响应式自动处理视图更新：数据变化通过 store / `$state` �
 
 - **组件**放 `frontend/src/components/`（通用组件）与 `frontend/src/components/detail/`、`frontend/src/components/chrome/`、`frontend/src/components/metamatch/`（按域分子目录）
 - **视图**放 `frontend/src/views/`（`Library.svelte` / `Mylist.svelte` / `Detail.svelte` / `Discovery.svelte` / `Stats.svelte` / `Settings.svelte` / `MetaMatch.svelte` / `LocalAnimeSection.svelte`）
-- **可复用逻辑**放 `frontend/src/lib/`（`router.js` / `ui-state.js` / `grid.js` / `theme.js` / `i18n.js` / `scroll-dots.js` / `keyboard.js` / `mpv-status.js` / `sort.js` / `tooltip.js` / `sync-stream.js` 等）
+- **可复用逻辑**放 `frontend/src/lib/`（`router.js` / `ui-state.js` / `grid.js` / `theme.js` / `i18n.js` / `scroll-dots.js` / `hscroll-auto-cols.js` / `keyboard.js` / `mpv-status.js` / `sort.js` / `tooltip.js` / `sync-stream.js` 等）
 - **样式**用 CSS 文件（`styles.css` 入口 + `tokens.css` / `base.css` / `light.css` + `views/` / `components/` / `layouts/` 子文件），组件内 `<style>` 尽量少用，优先用全局 CSS 类
 - 组件内 `<style>` 仅用于组件私有、无法用全局类表达的样式；可复用的样式抽象到对应全局 CSS 文件
 

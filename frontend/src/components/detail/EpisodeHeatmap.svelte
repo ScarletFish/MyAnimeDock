@@ -110,8 +110,8 @@
   function applyThumb(el) {
     const src = el.dataset.src;
     if (!src) return;
-    el.style.backgroundImage = 'url("' + src + '")';
-    el.removeAttribute('data-src');
+    // <img> 通过 src 加载；onload/onerror 由模板绑定处理（onload 移除 data-src，onerror 落占位）
+    el.src = src;
   }
 </script>
 
@@ -132,7 +132,19 @@
         oncontextmenu={(e) => { e.preventDefault(); e.stopPropagation(); onToggleWatched(ep.number, !ep.watched); }}
       >
         <div class="episode-card-thumb">
-          <div class="episode-card-bg" data-src={thumbUrl}></div>
+          <img class="episode-card-bg" data-src={thumbUrl} alt=""
+               onload={(e) => e.currentTarget.removeAttribute('data-src')}
+               onerror={(e) => { e.currentTarget.removeAttribute('data-src'); e.currentTarget.closest('.episode-card-thumb')?.classList.add('is-missing'); }} />
+          <div class="episode-card-missing" aria-hidden="true">
+            <svg viewBox="0 0 48 48" fill="currentColor" aria-hidden="true">
+              <g transform="rotate(0 24 24)"><ellipse cx="24" cy="15" rx="6.5" ry="11"/></g>
+              <g transform="rotate(72 24 24)"><ellipse cx="24" cy="15" rx="6.5" ry="11"/></g>
+              <g transform="rotate(144 24 24)"><ellipse cx="24" cy="15" rx="6.5" ry="11"/></g>
+              <g transform="rotate(216 24 24)"><ellipse cx="24" cy="15" rx="6.5" ry="11"/></g>
+              <g transform="rotate(288 24 24)"><ellipse cx="24" cy="15" rx="6.5" ry="11"/></g>
+              <circle cx="24" cy="24" r="4.2" fill="var(--bg-surface)"/>
+            </svg>
+          </div>
           <div class="episode-card-overlay"></div>
           <div class="episode-card-num">{epNum}</div>
           {#if ep.watched}

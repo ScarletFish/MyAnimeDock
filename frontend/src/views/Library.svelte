@@ -42,7 +42,7 @@
   // ─── 状态 ───
   let stats = $state(null);
   let layout = $state([]);
-  let loading = $state(true);
+  let loading = $state(false);
   let gridCols = $state('');
 
   // 本次进入恢复的滚动位置 > 0（从视图中部返回）→ 模块纯淡入，抑制位移动画。
@@ -83,8 +83,10 @@
   // ─── 打开时加载数据（避免启动时全量 fetch）───
   // fromViewSwitch=true：视图切换进入（从详情/其他视图返回），恢复 vanilla 保存的滚动位置；
   // fromViewSwitch=false：库页已显示时的就地刷新（状态变更等），保留当前滚动。
+  // store 已有数据时跳过 fetch，直接用缓存渲染（返回列表页不再 loading）；
+  // 首次打开（数据为空）或 mutation 回调强制刷新时才发请求。
   $effect(() => {
-    if ($libraryOpen) loadLibraryImpl(true);
+    if ($libraryOpen && $libraryData.length === 0) loadLibraryImpl(true);
   });
 
   // ─── 视图切换入场：容器淡入（方案 B）───

@@ -65,8 +65,10 @@
   });
 
   // ─── 打开时加载 ───
+  // store 已有数据时跳过 fetch，直接用缓存渲染（返回列表页不再 loading）；
+  // 首次打开（数据为空）或 mutation 回调强制刷新时才发请求。
   $effect(() => {
-    if ($mylistOpen) {
+    if ($mylistOpen && $mylistData.length === 0) {
       loadMyListImpl(true);
     }
   });

@@ -164,6 +164,7 @@ fn main() {
             // 该 payload 时首屏已渲染完成（避免显示瞬间还是骨架屏）。
             let ready_handle = handle.clone();
             handle.listen("app-ready", move |event| {
+                bootstrap_log("app-ready received, showing window");
                 if let Some(window) = ready_handle.get_webview_window("main") {
                     let fullscreen = serde_json::from_str::<serde_json::Value>(event.payload())
                         .ok()
@@ -363,14 +364,14 @@ fn main() {
                 {
                     Ok(_) => {
                         bootstrap_log("window created OK");
-                        // 兜底：5 秒后仍未收到前端 app-ready 事件则强制显示窗口。
-                        // 正常流程前端渲染完必发 app-ready，此处仅防前端启动 JS 抛错导致事件丢失。
+                        // 安全兜底：3 秒后仍未收到前端 app-ready 事件则强制显示窗口，避免永久黑屏。
+                        // 正常流程前端渲染完必发 app-ready；触发此兜底说明 app-ready 链路异常（需排查）。
                         let fb = handle_clone.clone();
                         std::thread::spawn(move || {
-                            std::thread::sleep(Duration::from_secs(5));
+                            std::thread::sleep(Duration::from_secs(3));
                             match fb.get_webview_window("main") {
                                 Some(w) => {
-                                    bootstrap_log("fallback: showing window (app-ready not received in 5s)");
+                                    bootstrap_log("WARN fallback: showing window (app-ready not received in 3s)");
                                     let _ = w.show();
                                 }
                                 None => bootstrap_log("ERROR fallback: window 'main' not found"),

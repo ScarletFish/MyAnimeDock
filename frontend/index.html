@@ -11,8 +11,38 @@
 <script>(function(){var t=localStorage.getItem('theme')||'default',m=localStorage.getItem('themeMode');if(t==='dark'||t==='light'){m=t;t='default'}m=m||'dark';document.documentElement.setAttribute('data-theme',t==='default'?m:t);document.documentElement.setAttribute('data-theme-mode',m)})()</script>
 <link rel="stylesheet" href="/src/css/styles.css">
 <link rel="stylesheet" href="/src/css/light.css">
+<style>
+  /* 启动页：窗口在 app 就绪前可见时的全屏覆盖层（logo + spinner）。 */
+  /* 深/浅背景取 --bg-deep，与 Rust 窗口 bg_color（dark #050505 / light #f2f2f2）完全一致，零色差。 */
+  #splash {
+    position: fixed; inset: 0; z-index: 2147483647;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px;
+    background: var(--bg-deep, #050505);
+    transition: opacity 300ms ease;
+  }
+  #splash .splash-mark { width: 112px; height: 112px; border-radius: 24px; }
+  #splash .splash-spinner {
+    width: 34px; height: 34px; border-radius: 50%;
+    border: 3px solid var(--border, #32323c); border-top-color: var(--accent-secondary);
+    animation: splash-spin 0.9s linear infinite;
+  }
+  @keyframes splash-spin { to { transform: rotate(360deg); } }
+  /* app 就绪后由 main.js 添加 .is-hidden → 淡出；随后移除 DOM */
+  #splash.is-hidden { opacity: 0; pointer-events: none; }
+</style>
 </head>
 <body>
+
+<!-- 启动页（body 最前，全屏覆盖；app-ready 后淡出移除）。logo 复用侧边栏 BrandMark 比例（accent 圆角方块 + D，1:1） -->
+<div id="splash">
+  <div class="splash-mark">
+    <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+      <rect x="0" y="0" width="16" height="16" rx="3" fill="var(--accent)" stroke="var(--border)" stroke-width="0.5"/>
+      <text x="8" y="13" font-family="Georgia, 'Times New Roman', serif" font-weight="700" font-size="12" fill="var(--bg-elevated)" stroke="none" text-anchor="middle">D</text>
+    </svg>
+  </div>
+  <div class="splash-spinner"></div>
+</div>
 
 <!-- Title Bar / Onboarding（Svelte Chrome 挂载点，body 第一个子级） -->
 <div id="chrome"></div>

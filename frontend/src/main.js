@@ -36,6 +36,40 @@ mount(Sidebar, {
 // ─── i18n DOM 绑定（替换 [data-i18n] 和 [data-i18n-attr]）───
 bindDom();
 
+// ─── 窗口就绪信号（顶层注册，避免 Library 先派发导致监听器未就位的竞态）───
+// 关键：app-ready 的监听必须在这里（任何 await / showView 之前）同步注册，
+// 否则 Library 首帧派发 app:library-ready 时会被错过 → app-ready 永不发射 → 3s 兜底。
+// configCache 由下方 async IIFE 填充，emit 时才读取（顶层注册时尚未可用，惰性取）。
+// 用 { once: true }：该事件只消费一次（Library 数据刷新重派发时不再重复发 app-ready）。
+let __configCache = null;
+const __isTauri = !!window.__TAURI__?.event;
+
+// 启动页（splash）：仅 Tauri 上下文显示（窗口隐藏期作占位/兜底）；
+// 浏览器 dev 无隐藏窗口，直接移除，避免 splash 遮住首屏等数据。
+const __splash = document.getElementById('splash');
+const __hideSplash = () => {
+  if (!__splash || __splash.classList.contains('is-hidden')) return;
+  __splash.classList.add('is-hidden');
+  setTimeout(() => __splash.remove(), 320); // 等 opacity 过渡结束后移除 DOM
+};
+if (!__isTauri) {
+  __splash?.remove();
+} else {
+  // Tauri：等 library-ready 后淡出；8s 兜底强移，防卡死
+  setTimeout(__hideSplash, 8000);
+}
+
+// 统一监听 app:library-ready（顶层，先于任何派发而存在；once 只消费一次）
+window.addEventListener('app:library-ready', () => {
+  __hideSplash();
+  if (!__isTauri) return;
+  if (window.__TAURI__?.event?.emit) {
+    window.__TAURI__.event
+      .emit('app-ready', { startupFullscreen: !!__configCache?.startupFullscreen })
+      .catch(() => {});
+  }
+}, { once: true });
+
 // ─── Init (DOM already ready — modules are deferred) ───
 (async () => {
   // 首屏并行：/api/library 不依赖 /api/config，立即发起（Library 首次加载时消费）。
@@ -77,25 +111,10 @@ bindDom();
   showView('library');
   startGlobalMpvStatus();
 
-  // 通知 Tauri 窗口可以显示了（窗口先隐藏，页面就绪后再显示，避免启动闪烁）。
-  // 启动模式偏好（最大化）随 payload 传给 Rust：Rust 在 show() 前同步 maximize。
-  // 本应用是自绘标题栏（decorations(false)），"全屏"= 最大化（占满工作区、保留
-  // 原生可缩放/还原），而非传统独占全屏；隐藏窗口期异步调 maximize 在 show 时会失效。
-  //
-  // 时序约定：app-ready 等 Library 数据就绪信号（首屏渲染完成后）再发，
-  // 避免窗口显示瞬间还是骨架屏。列数是纯函数（--card-w 设计常量 + 容器宽），
-  // 不依赖窗口尺寸时序——窗口先被最大化到 2K 也不会影响任何测量锚定，
-  // 因此无需其它协调。（旧 hscroll-auto-cols 锚定链已删除）
-  if (window.__TAURI__?.event?.emit) {
-    let readyFired = false;
-    window.addEventListener('app:library-ready', () => {
-      if (readyFired) return;
-      readyFired = true;
-      window.__TAURI__.event
-        .emit('app-ready', { startupFullscreen: !!configCache?.startupFullscreen })
-        .catch(() => {});
-    });
-  }
+  // 窗口就绪信号已由顶层统一注册（见 main.js 顶部），此处仅把 configCache 交给
+  // 顶层 emit 回调惰性读取（startupFullscreen 载荷）。app-ready 等 Library 数据
+  // 就绪（首屏渲染完成）后再发，避免窗口显示瞬间还是骨架屏。
+  __configCache = configCache;
 
   if (configCache?.firstRun) {
     onboardingOpen.set(true);

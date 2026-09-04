@@ -14,6 +14,10 @@ const THUMB_MIDPOINT_RATIO = 0.5; // background 项缩略图取时长中点
 const THUMB_THREADS = 2;          // ffmpeg 编码线程数
 const THUMB_WIDTH = 480;          // 缩略图宽度
 const THUMB_QUALITY = 5;          // ffmpeg -q:v 质量
+/** 黑屏阈值：signalstats YAVG < 15 视为黑屏（真黑屏≈1，真实暗场最低 31，15 两端留足余量） */
+const THUMB_BLACK_LUMA = 15;
+/** 黑屏重采最大次数（每次 time +1s） */
+const THUMB_RETRY_MAX = 60;
 
 /** Remove a 0-byte thumbnail file so it gets regenerated next time */
 function _cleanupZeroByte(thumbPath: string): void {
@@ -248,6 +252,31 @@ class ThumbnailQueue {
     });
   }
 
+  /** 探测单帧平均亮度 YAVG（0-255）。失败返回 null。用于黑屏检测。 */
+  _probeLuminance(imagePath: string): Promise<number | null> {
+    const ffmpegPath = getFfmpegPath();
+    if (!ffmpegPath) return Promise.resolve(null);
+    return new Promise((resolve) => {
+      const ff = spawn(ffmpegPath, [
+        '-i', imagePath,
+        '-vf', 'signalstats,metadata=print:file=-',
+        '-frames:v', '1', '-f', 'null', '-', '-loglevel', 'error',
+      ]);
+      let stderr = '';
+      let done = false;
+      ff.stderr.on('data', d => { stderr += d.toString(); });
+      const finish = () => {
+        if (done) return; done = true;
+        const m = stderr.match(/YAVG=([\d.]+)/);
+        if (m) resolve(parseFloat(m[1]));
+        else resolve(null);
+      };
+      ff.on('close', finish);
+      ff.on('error', () => { if (!done) { done = true; resolve(null); } });
+      setTimeout(() => { if (!done) { done = true; ff.kill(); resolve(null); } }, 10000);
+    });
+  }
+
   _scheduleDrain(): void {
     if (this._processing || this._drainTimer) return;
     // 小延迟让同一批 enqueue 调用合并
@@ -351,7 +380,50 @@ class ThumbnailQueue {
     }
     if (!fs.existsSync(thumbDir)) fs.mkdirSync(thumbDir, { recursive: true });
 
-    return new Promise<void>((resolve) => {
+    // 在目标时间抽帧，命中黑屏则 +1s 逐秒重采，直到拿到非黑帧或达到上限
+    return new Promise<void>(async (resolve) => {
+      try {
+        let t = time;
+        for (let attempt = 0; attempt <= THUMB_RETRY_MAX; attempt++) {
+          const ok = await this._grabFrame(filePath, t, thumbPath);
+          if (!ok) {
+            // 抽帧失败（ffmpeg 错误/超时/0字节）→ 直接失败，不重采
+            this._settle(item, null, new Error('ffmpeg frame grab failed'));
+            return resolve();
+          }
+          const luma = await this._probeLuminance(thumbPath);
+          if (luma === null) {
+            // 亮度探测失败 → 无法验证，视为失败，不留下未验证帧
+            _cleanupZeroByte(thumbPath);
+            this._settle(item, null, new Error('luminance probe failed'));
+            return resolve();
+          }
+          if (luma >= THUMB_BLACK_LUMA) {
+            // 非黑帧，采纳
+            this._settle(item, thumbPath, null);
+            return resolve();
+          }
+          // 黑屏 → 清除并 +1s 重采
+          logger.warn(`Black thumbnail (YAVG=${luma.toFixed(1)}) at ${t}s, retrying ${filePath}`);
+          if (fs.existsSync(thumbPath)) fs.unlinkSync(thumbPath);
+          t += 1;
+        }
+        // 全部黑屏
+        logger.warn(`Thumbnail all-black after ${THUMB_RETRY_MAX} retries: ${filePath}`);
+        this._settle(item, null, new Error('thumbnail all black'));
+        resolve();
+      } catch (err) {
+        this._settle(item, null, err instanceof Error ? err : new Error('thumbnail generation failed'));
+        resolve();
+      }
+    });
+  }
+
+  /** 在给定时间从视频抽取一帧写入 thumbPath。成功返回 true；失败（非0退出/超时/0字节）返回 false。 */
+  _grabFrame(filePath: string, time: number, thumbPath: string): Promise<boolean> {
+    const ffmpegPath = getFfmpegPath();
+    if (!ffmpegPath) return Promise.resolve(false);
+    return new Promise<boolean>((resolve) => {
       const ff = spawn(ffmpegPath, [
         '-ss', String(time), '-i', filePath,
         '-skip_frame', 'nokey', '-threads', String(THUMB_THREADS),
@@ -362,8 +434,7 @@ class ThumbnailQueue {
       const timeout = setTimeout(() => {
         ff.kill();
         resolved = true;
-        this._settle(item, null, new Error('ffmpeg timeout'));
-        resolve();
+        resolve(false);
       }, 60000);
       ff.on('close', (code) => {
         if (resolved) return;
@@ -372,21 +443,19 @@ class ThumbnailQueue {
         if (code !== 0) {
           logger.warn(`ffmpeg exit code ${code} for ${filePath}`);
           _cleanupZeroByte(thumbPath);
-          this._settle(item, null, new Error(`ffmpeg exit code ${code}`));
-          return resolve();
+          resolve(false);
+          return;
         }
         // 验证输出文件可用（非 0 字节）
         _cleanupZeroByte(thumbPath);
-        this._settle(item, thumbPath, null);
-        resolve();
+        resolve(true);
       });
       ff.on('error', (err) => {
         if (resolved) return;
         resolved = true;
         clearTimeout(timeout);
         logger.warn(`ffmpeg spawn error for ${filePath}: ${err.message}`);
-        this._settle(item, null, err);
-        resolve();
+        resolve(false);
       });
     });
   }

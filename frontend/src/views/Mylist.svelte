@@ -72,8 +72,29 @@
       loadMyListImpl(true);
     }
   });
+  //命中缓存的滚动条刷新
+   let scrollRestored = false;
+  $effect(() => {
+    if (!$mylistOpen) {
+      scrollRestored = false;
+      return;
+    }
+    if (loading) return;                // 加载中由 loadMyListImpl 负责
+    if ($mylistData.length === 0) return;
+    if (scrollRestored) return;
 
-  // ─── 视图切换入场：容器淡入（方案 B）───
+    const mc = document.querySelector('.main-content');
+    if (!mc) return;
+
+    const saved = getMyListScrollTop(); // 从 router.js 读取保存值
+    if (saved > 0) {
+      mc.scrollTop = saved;
+      returnedToPosition = true;        // 抑制位移动画
+    }
+    scrollRestored = true;
+  });
+
+  // ─── 视图切换入场：容器淡入───
   // 视图打开时整块淡入。Mylist 已有模块级 fade+rise + 卡片 ScrollTrigger，容器只做淡入（y:0），
   // 避免双层位移叠加过重。{#if} 渲染视图：tick() 等 section 进入 DOM 后再动画。
   $effect(() => {

@@ -88,8 +88,28 @@
   $effect(() => {
     if ($libraryOpen && $libraryData.length === 0) loadLibraryImpl(true);
   });
+  //命中缓存的滚动条刷新
+  let scrollRestored = false;
+  $effect(() => {
+    if (!$libraryOpen) {
+      scrollRestored = false;
+      return;
+    }
+    if (loading) return;               // 加载中由 loadLibraryImpl 负责
+    if ($libraryData.length === 0) return;
+    if (scrollRestored) return;
 
-  // ─── 视图切换入场：容器淡入（方案 B）───
+    const mc = document.querySelector('.main-content');
+    if (!mc) return;
+
+    const saved = getLibraryScrollTop();  // 从 router.js 读取保存值
+    if (saved > 0) {
+      mc.scrollTop = saved;
+      returnedToPosition = true;          // 抑制位移动画
+    }
+    scrollRestored = true;
+  });
+  // ─── 视图切换入场：容器淡入───
   // 视图打开时整块淡入。Library 已有模块级 fade+rise（模块浮起），容器只做淡入（y:0），
   // 避免「容器浮起 + 内部模块浮起」双层位移叠加过重。store 触发天然 once（每次打开播一次）。
   $effect(() => {

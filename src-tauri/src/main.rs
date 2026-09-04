@@ -133,7 +133,7 @@ fn read_close_to_tray() -> bool {
 /// - "退出" → 清理 sidecar 并真正退出程序
 fn build_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
     // 显示主窗口菜单项
-    let show_item = MenuItem::with_id(app, "show", "显示主窗口", true, None::<&str>)?;
+    let show_item = MenuItem::with_id(app, "show", "打开主界面", true, None::<&str>)?;
     // 退出菜单项
     let quit_item = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
     let menu = MenuBuilder::new(app)

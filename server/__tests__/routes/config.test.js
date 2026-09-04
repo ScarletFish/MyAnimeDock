@@ -222,5 +222,26 @@ describe('config route handlers', () => {
       assert.strictEqual(state.bangumiPersonal.clientId, 'test-client-id');
       assert.strictEqual(state.bangumiPersonal.clientSecret, 'test-client-secret');
     });
+
+    it('persists closeBehavior to config (tray/exit) for Tauri close-to-tray setting', async () => {
+      // 回归测试：closeBehavior 必须被 schema 接受并写入 config（落盘），
+      // 否则前端设"直接退出"后重启会丢失、Rust read_close_to_tray 回退到默认 tray。
+      const state = mockState({
+        config: { closeBehavior: 'tray' },
+        bangumiPersonal: {},
+      });
+      const req = mockReq({
+        url: '/api/config',
+        method: 'POST',
+        body: JSON.stringify({ closeBehavior: 'exit' }),
+      });
+      const res = mockRes();
+      await config.handlePostConfig(req, res, state);
+      assert.strictEqual(res._status, 200);
+      assert.ok(res._body.ok);
+      // 关键断言：POST 后 config 内存对象必须是 'exit'（saveConfig 会据此落盘）
+      assert.strictEqual(state.config.closeBehavior, 'exit');
+      assert.strictEqual(res._body.closeBehavior, 'exit');
+    });
   });
 });

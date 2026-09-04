@@ -45,6 +45,7 @@
   let playerDdOpen = $state(false);
   let autoMark = $state(true);
   let startupFullscreen = $state(false);
+  let closeBehavior = $state('tray'); // 'tray' = 最小化到系统托盘, 'exit' = 直接退出
   // scraper
   let bangumiUrl = $state('https://api.bgm.tv');
   let bangumiClientId = $state('');
@@ -244,6 +245,7 @@
       populatePlayerDropdown(config.players || [], config.playerMode || 'mpv', config.mpvPath || '');
       autoMark = config.autoMarkWatched !== false;
       startupFullscreen = !!config.startupFullscreen;
+      closeBehavior = config.closeBehavior === 'exit' ? 'exit' : 'tray';
       errorMsg = '';
 
       const sources = config.apiSources || [];
@@ -347,6 +349,7 @@
         reduceMotion: document.documentElement.getAttribute('data-reduce-motion') === 'true',
         autoMarkWatched: autoMark,
         startupFullscreen,
+        closeBehavior,
         apiSources,
         qbPort: Number(qbPort) || 8080,
         qbUsername: qbUsername || 'admin',
@@ -916,6 +919,20 @@
                 </label>
                 <span class="dashboard-layout-label">{tr(startupFullscreen ? 'settings.startupFullscreenMode' : 'settings.startupWindowMode')}</span>
               </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>{tr('settings.closeBehavior')}</label>
+            <p class="form-hint mt-0">{tr('settings.closeBehaviorTrayHint')}</p>
+            <div class="seg-radio-group" style="margin-top:0.75rem">
+              <label class="seg-radio-item">
+                <input type="radio" name="settingsCloseBehavior" value="tray" bind:group={closeBehavior}>
+                <span>{tr('settings.closeBehaviorTray')}</span>
+              </label>
+              <label class="seg-radio-item">
+                <input type="radio" name="settingsCloseBehavior" value="exit" bind:group={closeBehavior}>
+                <span>{tr('settings.closeBehaviorExit')}</span>
+              </label>
             </div>
           </div>
           <div class="form-group">

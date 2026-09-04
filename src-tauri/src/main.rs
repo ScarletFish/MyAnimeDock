@@ -1,7 +1,11 @@
 // 在 Windows 上隐藏控制台窗口（仅在 release 模式生效，dev 模式保留控制台输出）
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use tauri::{Listener, Manager, WebviewWindowBuilder};
+use tauri::{
+    menu::{MenuBuilder, MenuItem},
+    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+    Listener, Manager, WebviewWindowBuilder,
+};
 use std::process::{Command, Stdio};
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -103,6 +107,97 @@ fn read_theme_mode() -> bool {
     }
 }
 
+/// 关闭窗口行为（config.json 的 closeBehavior）。
+/// 返回 true = 最小化到系统托盘，false = 直接关闭软件。
+/// 默认 tray（与 server 端 DEFAULT_CONFIG 一致），缺失/解析失败时按默认处理。
+fn read_close_to_tray() -> bool {
+    let cfg_path = data_dir_path().join("config.json");
+    match std::fs::read_to_string(&cfg_path) {
+        Ok(s) => {
+            if let Ok(v) = serde_json::from_str::<serde_json::Value>(&s) {
+                let behavior = v
+                    .get("closeBehavior")
+                    .and_then(|b| b.as_str())
+                    .unwrap_or("tray");
+                return behavior != "exit"; // tray / 其它未知值 → 默认托盘
+            }
+            true
+        }
+        Err(_) => true,
+    }
+}
+
+/// 创建系统托盘图标与菜单。
+/// 托盘菜单：显示主窗口 / 退出。
+/// - 左键点击托盘图标 → 显示主窗口
+/// - "退出" → 清理 sidecar 并真正退出程序
+fn build_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
+    // 显示主窗口菜单项
+    let show_item = MenuItem::with_id(app, "show", "显示主窗口", true, None::<&str>)?;
+    // 退出菜单项
+    let quit_item = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
+    let menu = MenuBuilder::new(app)
+        .item(&show_item)
+        .separator()
+        .item(&quit_item)
+        .build()?;
+
+    let mut builder = TrayIconBuilder::with_id("main-tray")
+        .menu(&menu)
+        .tooltip("MyAnimeDock")
+        .show_menu_on_left_click(false)
+        .on_menu_event(|app_handle, event| match event.id.as_ref() {
+            "show" => {
+                if let Some(window) = app_handle.get_webview_window("main") {
+                    let _ = window.show();
+                    let _ = window.set_focus();
+                }
+            }
+            "quit" => {
+                // 真正退出：清理 sidecar 后再退出程序（避免托盘中"退出"被 CloseRequested 拦截后仅隐藏）
+                cleanup_sidecar(app_handle);
+                app_handle.exit(0);
+            }
+            _ => {}
+        })
+        .on_tray_icon_event(|tray, event| {
+            // 左键单击托盘图标 → 显示主窗口
+            if let TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                ..
+            } = event
+            {
+                let app = tray.app_handle();
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.show();
+                    let _ = window.set_focus();
+                }
+            }
+        });
+
+    // 优先用应用默认图标（来自 tauri.conf.json bundle.icon）
+    if let Some(icon) = app.default_window_icon() {
+        builder = builder.icon(icon.clone());
+    }
+    builder.build(app)?;
+    Ok(())
+}
+
+/// 清理 sidecar 子进程（kill + wait）。
+fn cleanup_sidecar(app: &tauri::AppHandle) {
+    if should_spawn_sidecar() {
+        if let Some(state) = app.try_state::<SidecarProcess>() {
+            if let Ok(mut guard) = state.0.lock() {
+                if let Some(mut child) = guard.take() {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                }
+            }
+        }
+    }
+}
+
 /// 读取 .port 文件获取实际端口号（仅 dev 模式使用：server 由外部启动，无 stdout 管道可接）。
 /// 最多等待 10 秒；找不到则返回 None（不猜端口，窗口不创建）。
 fn read_actual_port() -> Option<u16> {
@@ -152,6 +247,11 @@ fn main() {
         .setup(|app| {
             bootstrap_log("setup() entered");
             let handle = app.handle();
+
+            // 系统托盘（图标 + 菜单：显示主窗口 / 退出）
+            if let Err(e) = build_tray(handle) {
+                bootstrap_log(&format!("ERROR build_tray: {}", e));
+            }
 
             // 前端渲染完成后显示窗口（窗口先隐藏，避免启动闪烁）。
             // 启动最大化偏好由前端随 app-ready payload 传入（{ startupFullscreen: bool }），
@@ -292,9 +392,10 @@ fn main() {
                             if is_graceful {
                                 // 给前端最后一条响应留出刷新时间
                                 std::thread::sleep(Duration::from_millis(500));
-                                if let Some(window) = monitor_handle.get_webview_window("main") {
-                                    let _ = window.close();
-                                }
+                                // 前端点"退出"→ sidecar 自我退出 → 这里用 app.exit() 真正退出。
+                                // 不能用 window.close()：它与 CloseRequested 拦截冲突（tray 模式下
+                                // 会被改成隐藏窗口而非退出），导致进程留着死 server 隐藏常驻。
+                                monitor_handle.exit(0);
                             }
                             return;
                         }
@@ -386,17 +487,16 @@ fn main() {
             Ok(())
         })
         .on_window_event(|window, event| {
-            if let tauri::WindowEvent::CloseRequested { .. } = event {
-                // 清理 sidecar 进程（生产模式或 TAURI_PROD=1）
-                if should_spawn_sidecar() {
-                    if let Some(sidecar) = window.try_state::<SidecarProcess>() {
-                        if let Ok(mut guard) = sidecar.0.lock() {
-                            if let Some(mut child) = guard.take() {
-                                let _ = child.kill();
-                                let _ = child.wait();
-                            }
-                        }
-                    }
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                if read_close_to_tray() {
+                    // 配置为"最小化到系统托盘"：拦截关闭，隐藏窗口，后台常驻（不杀 sidecar）
+                    let _ = window.hide();
+                    api.prevent_close();
+                    bootstrap_log("CloseRequested intercepted -> minimized to tray");
+                } else {
+                    // 配置为"直接关闭"：维持原行为 —— 清理 sidecar 进程后允许关闭退出
+                    cleanup_sidecar(&window.app_handle());
+                    bootstrap_log("CloseRequested -> exiting (closeBehavior=exit)");
                 }
             }
         })

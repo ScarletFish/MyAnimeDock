@@ -430,12 +430,53 @@ describe('playback route handlers', () => {
       try {
         const state = mockState();
         const req = mockReq({ url: '/api/thumbnail?path=' + encodeURIComponent(tmpFile) + '&time=mid' });
-        const rawRes = { _status: null, _body: null, _chunks: [], writeHead(s) { this._status = s; }, write(c) { this._chunks.push(c); return true; }, end(b) { if (b !== undefined && b !== null) this._body = b; else if (this._chunks.length) this._body = Buffer.concat(this._chunks.map(c => typeof c === 'string' ? Buffer.from(c) : c)); } };
+        const rawRes = { _status: null, _body: null, _chunks: [], _headers: {}, writeHead(s) { this._status = s; }, write(c) { this._chunks.push(c); return true; }, setHeader(k, v) { this._headers[k] = v; }, end(b) { if (b !== undefined && b !== null) this._body = b; else if (this._chunks.length) this._body = Buffer.concat(this._chunks.map(c => typeof c === 'string' ? Buffer.from(c) : c)); } };
         playback.handleThumbnail(req, rawRes, state);
         await new Promise(r => setTimeout(r, 50));
         assert.strictEqual(rawRes._status, 200);
         assert.ok(Buffer.isBuffer(rawRes._body), 'body should be raw bytes');
         assert.strictEqual(Buffer.compare(rawRes._body, dummy), 0, 'should serve exact cached file bytes');
+      } finally {
+        try { fs.unlinkSync(thumbPath); } catch (_) {}
+      }
+    });
+
+    it('serves cached mid thumbnail with no-cache + ETag for cache busting', async () => {
+      // 黑屏重试等场景会重新生成磁盘缩略图，URL 不变。必须 no-cache + ETag 让浏览器重新验证，
+      // 否则旧黑图被 max-age 缓存 24h（WebView2 持久化）永远无法更新。
+      const hash = crypto.createHash('md5').update(tmpFile + THUMB_HASH_SEED).digest('hex');
+      const thumbPath = path.join(DATA_DIR, 'thumbs', hash + '.jpg');
+      const dummy = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00]);
+      fs.mkdirSync(path.dirname(thumbPath), { recursive: true });
+      fs.writeFileSync(thumbPath, dummy);
+      try {
+        const state = mockState();
+        const req = mockReq({ url: '/api/thumbnail?path=' + encodeURIComponent(tmpFile) + '&time=mid' });
+        const rawRes = { _status: null, _body: null, _chunks: [], _headers: {}, _cacheCtrl: null, writeHead(s, h) { this._status = s; if (h) this._cacheCtrl = h['Cache-Control'] ?? this._cacheCtrl; }, write(c) { this._chunks.push(c); return true; }, setHeader(k, v) { this._headers[k] = v; if (k === 'Cache-Control') this._cacheCtrl = v; }, end(b) { if (b !== undefined && b !== null) this._body = b; else if (this._chunks.length) this._body = Buffer.concat(this._chunks.map(c => typeof c === 'string' ? Buffer.from(c) : c)); } };
+        playback.handleThumbnail(req, rawRes, state);
+        await new Promise(r => setTimeout(r, 50));
+        assert.strictEqual(rawRes._status, 200);
+        assert.ok(rawRes._headers['ETag'], 'should set ETag: ' + JSON.stringify(rawRes._headers));
+        assert.strictEqual(rawRes._cacheCtrl, 'no-cache', 'should serve with Cache-Control: no-cache');
+      } finally {
+        try { fs.unlinkSync(thumbPath); } catch (_) {}
+      }
+    });
+
+    it('responds 304 when same ETag sent via If-None-Match (revalidated cache hit)', async () => {
+      const hash = crypto.createHash('md5').update(tmpFile + THUMB_HASH_SEED).digest('hex');
+      const thumbPath = path.join(DATA_DIR, 'thumbs', hash + '.jpg');
+      const dummy = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00]);
+      fs.mkdirSync(path.dirname(thumbPath), { recursive: true });
+      fs.writeFileSync(thumbPath, dummy);
+      try {
+        const state = mockState();
+        const etag = '"' + dummy.length + '-' + fs.statSync(thumbPath).mtimeMs + '"';
+        const req = mockReq({ url: '/api/thumbnail?path=' + encodeURIComponent(tmpFile) + '&time=mid', headers: { 'if-none-match': etag } });
+        const rawRes = { _status: null, _body: null, _chunks: [], _headers: {}, writeHead(s) { this._status = s; }, write(c) { this._chunks.push(c); return true; }, setHeader(k, v) { this._headers[k] = v; }, end(b) { if (b !== undefined && b !== null) this._body = b; else if (this._chunks.length) this._body = Buffer.concat(this._chunks.map(c => typeof c === 'string' ? Buffer.from(c) : c)); } };
+        playback.handleThumbnail(req, rawRes, state);
+        await new Promise(r => setTimeout(r, 50));
+        assert.strictEqual(rawRes._status, 304);
       } finally {
         try { fs.unlinkSync(thumbPath); } catch (_) {}
       }

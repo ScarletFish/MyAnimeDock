@@ -257,6 +257,23 @@ function handleMpvStatus(req: any, res: any, state: State) {
   });
 }
 
+// ETag + no-cache 重新验证缩略图：磁盘上的缩略图可能被重新生成（如黑屏重试），
+// 若用 max-age 强缓存，浏览器会缓存旧图（旧黑图）长达 24h 且无法更新（WebView2 持久化）。
+// 参考 handleBannerImage 的 banner 模式：文件变了返回新图，没变返回 304。
+function serveThumbWithRevalidate(req: any, res: any, filePath: string, url: string): void {
+  fs.stat(filePath, (err, stats) => {
+    if (err) { serveImage(filePath, url, res, true); return; }
+    const etag = `"${stats.size}-${stats.mtimeMs}"`;
+    if (req.headers['if-none-match'] === etag) {
+      res.writeHead(304);
+      res.end();
+      return;
+    }
+    res.setHeader('ETag', etag);
+    serveImage(filePath, url, res, true);
+  });
+}
+
 function handleThumbnail(req: any, res: any, state: State) {
   const params = new URL(req.url, 'http://localhost').searchParams;
   const videoPath = params.get('path');
@@ -270,7 +287,7 @@ function handleThumbnail(req: any, res: any, state: State) {
     // 与缩略图队列共享缓存键：命中直接返回，避免重复跑 ffmpeg + 时长探测
     const cached = _thumbPath(videoPath, THUMB_HASH_SEED);
     logger.debug(`[THUMB-DEBUG] mid cached=${fs.existsSync(cached)} path=${cached}`);
-    if (fs.existsSync(cached)) { serveImage(cached, req.url, res); return; }
+    if (fs.existsSync(cached)) { serveThumbWithRevalidate(req, res, cached, req.url); return; }
     // cache miss → 走统一队列（single-flight + 并发闸门），不再直连 spawn
     _probeDuration(videoPath, (dur) => {
       logger.debug(`[THUMB-DEBUG] mid probed dur=${dur}`);
@@ -279,7 +296,7 @@ function handleThumbnail(req: any, res: any, state: State) {
       if (!state.thumbnailQueue) { jsonResp(res, 500, { error: 'thumbnail generation failed' }); return; }
       state.thumbnailQueue.ensureGenerated(videoPath, time, THUMB_HASH_SEED, 30000)
         .then((thumbPath: string) => {
-          serveImage(thumbPath, req.url, res);
+          serveThumbWithRevalidate(req, res, thumbPath, req.url);
         })
         .catch(() => {
           jsonResp(res, 500, { error: 'thumbnail generation failed' });
@@ -292,7 +309,7 @@ function handleThumbnail(req: any, res: any, state: State) {
     // 自定义 time 也走统一队列（single-flight + 并发闸门），不再直连 spawn
     if (!state.thumbnailQueue) { jsonResp(res, 500, { error: 'thumbnail generation failed' }); return; }
     state.thumbnailQueue.ensureGenerated(videoPath, time, String(time), 30000)
-      .then((thumbPath: string) => serveImage(thumbPath, req.url, res))
+      .then((thumbPath: string) => serveThumbWithRevalidate(req, res, thumbPath, req.url))
       .catch(() => jsonResp(res, 500, { error: 'thumbnail generation failed' }));
   }
 }

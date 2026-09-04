@@ -43,7 +43,7 @@
   import { ANILIST_TAG_DATA } from '../lib/tag-data.js';
   import { filterTags, tagZh } from '../lib/tag-utils.js';
   import { searchTag } from '../components/chrome/SearchBar.svelte';
-  import { tr, STATUS_SECTIONS_LIBRARY, initialOf } from '../lib/anime-utils.js';
+  import { tr, escapeHtml, STATUS_SECTIONS_LIBRARY, initialOf } from '../lib/anime-utils.js';
   import { sortAnimeItems } from '../lib/sort.js';
   import { libraryData, mylistData, librarySortMode, mylistSortMode, pendingAutoPlay, pendingFinishAnimeId, finishConfirmMode, ignoreLocalFileMissing } from '../lib/ui-state.js';
   import { loadLibrary } from './Library.svelte';
@@ -330,7 +330,7 @@
   // ─── 删除 ───
   async function deleteAnime() {
     if (!anime) return;
-    const ok = await showConfirm(tr('detail.deleteConfirm', { title: anime.title }));
+    const ok = await showConfirm(tr('detail.deleteConfirm', { title: escapeHtml(anime.title) }));
     if (!ok) return;
     try {
       await api.del('/api/anime/' + encodeURIComponent(anime.id));

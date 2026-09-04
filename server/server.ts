@@ -328,7 +328,7 @@ const routeTable = [
   { method: 'GET', path: '/api/mylist', handler: H.handleGetMyList },
   { method: 'PUT', pattern: /^\/api\/mylist\/([^/]+)\/status$/, handler: H.handleUpdateMyListStatus },
   { method: 'PUT', pattern: /^\/api\/mylist\/([^/]+)$/, handler: H.handleUpdateMyListItem },
-  { method: 'DELETE', pattern: /^\/api\/mylist\/([^/]+)$/, handler: H.handleDeleteMyListItem },
+
   // Stats
   { method: 'GET', path: '/api/stats', handler: H.handleStats },
   { method: 'GET', path: '/api/stats/tags', handler: H.handleStatsTags },

@@ -40,7 +40,7 @@
   >
     <div class="modal" style="max-width:380px;padding:var(--space-6) var(--space-8) var(--space-5)">
       <p style="margin:0 0 18px;line-height:1.7;font-size:15px;text-align:left" class="text-content">
-        {$confirmStore.message}
+        {@html $confirmStore.message}
       </p>
       <div class="modal-actions flex items-center justify-between">
         <button class="btn btn-ghost confirm-cancel min-w-[80px]" onclick={() => resolveConfirm(false)}>

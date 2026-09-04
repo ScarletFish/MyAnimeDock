@@ -9,7 +9,7 @@ import { slide } from 'svelte/transition';
   import { get } from 'svelte/store';
   import { showToast } from '../components/Toast.svelte';
   import { showConfirm } from '../components/ConfirmDialog.svelte';
-  import { tr, localDateStr } from '../lib/anime-utils.js';
+  import { tr, escapeHtml, localDateStr } from '../lib/anime-utils.js';
   import { API as api } from '../lib/api.js';
   import { settingsOpen } from './Settings.svelte';
   import MikanModal, { mikanModalOpen } from './MikanModal.svelte';
@@ -199,7 +199,7 @@ import { slide } from 'svelte/transition';
   }
 
   async function deleteTorrent(torrent) {
-    const confirmed = await showConfirm(tr('download.confirmDelete', { name: torrent.name }));
+    const confirmed = await showConfirm(tr('download.confirmDelete', { name: escapeHtml(torrent.name) }));
     if (!confirmed) return;
     try {
       await api.post('/api/qb/action', {

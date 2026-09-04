@@ -26,7 +26,7 @@
   import ContextMenu from '../components/ContextMenu.svelte';
   import { getStatusLabels, MYLIST_STATUS_ORDER, getAnimeSortOptions, sortAnimeItems } from '../lib/sort.js';
   import { calcGridCols, readScale } from '../lib/grid.js';
-  import { tr } from '../lib/anime-utils.js';
+  import { tr, escapeHtml } from '../lib/anime-utils.js';
   import { mylistData, cardTitleMylist, mylistSortMode } from '../lib/ui-state.js';
   import { showDetail, getMyListScrollTop, __skipViewEnter } from '../lib/router.js';
   import { loadLibrary } from './Library.svelte';
@@ -234,14 +234,14 @@
     closeCtx();
     if (!item) return;
     const name = item.bangumiTitle || item.title || item.id;
-    const confirmed = await showConfirm(tr('mylist.confirmRemove', { name }));
+    const confirmed = await showConfirm(tr('library.confirmRemove', { title: escapeHtml(name) }));
     if (!confirmed) return;
     try {
-      await api.del('/api/mylist/' + encodeURIComponent(item.id));
-      showToast(tr('mylist.removed'), 'info');
+      await api.del('/api/anime/' + encodeURIComponent(item.animeId || item.id));
+      showToast(tr('library.deleted'), 'success');
       loadMyListImpl();
     } catch (e) {
-      showToast(tr('mylist.removeFailed', { message: e.message }), 'error');
+      showToast(tr('library.deleteFailed', { message: e.message }), 'error');
     }
   }
 

@@ -96,22 +96,6 @@ describe('mylist route handlers', () => {
     });
   });
 
-  describe('handleDeleteMyListItem', () => {
-    it('returns 200 and removes item from myList', async () => {
-      let saved = false;
-      const state = mockState({
-        data: { myList: [{ id: 'del-1', animeId: 'anime-1' }] },
-        db: { saveMyList: async () => { saved = true; } },
-      });
-      const req = mockReq({ url: '/api/mylist/del-1', method: 'DELETE' });
-      const res = mockRes();
-      await mylist.handleDeleteMyListItem(req, res, state);
-      assert.strictEqual(res._status, 200);
-      assert.ok(saved, 'saveMyList was called');
-      assert.strictEqual(state.data.myList.length, 0);
-    });
-  });
-
   describe('handleUpdateMyListItem', () => {
     it('returns 200 and updates allowed fields', async () => {
       let saved = false;

@@ -380,9 +380,6 @@ export const I18N_ZH = {
   'mylist.openInBgm': '在 Bangumi 打开',
   'mylist.statusUpdated': '状态已更新',
   'mylist.updateFailed': '更新失败: {{message}}',
-  'mylist.removed': '已移除',
-  'mylist.removeFailed': '移除失败: {{message}}',
-  'mylist.confirmRemove': '将「{{name}}」从列表中移除？<br><small class="text-content">动漫库中的条目不受影响</small>',
 
   // ── 发现 ──
   'discovery.animeCountUnit': '部动漫',

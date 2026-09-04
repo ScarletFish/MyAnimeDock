@@ -104,25 +104,8 @@ async function handleUpdateMyListItem(req: any, res: any, state: ServerState) {
   }
 }
 
-async function handleDeleteMyListItem(req: any, res: any, state: ServerState) {
-  const { data, db, logger } = state;
-  try {
-    const mylistDeleteMatch = req.url.match(/^\/api\/mylist\/([^/]+)$/);
-    const id = decodeURIComponent(mylistDeleteMatch[1]);
-    if (data.myList) {
-      const idx = data.myList.findIndex(m => m.id === id || m.animeId === id);
-      if (idx !== -1) data.myList.splice(idx, 1);
-    }
-    db.saveMyList(data).then(() => jsonResp(res, 200, { ok: true }))
-      .catch((e: any) => { logger.error('MyList delete save error:', e); jsonResp(res, 500, { error: 'Failed to persist' }); });
-  } catch (e: any) {
-    jsonResp(res, 400, { error: 'Invalid request body' });
-  }
-}
-
 export {
   handleGetMyList,
   handleUpdateMyListStatus,
   handleUpdateMyListItem,
-  handleDeleteMyListItem,
 };

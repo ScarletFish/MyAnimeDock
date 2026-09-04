@@ -9,6 +9,12 @@ export function tr(key, options) {
   return typeof globalThis.t === 'function' ? globalThis.t(key, options) : key;
 }
 
+/** 转义 HTML 特殊字符，供 {@html} 安全注入用户内容 */
+export function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 export function isRegexValid(r) {
   if (!r) return false;
   try { new RegExp(r); return true; } catch { return false; }

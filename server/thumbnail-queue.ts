@@ -262,12 +262,16 @@ class ThumbnailQueue {
         '-vf', 'signalstats,metadata=print:file=-',
         '-frames:v', '1', '-f', 'null', '-', '-loglevel', 'error',
       ]);
-      let stderr = '';
+      // 关键：metadata=print:file=- 的 YAVG 打在 STDOUT（-f null 只让解码帧进 null，stdout 只剩元数据）。
+      // 只读 stderr 会取不到 → 全判 null → 误判所有缩略图失败。collect stdout，并合并 stderr 兜底。
+      let outbuf = '';
+      let errbuf = '';
       let done = false;
-      ff.stderr.on('data', d => { stderr += d.toString(); });
+      ff.stdout.on('data', d => { outbuf += d.toString(); });
+      ff.stderr.on('data', d => { errbuf += d.toString(); });
       const finish = () => {
         if (done) return; done = true;
-        const m = stderr.match(/YAVG=([\d.]+)/);
+        const m = (outbuf + errbuf).match(/YAVG=([\d.]+)/);
         if (m) resolve(parseFloat(m[1]));
         else resolve(null);
       };

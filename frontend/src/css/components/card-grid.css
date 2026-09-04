@@ -43,6 +43,7 @@
     background: linear-gradient(transparent 20%, rgba(0, 0, 0, 0.88) 80%);
     transform: translateY(8px);
     opacity: 0;
+    z-index: 0;
     transition: all 0.3s var(--ease-out);
 
     h3 {

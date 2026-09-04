@@ -52,7 +52,7 @@
   position: absolute;
   bottom: 0.5rem;
   right: 0.5rem;
-  z-index: var(--z-base);
+  z-index: 1;
   width: 28px;
   height: 28px;
   display: flex;

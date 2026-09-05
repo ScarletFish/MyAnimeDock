@@ -7,7 +7,8 @@ import { showToast } from '../components/Toast.svelte';
 import { API } from './api.js';
 import { currentView } from './router.js';
 import { handleDetailPlaybackEnded } from '../views/Detail.svelte';
-import { loadLibrary } from '../views/Library.svelte';
+import { patchLibraryItem } from './ui-state.js';
+import { refreshStats } from '../views/Library.svelte';
 import { pendingFinishAnimeId } from './ui-state.js';
 
 let gMpvActive = false;
@@ -40,8 +41,16 @@ function onGlobalMpvStatus(active, payload) {
 
   showToast(t('app.playbackEndedProgressUpdated'), 'success');
   if (endedAnimeId) pendingFinishAnimeId.set(endedAnimeId);
-  // 非详情页（如 Dashboard）停留时刷新库数据，让「继续观看」卡片立即反映最新进度
-  loadLibrary();
+  // 非详情页（如 Dashboard）停留：单条拉取 + 就地 patch，让「继续观看」卡片立即反映最新进度，
+  // 只刷 stats 模块（不整库重取、不置 loading）。
+  if (endedAnimeId) {
+    API.get('/api/anime/' + encodeURIComponent(endedAnimeId))
+      .then((updated) => {
+        patchLibraryItem(updated);
+        refreshStats();
+      })
+      .catch(function () {});
+  }
 }
 
 export function startGlobalMpvStatus() {

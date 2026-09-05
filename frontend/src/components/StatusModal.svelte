@@ -239,10 +239,10 @@
     };
 
     try {
-      await api.put('/api/mylist/' + encodeURIComponent(id), data);
+      const result = await api.put('/api/mylist/' + encodeURIComponent(id), data);
       showToast(tr('mylist.saved'), 'success');
       open = false;
-      if (onSaved) onSaved();
+      if (onSaved) onSaved(result.anime);
     } catch (e) {
       showToast(tr('mylist.saveFailed', { message: e.message }), 'error');
     } finally {

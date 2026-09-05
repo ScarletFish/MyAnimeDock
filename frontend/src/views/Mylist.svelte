@@ -27,9 +27,9 @@
   import { getStatusLabels, MYLIST_STATUS_ORDER, getAnimeSortOptions, sortAnimeItems } from '../lib/sort.js';
   import { calcGridCols, readScale } from '../lib/grid.js';
   import { tr, escapeHtml } from '../lib/anime-utils.js';
-  import { mylistData, cardTitleMylist, mylistSortMode } from '../lib/ui-state.js';
+  import { mylistData, cardTitleMylist, mylistSortMode, patchLibraryItem, removeLibraryItemFromStore } from '../lib/ui-state.js';
   import { showDetail, getMyListScrollTop, __skipViewEnter } from '../lib/router.js';
-  import { loadLibrary } from './Library.svelte';
+  import { loadLibrary, refreshStats } from './Library.svelte';
   import { Select } from 'bits-ui';
   import { API as api } from '../lib/api.js';
 
@@ -260,6 +260,8 @@
     try {
       await api.del('/api/anime/' + encodeURIComponent(item.animeId || item.id));
       showToast(tr('library.deleted'), 'success');
+      removeLibraryItemFromStore(item.animeId || item.id);
+      refreshStats();
       loadMyListImpl();
     } catch (e) {
       showToast(tr('library.deleteFailed', { message: e.message }), 'error');
@@ -272,18 +274,25 @@
     statusModalOpen = true;
   }
 
-  function afterSave() {
+  function afterSave(updatedAnime) {
     loadMyListImpl();
-    loadLibrary();
+    // 库页不整库重取，就地 patch 单条目（后端已返回 enriched anime）
+    if (updatedAnime && updatedAnime.id) patchLibraryItem(updatedAnime);
+    else loadLibrary();
   }
 
   async function setMyListItemStatus(id, status) {
     try {
-      await api.put('/api/mylist/' + encodeURIComponent(id) + '/status', { status });
+      const result = await api.put('/api/mylist/' + encodeURIComponent(id) + '/status', { status });
       showToast(tr('mylist.statusUpdated'), 'success');
       closeCtx();
       loadMyListImpl();
-      loadLibrary();
+      if (result && result.anime) {
+        patchLibraryItem(result.anime);
+        refreshStats();
+      } else {
+        loadLibrary();
+      }
     } catch (e) {
       showToast(tr('mylist.updateFailed', { message: e.message }), 'error');
     }

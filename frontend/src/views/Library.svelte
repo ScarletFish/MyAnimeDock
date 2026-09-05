@@ -11,6 +11,13 @@
   export function loadLibrary(fromViewSwitch = false) {
     if (_loadLibrary) _loadLibrary(fromViewSwitch);
   }
+
+  // 统计模块独立刷新入口：分模块刷新时只重取 /api/stats（内存遍历，轻量），不重取整库。
+  let _refreshStats = null;
+  export function setRefreshStats(fn) { _refreshStats = fn; }
+  export function refreshStats() {
+    if (_refreshStats) _refreshStats();
+  }
 </script>
 
 <script>
@@ -29,7 +36,7 @@
   import { initScrollDots } from '../lib/scroll-dots.js';
   import { getDashboardLayout } from '../lib/dashboard-layout.js';
   import { tr, escapeHtml } from '../lib/anime-utils.js';
-  import { libraryData, pendingAutoPlay, consumeStartupLibraryPromise } from '../lib/ui-state.js';
+  import { libraryData, pendingAutoPlay, consumeStartupLibraryPromise, patchLibraryItem, removeLibraryItemFromStore } from '../lib/ui-state.js';
   import { showView, showDetail, getLibraryScrollTop, __skipViewEnter } from '../lib/router.js';
   import { settingsOpen } from './Settings.svelte';
   import { metaMatchOpen } from './MetaMatch.svelte';
@@ -72,6 +79,8 @@
     // 外部流程（saveStatusModal/detail.js 等）调裸 loadLibrary() 时，
     // 路由到这里刷新 Svelte 库页（in-place，保留当前滚动）。
     setLoadLibrary((fromViewSwitch) => loadLibraryImpl(fromViewSwitch));
+    // 分模块刷新：仅重取 /api/stats，不触发整库重取/loading。
+    setRefreshStats(() => { loadStats(); });
     // Settings 面板修改动漫库布局后通知刷新
     const onLayoutChanged = () => {
       layout = getDashboardLayout();
@@ -160,6 +169,18 @@
     } catch {
       stats = null;
     }
+  }
+
+  // ─── 分模块响应式刷新 ───
+  // 单条目变更（状态弹窗保存/删除）：后端已返回 enriched anime → 就地 patch store + 只刷 stats，
+  // 不重取整库、不置 loading（避免整页闪烁与全量重渲染）。无返回数据时兜底全量刷新。
+  async function applyLibraryChange(updatedAnime) {
+    if (updatedAnime && updatedAnime.id) {
+      patchLibraryItem(updatedAnime);
+      loadStats();
+      return;
+    }
+    loadLibraryImpl(false);
   }
 
   // ─── Grid 列公式（响应 --scale）───
@@ -405,8 +426,8 @@
     statusModalOpen = true;
   }
 
-  function afterSave() {
-    loadLibraryImpl(false);
+  function afterSave(updatedAnime) {
+    applyLibraryChange(updatedAnime);
   }
 
   function closeCtx() {
@@ -452,7 +473,8 @@
     try {
       await api.del('/api/anime/' + encodeURIComponent(item.id));
       showToast(tr('library.deleted'), 'success');
-      loadLibraryImpl(false);
+      removeLibraryItemFromStore(item.id);
+      loadStats();
     } catch (e) {
       showToast(tr('library.deleteFailed', { message: e.message }), 'error');
     }

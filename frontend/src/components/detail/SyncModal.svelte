@@ -5,7 +5,8 @@
   import { showToast } from '../Toast.svelte';
   import { tr } from '../../lib/anime-utils.js';
   import { portal } from '../../lib/portal.js';
-  import { loadLibrary } from '../../views/Library.svelte';
+  import { patchLibraryItem } from '../../lib/ui-state.js';
+  import { refreshStats } from '../../views/Library.svelte';
   import { API as api } from '../../lib/api.js';
 
   let { open = false, anime = null, onAttached, onClose } = $props();
@@ -54,7 +55,11 @@
     try {
       const result = await api.post('/api/bangumi/fetch', { animeId: anime.id, subjectId });
       onAttached?.(result.anime);
-      loadLibrary();
+      // 单部元数据同步：就地 patch（后端已返回该条目），不整库重取
+      if (result.anime && result.anime.id) {
+        patchLibraryItem(result.anime);
+        refreshStats();
+      }
       showToast(tr('detail.metadataSuccess'), 'success');
     } catch (e) {
       showToast(tr('detail.fetchFailed', { error: e.message }), 'error');

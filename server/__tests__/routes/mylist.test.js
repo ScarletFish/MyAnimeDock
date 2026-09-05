@@ -78,6 +78,36 @@ describe('mylist route handlers', () => {
       assert.ok(saved, 'saveMyList was called');
     });
 
+    it('returns enriched anime in response for frontend in-place patch', async () => {
+      const state = mockState({
+        data: {
+          library: [{ id: 'anime-1', title: 'Test Anime', episodes: [{ number: 1, watched: false }, { number: 2, watched: true }] }],
+          myList: [{ animeId: 'anime-1', status: 'watching', rating: 8 }],
+        },
+        db: { saveMyList: async () => {} },
+      });
+      const req = mockReq({ url: '/api/mylist/anime-1/status', method: 'PUT', body: JSON.stringify({ status: 'completed' }) });
+      const res = mockRes();
+      await mylist.handleUpdateMyListStatus(req, res, state);
+      assert.strictEqual(res._status, 200);
+      assert.ok(res._body.anime, 'response includes anime for in-place patch');
+      assert.strictEqual(res._body.anime.id, 'anime-1');
+      assert.strictEqual(res._body.anime.myListStatus, 'completed');
+      assert.strictEqual(res._body.anime.userRating, 8, 'myList fields are enriched onto anime');
+    });
+
+    it('returns anime null when anime not in library (fallback triggers full refresh)', async () => {
+      const state = mockState({
+        data: { myList: [{ animeId: 'ghost', status: 'watching' }] },
+        db: { saveMyList: async () => {} },
+      });
+      const req = mockReq({ url: '/api/mylist/ghost/status', method: 'PUT', body: JSON.stringify({ status: 'wish' }) });
+      const res = mockRes();
+      await mylist.handleUpdateMyListStatus(req, res, state);
+      assert.strictEqual(res._status, 200);
+      assert.strictEqual(res._body.anime, null);
+    });
+
     it('returns 400 for invalid status value', async () => {
       const state = mockState();
       const req = mockReq({ url: '/api/mylist/anime-1/status', method: 'PUT', body: JSON.stringify({ status: 'invalid' }) });
@@ -100,7 +130,10 @@ describe('mylist route handlers', () => {
     it('returns 200 and updates allowed fields', async () => {
       let saved = false;
       const state = mockState({
-        data: { myList: [{ id: 'item-1', animeId: 'anime-1', rating: 5, status: 'watching' }] },
+        data: {
+          library: [{ id: 'anime-1', title: 'Test Anime', episodes: [] }],
+          myList: [{ id: 'item-1', animeId: 'anime-1', rating: 5, status: 'watching' }],
+        },
         db: { updateMyListItem: async () => { saved = true; } },
       });
       const req = mockReq({ url: '/api/mylist/item-1', method: 'PUT', body: JSON.stringify({ rating: 9, notes: 'Great!' }) });
@@ -110,6 +143,24 @@ describe('mylist route handlers', () => {
       assert.ok(saved, 'updateMyListItem was called');
       assert.strictEqual(state.data.myList[0].rating, 9);
       assert.strictEqual(state.data.myList[0].notes, 'Great!');
+    });
+
+    it('returns enriched anime with updated fields for frontend in-place patch', async () => {
+      const state = mockState({
+        data: {
+          library: [{ id: 'anime-1', title: 'Test Anime', episodes: [{ number: 1, watched: true }] }],
+          myList: [{ id: 'item-1', animeId: 'anime-1', rating: 5, status: 'watching', progress: 1 }],
+        },
+        db: { updateMyListItem: async () => {} },
+      });
+      const req = mockReq({ url: '/api/mylist/item-1', method: 'PUT', body: JSON.stringify({ rating: 9 }) });
+      const res = mockRes();
+      await mylist.handleUpdateMyListItem(req, res, state);
+      assert.strictEqual(res._status, 200);
+      assert.ok(res._body.anime, 'response includes anime for in-place patch');
+      assert.strictEqual(res._body.anime.id, 'anime-1');
+      assert.strictEqual(res._body.anime.userRating, 9, 'updated rating is enriched onto anime');
+      assert.strictEqual(res._body.anime.myListStatus, 'watching');
     });
 
     it('returns 400 when no valid fields provided', async () => {

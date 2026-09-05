@@ -3,6 +3,7 @@ import path from 'path';
 import { jsonResp, readBody } from '../lib/utils';
 import { saveConfig, DATA_DIR } from '../lib/config';
 import { ensureMetadata } from '../scrapers';
+import { enrichAnime } from '../lib/enrich';
 import type { ServerState } from '../types';
 
 type State = ServerState;
@@ -105,6 +106,8 @@ async function handleBangumiFetch(req: any, res: any, state: State) {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { saveScannedTree } = require('../lib/config') as any;
     await Promise.all([db.saveLibrary(data, new Set([anime.id])), saveScannedTree(data.scannedTree)]);
+    // 返回 enriched anime（含 myList 关联字段），前端就地 patch 库页免全量重取
+    enrichAnime(anime, data);
     jsonResp(res, 200, { ok: true, anime });
   } catch (e: any) {
     jsonResp(res, 500, { error: e.message });

@@ -58,7 +58,11 @@ async function handleUpdateMyListStatus(req: any, res: any, state: ServerState) 
       data.myList.push({ animeId: id, status, rating: null, thoughts: '', notes: '' } as any);
     }
     db.saveMyList(data).then(() => {
-      jsonResp(res, 200, { ok: true });
+      // 返回更新后的 enriched anime，前端就地 patch 库页对应模块，免全量重取
+      const animeId = existing?.animeId || id;
+      const anime = data.library.find((a) => a.id === animeId);
+      if (anime) enrichAnime(anime, data);
+      jsonResp(res, 200, { ok: true, anime: anime ?? null });
       if (existing && existing.animeId) bangumiSync.pushStatusChange(existing.animeId, data);
     }).catch((e: any) => {
       logger.error('MyList status save error:', e);
@@ -94,7 +98,12 @@ async function handleUpdateMyListItem(req: any, res: any, state: ServerState) {
           }
         }
       }
-      jsonResp(res, 200, { ok: true });
+      // 返回更新后的 enriched anime，前端就地 patch 库页对应模块，免全量重取
+      const entry = (data.myList || []).find(m => m.id === id || m.animeId === id);
+      const animeId = entry?.animeId || id;
+      const anime = data.library.find((a) => a.id === animeId);
+      if (anime) enrichAnime(anime, data);
+      jsonResp(res, 200, { ok: true, anime: anime ?? null });
     }).catch((e: any) => {
       logger.error('MyList update error:', e);
       jsonResp(res, 500, { error: 'Failed to update' });

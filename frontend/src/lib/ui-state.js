@@ -37,3 +37,24 @@ export function consumeStartupLibraryPromise() {
   startupLibraryPromise = null;
   return p;
 }
+
+// ─── 分模块响应式刷新：单条目变更就地 patch，不整库重取 ───
+// 变更方（后端已在 mutation 响应中返回 enriched anime）调用 patchLibraryItem，
+// Library 的 continueItems / 状态分区 derived 随 store 更新自动重算，只重渲染受影响模块。
+// 找不到目标条目时 no-op（条目可能已被删除/从未加载，交由既有全量路径处理）。
+export function patchLibraryItem(updatedAnime) {
+  if (!updatedAnime || !updatedAnime.id) return;
+  libraryData.update((list) => {
+    const idx = list.findIndex((a) => a.id === updatedAnime.id);
+    if (idx === -1) return list;
+    const next = list.slice();
+    next[idx] = { ...updatedAnime };
+    return next;
+  });
+}
+
+// 单条目删除：从 store 移除（删除 API 已成功时调用），stats 由调用方决定是否刷新。
+export function removeLibraryItemFromStore(id) {
+  if (!id) return;
+  libraryData.update((list) => list.filter((a) => a.id !== id));
+}

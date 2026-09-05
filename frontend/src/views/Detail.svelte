@@ -45,8 +45,8 @@
   import { searchTag } from '../components/chrome/SearchBar.svelte';
   import { tr, escapeHtml, STATUS_SECTIONS_LIBRARY, initialOf } from '../lib/anime-utils.js';
   import { sortAnimeItems } from '../lib/sort.js';
-  import { libraryData, mylistData, librarySortMode, mylistSortMode, pendingAutoPlay, pendingFinishAnimeId, finishConfirmMode, ignoreLocalFileMissing } from '../lib/ui-state.js';
-  import { loadLibrary } from './Library.svelte';
+  import { libraryData, mylistData, librarySortMode, mylistSortMode, pendingAutoPlay, pendingFinishAnimeId, finishConfirmMode, ignoreLocalFileMissing, patchLibraryItem, removeLibraryItemFromStore } from '../lib/ui-state.js';
+  import { refreshStats } from './Library.svelte';
   import { refreshDiscovery } from './Discovery.svelte';
   import { loadMyList } from './Mylist.svelte';
   import { showView } from '../lib/router.js';
@@ -293,6 +293,9 @@
     try {
       await api.post('/api/progress', { animeId: a.id, episodeNumber: ep.number, watched: true, progress: 0 });
       anime = await api.get('/api/anime/' + encodeURIComponent(a.id));
+      // 就地 patch 库页（继续观看/网格进度立即反映），免整库重取
+      patchLibraryItem(anime);
+      refreshStats();
       scrollToNextUnwatched(anime, ep.number);
       showToast(tr('detail.markedWatched', { number: ep.number }), 'success');
     } catch (e) {
@@ -310,6 +313,9 @@
       const result = await api.post('/api/progress', { animeId: anime.id, episodeNumber: epNumber, watched });
       const ep = anime.episodes.find((e) => e.number === epNumber);
       if (ep) { ep.watched = result.episode.watched; ep.progress = result.episode.progress; }
+      // 就地 patch 库页（继续观看/网格进度立即反映），免整库重取
+      patchLibraryItem(anime);
+      refreshStats();
       // 手动标记已看：与完工确认一致的"引导到下一未看"（仅标记方向滚动，取消不滚动）
       if (watched) scrollToNextUnwatched(anime, epNumber);
     } catch (e) {
@@ -335,8 +341,10 @@
     try {
       await api.del('/api/anime/' + encodeURIComponent(anime.id));
       showToast(tr('detail.deleted'), 'success');
+      // 就地移除 + 仅刷 stats（不再整库重取）
+      removeLibraryItemFromStore(anime.id);
+      refreshStats();
       goBack();
-      loadLibrary();
       refreshDiscovery();
       loadMyList();
     } catch (e) {
@@ -677,6 +685,9 @@
     if (endedAnimeId && anime.id !== endedAnimeId) return false;
     api.get('/api/anime/' + encodeURIComponent(anime.id)).then((updated) => {
       anime = updated;
+      // 就地 patch 库页（继续观看/网格/状态分区立即反映新进度），不再等下次整库重取
+      patchLibraryItem(updated);
+      refreshStats();
       // 剧集列表重定位到最新进度（vanilla renderEpisodeHeatmap 的对应行为：
       // lastPlayedEp 有进度→滚到它；已看完→滚到下一未观看）
       episodeHeatmapRef?.scrollToLastPosition();

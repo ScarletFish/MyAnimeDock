@@ -1,6 +1,5 @@
 <script>
   // ─── MetaMatch 顶栏（纯展示，props in / events out）───
-  // 对应 vanilla metamatch.js 的 mmUpdateStats / mmUpdateProgress / mmUpdateMainAction 渲染部分。
   import { tr } from '../../lib/anime-utils.js';
 
   let { stats, progress, mainAction, filter, search, syncInProgress, onSetFilter, onSearch, onMainAction, onCancel, onClose } = $props();

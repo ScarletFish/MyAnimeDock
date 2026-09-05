@@ -130,6 +130,7 @@ const H: any = Object.assign(
   require('./routes/discovery'),
   require('./routes/library'),
   require('./routes/continue-watching'),
+  require('./routes/meta-match'),
   require('./routes/playback'),
   require('./routes/mylist'),
   require('./routes/stats'),
@@ -313,6 +314,7 @@ const routeTable = [
   // Library
   { method: 'GET', path: '/api/library', handler: H.handleGetLibrary },
   { method: 'GET', path: '/api/continue-watching', handler: H.handleGetContinueWatching }, // Continue watching
+  { method: 'GET', path: '/api/meta-match', handler: H.handleGetMetaMatchItems }, // MetaMatch
   { method: 'GET', path: '/api/library/sync/stream', handler: H.handleLibrarySyncStream },
   { method: 'OPTIONS', path: '/api/library/sync/stream', handler: handleCorsPreflight },
   // Anime detail (order matters: /sessions before /:id)

@@ -1,6 +1,5 @@
 <script>
   // ─── MetaMatch 详情视图（纯展示 + 局部 fix search 状态）───
-  // 对应 vanilla metamatch.js 的 mmRenderPanel / mmSearchForFix / mmFilterSummary。
   // fixResults / fixKeyword 为局部状态；onApplyFix(result) 上抛给父容器编排。
   import { tr, basename, initialOf } from '../../lib/anime-utils.js';
   import { showToast } from '../../components/Toast.svelte';

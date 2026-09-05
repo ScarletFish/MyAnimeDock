@@ -1,6 +1,5 @@
 <script>
   // ─── MetaMatch 左侧列表（纯展示，props in / events out）───
-  // 对应 vanilla metamatch.js 的 mmRenderList / mmShowEmpty。
   import { tr } from '../../lib/anime-utils.js';
 
   let { filteredItems, selectedId, selectedIds, syncInProgress, totalCount, filter, emptyMsg, onRowClick } = $props();

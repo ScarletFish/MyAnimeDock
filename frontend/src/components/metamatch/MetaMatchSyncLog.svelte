@@ -1,6 +1,5 @@
 <script>
   // ─── MetaMatch 同步日志（纯展示，props in）───
-  // 对应 vanilla metamatch.js 的 mmRenderSyncLog / mmRenderSyncSummary。
   import { tr } from '../../lib/anime-utils.js';
 
   let { entries, summary } = $props();

@@ -1,7 +1,4 @@
 <script module>
-  // ─── MetaMatch 视图（Svelte 迁移版）───
-  // 把 vanilla 的批量元数据匹配工作台 frontend/src/js/metamatch.js 迁移为 Svelte 组件树。
-  // 复用现有 CSS 类名（视觉不变），与 vanilla 版共存（后续清理阶段再删 vanilla）。
   import { writable } from 'svelte/store';
 
   // 跨组件打开开关：调用方直接 import metaMatchOpen 并 set(true)
@@ -128,7 +125,7 @@
       syncLogVisible = false;
       emptyMsg = '';
 
-      const libData = await api.get('/api/library');
+      const libData = await api.get('/api/meta-match');
       if (!libData || libData.length === 0) {
         emptyMsg = tr('metamatch.emptyLibraryImport');
         return;
@@ -140,7 +137,7 @@
         folderName: a.folderName || a.title || '',
         specialSuffix: a.specialSuffix || null,
         parsedSeason: a.matchedSeason || a.season || (a.specialSuffix ? null : 1),
-        episodeCount: a.episodes ? a.episodes.length : 0,
+        episodeCount: a.episodeCount ?? 0,
         status: a.bangumiId && a.bangumiTitle ? 'matched' : 'pending',
         error: null,
         pinyinTitle: a.pinyinTitle || '',
@@ -154,7 +151,6 @@
               coverUrl: a.localCover,
               localCover: a.localCover,
               rating: a.rating,
-              metadataSource: a.metadataSource,
             }
           : null,
         coverUrl: a.localCover || null,
@@ -163,9 +159,7 @@
         season: a.matchedSeason || a.season,
         anilistId: a.anilistId,
         anilistBanner: a.anilistBanner || null,
-        anilistTitleEn: a.anilistTitleEn || null,
         anilistTags: a.anilistTags || null,
-        anilistCover: a.anilistCover || null,
       }));
     } catch (e) {
       if (!window.location.origin.startsWith('http')) return;
@@ -325,12 +319,6 @@
           item.coverUrl = data.meta?.localCover || null;
           item.error = null;
           if (data.matchedSeason != null) item.matchedSeason = data.matchedSeason;
-          // 服务端若在 progress 事件携带 anilist 字段则同步更新，保证状态卡实时一致
-          if (data.anilistId != null) item.anilistId = data.anilistId;
-          if (data.anilistBanner != null) item.anilistBanner = data.anilistBanner;
-          if (data.anilistTitleEn != null) item.anilistTitleEn = data.anilistTitleEn;
-          if (data.anilistTags != null) item.anilistTags = data.anilistTags;
-          if (data.anilistCover != null) item.anilistCover = data.anilistCover;
           addSyncLogEntry(data.animeId, null, 'matched', data.meta?.bangumiTitle || data.meta?.title || tr('metamatch.matched'));
         } else {
           item.status = 'failed';

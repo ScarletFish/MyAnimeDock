@@ -72,6 +72,35 @@ export interface ContinueWatchingItem {
   continueEpisode: ContinueWatchingEpisode | null;
 }
 
+// MetaMatch 工作台返回的条目（routes/meta-match.ts）
+// 键名/缺省语义与 GET /api/library（animeToLegacy + metadata spread）一致，
+// 仅 17 个瘦字段；anilistTags 来自持久化 metadata JSON（AniList tags 补全）。
+export interface AniListTag {
+  name: string;
+  rank: number | null;
+  isGeneralSpoiler: boolean | null;
+  isMediaSpoiler: boolean | null;
+}
+export interface MetaMatchItem {
+  id: string;
+  title: string;
+  folderName: string;
+  bangumiTitle: string | null;
+  bangumiId: number | null;
+  pinyinTitle: string | null;
+  season: number | null;
+  matchedSeason: number | null;
+  specialSuffix?: string | null;
+  episodeCount: number;
+  summary: string | null;
+  localCover: string | null;
+  rating: number | null;
+  bangumiTitleJp: string | null;
+  anilistId: number | null;
+  anilistBanner: string | null;
+  anilistTags: AniListTag[] | null;
+}
+
 // ─── MyListItem（data.myList 行）───
 // 字段来源 myListToLegacy()
 export interface MyListItem {

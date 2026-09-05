@@ -1,8 +1,7 @@
 <script>
   // ─── MetaMatch 右侧面板容器（滑动动画 + 互斥切换）───
-  // 替代 vanilla mmOpenPanel / mmClosePanel + 350ms timeout。
   // 用 Svelte transition:slide + {#if} 实现滑动动画。
-  // axis:'x' 保持 vanilla 的水平滑动（从右侧滑出），slide 默认是垂直方向。
+  // axis:'x' 保持水平滑动（从右侧滑出），slide 默认是垂直方向。
   import { slide } from 'svelte/transition';
   import { tr } from '../../lib/anime-utils.js';
   import MetaMatchDetail from './MetaMatchDetail.svelte';

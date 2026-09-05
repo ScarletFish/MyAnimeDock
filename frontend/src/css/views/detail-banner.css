@@ -59,7 +59,6 @@
   grid-template-columns: calc(300px * var(--scale)) 1fr;
   gap: calc(clamp(1.875rem, 3vw, 3.75rem) * var(--scale));
   align-items: start;
-  max-width: calc(112.5rem * var(--scale));
   margin-bottom: 0;
   padding-bottom: var(--space-4);
   position: relative;

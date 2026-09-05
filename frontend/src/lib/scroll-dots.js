@@ -41,7 +41,7 @@ export function initScrollDots(opts) {
   // 会令剧集列表滚动位置逐次塌缩减半（详情页重进入 9→5→3→2→1）。
   function computeCols() {
     const contentW = getContentW();
-    if (contentW <= 0) return Math.max(1, VISIBLE_COUNT || 1);
+    if (contentW <= 0) return parseInt(scroll.style.getPropertyValue('--cols'), 10) || 1;
     const gap = getGap();
     const cols = Math.max(1, Math.floor((contentW + gap) / (getBaselineW() + gap)));
     const prev = scroll.style.getPropertyValue('--cols');

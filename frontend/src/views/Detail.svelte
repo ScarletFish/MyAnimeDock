@@ -605,7 +605,6 @@
   async function animateHeroCoverFlip(fromRect, fromSrc) {
     const wrap = document.getElementById('svelte-detailCover');
     const img = wrap ? wrap.querySelector('img') : null;
-    const toRect = wrap ? wrap.getBoundingClientRect() : { left: 0, top: 0, width: 0, height: 0 };
     if (wrap) { wrap.style.visibility = 'hidden'; wrap.style.opacity = '0'; }
     const hero = document.createElement('div');
     hero.id = 'svelte-heroCover';
@@ -634,11 +633,15 @@
       // 一次测量 + transform 动画（替代原 Flip.from）。
       // 原 Flip 每帧 getGlobalMatrix→getBoundingClientRect 强制同步布局，与首屏渲染抢帧；
       // 本场景起点 fromRect / 终点 toRect 布局稳定、均已知，一次测量即可。
-      // transformOrigin 0 0 让 scale 以左上角为原点，translate 不受 scale 影响，终点精确对齐 toRect。
+      // 所有读布局的调用（gsap.set 内部读当前 transform、getBoundingClientRect）
+      // 必须放在 await nextFrame() 之后：此时浏览器已对新建详情 DOM 完成首帧自然布局，
+      // 布局树干净、全部缓存命中（火焰图验证：getBR 48ms→0.2ms）。
+      // 若不延迟，任一同步读都会在动画启动前强制整树布局（旧 getBR 48ms / gsap.set 61ms）。
+      // 起点 fromRect / 终点 toRect 布局稳定，一次测量即可，每帧不重复测量。
+      await nextFrame();
       gsap.set(hero, { transformOrigin: '0 0' });
       setEntranceDelays(0.05, 0.04);
-      // 刚读取了计算样式，reveal 必须隔一帧（csswg #10187：同帧读样式后切 class → transition 取消）
-      await nextFrame();
+      const toRect = wrap ? wrap.getBoundingClientRect() : { left: 0, top: 0, width: 0, height: 0 };
       showContent = true;
       gsap.to(hero, {
         x: toRect.left - fromRect.left,

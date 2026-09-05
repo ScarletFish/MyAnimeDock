@@ -122,7 +122,7 @@
     svg.append('g').call(d3.axisLeft(y).ticks(3).tickFormat((d) => {
       const v = Math.round(d);
       if (v >= 60) return Math.round(v / 60) + 'h';
-      return v + 'min';
+      return v + 'm';
     })).selectAll('text').attr('fill', tc.muted).attr('font-size', '0.938rem');
     svg.selectAll('.domain').attr('stroke', tc.border);
   }

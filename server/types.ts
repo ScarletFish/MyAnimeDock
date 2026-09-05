@@ -56,6 +56,22 @@ export interface Anime {
   [key: string]: any;
 }
 
+// 继续播放端点返回的条目（routes/continue-watching.ts）
+export interface ContinueWatchingEpisode {
+  number: number;
+  filePath: string;
+  progress: number;
+  duration: number | null;
+}
+export interface ContinueWatchingItem {
+  id: string;
+  title: string | null;
+  bangumiTitle: string | null;
+  localCover: string | null;
+  episodeCount: number;
+  continueEpisode: ContinueWatchingEpisode | null;
+}
+
 // ─── MyListItem（data.myList 行）───
 // 字段来源 myListToLegacy()
 export interface MyListItem {

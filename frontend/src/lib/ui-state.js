@@ -44,17 +44,53 @@ export function consumeStartupLibraryPromise() {
 // 找不到目标条目时 no-op（条目可能已被删除/从未加载，交由既有全量路径处理）。
 export function patchLibraryItem(updatedAnime) {
   if (!updatedAnime || !updatedAnime.id) return;
+  // changed 记录本次 update 是否真的替换成功；未命中（条目已被删/从未加载）不发失效。
+  let changed = false;
   libraryData.update((list) => {
     const idx = list.findIndex((a) => a.id === updatedAnime.id);
     if (idx === -1) return list;
     const next = list.slice();
     next[idx] = { ...updatedAnime };
+    changed = true;
     return next;
   });
+  if (changed) notifyInvalidated('library');
 }
 
 // 单条目删除：从 store 移除（删除 API 已成功时调用），stats 由调用方决定是否刷新。
 export function removeLibraryItemFromStore(id) {
   if (!id) return;
-  libraryData.update((list) => list.filter((a) => a.id !== id));
+  // changed 记录条目是否真的存在；不存在时 no-op，不发失效。
+  let changed = false;
+  libraryData.update((list) => {
+    const next = list.filter((a) => a.id !== id);
+    changed = next.length !== list.length;
+    return next;
+  });
+  if (changed) notifyInvalidated('library');
+}
+
+// ─── 数据失效总线：写入方 notify，消费者 subscribe 后按需刷新 ───
+// 单条变更（patch/remove）后广播 'library' 失效；全量重载路径自身会带刷新，不发通知。
+// 微任务合并：同一次变更内的多次 notify 只触发一轮订阅回调。
+const invalidationListeners = new Map();      // kind → Set<fn>
+let invalidationScheduled = false;
+export function notifyInvalidated(kind) {
+  const fns = invalidationListeners.get(kind);
+  if (!fns || fns.size === 0) return;
+  invalidationScheduled = true;
+  queueMicrotask(() => {
+    if (!invalidationScheduled) return;
+    invalidationScheduled = false;
+    for (const [k, set] of invalidationListeners) {
+      if (set.size === 0) continue;
+      for (const fn of [...set]) fn();
+    }
+  });
+}
+// 返回取消订阅函数
+export function onInvalidated(kind, fn) {
+  if (!invalidationListeners.has(kind)) invalidationListeners.set(kind, new Set());
+  invalidationListeners.get(kind).add(fn);
+  return () => invalidationListeners.get(kind)?.delete(fn);
 }

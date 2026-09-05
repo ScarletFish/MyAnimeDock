@@ -36,7 +36,7 @@
   import { initScrollDots } from '../lib/scroll-dots.js';
   import { getDashboardLayout } from '../lib/dashboard-layout.js';
   import { tr, escapeHtml } from '../lib/anime-utils.js';
-  import { libraryData, pendingAutoPlay, consumeStartupLibraryPromise, patchLibraryItem, removeLibraryItemFromStore } from '../lib/ui-state.js';
+  import { libraryData, pendingAutoPlay, consumeStartupLibraryPromise, patchLibraryItem, removeLibraryItemFromStore, onInvalidated } from '../lib/ui-state.js';
   import { showView, showDetail, getLibraryScrollTop, __skipViewEnter } from '../lib/router.js';
   import { settingsOpen } from './Settings.svelte';
   import { metaMatchOpen } from './MetaMatch.svelte';
@@ -81,12 +81,20 @@
     setLoadLibrary((fromViewSwitch) => loadLibraryImpl(fromViewSwitch));
     // 分模块刷新：仅重取 /api/stats，不触发整库重取/loading。
     setRefreshStats(() => { loadStats(); });
+    // 数据失效总线：单条变更（patch/remove 已 notify）→ 静默刷新续播+stats（轻量幂等）。
+    const unsubscribeInvalidated = onInvalidated('library', () => {
+      loadContinue();
+      loadStats();
+    });
     // Settings 面板修改动漫库布局后通知刷新
     const onLayoutChanged = () => {
       layout = getDashboardLayout();
     };
     document.addEventListener('dashboard-layout-changed', onLayoutChanged);
-    return () => document.removeEventListener('dashboard-layout-changed', onLayoutChanged);
+    return () => {
+      document.removeEventListener('dashboard-layout-changed', onLayoutChanged);
+      unsubscribeInvalidated();
+    };
   });
 
   // ─── 打开时加载数据（避免启动时全量 fetch）───
@@ -151,7 +159,7 @@
       const newData = await (consumeStartupLibraryPromise() ?? api.get('/api/library'));
       libraryData.set(newData);
       layout = getDashboardLayout();
-      await loadStats();
+      await Promise.all([loadStats(), loadContinue()]);
       loading = false;
       // 等 DOM 渲染完成后恢复滚动（重渲染会重置 scrollTop）
       await tick();
@@ -171,13 +179,23 @@
     }
   }
 
+  // 继续观看瘦 payload（服务端已解析 continueEpisode）；失败保留现值：
+  // 为空则区块不显示，有值则维持旧数据，避免闪烁。
+  async function loadContinue() {
+    try {
+      continueItems = await api.get('/api/continue-watching');
+    } catch (e) {
+      console.warn('[continue-watching] fetch failed:', e.message);
+    }
+  }
+
   // ─── 分模块响应式刷新 ───
   // 单条目变更（状态弹窗保存/删除）：后端已返回 enriched anime → 就地 patch store + 只刷 stats，
   // 不重取整库、不置 loading（避免整页闪烁与全量重渲染）。无返回数据时兜底全量刷新。
   async function applyLibraryChange(updatedAnime) {
     if (updatedAnime && updatedAnime.id) {
+      // patchLibraryItem 已 notifyInvalidated → 总线订阅方刷新 stats + 续播
       patchLibraryItem(updatedAnime);
-      loadStats();
       return;
     }
     loadLibraryImpl(false);
@@ -189,37 +207,11 @@
     gridCols = calcGridCols(readScale());
   });
 
-  // ─── 继续观看（镜像 renderContinueSection）───
-  const continueItems = $derived(
-    $libraryData
-      .filter((a) => {
-        if (!a.episodes || a.episodes.length === 0) return false;
-        const watchedCount = a.episodes.filter((e) => e.watched).length;
-        const inProgress = a.episodes.some((e) => e.progress > 0 && !e.watched);
-        return inProgress || (watchedCount > 0 && watchedCount < a.episodes.length);
-      })
-      .sort((a, b) => {
-        const aTime = a.lastPlayedAt ? new Date(a.lastPlayedAt).getTime() : 0;
-        const bTime = b.lastPlayedAt ? new Date(b.lastPlayedAt).getTime() : 0;
-        return bTime - aTime;
-      })
-      .slice(0, 10)
-  );
-
-  function findContinueEpisode(anime) {
-    if (!anime.episodes || anime.episodes.length === 0) return null;
-    if (anime.lastPlayedEp) {
-      const ep = anime.episodes.find((e) => e.number === anime.lastPlayedEp);
-      if (ep && !ep.watched) return ep;
-    }
-    for (let i = 0; i < anime.episodes.length; i++) {
-      if (!anime.episodes[i].watched) return anime.episodes[i];
-    }
-    return null;
-  }
+  // ─── 继续观看（/api/continue-watching 瘦 payload，服务端已解析好 continueEpisode）───
+  let continueItems = $state([]);
 
   function continueBg(a) {
-    const ep = findContinueEpisode(a);
+    const ep = a.continueEpisode;
     let thumbUrl = '';
     if (ep) {
       if (ep.progress > 0 && ep.duration > 0) {
@@ -242,14 +234,14 @@
   }
 
   function continueProgress(a) {
-    const ep = findContinueEpisode(a);
-    const total = a.episodes ? a.episodes.length : 0;
+    const ep = a.continueEpisode;
+    const total = a.episodeCount || 0;
     return ep && total ? Math.round((ep.number / total) * 100) : 0;
   }
 
   function continueLabel(a) {
-    const ep = findContinueEpisode(a);
-    const total = a.episodes ? a.episodes.length : 0;
+    const ep = a.continueEpisode;
+    const total = a.episodeCount || 0;
     return tr('library.episodeProgress', { current: ep ? ep.number : '?', total });
   }
 
@@ -474,7 +466,6 @@
       await api.del('/api/anime/' + encodeURIComponent(item.id));
       showToast(tr('library.deleted'), 'success');
       removeLibraryItemFromStore(item.id);
-      loadStats();
     } catch (e) {
       showToast(tr('library.deleteFailed', { message: e.message }), 'error');
     }

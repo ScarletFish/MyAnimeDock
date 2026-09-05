@@ -36,9 +36,14 @@ export function initScrollDots(opts) {
     return Math.max(0, scroll.clientWidth - padX);
   }
   // 整数列数 = f(基准, 容器宽)：写回 --cols 供 calc 弹性均分
+  // 容器隐藏（display:none，宽为 0）时不重算、不写回 —— 否则 --cols 被写成 1，
+  // 恢复显示首帧卡宽按满宽布局参与 scroll-snap / scrollLeft 换算，反复进出详情页
+  // 会令剧集列表滚动位置逐次塌缩减半（详情页重进入 9→5→3→2→1）。
   function computeCols() {
+    const contentW = getContentW();
+    if (contentW <= 0) return Math.max(1, VISIBLE_COUNT || 1);
     const gap = getGap();
-    const cols = Math.max(1, Math.floor((getContentW() + gap) / (getBaselineW() + gap)));
+    const cols = Math.max(1, Math.floor((contentW + gap) / (getBaselineW() + gap)));
     const prev = scroll.style.getPropertyValue('--cols');
     if (String(cols) !== prev) scroll.style.setProperty('--cols', String(cols));
     return cols;

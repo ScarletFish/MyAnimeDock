@@ -61,24 +61,33 @@
     return scrollIdx;
   }
 
+  // 每次渲染/数据刷新后重定位到目标剧集（vanilla renderEpisodeHeatmap 的对应行为，
+  // onMount 只跑一次，重进入详情页组件不重建，定位必须挂在 $effect 上）。
+  // 双 rAF：等容器可见 + scroll-dots 写完 --cols（布局稳定）后再定位 ——
+  // 否则 display:none 恢复首帧按旧布局换算，scrollLeft 会逐次塌缩减半。
+  let settleRun = 0;
+  $effect(() => {
+    const eps = episodes;
+    if (!gridEl || !eps || eps.length === 0) return;
+    const _lastEp = lastPlayedEp; // 依赖：lastPlayedEp 变化也重定位
+    const runId = ++settleRun;
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      if (settleRun !== runId) return;
+      const startIdx = scrollToLastPosition();
+      loadVisibleThumbs(startIdx);
+      setTimeout(loadAllThumbs, 350);
+    }));
+  });
+
   onMount(() => {
     if (!gridEl) return;
-    // I4: 每次渲染重置滚动位置
+    // I4: 每次渲染重置滚动位置（真实定位见上方 $effect，双 rAF 等布局稳定）
     gridEl.scrollLeft = 0;
     initScrollDots({
       scroll: gridEl,
       cardSelector: '.episode-card',
       total: episodes.length,
       dotsParent: document.querySelector('#svelte-episodeHeatmap .episode-list-header'),
-    });
-    // 剧集列表是首屏模块：按当前集数索引优先加载视口内的缩略图，其余延迟到
-    // 封面入场动画结束后批量加载（本地缓存命中 4-22ms，滚动不再逐张等 IO 触发）。
-    const startIdx = scrollToLastPosition();
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        loadVisibleThumbs(startIdx);
-        setTimeout(loadAllThumbs, 350);
-      });
     });
   });
 

@@ -66,8 +66,8 @@
 
 .titlebar__brand {
   font-family: var(--font-body);
-  font-size: var(--text-compact-md);
-  font-weight: var(--fw-medium);
+  font-size: var(--text-compact-lg);
+  font-weight: var(--fw-bold);
   letter-spacing: 0.03em;
   color: var(--fg-muted);
   line-height: 1;
@@ -101,7 +101,8 @@
   border-radius: var(--radius-sm);
   margin: var(--space-1) var(--space-050);
   font-family: var(--font-body);
-  font-size: var(--text-compact-md);
+  font-size: var(--text-compact-lg);
+  font-weight: var(--fw-medium);
 }
 .titlebar__back:hover {
   color: var(--accent);
@@ -119,7 +120,8 @@
 
 .titlebar__detail-title {
   font-family: var(--font-body);
-  font-size: var(--text-compact-md);
+  font-size: var(--text-compact-lg);
+  font-weight: var(--fw-medium);
   color: var(--fg-primary);
   line-height: 1;
   white-space: nowrap;
@@ -170,8 +172,9 @@
   border: none;
   outline: none;
   color: var(--fg-primary);
-  font-size: var(--text-compact-md);
+  font-size: var(--text-compact-lg);
   font-family: var(--font-body);
+  font-weight: var(--fw-medium);
   padding: 0;
   line-height: 1;
 }

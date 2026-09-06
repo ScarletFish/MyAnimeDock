@@ -29,7 +29,7 @@
   import { tr, escapeHtml } from '../lib/anime-utils.js';
   import { mylistData, cardTitleMylist, mylistSortMode, patchLibraryItem, removeLibraryItemFromStore } from '../lib/ui-state.js';
   import { showDetail, getMyListScrollTop, __skipViewEnter } from '../lib/router.js';
-  import { loadLibrary, refreshStats } from './Library.svelte';
+  import { refreshStats } from './Library.svelte';
   import { Select } from 'bits-ui';
   import { API as api } from '../lib/api.js';
 
@@ -260,9 +260,9 @@
     try {
       await api.del('/api/anime/' + encodeURIComponent(item.animeId || item.id));
       showToast(tr('library.deleted'), 'success');
+      // 单 store：remove 已从 mylistData 移除，libraryData derived 自动消失
       removeLibraryItemFromStore(item.animeId || item.id);
       refreshStats();
-      loadMyListImpl();
     } catch (e) {
       showToast(tr('library.deleteFailed', { message: e.message }), 'error');
     }
@@ -275,10 +275,9 @@
   }
 
   function afterSave(updatedItem) {
+    // 单 store：patch 命中即两视图一致；未命中（条目不在 store）才全量兜底
+    if (updatedItem && updatedItem.id && patchLibraryItem(updatedItem)) return;
     loadMyListImpl();
-    // 库页不整库重取，就地 patch 单条目（后端已返回统一 ListItem）
-    if (updatedItem && updatedItem.id) patchLibraryItem(updatedItem);
-    else loadLibrary();
   }
 
   async function setMyListItemStatus(id, status) {
@@ -286,12 +285,11 @@
       const result = await api.put('/api/mylist/' + encodeURIComponent(id) + '/status', { status });
       showToast(tr('mylist.statusUpdated'), 'success');
       closeCtx();
-      loadMyListImpl();
       if (result && result.item) {
-        patchLibraryItem(result.item);
+        if (!patchLibraryItem(result.item)) loadMyListImpl();
         refreshStats();
       } else {
-        loadLibrary();
+        loadMyListImpl();
       }
     } catch (e) {
       showToast(tr('mylist.updateFailed', { message: e.message }), 'error');

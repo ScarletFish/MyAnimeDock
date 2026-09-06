@@ -48,7 +48,6 @@
   import { libraryData, mylistData, librarySortMode, mylistSortMode, pendingAutoPlay, pendingFinishAnimeId, finishConfirmMode, ignoreLocalFileMissing, patchLibraryItem, removeLibraryItemFromStore } from '../lib/ui-state.js';
   import { refreshStats } from './Library.svelte';
   import { refreshDiscovery } from './Discovery.svelte';
-  import { loadMyList } from './Mylist.svelte';
   import { showView } from '../lib/router.js';
   import { titlebarContext } from '../components/chrome/Titlebar.svelte';
   import { API as api } from '../lib/api.js';
@@ -346,12 +345,11 @@
     try {
       await api.del('/api/anime/' + encodeURIComponent(anime.id));
       showToast(tr('detail.deleted'), 'success');
-      // 就地移除 + 仅刷 stats（不再整库重取）
+      // 单 store：remove 已从 mylistData 移除，libraryData derived 自动消失，无需 loadMyList
       removeLibraryItemFromStore(anime.id);
       refreshStats();
       goBack();
       refreshDiscovery();
-      loadMyList();
     } catch (e) {
       showToast(tr('detail.deleteFailed', { error: e.message }), 'error');
     }

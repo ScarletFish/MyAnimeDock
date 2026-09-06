@@ -36,7 +36,7 @@
   import { initScrollDots } from '../lib/scroll-dots.js';
   import { getDashboardLayout } from '../lib/dashboard-layout.js';
   import { tr, escapeHtml } from '../lib/anime-utils.js';
-  import { libraryData, pendingAutoPlay, consumeStartupLibraryPromise, patchLibraryItem, removeLibraryItemFromStore, onInvalidated } from '../lib/ui-state.js';
+  import { libraryData, mylistData, pendingAutoPlay, consumeStartupLibraryPromise, patchLibraryItem, removeLibraryItemFromStore, onInvalidated } from '../lib/ui-state.js';
   import { showView, showDetail, getLibraryScrollTop, __skipViewEnter } from '../lib/router.js';
   import { settingsOpen } from './Settings.svelte';
   import { metaMatchOpen } from './MetaMatch.svelte';
@@ -156,8 +156,10 @@
     loading = true;
     try {
       // 首次加载消费启动预取 promise（并行发起，省串行 RTT）；之后走全新请求。
-      const newData = await (consumeStartupLibraryPromise() ?? api.get('/api/mylist?filter=local'));
-      libraryData.set(newData);
+      // 单 store：始终拉全集 /api/mylist，libraryData 是 derived 本地子集视图。
+      const newData = await (consumeStartupLibraryPromise() ?? api.get('/api/mylist'));
+      // 全量重载写入唯一事实源；libraryData derived 自动跟随，不发失效通知。
+      mylistData.set(newData);
       layout = getDashboardLayout();
       await Promise.all([loadStats(), loadContinue()]);
       loading = false;
@@ -463,9 +465,10 @@
     const confirmed = await showConfirm(tr('library.confirmRemove', { title: escapeHtml(name) }));
     if (!confirmed) return;
     try {
-      await api.del('/api/anime/' + encodeURIComponent(item.id));
+      // ListItem.id 可能是 mylist 行 id 或 anime id，删除 API 要 anime id → animeId 优先
+      await api.del('/api/anime/' + encodeURIComponent(item.animeId || item.id));
       showToast(tr('library.deleted'), 'success');
-      removeLibraryItemFromStore(item.id);
+      removeLibraryItemFromStore(item.animeId || item.id);
     } catch (e) {
       showToast(tr('library.deleteFailed', { message: e.message }), 'error');
     }

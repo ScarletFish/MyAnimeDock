@@ -4,6 +4,9 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(11.75rem, 1fr));
   gap: clamp(var(--space-350), 1.2vw, var(--space-5));
+  /* 词条靠左、末列贴右：列宽被 GRID_CARD_MAX 封顶后的剩余空间均分进列间间隙，
+     使左右外边距始终相等（回 725d171 padding 48→32 后锚定失效重现的不对称） */
+  justify-content: space-between;
 }
 
 @utility anime-card {

@@ -3,10 +3,10 @@
 @utility grid-container {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(11.75rem, 1fr));
-  gap: clamp(var(--space-350), 1.2vw, var(--space-5));
-  /* 词条靠左、末列贴右：列宽被 GRID_CARD_MAX 封顶后的剩余空间均分进列间间隙，
-     使左右外边距始终相等（回 725d171 padding 48→32 后锚定失效重现的不对称） */
-  justify-content: space-between;
+  /* 1080P 紧凑布局锚定：内容区 1920−60(侧边栏)−32×2(padding) = 1796px，
+     6×277px + 5×26.8px = 1796px 精确贴满（改为 32px padding 后，20px gap 的
+     旧锚定 1762px 短 34px，剩余空间会堆在右侧造成左右边距不对称） */
+  gap: clamp(var(--space-350), 1.4vw, 26px);
 }
 
 @utility anime-card {

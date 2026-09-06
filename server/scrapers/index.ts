@@ -183,7 +183,7 @@ export async function searchBangumi(bangumi: any, keyword: string, config: Scrap
       logger.error('Bangumi search failed:', e.message);
       _bangumiSearchFailLogged = true;
     }
-    return [];
+    throw e;
   }
 }
 
@@ -306,7 +306,7 @@ export async function searchBangumiBySeason(registry: ScraperRegistry, bangumi: 
     return { bangumiResults: bgResults, anilistId: target.id };
   } catch (e: any) {
     logger.error('Season-specific AniList lookup failed:', e.message);
-    return { bangumiResults: [], anilistId: null };
+    throw e;
   }
 }
 
@@ -502,8 +502,11 @@ export class ScraperRegistry {
       return cached.results;
     }
 
-    const results = [];
     const sources = this.getSources(config);
+    if (sources.length === 0) return []; // 未配置任何 API 源：非网络错误，直接返回空
+
+    const results = [];
+    const errors = [];
 
     for (const source of sources) {
       const scraper = this.get(source.type);
@@ -513,10 +516,20 @@ export class ScraperRegistry {
         results.push(...res.map(r => ({ ...r, source: scraper.name, _sourceUrl: source.url })));
       } catch (e: any) {
         logger.error(source.type, '@', source.url, 'search failed:', e.message);
+        errors.push(e);
       }
     }
 
-    // Cache results
+    // 有成功来源 → 返回部分结果并写缓存；全部失败 → 抛出真实错误（不写错误结果进缓存）
+    if (results.length > 0) {
+      this._searchCache.set(keyword, { results, timestamp: Date.now() });
+      return results;
+    }
+    if (errors.length > 0) {
+      throw errors[0];
+    }
+
+    // 所有源正常返回空结果（源可用但查无此片）→ 正常空结果并写缓存
     this._searchCache.set(keyword, { results, timestamp: Date.now() });
     return results;
   }

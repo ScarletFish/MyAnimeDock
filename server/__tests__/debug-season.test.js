@@ -62,7 +62,19 @@ function installMock(mockSearchFn) {
     _registry: real._registry,
     setSource: () => {},
   };
-  return () => { registry.scrapers[idx] = real; registry.clearSearchCache(); };
+  // searchBangumi 现在会把网络错误向上抛（不再吞成 []）；这里把 bangumi.search
+  // 也 stub 掉，避免本用例依赖真实 Bangumi API 的可用性（API 超时会直接 fail）
+  const realBangumi = registry.get('bangumi');
+  const bIdx = registry.scrapers.findIndex(s => s.name === 'bangumi');
+  const bangumiStub = Object.create(Object.getPrototypeOf(realBangumi));
+  Object.assign(bangumiStub, realBangumi);
+  bangumiStub.search = async () => [];
+  registry.scrapers[bIdx] = bangumiStub;
+  return () => {
+    registry.scrapers[idx] = real;
+    registry.scrapers[bIdx] = realBangumi;
+    registry.clearSearchCache();
+  };
 }
 
 // ════════════════════════════════════════════════

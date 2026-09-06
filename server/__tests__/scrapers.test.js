@@ -5,7 +5,7 @@ const assert = require('node:assert');
 const {
   normalizeTitle, sorensenDice, toHiragana, isPrimarilyRomaji,
   pickBestBySimilarity, extractRomajiTitle,
-  ensureMetadata, ensureMetadataBatch, registry,
+  ensureMetadata, ensureMetadataBatch, registry, searchBangumi,
 } = require('../dist/scrapers');
 const { parseFolderName } = require('../dist/scanner');
 
@@ -437,6 +437,52 @@ describe('ensureMetadataBatch', () => {
       assert.equal(changed.size, 2);
       assert.ok(changed.has('a1'));
       assert.ok(changed.has('b1'));
+    } finally { ra(); rb(); }
+  });
+});
+
+// ── 搜索错误传播（网络错误向上抛，不再吞成空数组）──
+describe('search error propagation', () => {
+  it('searchBangumi propagates network errors instead of returning []', async () => {
+    const { restore } = mockBangumi({
+      search: async () => { throw new Error('curl 退出码 28: 请求超时'); },
+    });
+    try {
+      await assert.rejects(
+        searchBangumi(registry.get('bangumi'), 'Yuru Yuri', { apiSources: [{ type: 'bangumi' }] }),
+        /curl 退出码 28/
+      );
+    } finally { restore(); }
+  });
+
+  it('searchAll throws the first source error when all sources fail', async () => {
+    registry.clearSearchCache();
+    const { restore: ra } = mockAnilist({
+      search: async () => { throw new Error('anilist down'); },
+    });
+    const { restore: rb } = mockBangumi({
+      search: async () => { throw new Error('bangumi down'); },
+    });
+    try {
+      const config = { apiSources: [{ type: 'anilist' }, { type: 'bangumi' }] };
+      await assert.rejects(registry.searchAll('Yuru Yuri', config), /anilist down/);
+    } finally { ra(); rb(); }
+  });
+
+  it('searchAll returns partial results when one source fails', async () => {
+    registry.clearSearchCache();
+    const { restore: ra } = mockAnilist({
+      search: async () => [{ id: 28900, name: 'Yuru Yuri' }],
+    });
+    const { restore: rb } = mockBangumi({
+      search: async () => { throw new Error('bangumi down'); },
+    });
+    try {
+      const config = { apiSources: [{ type: 'anilist' }, { type: 'bangumi' }] };
+      const results = await registry.searchAll('Yuru Yuri', config);
+      assert.equal(results.length, 1);
+      assert.equal(results[0].id, 28900);
+      assert.equal(results[0].source, 'anilist');
     } finally { ra(); rb(); }
   });
 });

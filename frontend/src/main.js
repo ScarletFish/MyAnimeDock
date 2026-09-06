@@ -72,8 +72,8 @@ window.addEventListener('app:library-ready', () => {
 
 // ─── Init (DOM already ready — modules are deferred) ───
 (async () => {
-  // 首屏并行：/api/library 不依赖 /api/config，立即发起（Library 首次加载时消费）。
-  const startupLibrary = API.get('/api/library');
+  // 首屏并行：/api/mylist?filter=local 不依赖 /api/config，立即发起（Library 首次加载时消费）。
+  const startupLibrary = API.get('/api/mylist?filter=local');
   startupLibrary.catch(() => {}); // 未被消费时避免 unhandled rejection（消费方仍会收到错误）
   setStartupLibraryPromise(startupLibrary);
 

@@ -291,10 +291,11 @@
       if (!finished) { _dismissedFinishConfirm.add(key); return; }
     }
     try {
-      await api.post('/api/progress', { animeId: a.id, episodeNumber: ep.number, watched: true, progress: 0 });
+      const result = await api.post('/api/progress', { animeId: a.id, episodeNumber: ep.number, watched: true, progress: 0 });
+      // 详情视图依赖完整详情（episodes）：变更后重取 /api/anime/:id 刷新对象
       anime = await api.get('/api/anime/' + encodeURIComponent(a.id));
-      // 就地 patch 库页（继续观看/网格进度立即反映），免整库重取
-      patchLibraryItem(anime);
+      // 就地 patch 库页（列表 store 统一 ListItem：mutation 响应 res.item，缺失时回退重取对象）
+      patchLibraryItem(result?.item ?? anime);
       refreshStats();
       scrollToNextUnwatched(anime, ep.number);
       showToast(tr('detail.markedWatched', { number: ep.number }), 'success');
@@ -311,10 +312,10 @@
     if (!anime) return;
     try {
       const result = await api.post('/api/progress', { animeId: anime.id, episodeNumber: epNumber, watched });
-      const ep = anime.episodes.find((e) => e.number === epNumber);
-      if (ep) { ep.watched = result.episode.watched; ep.progress = result.episode.progress; }
-      // 就地 patch 库页（继续观看/网格进度立即反映），免整库重取
-      patchLibraryItem(anime);
+      // 详情视图依赖完整详情（episodes）：变更后重取 /api/anime/:id 刷新对象，本地不手工改图
+      anime = await api.get('/api/anime/' + encodeURIComponent(anime.id));
+      // 就地 patch 库页（列表 store 统一 ListItem：mutation 响应 res.item，缺失时回退重取对象）
+      patchLibraryItem(result?.item ?? anime);
       refreshStats();
       // 手动标记已看：与完工确认一致的"引导到下一未看"（仅标记方向滚动，取消不滚动）
       if (watched) scrollToNextUnwatched(anime, epNumber);
@@ -328,9 +329,13 @@
     if (!anime) return;
     syncOpen = true;
   }
-  function handleAttached(newAnime) {
-    anime = newAnime;
+  function handleAttached(newItem) {
     syncOpen = false;
+    if (!anime) return;
+    // SyncModal 侧的 mutation 响应已统一为 ListItem（无 episodes）：详情视图重取完整对象
+    api.get('/api/anime/' + encodeURIComponent(newItem?.id || anime.id))
+      .then((updated) => { anime = updated; })
+      .catch(() => {});
   }
 
   // ─── 删除 ───
@@ -366,7 +371,7 @@
     const result = [];
     STATUS_SECTIONS_LIBRARY.forEach((status) => {
       result.push(...sortAnimeItems(
-        ld.filter((a) => (a.myListStatus || 'wish') === status),
+        ld.filter((a) => (a.status ?? 'wish') === status),
         sortMode
       ));
     });

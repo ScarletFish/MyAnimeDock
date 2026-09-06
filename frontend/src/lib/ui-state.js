@@ -27,7 +27,7 @@ export const detailTitleBg = localStore('myAnimDock_detailTitleBg', false);
 export const ignoreLocalFileMissing = localStore('myAnimDock_ignoreLocalFileMissing', false);
 
 // ─── 启动预取 promise（main.js 发起，Library.svelte 首次消费）───
-// 首屏并行：/api/library 不依赖 /api/config，启动时立即发起并缓存 promise，
+// 首屏并行：/api/mylist?filter=local 不依赖 /api/config，启动时立即发起并缓存 promise，
 // Library 首次加载时消费（省一次串行 RTT，服务器端 pinyin 计算提前开始）。
 // 消费后置空，后续刷新/视图切换走全新请求。
 export let startupLibraryPromise = null;

@@ -2,6 +2,7 @@
 // Route handler integration tests for mylist.js
 // Tests that handlers respond with correct status codes and body shapes,
 // and that db save functions are called where expected.
+// 契约：GET 返回 ListItem[]（lib/list-item.ts 统一投影），mutation 返回 { ok, item }。
 const { describe, it, before } = require('node:test');
 const assert = require('node:assert');
 const { mockReq, mockRes, mockState } = require('../helpers/mock-http');
@@ -9,10 +10,10 @@ const mylist = require('../../dist/routes/mylist');
 
 describe('mylist route handlers', () => {
   describe('handleGetMyList', () => {
-    it('returns 200 with merged data when library and myList both exist', () => {
+    it('returns 200 with merged ListItem when library and myList both exist', () => {
       const state = mockState({
         data: {
-          library: [{ id: 'anime-1', title: 'Test Anime', bangumiId: '123', episodes: [{ number: 1, watched: false }, { number: 2, watched: true }] }],
+          library: [{ id: 'anime-1', title: 'Test Anime', bangumiId: 123, downloaded: true, episodes: [{ number: 1, watched: false }, { number: 2, watched: true }] }],
           myList: [{ animeId: 'anime-1', status: 'watching', rating: 8 }],
         },
       });
@@ -24,8 +25,51 @@ describe('mylist route handlers', () => {
       assert.strictEqual(res._body.length, 1);
       assert.strictEqual(res._body[0].title, 'Test Anime');
       assert.strictEqual(res._body[0].status, 'watching');
+      assert.strictEqual(res._body[0].userRating, 8);
       assert.strictEqual(res._body[0].episodeCount, 2);
       assert.strictEqual(res._body[0].episodesWatched, 1);
+      assert.strictEqual(res._body[0].hasLocalFiles, true);
+      assert.ok(!('episodes' in res._body[0]), 'episodes[] must not be sent in list items');
+      assert.ok(!('myListStatus' in res._body[0]), 'myListStatus must not be sent in list items');
+    });
+
+    it('includes library-only rows in the full set with null status', () => {
+      const state = mockState({
+        data: {
+          library: [
+            { id: 'anime-1', title: 'Has List', downloaded: true, episodes: [] },
+            { id: 'anime-2', title: 'No List', downloaded: false, episodes: [] },
+          ],
+          myList: [{ animeId: 'anime-1', status: 'watching' }],
+        },
+      });
+      const req = mockReq({ url: '/api/mylist' });
+      const res = mockRes();
+      mylist.handleGetMyList(req, res, state);
+      assert.strictEqual(res._status, 200);
+      assert.strictEqual(res._body.length, 2);
+      const noList = res._body.find((it) => it.animeId === 'anime-2');
+      assert.ok(noList, 'library-only row must appear in full set');
+      assert.strictEqual(noList.status, null);
+      assert.strictEqual(noList.hasLocalFiles, false);
+    });
+
+    it('returns only local items when ?filter=local', () => {
+      const state = mockState({
+        data: {
+          library: [
+            { id: 'anime-1', title: 'Local', downloaded: true, episodes: [] },
+            { id: 'anime-2', title: 'Not Downloaded', downloaded: false, episodes: [] },
+          ],
+          myList: [],
+        },
+      });
+      const req = mockReq({ url: '/api/mylist?filter=local' });
+      const res = mockRes();
+      mylist.handleGetMyList(req, res, state);
+      assert.strictEqual(res._status, 200);
+      assert.strictEqual(res._body.length, 1);
+      assert.strictEqual(res._body[0].animeId, 'anime-1');
     });
 
     it('returns firstPlayedAt as the earliest play session startTime for library items', () => {
@@ -45,6 +89,7 @@ describe('mylist route handlers', () => {
       mylist.handleGetMyList(req, res, state);
       assert.strictEqual(res._status, 200);
       assert.strictEqual(res._body[0].firstPlayedAt, '2026-07-01T10:00:00.000Z');
+      assert.strictEqual(res._body[0].lastPlayedAt, '2026-07-20T10:00:00.000Z');
     });
 
     it('returns null firstPlayedAt when the anime has no play sessions', () => {
@@ -64,7 +109,7 @@ describe('mylist route handlers', () => {
   });
 
   describe('handleUpdateMyListStatus', () => {
-    it('returns 200 and calls saveMyList on valid status update', async () => {
+    it('returns 200 with updated ListItem and calls saveMyList on valid status update', async () => {
       let saved = false;
       const state = mockState({
         data: { myList: [{ animeId: 'anime-1', status: 'watching' }] },
@@ -75,14 +120,16 @@ describe('mylist route handlers', () => {
       await mylist.handleUpdateMyListStatus(req, res, state);
       assert.strictEqual(res._status, 200);
       assert.ok(res._body.ok);
+      assert.strictEqual(res._body.item.status, 'completed');
+      assert.strictEqual(res._body.item.animeId, 'anime-1');
       assert.ok(saved, 'saveMyList was called');
     });
 
-    it('returns enriched anime in response for frontend in-place patch', async () => {
+    it('returns ListItem with updated status for frontend in-place patch', async () => {
       const state = mockState({
         data: {
-          library: [{ id: 'anime-1', title: 'Test Anime', episodes: [{ number: 1, watched: false }, { number: 2, watched: true }] }],
-          myList: [{ animeId: 'anime-1', status: 'watching', rating: 8 }],
+          library: [{ id: 'anime-1', title: 'Test Anime', downloaded: true, episodes: [{ number: 1, watched: false }, { number: 2, watched: true }] }],
+          myList: [{ id: 'item-1', animeId: 'anime-1', status: 'watching', rating: 8 }],
         },
         db: { saveMyList: async () => {} },
       });
@@ -90,13 +137,14 @@ describe('mylist route handlers', () => {
       const res = mockRes();
       await mylist.handleUpdateMyListStatus(req, res, state);
       assert.strictEqual(res._status, 200);
-      assert.ok(res._body.anime, 'response includes anime for in-place patch');
-      assert.strictEqual(res._body.anime.id, 'anime-1');
-      assert.strictEqual(res._body.anime.myListStatus, 'completed');
-      assert.strictEqual(res._body.anime.userRating, 8, 'myList fields are enriched onto anime');
+      assert.ok(res._body.item, 'response includes ListItem for in-place patch');
+      assert.strictEqual(res._body.item.id, 'item-1');
+      assert.strictEqual(res._body.item.animeId, 'anime-1');
+      assert.strictEqual(res._body.item.status, 'completed');
+      assert.strictEqual(res._body.item.userRating, 8, 'myList fields are projected onto ListItem');
     });
 
-    it('returns anime null when anime not in library (fallback triggers full refresh)', async () => {
+    it('returns synthesized ListItem when anime not in library (ghost mylist row)', async () => {
       const state = mockState({
         data: { myList: [{ animeId: 'ghost', status: 'watching' }] },
         db: { saveMyList: async () => {} },
@@ -105,7 +153,10 @@ describe('mylist route handlers', () => {
       const res = mockRes();
       await mylist.handleUpdateMyListStatus(req, res, state);
       assert.strictEqual(res._status, 200);
-      assert.strictEqual(res._body.anime, null);
+      assert.ok(res._body.item, 'ghost mylist rows are part of the full set and return an item');
+      assert.strictEqual(res._body.item.animeId, 'ghost');
+      assert.strictEqual(res._body.item.status, 'wish');
+      assert.strictEqual(res._body.item.hasLocalFiles, false);
     });
 
     it('returns 400 for invalid status value', async () => {
@@ -145,7 +196,7 @@ describe('mylist route handlers', () => {
       assert.strictEqual(state.data.myList[0].notes, 'Great!');
     });
 
-    it('returns enriched anime with updated fields for frontend in-place patch', async () => {
+    it('returns ListItem with updated fields for frontend in-place patch', async () => {
       const state = mockState({
         data: {
           library: [{ id: 'anime-1', title: 'Test Anime', episodes: [{ number: 1, watched: true }] }],
@@ -157,10 +208,11 @@ describe('mylist route handlers', () => {
       const res = mockRes();
       await mylist.handleUpdateMyListItem(req, res, state);
       assert.strictEqual(res._status, 200);
-      assert.ok(res._body.anime, 'response includes anime for in-place patch');
-      assert.strictEqual(res._body.anime.id, 'anime-1');
-      assert.strictEqual(res._body.anime.userRating, 9, 'updated rating is enriched onto anime');
-      assert.strictEqual(res._body.anime.myListStatus, 'watching');
+      assert.ok(res._body.item, 'response includes ListItem for in-place patch');
+      assert.strictEqual(res._body.item.id, 'item-1');
+      assert.strictEqual(res._body.item.animeId, 'anime-1');
+      assert.strictEqual(res._body.item.userRating, 9, 'updated rating is projected onto ListItem');
+      assert.strictEqual(res._body.item.status, 'watching');
     });
 
     it('returns 400 when no valid fields provided', async () => {

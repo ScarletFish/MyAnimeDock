@@ -2,11 +2,15 @@
 
 ## MyList 状态
 
-### Get MyList（含 firstPlayedAt）
+### Get MyList（列表全集 / filter=local 子集）
 ```
-GET /api/mylist
+GET /api/mylist[?filter=local]
   → routes/mylist.ts:handleGetMyList()
-  → 对每个有本地文件的条目，附加 firstPlayedAt = 该动画最早一条 PlaySession.startTime
+  → lib/list-item.ts:buildListItems() 唯一投影：
+     全集 = mylist 行（animeId 非空）∪ 无 mylist 行的 library 行（合成 status=null）
+     filter=local → 仅 animeId 非空 && downloaded===true（旧 GET /api/library 语义）
+  → firstPlayedAt（最早）/ lastPlayedAt（最晚）由 playSessions 聚合注入
+  → 列表不下发 episodes[]，改 episodeCount/episodesWatched 聚合
   → 用途：状态弹窗打开时，若 startedAt 为空，用 firstPlayedAt 的本地日期预填"开始日期"，
     避免用户回忆（frontend/src/views/Mylist.svelte:localDateStr — 注意本地日期转换，勿 substring(0,10)）
   → 纯推导、不落盘；仅当用户在弹窗保存时才随 startedAt 写入 MyList

@@ -79,7 +79,8 @@
 | `server.ts` | HTTP 入口 | 路由注册 + 中间件 |
 | `scanner.ts` | `parseFolderName()`, `scanTopDir()`, `scanMediaDirFlat()`, `extractBgmId()`, `isExtraVideo()` | 媒体目录扫描 |
 | `scrapers/index.ts` | `registry`, `normalizeTitle()`, `pickBestBySimilarity()`, `buildSearchTerms()`, `ensureMetadata()` | 元数据抓取入口 |
-| `lib/enrich.ts` | `enrichAnime()` | 动漫元数据补全 |
+| `lib/enrich.ts` | `enrichAnime()` | 动漫元数据补全（详情/续播用；列表不再注入） |
+| `lib/list-item.ts` | `buildListItems()` | ListItem 唯一投影（全集 / `filter=local` / mutation 单条） |
 | `lib/pinyin.ts` | `computePinyinTitle()` | 拼音标题计算 |
 | `lib/config.ts` | `ConfigShape`, 配置加载 | 配置管理 |
 | `lib/http-fetch.ts` | `DEFAULT_TIMEOUT`, `USER_AGENT` | HTTP 请求工具 |
@@ -93,8 +94,8 @@
 
 | 路由 | 前缀 | 用途 |
 |------|------|------|
-| `library.ts` | `/api/library`, `/api/anime/:id` | 库/元数据管理 |
-| `mylist.ts` | `/api/mylist` | 我的列表/状态 |
+| `library.ts` | `/api/anime/:id`, `DELETE /api/anime/:id`, `/api/library/sync/stream` | 库/元数据管理（列表读取由 `/api/mylist` 承担） |
+| `mylist.ts` | `/api/mylist`（`?filter=local` = 旧 `/api/library` 子集语义） | 列表全集 + 我的列表/状态 |
 | `config.ts` | `/api/config` | 配置读写 |
 | `discovery.ts` | `/api/discovery` | 媒体目录浏览 |
 | `playback.ts` | `/api/playback`, `/api/mpv/*` | 播放控制 |

@@ -38,7 +38,7 @@
       status,
       label: getStatusLabels()[status] || status,
       items: sortAnimeItems(
-        items.filter((a) => (a.myListStatus || 'wish') === status),
+        items.filter((a) => (a.status ?? 'wish') === status),
         sortMode
       ),
     }))

@@ -311,8 +311,7 @@ const routeTable = [
   { method: 'POST', path: '/api/discovery/unlink', handler: H.handleDiscoveryUnlink },
   { method: 'POST', path: '/api/discovery/exclude', handler: H.handleDiscoveryExclude },
   { method: 'POST', path: '/api/discovery/include', handler: H.handleDiscoveryInclude },
-  // Library
-  { method: 'GET', path: '/api/library', handler: H.handleGetLibrary },
+  // Library（列表由 /api/mylist 承担，?filter=local 即旧 /api/library 语义）
   { method: 'GET', path: '/api/continue-watching', handler: H.handleGetContinueWatching }, // Continue watching
   { method: 'GET', path: '/api/meta-match', handler: H.handleGetMetaMatchItems }, // MetaMatch
   { method: 'GET', path: '/api/library/sync/stream', handler: H.handleLibrarySyncStream },
@@ -497,7 +496,7 @@ async function init() {
   data = (await db.loadData()) || { discovered: [], library: [], myList: [], playSessions: [] };
 
   // pinyinTitle 一次性补全（幂等迁移）：旧数据空值在此计算并落库，
-  // 之后读取路径（GET /api/library）纯读，不再有计算/兜底逻辑。
+  // 之后读取路径（列表 /api/mylist、详情 /api/anime/:id）纯读，不再有计算/兜底逻辑。
   const missingPinyin = data.library.filter((a: any) => !a.pinyinTitle);
   if (missingPinyin.length > 0) {
     missingPinyin.forEach((a: any) => { a.pinyinTitle = computePinyinTitle(a.bangumiTitle || a.title || ''); });

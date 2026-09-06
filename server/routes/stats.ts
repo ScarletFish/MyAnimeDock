@@ -5,8 +5,14 @@ import type { ServerState } from '../types';
 export function handleStats(req: any, res: any, state: ServerState): void {
   const { data } = state;
   const lib = data.library || [];
-  const watching = lib.filter((a: any) => a.myListStatus === 'watching').length;
-  const completed = lib.filter((a: any) => a.myListStatus === 'completed').length;
+  // myListStatus 是 enrichAnime 的注入字段，列表端点删除后不再全量注入；
+  // 改从单数据源 data.myList 直接派生，语义不变（仅统计有 library 行的条目）。
+  const statusByAnimeId = new Map<string, string | null>();
+  for (const m of data.myList || []) {
+    if (m.animeId) statusByAnimeId.set(m.animeId, m.status);
+  }
+  const watching = lib.filter((a: any) => statusByAnimeId.get(a.id) === 'watching').length;
+  const completed = lib.filter((a: any) => statusByAnimeId.get(a.id) === 'completed').length;
   const total = lib.filter((a: any) => a.downloaded !== false).length;
   let totalEpWatched = 0;
   let totalFileSize = 0;

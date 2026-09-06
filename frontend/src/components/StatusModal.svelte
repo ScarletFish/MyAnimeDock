@@ -44,11 +44,11 @@
     ratingVal = rating !== '' ? String(rating) : '—';
 
     const storedProgress = it.progress != null ? it.progress : null;
-    const watchedCount = src.episodes ? src.episodes.filter((e) => e.watched).length : 0;
+    const watchedCount = src.episodesWatched ?? src.episodes?.filter((e) => e.watched).length ?? 0;
     const progVal = storedProgress != null ? storedProgress : watchedCount || '';
     progressVal = progVal !== '' ? String(progVal) : '—';
-    // 进度上限 = 本地集数；无本地文件时回退 999
-    progressMax = src.episodes && src.episodes.length ? src.episodes.length : 999;
+    // 进度上限 = episodeCount（ListItem）；兼容旧富对象回退 episodes.length；未知回退 999
+    progressMax = (src.episodeCount ?? src.episodes?.length ?? 0) || 999;
 
     const storedStart = it.startedAt ? it.startedAt : null;
     const firstPlayed = it.firstPlayedAt ? localDateStr(it.firstPlayedAt) : null;
@@ -242,7 +242,7 @@
       const result = await api.put('/api/mylist/' + encodeURIComponent(id), data);
       showToast(tr('mylist.saved'), 'success');
       open = false;
-      if (onSaved) onSaved(result.anime);
+      if (onSaved) onSaved(result.item);
     } catch (e) {
       showToast(tr('mylist.saveFailed', { message: e.message }), 'error');
     } finally {

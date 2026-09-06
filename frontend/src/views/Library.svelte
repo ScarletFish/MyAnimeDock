@@ -156,7 +156,7 @@
     loading = true;
     try {
       // 首次加载消费启动预取 promise（并行发起，省串行 RTT）；之后走全新请求。
-      const newData = await (consumeStartupLibraryPromise() ?? api.get('/api/library'));
+      const newData = await (consumeStartupLibraryPromise() ?? api.get('/api/mylist?filter=local'));
       libraryData.set(newData);
       layout = getDashboardLayout();
       await Promise.all([loadStats(), loadContinue()]);
@@ -190,7 +190,7 @@
   }
 
   // ─── 分模块响应式刷新 ───
-  // 单条目变更（状态弹窗保存/删除）：后端已返回 enriched anime → 就地 patch store + 只刷 stats，
+  // 单条目变更（状态弹窗保存/删除）：后端已返回统一 ListItem → 就地 patch store + 只刷 stats，
   // 不重取整库、不置 loading（避免整页闪烁与全量重渲染）。无返回数据时兜底全量刷新。
   async function applyLibraryChange(updatedAnime) {
     if (updatedAnime && updatedAnime.id) {

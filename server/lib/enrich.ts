@@ -1,11 +1,12 @@
 // server/lib/enrich.ts — 动漫条目的 myList 关联字段 + 播放会话派生字段统一注入
-// 供 /api/library、/api/mylist、/api/anime/:id 共用，保证状态弹窗预填数据一致。
+// 供 /api/anime/:id、/api/continue-watching、bangumi 检索共用，保证详情/续播预填数据一致。
+// 列表读取已由 lib/list-item.ts 的 buildListItems() 统一（不注入 myListStatus，改 ListItem.status）。
 import type { AppData, Anime } from '../types';
 
 // 给单个 anime 注入：
 //  - myList 关联字段：myListStatus / userRating / progress / startedAt / completedAt
 //  - 播放会话派生字段：firstPlayedAt（最早播放）/ lastPlayedAt（最晚播放）/ lastPlayedEp
-// 变异并返回原对象（与既有 handleGetLibrary 的注入方式一致）。
+// 变异并返回原对象。
 export function enrichAnime(a: Anime, data: AppData): Anime {
   const myItem = (data.myList || []).find((m: any) => m.animeId === a.id);
   a.myListStatus = myItem ? myItem.status : null;

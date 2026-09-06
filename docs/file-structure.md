@@ -64,6 +64,7 @@ server/
 │   ├── http-fetch.ts          #   统一 HTTP 请求层（超时/重试）
 │   ├── config.ts              #   配置加载
 │   ├── qb-client.ts           #   qBittorrent WebAPI 客户端
+│   ├── list-item.ts           #   ListItem 唯一投影（全集 / filter=local / mutation 单条）
 │   └── utils.ts               #   通用工具（escHtml/escAttr 等）
 │
 ├── __tests__/                 # 测试
@@ -72,14 +73,17 @@ server/
 │   ├── db.test.js             #   数据库测试
 │   ├── playback-encoding.test.js
 │   ├── debug-season.test.js
+│   ├── list-item.test.js      #   ListItem 投影单元测试
 │   ├── helpers/
 │   │   └── mock-http.js       #   HTTP mock 辅助
-│   └── routes/                #   路由测试（8 个，匹配 routes/）
+│   └── routes/                #   路由测试（10 个，匹配 routes/）
 │       ├── bangumi.test.js
 │       ├── config.test.js
+│       ├── continue-watching.test.js
 │       ├── db-manager.test.js
 │       ├── discovery.test.js
 │       ├── library.test.js
+│       ├── meta-match.test.js
 │       ├── mylist.test.js
 │       ├── playback.test.js
 │       └── stats.test.js

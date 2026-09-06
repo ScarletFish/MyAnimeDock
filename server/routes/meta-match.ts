@@ -1,6 +1,6 @@
 // server/routes/meta-match.ts — MetaMatch 批量匹配工作台瘦列表
 // data.library 内存态已是 animeToLegacy + metadata spread 的 legacy 形状
-// （与 GET /api/library 同一对象），此处直接抽 17 个瘦字段，不改顺序、不做 IO。
+// （列表读取 buildListItems 同一对象），此处直接抽 17 个瘦字段，不改顺序、不做 IO。
 import { jsonResp } from '../lib/utils';
 import type { MetaMatchItem, ServerState } from '../types';
 

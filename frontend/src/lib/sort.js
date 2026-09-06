@@ -55,12 +55,8 @@ export function sortAnimeItems(items, sortMode) {
     return (a.bangumiTitleJp || a.bangumiTitle || a.title || '').toLowerCase();
   }
   function getLastWatched(a) {
-    if (!a.episodes || a.episodes.length === 0) return '';
-    var latest = '';
-    a.episodes.forEach(function (e) {
-      if (e.updatedAt && e.updatedAt > latest) latest = e.updatedAt;
-    });
-    return latest;
+    // ListItem 新字段 lastPlayedAt（旧 episodes 数组上的 updatedAt 字段已不存在）
+    return a.lastPlayedAt || '';
   }
   function getBlockScore(block, key) {
     if (key === 'rating') return Math.max.apply(null, block.map(function (a) { return a.rating || 0; }));

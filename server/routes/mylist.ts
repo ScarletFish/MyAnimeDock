@@ -1,43 +1,19 @@
-// server/routes/mylist.ts — MyList 路由
+// server/routes/mylist.ts — MyList 路由（统一 ListItem 模型）
+// GET /api/mylist（全集 / ?filter=local）与 mutation 响应（{ ok, item }）
+// 均经 lib/list-item.ts 的 buildListItems() 聚合，单一数据源。
 import { jsonResp, readBody } from '../lib/utils';
-import { enrichAnime } from '../lib/enrich';
+import { buildListItems } from '../lib/list-item';
 import type { ServerState } from '../types';
 
 function handleGetMyList(req: any, res: any, state: ServerState) {
-  const { data } = state;
-  const merged: any[] = [];
-  const animeMap = new Map(data.library.map((a: any) => [a.id, a]));
-  for (const item of data.myList || []) {
-    if (item.animeId) {
-      const anime: any = animeMap.get(item.animeId);
-      if (anime) enrichAnime(anime, data);
-      merged.push({
-        id: item.id || item.animeId, animeId: item.animeId,
-        bangumiId: anime ? anime.bangumiId : item.bangumiId,
-        title: anime ? anime.title : item.title,
-        bangumiTitle: anime ? anime.bangumiTitle : item.bangumiTitle,
-        bangumiTitleJp: anime ? anime.bangumiTitleJp : null,
-        coverUrl: anime ? anime.localCover : item.coverUrl,
-        localCover: anime ? anime.localCover : null,
-        season: anime ? anime.season : null,
-        matchedSeason: anime ? anime.matchedSeason : null,
-        platform: anime ? anime.platform : null,
-        rating: anime ? (anime.rating || null) : item.rating,
-        userRating: item.rating, thoughts: item.thoughts, notes: item.notes,
-        progress: item.progress, startedAt: item.startedAt, completedAt: item.completedAt,
-        firstPlayedAt: anime ? (anime.firstPlayedAt || null) : null,
-        lastPlayedAt: anime ? (anime.lastPlayedAt || null) : null,
-        importedAt: anime ? anime.importedAt : null,
-        status: item.status,
-        episodeCount: anime ? anime.episodes.length : 0,
-        episodesWatched: anime ? anime.episodes.filter((e: any) => e.watched).length : 0,
-        episodes: anime ? anime.episodes : [],
-        hasLocalFiles: !!anime, source: 'library',
-        summary: anime ? anime.summary : item.summary,
-      });
-    }
+  const { data, logger } = state;
+  try {
+    const localOnly = new URL(req.url, 'http://localhost').searchParams.get('filter') === 'local';
+    jsonResp(res, 200, buildListItems(data, { localOnly }));
+  } catch (err) {
+    logger.error('[mylist]', err);
+    jsonResp(res, 500, { error: (err as Error).message });
   }
-  jsonResp(res, 200, merged);
 }
 
 async function handleUpdateMyListStatus(req: any, res: any, state: ServerState) {
@@ -58,11 +34,10 @@ async function handleUpdateMyListStatus(req: any, res: any, state: ServerState) 
       data.myList.push({ animeId: id, status, rating: null, thoughts: '', notes: '' } as any);
     }
     db.saveMyList(data).then(() => {
-      // 返回更新后的 enriched anime，前端就地 patch 库页对应模块，免全量重取
+      // 返回更新后的 ListItem，前端就地 patch 对应模块，免全量重取
       const animeId = existing?.animeId || id;
-      const anime = data.library.find((a) => a.id === animeId);
-      if (anime) enrichAnime(anime, data);
-      jsonResp(res, 200, { ok: true, anime: anime ?? null });
+      const item = buildListItems(data, { ids: new Set([animeId, id]) })[0] ?? null;
+      jsonResp(res, 200, { ok: true, item });
       if (existing && existing.animeId) bangumiSync.pushStatusChange(existing.animeId, data);
     }).catch((e: any) => {
       logger.error('MyList status save error:', e);
@@ -98,12 +73,11 @@ async function handleUpdateMyListItem(req: any, res: any, state: ServerState) {
           }
         }
       }
-      // 返回更新后的 enriched anime，前端就地 patch 库页对应模块，免全量重取
+      // 返回更新后的 ListItem，前端就地 patch 对应模块，免全量重取
       const entry = (data.myList || []).find(m => m.id === id || m.animeId === id);
       const animeId = entry?.animeId || id;
-      const anime = data.library.find((a) => a.id === animeId);
-      if (anime) enrichAnime(anime, data);
-      jsonResp(res, 200, { ok: true, anime: anime ?? null });
+      const item = buildListItems(data, { ids: new Set([animeId, id]) })[0] ?? null;
+      jsonResp(res, 200, { ok: true, item });
     }).catch((e: any) => {
       logger.error('MyList update error:', e);
       jsonResp(res, 500, { error: 'Failed to update' });

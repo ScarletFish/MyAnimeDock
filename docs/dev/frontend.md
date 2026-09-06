@@ -232,7 +232,7 @@ showToast('成功导入 ' + result.imported.length + ' 个条目', 'success');
 
 ```js
 // api.js 封装
-const data = await API.get('/api/library');
+const data = await API.get('/api/mylist?filter=local'); // 本地有文件子集（旧 /api/library）
 const result = await API.post('/api/mylist/update', { id, status });
 await API.del('/api/play-session/123');
 ```
@@ -294,7 +294,7 @@ export const mylistSortMode = localStore('mylistSort', 'name');
 
 前端搜索逻辑在 Svelte 视图（`Library.svelte`）中，匹配字段：`title` / `bangumiTitle` / `pinyinTitle`。
 
-`pinyinTitle` 由后端 library 路由计算（pinyin-pro，去声调）。
+`pinyinTitle` 由后端 init 落库补全，列表读取（`lib/list-item.ts`）纯读列不重算（pinyin-pro，去声调）。
 
 ## CSS 缩放标准
 

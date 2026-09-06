@@ -54,10 +54,10 @@
     state = 'fetching';
     try {
       const result = await api.post('/api/bangumi/fetch', { animeId: anime.id, subjectId });
-      onAttached?.(result.anime);
-      // 单部元数据同步：就地 patch（后端已返回该条目），不整库重取
-      if (result.anime && result.anime.id) {
-        patchLibraryItem(result.anime);
+      onAttached?.(result.item);
+      // 单部元数据同步：就地 patch（后端已返回统一 ListItem），不整库重取
+      if (result.item && result.item.id) {
+        patchLibraryItem(result.item);
         refreshStats();
       }
       showToast(tr('detail.metadataSuccess'), 'success');

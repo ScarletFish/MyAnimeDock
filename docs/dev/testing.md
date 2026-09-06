@@ -87,15 +87,19 @@ assert.deepStrictEqual(parseFolderName('[bgm5] Title (2024)'), {
 
 | 文件 | 测试数 | 覆盖 Handler | mock 策略 |
 |------|--------|-------------|-----------|
-| `mylist.test.js` | 15 | 6/7 | 仅 state mock |
-| `config.test.js` | 14 | 4/4 | 仅 state mock |
+| `mylist.test.js` | 13 | 3/3 | 仅 state mock；ListItem 契约 |
+| `config.test.js` | 12 | 4/4 | 仅 state mock |
 | `stats.test.js` | 23 | 7/7 | 仅 state mock |
 | `db-manager.test.js` | 15 | 6/8 | state.db mock + fs monkey-patch; 跳过二进制流/文件读取 |
 | `discovery.test.js` | 23 | 5/6 | state mock + require.cache mock for scanner; 跳过 SSE |
-| `library.test.js` | 9 | 3/5 | state mock; 跳过 SSE/AniList |
+| `library.test.js` | 5 | 2/3 | state mock; handleGetLibrary 已删；跳过 SSE/AniList |
 | `bangumi.test.js` | 18 | 8/9 | require.cache mock for scrapers + scanner |
-| `playback.test.js` | 18 | 4/4 | require.cache mock for mpv-ipc + ffmpeg error path |
-| **合计** | **135** | **43/50** | **86% handler 覆盖** |
+| `playback.test.js` | 22 | 4/4 | require.cache mock for mpv-ipc + ffmpeg error path |
+| `continue-watching.test.js` | 8 | 1/1 | 仅 state mock |
+| `meta-match.test.js` | 6 | 1/1 | 仅 state mock |
+| **合计** | **145** | **41/46** | **89% handler 覆盖** |
+
+另顶层 `__tests__/list-item.test.js`（8 例）：`buildListItems()` 投影（全集并集 / `filter=local` / 聚合计数）单元测试。
 
 ### Mock-http 模式
 

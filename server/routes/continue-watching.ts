@@ -8,7 +8,7 @@ export function handleGetContinueWatching(req: any, res: any, state: ServerState
   const { data, logger } = state;
   try {
     const candidates = data.library.filter((a) => {
-      // 语义同 routes/library.ts hasLocalFiles：仅 downloaded === true 视为本地存在
+      // 语义同 lib/list-item.ts 的 hasLocalFiles：仅 downloaded === true 视为本地存在
       if (!a.downloaded) return false;
       if (!a.episodes || a.episodes.length === 0) return false;
       const watchedCount = a.episodes.filter((e) => e.watched).length;

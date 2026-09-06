@@ -1,22 +1,13 @@
 // server/routes/library.ts — 资料库、详情、批量元数据同步
+// 列表读取已由 /api/mylist（lib/list-item.ts 的 buildListItems）统一承担。
 import * as path from 'path';
 import * as fs from 'fs';
 import * as crypto from 'crypto';
-import { jsonResp, readBody, serveImage } from '../lib/utils';
+import { jsonResp } from '../lib/utils';
 import { saveScannedTree, DATA_DIR } from '../lib/config';
 import { enrichAnime } from '../lib/enrich';
 import { computePinyinTitle } from '../lib/pinyin';
 import type { ServerState } from '../types';
-
-/**
- * 计算动漫条目的本地文件是否存在。
- * 读 DB 字段，不做磁盘检测；写入路径（详情页检测 + 删除）负责维护此字段。
- * 语义（本地媒体库场景，209590e 有意收紧）：仅 downloaded === true 视为有文件；
- * undefined（未写入/老数据）视为无文件一并过滤，保证列表实义为"本地存在"。
- */
-function hasLocalFiles(anime: any): boolean {
-  return !!anime.downloaded;
-}
 
 // Shared helper: resolve folder parsed for structural folders
 function resolveFolderParsed(anime: any) {
@@ -48,15 +39,6 @@ function resolveFolderParsed(anime: any) {
   }
   logger.debug(`resolveFolderParsed: 最终 → season=${fp.season} cleanTitle="${fp.cleanTitle}" cjkTitle="${fp.cjkTitle || ''}"`);
   return fp;
-}
-
-export function handleGetLibrary(req: any, res: any, state: ServerState) {
-  const { data, config, logger } = state;
-  // pinyinTitle 由写入路径保证（saveLibrary 空值计算 + 元数据同步改名重算 + 启动一次性补全），此处纯读
-  data.library.forEach((a: any) => {
-    enrichAnime(a, data);
-  });
-  jsonResp(res, 200, data.library.filter((a: any) => hasLocalFiles(a)));
 }
 
 export async function handleGetAnimeDetail(req: any, res: any, state: ServerState) {

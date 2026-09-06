@@ -26,9 +26,14 @@ describe('stats route handlers', () => {
       const state = mockState({
         data: {
           library: [
-            { id: '1', myListStatus: 'watching', downloaded: true, episodes: [{ number: 1, watched: true, fileSize: 100 }, { number: 2, watched: false, fileSize: 200 }] },
-            { id: '2', myListStatus: 'completed', downloaded: true, episodes: [{ number: 1, watched: true, fileSize: 300 }] },
+            { id: '1', downloaded: true, episodes: [{ number: 1, watched: true, fileSize: 100 }, { number: 2, watched: false, fileSize: 200 }] },
+            { id: '2', downloaded: true, episodes: [{ number: 1, watched: true, fileSize: 300 }] },
             { id: '3', downloaded: false, episodes: [{ number: 1 }] },
+          ],
+          myList: [
+            { animeId: '1', status: 'watching' },
+            { animeId: '2', status: 'completed' },
+            { animeId: '4', status: 'watching' }, // 幽灵行（无 library 行）不计入
           ],
           playSessions: [{ duration: 600 }, { duration: 300 }],
         },

@@ -122,6 +122,41 @@ export interface MyListItem {
   updatedAt: string;
 }
 
+// ─── ListItem（GET /api/mylist 与 mylist mutation 响应的统一列表模型）───
+// 由 lib/list-item.ts 的 buildListItems() 唯一投影：mylist 行 ↔ anime（library）行按 animeId 合并。
+// 列表层字段名 status（不再注入 myListStatus），episodes[] 不下发只给计数。
+export interface ListItem {
+  id: string;
+  animeId: string | null;
+  bangumiId: number | null;
+  hasLocalFiles: boolean;
+  title: string;
+  bangumiTitle: string | null;
+  bangumiTitleJp: string | null;
+  localCover: string | null;
+  coverUrl: string | null;
+  summary: string | null;
+  status: string | null;
+  userRating: number | null;
+  rating: number | null;
+  progress: number | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  thoughts: string;
+  notes: string;
+  season: number | null;
+  matchedSeason: number | null;
+  platform: string | null;
+  pinyinTitle: string | null;
+  anilistTags: AniListTag[] | null;
+  importedAt: string | null;
+  episodeCount: number;
+  episodesWatched: number;
+  firstPlayedAt: string | null;
+  lastPlayedAt: string | null;
+  source: string | null;
+}
+
 // ─── PlaySession（data.playSessions 行）───
 // 字段来源 sessionToLegacy()
 export interface PlaySession {

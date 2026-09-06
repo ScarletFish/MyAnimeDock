@@ -274,10 +274,10 @@
     statusModalOpen = true;
   }
 
-  function afterSave(updatedAnime) {
+  function afterSave(updatedItem) {
     loadMyListImpl();
-    // 库页不整库重取，就地 patch 单条目（后端已返回 enriched anime）
-    if (updatedAnime && updatedAnime.id) patchLibraryItem(updatedAnime);
+    // 库页不整库重取，就地 patch 单条目（后端已返回统一 ListItem）
+    if (updatedItem && updatedItem.id) patchLibraryItem(updatedItem);
     else loadLibrary();
   }
 
@@ -287,8 +287,8 @@
       showToast(tr('mylist.statusUpdated'), 'success');
       closeCtx();
       loadMyListImpl();
-      if (result && result.anime) {
-        patchLibraryItem(result.anime);
+      if (result && result.item) {
+        patchLibraryItem(result.item);
         refreshStats();
       } else {
         loadLibrary();

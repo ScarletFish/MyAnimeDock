@@ -64,8 +64,26 @@ async function curlFetch(method: string, url: string, body?: string): Promise<un
   args.push('-H', `User-Agent: ${USER_AGENT}`, url);
   const { stdout, stderr } = await spawnAsync('curl', args, (CURL_MAX_TIME + 2) * 1000);
   if (stderr) logger.error('curl stderr:', stderr);
-  if (!stdout || !stdout.trim()) throw new Error('curl 返回空响应');
-  return JSON.parse(stdout) as any;
+  return parseApiJsonResponse(stdout);
+}
+
+/**
+ * Parse a JSON API response body into a usable object,
+ * replacing raw JSON.parse SyntaxErrors with readable messages.
+ * HTML pages (interception / error pages) get an explicit hint.
+ */
+export function parseApiJsonResponse(text: string): unknown {
+  const trimmed = text.trim();
+  if (!trimmed) throw new Error('API 返回了空响应');
+  try {
+    return JSON.parse(trimmed) as any;
+  } catch {
+    const snippet = trimmed.replace(/\s+/g, ' ').slice(0, 120);
+    const kind = /<!doctype\s+html|<html/i.test(snippet)
+      ? 'API 返回了网页内容（可能被网络拦截或地址异常）'
+      : 'API 返回了无法解析的数据（非 JSON 格式）';
+    throw new Error(`${kind}，响应开头: ${snippet}${trimmed.length > 120 ? '…' : ''}`);
+  }
 }
 
 /**

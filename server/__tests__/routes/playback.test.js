@@ -364,9 +364,9 @@ describe('playback route handlers', () => {
   });
 
   describe('handleThumbnail', () => {
-    // Playback module destructures spawn at load time, so we can't mock
-    // child_process.spawn externally. Instead test validation paths + error path
-    // (system without ffmpeg — spawn errors → 500 'ffmpeg not available').
+    // 生成已解耦到 thumbnail-queue（scheduleGeneration）：冷缓存立即 202 不挂等，
+    // 请求路径不再有任何 spawn/probe。测验证路径（404/400）+ 缓存命中直出 +
+    // 202 no-wait 语义 + status 端点三态。队列用 mock 注入，不依赖真实 ffmpeg。
     let tmpFile;
 
     before(() => {
@@ -377,6 +377,21 @@ describe('playback route handlers', () => {
     after(() => {
       try { fs.unlinkSync(tmpFile); } catch (_) {}
     });
+
+    // jsonResp 用 writeHead + end；mockRes 没有 setHeader，202 分支需要记录 setHeader 的 res
+    function mockJsonRes() {
+      return {
+        _status: null, _body: null, _headers: null,
+        setHeader(k, v) { (this._headers = this._headers || {})[k] = v; },
+        writeHead(s, h) { this._status = s; if (h) this._headers = { ...(this._headers || {}), ...h }; },
+        end(b) { if (b) { try { this._body = JSON.parse(b); } catch (_) { this._body = b; } } },
+      };
+    }
+
+    function cachedThumbPath(cacheKey) {
+      const hash = crypto.createHash('md5').update(tmpFile + cacheKey).digest('hex');
+      return path.join(DATA_DIR, 'thumbs', hash + '.jpg');
+    }
 
     it('returns 404 when path param missing', () => {
       const state = mockState();
@@ -394,29 +409,41 @@ describe('playback route handlers', () => {
       assert.strictEqual(res._status, 404);
     });
 
-    it('returns 500 with ffmpeg error when ffmpeg is not available (time param)', async () => {
-      const state = mockState();
+    it('returns 202 + schedules ondemand generation for cold custom time (no-wait)', () => {
+      const calls = [];
+      const queue = {
+        scheduleGeneration: (fp, opts) => { calls.push({ fp, opts }); return 'added'; },
+        _enqueuedThumbs: new Set(),
+        _ongoing: new Map(),
+      };
+      const state = mockState({ thumbnailQueue: queue });
       const req = mockReq({ url: '/api/thumbnail?path=' + encodeURIComponent(tmpFile) + '&time=60' });
-      const res = mockRes();
+      const res = mockJsonRes();
       playback.handleThumbnail(req, res, state);
-      // 机器上可能存在真实 ffmpeg（scripts/ffmpeg-upx.exe），对 dummy 文件解码失败退出较慢，
-      // 轮询等待响应写入而非固定延时。
-      const deadline = Date.now() + 3000;
-      while (res._status === null && Date.now() < deadline) await new Promise(r => setTimeout(r, 50));
-      assert.strictEqual(res._status, 500);
-      assert.ok(res._body?.error, 'should have error message: ' + JSON.stringify(res._body));
+      assert.strictEqual(res._status, 202);
+      assert.deepStrictEqual(res._body, { status: 'pending' });
+      assert.strictEqual(calls.length, 1);
+      assert.strictEqual(calls[0].fp, tmpFile);
+      assert.deepStrictEqual(calls[0].opts, { time: 60, cacheKey: '60', priority: 'ondemand' });
     });
 
-    it('returns 500 with ffmpeg error for mid probe (async callback)', async () => {
-      const state = mockState();
+    it('returns 202 + schedules ondemand mid generation, never waits or probes', () => {
+      const calls = [];
+      const queue = {
+        scheduleGeneration: (fp, opts) => { calls.push({ fp, opts }); return 'added'; },
+        _enqueuedThumbs: new Set(),
+        _ongoing: new Map(),
+      };
+      const state = mockState({ thumbnailQueue: queue });
       const req = mockReq({ url: '/api/thumbnail?path=' + encodeURIComponent(tmpFile) + '&time=mid' });
-      const res = mockRes();
+      const res = mockJsonRes();
       playback.handleThumbnail(req, res, state);
-      // mid path: _probeDuration spawns ffmpeg -i → error → cb(null) → _generateThumb spawns again → error → 500
-      const deadline = Date.now() + 3000;
-      while (res._status === null && Date.now() < deadline) await new Promise(r => setTimeout(r, 50));
-      assert.strictEqual(res._status, 500);
-      assert.ok(res._body?.error, 'should have error message: ' + JSON.stringify(res._body));
+      assert.strictEqual(res._status, 202);
+      assert.deepStrictEqual(res._body, { status: 'pending' });
+      assert.strictEqual(calls.length, 1);
+      assert.strictEqual(calls[0].fp, tmpFile);
+      // 不传 time/cacheKey：mid 语义由队列内部探测时长取中点，缓存键默认 THUMB_HASH_SEED
+      assert.deepStrictEqual(calls[0].opts, { priority: 'ondemand' });
     });
 
     it('serves cached mid thumbnail from the shared queue key WITHOUT ffmpeg', async () => {
@@ -495,6 +522,83 @@ describe('playback route handlers', () => {
       } finally {
         try { fs.unlinkSync(thumbPath); } catch (_) {}
       }
+    });
+
+    describe('handleThumbnailStatus', () => {
+      it('returns ready when thumb cache file exists', () => {
+        const thumbPath = cachedThumbPath(THUMB_HASH_SEED);
+        fs.mkdirSync(path.dirname(thumbPath), { recursive: true });
+        fs.writeFileSync(thumbPath, 'x');
+        try {
+          const state = mockState();
+          const req = mockReq({ url: '/api/thumbnail/status?path=' + encodeURIComponent(tmpFile) + '&time=mid' });
+          const res = mockRes();
+          playback.handleThumbnailStatus(req, res, state);
+          assert.strictEqual(res._status, 200);
+          assert.deepStrictEqual(res._body, { status: 'ready' });
+        } finally {
+          try { fs.unlinkSync(thumbPath); } catch (_) {}
+        }
+      });
+
+      it('returns generating when thumb is enqueued (_enqueuedThumbs)', () => {
+        const thumbPath = cachedThumbPath(THUMB_HASH_SEED);
+        const queue = {
+          scheduleGeneration: () => 'added',
+          _enqueuedThumbs: new Set([thumbPath]),
+          _ongoing: new Map(),
+        };
+        const state = mockState({ thumbnailQueue: queue });
+        const req = mockReq({ url: '/api/thumbnail/status?path=' + encodeURIComponent(tmpFile) + '&time=mid' });
+        const res = mockRes();
+        playback.handleThumbnailStatus(req, res, state);
+        assert.strictEqual(res._status, 200);
+        assert.deepStrictEqual(res._body, { status: 'generating' });
+      });
+
+      it('returns generating when thumb is being generated (_ongoing)', () => {
+        const thumbPath = cachedThumbPath(THUMB_HASH_SEED);
+        const queue = {
+          scheduleGeneration: () => 'added',
+          _enqueuedThumbs: new Set(),
+          _ongoing: new Map([[thumbPath, Promise.resolve()]]),
+        };
+        const state = mockState({ thumbnailQueue: queue });
+        const req = mockReq({ url: '/api/thumbnail/status?path=' + encodeURIComponent(tmpFile) + '&time=mid' });
+        const res = mockRes();
+        playback.handleThumbnailStatus(req, res, state);
+        assert.strictEqual(res._status, 200);
+        assert.deepStrictEqual(res._body, { status: 'generating' });
+      });
+
+      it('returns missing for cold thumb not queued anywhere', () => {
+        const queue = { _enqueuedThumbs: new Set(), _ongoing: new Map() };
+        const state = mockState({ thumbnailQueue: queue });
+        const req = mockReq({ url: '/api/thumbnail/status?path=' + encodeURIComponent(tmpFile) + '&time=mid' });
+        const res = mockRes();
+        playback.handleThumbnailStatus(req, res, state);
+        assert.strictEqual(res._status, 200);
+        assert.deepStrictEqual(res._body, { status: 'missing' });
+      });
+
+      it('returns missing for custom time when not generated/queued', () => {
+        const queue = { _enqueuedThumbs: new Set(), _ongoing: new Map() };
+        const state = mockState({ thumbnailQueue: queue });
+        const req = mockReq({ url: '/api/thumbnail/status?path=' + encodeURIComponent(tmpFile) + '&time=60' });
+        const res = mockRes();
+        playback.handleThumbnailStatus(req, res, state);
+        assert.strictEqual(res._status, 200);
+        assert.deepStrictEqual(res._body, { status: 'missing' });
+      });
+
+      it('returns missing when video file does not exist', () => {
+        const state = mockState();
+        const req = mockReq({ url: '/api/thumbnail/status?path=/nonexistent.mp4&time=mid' });
+        const res = mockRes();
+        playback.handleThumbnailStatus(req, res, state);
+        assert.strictEqual(res._status, 200);
+        assert.deepStrictEqual(res._body, { status: 'missing' });
+      });
     });
   });
 });

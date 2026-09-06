@@ -66,81 +66,80 @@ class ThumbnailQueue {
   }
 
   /**
-   * 把动画的所有 episode 加入缩略图队列（后台预生成/详情页插队）
+   * 把动画的所有 episode 加入缩略图队列（后台预生成/详情页插队）。
+   * 薄包装：每个 episode 逐个调统一入口 scheduleGeneration（静态 type → priority），
+   * 去重（已缓存/_enqueuedThumbs/_ongoing）由 scheduleGeneration 内部完成，这里只汇总批量日志。
    * @param anime - anime 对象（含 episodes 数组）
    * @param prepend - 是否插队（详情页查看时插到最前）
    */
   enqueue(anime: any, prepend = false): void {
     if (!anime?.episodes) return;
-    const items: ThumbItem[] = [];
+    let added = 0;
     for (const ep of anime.episodes) {
       if (!ep.filePath || !fs.existsSync(ep.filePath)) continue;
-      const thumbPath = this._thumbPathFor(ep.filePath, THUMB_HASH_SEED);
-      // 已缓存 / 已在队列 / 已在生成中 → 跳过
-      if (fs.existsSync(thumbPath)) continue;
-      if (this._enqueuedThumbs.has(thumbPath)) continue;
-      if (this._ongoing.has(thumbPath)) continue;
-      this._enqueuedThumbs.add(thumbPath);
-      items.push({
-        filePath: ep.filePath,
-        duration: ep.duration || null,
+      const result = this.scheduleGeneration(ep.filePath, {
         animeId: anime.id,
         episodeNumber: ep.number,
-        cacheKey: THUMB_HASH_SEED,
-        type: 'background',
+        priority: 'background',
+        prepend,
       });
+      if (result === 'added') added++;
     }
-    if (items.length === 0) return;
-
-    if (prepend) {
-      this._queue.unshift(...items);
-    } else {
-      this._queue.push(...items);
+    if (added > 0) {
+      logger.info(`Enqueued ${added} thumbs for "${anime.title}"${prepend ? ' (high priority)' : ''}`);
     }
-    logger.info(`Enqueued ${items.length} thumbs for "${anime.title}"${prepend ? ' (high priority)' : ''}`);
-    this._scheduleDrain();
   }
 
   /**
-   * 按需生成缩略图（供按需端点调用）。缓存命中立即返回；否则 single-flight 去重后
-   * 以 ondemand 高优先级入队并立即 drain，返回带超时的 Promise。
-   * @param time - 显式目标时间（直接作为 ffmpeg -ss 值，不再做 mid 换算）
-   * @param cacheKey - mid 用 THUMB_HASH_SEED，自定义 time 用 String(time)
+   * 统一入队入口：把一次缩略图生成请求交入队列。
+   * - 缓存文件已存在 → 返回 'cached'，不入队
+   * - 已在 _enqueuedThumbs 或 _ongoing 中 → 返回 'queued'，不重复入队
+   * - 否则新建 item 入队并返回 'added'（priority==='ondemand' 立即 drain，否则 200ms 合并）
+   *
+   * @param filePath - 视频源文件路径
+   * @param opts 可选参数：
+   *   - time: 显式目标时间（直接作为 ffmpeg -ss 值）；缺省则走时长探测取中点（mid 语义）
+   *   - cacheKey: 缓存键。mid 用 THUMB_HASH_SEED，自定义 time 用 String(time)；缺省 THUMB_HASH_SEED
+   *   - animeId / episodeNumber: 时长探测写回 DB 时的归属信息
+   *   - priority: 'ondemand'（立即 drain）| 'background'（后台预生成）；缺省 'background'
+   *   - prepend: 是否插到队首；缺省 false
+   * @returns 'cached' | 'queued' | 'added'
    */
-  ensureGenerated(filePath: string, time: number, cacheKey: string, timeoutMs: number): Promise<string> {
+  scheduleGeneration(
+    filePath: string,
+    opts: {
+      time?: number;
+      cacheKey?: string;
+      animeId?: string;
+      episodeNumber?: number;
+      priority?: 'ondemand' | 'background';
+      prepend?: boolean;
+    } = {},
+  ): 'cached' | 'queued' | 'added' {
+    const cacheKey = opts.cacheKey ?? THUMB_HASH_SEED;
+    const priority = opts.priority ?? 'background';
+    const prepend = opts.prepend ?? false;
+
     const thumbPath = this._thumbPathFor(filePath, cacheKey);
-    if (fs.existsSync(thumbPath)) return Promise.resolve(thumbPath);
+    if (fs.existsSync(thumbPath)) return 'cached';
+    if (this._enqueuedThumbs.has(thumbPath) || this._ongoing.has(thumbPath)) return 'queued';
 
-    const existing = this._ongoing.get(thumbPath);
-    if (existing) return existing;
-
-    let resolveFn!: (thumbPath: string) => void;
-    let rejectFn!: (err: Error) => void;
-    const p = new Promise<string>((resolve, reject) => {
-      resolveFn = resolve;
-      rejectFn = reject;
-    });
-    this._ongoing.set(thumbPath, p);
-    this._enqueuedThumbs.add(thumbPath);
-
-    this._queue.unshift({
+    const item: ThumbItem = {
       filePath,
-      time,
+      animeId: opts.animeId,
+      episodeNumber: opts.episodeNumber,
       cacheKey,
-      type: 'ondemand',
-      resolve: resolveFn,
-      reject: rejectFn,
-    });
-    // 按需请求不走 200ms 延迟，立即 drain
-    this._drain();
+      type: priority,
+    };
+    if (opts.time !== undefined) item.time = opts.time;
 
-    const timer = setTimeout(() => {
-      this._ongoing.delete(thumbPath);
-      this._enqueuedThumbs.delete(thumbPath);
-      rejectFn(new Error('thumbnail generation timeout'));
-    }, timeoutMs);
-    p.then(() => clearTimeout(timer), () => clearTimeout(timer));
-    return p;
+    this._enqueuedThumbs.add(thumbPath);
+    if (prepend) this._queue.unshift(item);
+    else this._queue.push(item);
+
+    if (priority === 'ondemand') this._drain();
+    else this._scheduleDrain();
+    return 'added';
   }
 
   /**
@@ -180,32 +179,25 @@ class ThumbnailQueue {
       existing = new Set(fs.readdirSync(path.join(DATA_DIR, 'thumbs')));
     } catch { /* thumbs 目录不存在 → 全部缺失 */ }
 
-    const items: ThumbItem[] = [];
+    let added = 0;
     for (const anime of library) {
       if (!anime?.episodes) continue;
       for (const ep of anime.episodes) {
         if (!ep.filePath || !fs.existsSync(ep.filePath)) continue;
         // 缓存命中（文件名在 Set 中）→ 跳过；否则入队补全
         if (existing.has(this._thumbHash(ep.filePath) + '.jpg')) continue;
-        const thumbPath = this._thumbPathFor(ep.filePath, THUMB_HASH_SEED);
-        if (this._enqueuedThumbs.has(thumbPath)) continue;
-        if (this._ongoing.has(thumbPath)) continue;
-        this._enqueuedThumbs.add(thumbPath);
-        items.push({
-          filePath: ep.filePath,
-          duration: ep.duration || null,
+        const result = this.scheduleGeneration(ep.filePath, {
           animeId: anime.id,
           episodeNumber: ep.number,
-          cacheKey: THUMB_HASH_SEED,
-          type: 'background',
+          priority: 'background',
         });
+        if (result === 'added') added++;
       }
     }
-    if (items.length === 0) return 0;
-    this._queue.push(...items);
-    logger.info(`Startup thumb check: enqueued ${items.length} missing thumbnails across ${library.length} anime`);
-    this._scheduleDrain();
-    return items.length;
+    if (added > 0) {
+      logger.info(`Startup thumb check: enqueued ${added} missing thumbnails across ${library.length} anime`);
+    }
+    return added;
   }
 
   /** 是否正在处理 */

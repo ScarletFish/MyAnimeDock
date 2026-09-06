@@ -37,20 +37,22 @@ User must re-fetch metadata to download covers to AppData
 ## Thumbnail 生成
 
 ```
-GET /api/thumbnail?path=VIDEO_PATH&time=60
+GET /api/thumbnail?path=VIDEO_PATH&time=mid|SECONDS
   → routes/playback.ts:handleThumbnail()
-  → Validate videoPath exists
-  → hash = MD5(videoPath + 'mid')   // 与队列共享缓存键（见下）
+  → Validate videoPath exists（缺失 → 404）
+  → hash = MD5(videoPath + cacheKey)   // mid → THUMB_HASH_SEED，数值 → String(time)
   → thumbPath = DATA_DIR/thumbs/${hash}.jpg
-  → If cache hit: serveImage(thumbPath, ...) → same cover pipeline
-  → If cache miss:
-      ├─ mkdir thumbs/ if needed
-      ├─ spawn(ffmpegPath, ['-ss', time, '-i', videoPath,
-      │                      '-vframes', '1', '-q:v', '5',
-      │                      '-y', thumbPath, '-loglevel', 'error'])
-      ├─ 30s timeout
-      ├─ On close(code===0): serveImage(thumbPath, ...)
-      └─ On error/timeout: jsonResp 500
+  → 热路径只服务缓存，请求路径 0 探测、0 spawn：
+      ├─ 缓存命中 → serveThumbWithRevalidate（200 + ETag + Cache-Control: no-cache）
+      └─ 缓存未命中 → Cache-Control: no-store + 202 { status: 'pending' }
+          并行：scheduleGeneration(videoPath, { priority:'ondemand', ... })
+          （mid → { priority:'ondemand' }；自定义 time → { time, cacheKey:String(time), priority:'ondemand' }）
+          → 队列闸门后台生成，绝不阻塞 HTTP 请求
+
+GET /api/thumbnail/status?path=VIDEO_PATH&time=mid|SECONDS
+  → routes/playback.ts:handleThumbnailStatus()   // 纯只读，不触发生成/探测
+  → { status: 'ready' | 'generating' | 'missing' }
+      （ready = 缓存文件存在；generating = 在 _enqueuedThumbs 或 _ongoing 中）
 ```
 
 ### ffmpeg Path Resolution
@@ -70,7 +72,7 @@ lib/utils.ts: 解析顺序 FFMPEG_BIN 环境变量 → scripts/ffmpeg-upx.exe �
 
 | 触发点 | 文件位置 | 方式 | 优先级 |
 |--------|---------|------|--------|
-| Discovery 导入 | `discovery.ts` handleImport | 响应后异步 | FIFO（队尾） |
+| Discovery 导入 | `discovery.ts` handleImport | 响应前 `enqueueMissingForLibrary(data.library)` 对账（缺口③）+ 响应后 `enqueue(anime)` | FIFO（队尾） |
 | MetaMatch 同步 | `library.ts` handleLibrarySyncStream | stream `done` 后 | FIFO（队尾） |
 | 详情页加载 | `library.ts` handleGetAnimeDetail | 响应后异步 | **插队**（队首） |
 
@@ -78,19 +80,21 @@ lib/utils.ts: 解析顺序 FFMPEG_BIN 环境变量 → scripts/ffmpeg-upx.exe �
 
 - **并发**：4 路 ffmpeg `-frames:v 1`（0.5-2s/张）
 - **空闲检测**：`activePlays.size === 0`，mpv 运行时暂停 → 30s 后重试
-- **生成位置**：25% 时长（30-120s 区间），已知 `ep.duration` 则用，否则 `_probeDuration` 探测真实时长取中点
+- **生成位置**：mid 语义取 **50% 时长中点**；`item.time` 显式给出则直接用（ondemand 自定义 time，如播放进度帧）。不带 time 时 `_probeDuration` 探测真实时长取中点（`_durCache` 缓存去重）——探测只在队列内发生，**请求路径 0 探测**
 - **时长写库**：探测到的真实时长写回 DB（`updateEpisodeProgress`）——导入流程不再额外探测，`ep.duration` 由队列补齐（供前端看完判断、继续观看缩略图时间点）
-- **缓存键**：`md5(filePath + 'mid').jpg`，与 `time=mid` 按需生成**共享同一缓存键**——队列已生成的缩略图按需端点直接命中，不再重复跑 ffmpeg
+- **缓存键**：`md5(filePath + THUMB_HASH_SEED).jpg`，与 `time=mid` 按需生成**共享同一缓存键**——队列已生成的缩略图按需端点直接命中，不再重复跑 ffmpeg
 - **无持久化队列**：重启后队列丢失，缩略图可重新生成
-- **按需兜底**：`handleThumbnail` 保持不变，队列没来得及时即时生成
+- **按需兜底**：冷缩略图热路径立即 `202 {status:'pending'}`（`Cache-Control: no-store`）不挂等，由 `scheduleGeneration(..., { priority:'ondemand' })` 后台受闸生成；`GET /api/thumbnail/status` 三态轮询（ready/generating/missing）判定就绪
 
 ### 模块
 
 ```
 server/thumbnail-queue.ts
   └─ ThumbnailQueue class
-      ├─ enqueue(anime, prepend=false) → 加入队列（去重：已缓存跳过）
+      ├─ scheduleGeneration(filePath, opts?) → 'cached' | 'queued' | 'added'（统一入队入口）
+      ├─ enqueue(anime, prepend=false) → 薄包装（逐集调 scheduleGeneration，批量日志）
+      ├─ enqueueMissingForLibrary(library) → 薄包装（启动/导入对账，一次 readdir）
       ├─ clear() → 清空队列
       ├─ length / busy → 状态查询
-      └─ _drain() → 空闲循环 × 3 并发
+      └─ _drain() → 空闲循环 × 4 并发
 ```

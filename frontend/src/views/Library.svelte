@@ -36,6 +36,7 @@
   import { initScrollDots } from '../lib/scroll-dots.js';
   import { getDashboardLayout } from '../lib/dashboard-layout.js';
   import { tr, escapeHtml } from '../lib/anime-utils.js';
+  import { watchThumb } from '../lib/thumb-manager.js';
   import { libraryData, mylistData, pendingAutoPlay, consumeStartupLibraryPromise, patchLibraryItem, removeLibraryItemFromStore, onInvalidated } from '../lib/ui-state.js';
   import { showView, showDetail, getLibraryScrollTop, __skipViewEnter } from '../lib/router.js';
   import { settingsOpen } from './Settings.svelte';
@@ -212,28 +213,47 @@
   // ─── 继续观看（/api/continue-watching 瘦 payload，服务端已解析好 continueEpisode）───
   let continueItems = $state([]);
 
-  function continueBg(a) {
-    const ep = a.continueEpisode;
-    let thumbUrl = '';
-    if (ep) {
-      if (ep.progress > 0 && ep.duration > 0) {
-        let thumbTime = Math.min(Math.round(ep.progress), ep.duration - 10);
-        if (thumbTime <= 0) thumbTime = 60;
-        thumbUrl = '/api/thumbnail?path=' + encPath(ep.filePath) + '&time=' + thumbTime;
-      } else {
-        thumbUrl = '/api/thumbnail?path=' + encPath(ep.filePath) + '&time=mid';
-      }
-    }
-    const coverSrc = a.localCover ? '/covers/' + basename(a.localCover) : '';
-    return thumbUrl || coverSrc;
-  }
+  // 继续观看缩略图改「就绪才加载」：冷图 202 会无声空白（CSS 背景图无 error 事件），
+  // 不再直出 URL，改由 thumb-manager 负责 warm + 轮询 status，就绪后才写 background-image。
+  // %27 单引号转义由 watchThumb 内部处理（URL 会放进 CSS url('...')）。
+  // key=a.id；known-ready 会话缓存保证 loadContinue 重取后同 id 立即可用（不闪烁）。
+  const contBgUrls = $state({});
 
-  // encodeURIComponent 不编码单引号 '（保留 ' ( ) ! ~ * - _ .），而 continueBg 结果会放进
-  // CSS url('...') 单引号字符串，路径里的 ' 会提前终止 CSS 字符串导致缩略图不显示
-  // （回归 61b51d8，vanilla 用 &quot; 双引号规避，Svelte 版用单引号重新引入）。补编码 ' → %27。
-  function encPath(p) {
-    return encodeURIComponent(p).replace(/'/g, '%27');
-  }
+  $effect(() => {
+    const items = continueItems;
+    const disposes = [];
+    for (const a of items) {
+      const ep = a.continueEpisode;
+      if (!ep) continue;
+      // 与旧 continueBg 同一 time 规则：有进度→min(round(progress), duration-10)，阈值 0→60；无进度→'mid'
+      let time = 'mid';
+      if (ep.progress > 0 && ep.duration > 0) {
+        time = Math.min(Math.round(ep.progress), ep.duration - 10);
+        if (time <= 0) time = 60;
+      }
+      const id = a.id;
+      const localCover = a.localCover;
+      disposes.push(watchThumb({
+        path: ep.filePath,
+        time,
+        onReady: (url) => {
+          contBgUrls[id] = url;
+        },
+        onMissing: () => {
+          // 回到封面兜底；没有封面则留空（卡片靠现有 CSS 底图/渐变兜底，不改 CSS）
+          contBgUrls[id] = localCover ? '/covers/' + basename(localCover) : '';
+        },
+      }));
+    }
+    return () => {
+      for (const d of disposes) d();
+      // 清理已不在继续观看列表里的 id（仍在列表的保留现值，避免闪烁）
+      const alive = new Set(items.map((it) => it.id));
+      for (const k of Object.keys(contBgUrls)) {
+        if (!alive.has(k)) delete contBgUrls[k];
+      }
+    };
+  });
 
   function continueProgress(a) {
     const ep = a.continueEpisode;
@@ -559,7 +579,7 @@
                         onclick={(e) => navigateToDetailWithPlay(a.id, e.currentTarget)}
                         oncontextmenu={(e) => openContextMenu(e, a.id)}
                       >
-                        <div class="dashboard-continue-bg" style="background-image:url('{continueBg(a)}')"></div>
+                        <div class="dashboard-continue-bg" style={contBgUrls[a.id] ? "background-image:url('" + contBgUrls[a.id] + "')" : ''}></div>
                         <div class="dashboard-continue-overlay"></div>
                         <div class="dashboard-continue-content">
                           <div class="dashboard-continue-info">

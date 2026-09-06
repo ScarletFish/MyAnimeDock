@@ -2,8 +2,7 @@
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
-import { spawn } from 'child_process';
-import { jsonResp, readBody, serveImage, getFfmpegPath, THUMB_HASH_SEED } from '../lib/utils';
+import { jsonResp, readBody, serveImage, THUMB_HASH_SEED } from '../lib/utils';
 import { DATA_DIR, MAX_PLAY_SESSIONS } from '../lib/config';
 import { Logger } from '../logger';
 import type { ServerState } from '../types';
@@ -13,38 +12,8 @@ type State = ServerState;
 
 // ─── 语义常量 ───
 const AUTO_MARK_THRESHOLD_EP = 2; // 自动标记已看：从第 2 集起
-const THUMB_MIDPOINT_RATIO = 0.5; // 缩略图取时长中点
 
 // ─── Thumbnail helpers (module-scoped, not on exports — avoids `this` issues) ───
-
-const _durCache = new Map();
-
-function _probeDuration(videoPath: string, cb: (dur: number | null) => void) {
-  const cached = _durCache.get(videoPath);
-  if (cached !== undefined) { cb(cached); return; }
-  const ffmpegPath = getFfmpegPath();
-  if (!ffmpegPath) { cb(null); return; }
-  // Use ffmpeg itself (not ffprobe — only ffmpeg binary is bundled)
-  const ff = spawn(ffmpegPath, ['-i', videoPath]);
-  let stderr = '';
-  let done = false;
-  ff.stderr.on('data', d => { stderr += d.toString(); });
-  const finish = () => {
-    if (done) return; done = true;
-    // Parse "Duration: HH:MM:SS.ml" from ffmpeg stderr
-    const m = stderr.match(/Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/);
-    if (m) {
-      const secs = parseInt(m[1]) * 3600 + parseInt(m[2]) * 60 + parseFloat(m[3]);
-      _durCache.set(videoPath, secs);
-      cb(secs);
-    } else {
-      cb(null);
-    }
-  };
-  ff.on('close', finish);
-  ff.on('error', () => { if (!done) { done = true; cb(null); } });
-  setTimeout(() => { if (!done) { done = true; ff.kill(); cb(null); } }, 10000);
-}
 
 /** 缩略图缓存文件路径 — 与 thumbnail-queue.ts 共享同一缓存键（THUMB_HASH_SEED） */
 function _thumbPath(videoPath: string, cacheKey: string): string {
@@ -288,30 +257,61 @@ function handleThumbnail(req: any, res: any, state: State) {
     const cached = _thumbPath(videoPath, THUMB_HASH_SEED);
     logger.debug(`[THUMB-DEBUG] mid cached=${fs.existsSync(cached)} path=${cached}`);
     if (fs.existsSync(cached)) { serveThumbWithRevalidate(req, res, cached, req.url); return; }
-    // cache miss → 走统一队列（single-flight + 并发闸门），不再直连 spawn
-    _probeDuration(videoPath, (dur) => {
-      logger.debug(`[THUMB-DEBUG] mid probed dur=${dur}`);
-      if (!dur) { jsonResp(res, 500, { error: 'thumbnail generation failed' }); return; }
-      const time = Math.floor(dur * THUMB_MIDPOINT_RATIO);
-      if (!state.thumbnailQueue) { jsonResp(res, 500, { error: 'thumbnail generation failed' }); return; }
-      state.thumbnailQueue.ensureGenerated(videoPath, time, THUMB_HASH_SEED, 30000)
-        .then((thumbPath: string) => {
-          serveThumbWithRevalidate(req, res, thumbPath, req.url);
-        })
-        .catch(() => {
-          jsonResp(res, 500, { error: 'thumbnail generation failed' });
-        });
-    });
+    // 冷缓存：绝不等待生成。立即 202，由队列闸门后台生成（status 端点可查询进度）。
+    // 不传 time → 队列内部探测时长取中点（mid 语义），缓存键沿用 THUMB_HASH_SEED。
+    if (state.thumbnailQueue) {
+      res.setHeader('Cache-Control', 'no-store');
+      state.thumbnailQueue.scheduleGeneration(videoPath, { priority: 'ondemand' });
+    } else {
+      logger.warn('thumbnailQueue unavailable — mid thumbnail request accepted without scheduling');
+    }
+    jsonResp(res, 202, { status: 'pending' });
   } else {
     const time = parseFloat(timeRaw ?? '');
     if (Number.isNaN(time)) { jsonResp(res, 400, { error: 'invalid time' }); return; }
     logger.debug(`[THUMB-DEBUG] exit time=${time} cacheKey=${String(time)}`);
-    // 自定义 time 也走统一队列（single-flight + 并发闸门），不再直连 spawn
-    if (!state.thumbnailQueue) { jsonResp(res, 500, { error: 'thumbnail generation failed' }); return; }
-    state.thumbnailQueue.ensureGenerated(videoPath, time, String(time), 30000)
-      .then((thumbPath: string) => serveThumbWithRevalidate(req, res, thumbPath, req.url))
-      .catch(() => jsonResp(res, 500, { error: 'thumbnail generation failed' }));
+    const cached = _thumbPath(videoPath, String(time));
+    if (fs.existsSync(cached)) { serveThumbWithRevalidate(req, res, cached, req.url); return; }
+    // 自定义 time 也走统一队列（single-flight + 并发闸门）；冷缓存立即 202，不挂等。
+    if (state.thumbnailQueue) {
+      res.setHeader('Cache-Control', 'no-store');
+      state.thumbnailQueue.scheduleGeneration(videoPath, { time, cacheKey: String(time), priority: 'ondemand' });
+    } else {
+      logger.warn('thumbnailQueue unavailable — thumbnail request accepted without scheduling');
+    }
+    jsonResp(res, 202, { status: 'pending' });
   }
+}
+
+/**
+ * 缩略图生成状态查询端点（GET /api/thumbnail/status?path=...&time=mid|数值）。
+ * 纯只读：绝不触发生成、不 spawn、不探测。供前端轮询判断该图是否已就绪。
+ * - 文件不存在 / 无效 time / 无缓存且未在生成 → 200 { status: 'missing' }
+ * - 缓存文件存在 → 200 { status: 'ready' }
+ * - 已在队列（_enqueuedThumbs）或生成中（_ongoing）→ 200 { status: 'generating' }
+ */
+function handleThumbnailStatus(req: any, res: any, state: State) {
+  const params = new URL(req.url, 'http://localhost').searchParams;
+  const videoPath = params.get('path');
+  const timeRaw = params.get('time');
+  if (!videoPath || !fs.existsSync(videoPath)) { jsonResp(res, 200, { status: 'missing' }); return; }
+
+  let cacheKey: string;
+  if (timeRaw === 'mid') {
+    cacheKey = THUMB_HASH_SEED;
+  } else {
+    const time = parseFloat(timeRaw ?? '');
+    if (Number.isNaN(time)) { jsonResp(res, 200, { status: 'missing' }); return; }
+    cacheKey = String(time);
+  }
+  const thumbPath = _thumbPath(videoPath, cacheKey);
+  if (fs.existsSync(thumbPath)) { jsonResp(res, 200, { status: 'ready' }); return; }
+  const queue: any = state.thumbnailQueue;
+  if (queue && (queue._enqueuedThumbs?.has(thumbPath) || queue._ongoing?.has(thumbPath))) {
+    jsonResp(res, 200, { status: 'generating' });
+    return;
+  }
+  jsonResp(res, 200, { status: 'missing' });
 }
 
 export {
@@ -319,4 +319,5 @@ export {
   handleProgress,
   handleMpvStatus,
   handleThumbnail,
+  handleThumbnailStatus,
 };

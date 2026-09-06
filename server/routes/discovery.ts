@@ -114,7 +114,7 @@ async function handleBrowse(req: any, res: any, state: State) {
   }
 
   async function handleImport(req: any, res: any, state: State) {
-    const { data, config, db, bangumiSync, logger, pendingNotifications } = state;
+    const { data, config, db, bangumiSync, logger, pendingNotifications, thumbnailQueue } = state;
     try {
       const body = await readBody(req);
       const { items } = JSON.parse(body);
@@ -186,6 +186,12 @@ async function handleBrowse(req: any, res: any, state: State) {
       await db.saveLibrary(data, new Set(imported));
       await db.saveMyList(data);
       await saveScannedTree(data.scannedTree);
+      // 缺口③：导入完成即对账一次（一次 readdir，毫秒级）——新增动画在首次点开详情页前就有预生成
+      try {
+        thumbnailQueue?.enqueueMissingForLibrary(data.library);
+      } catch (e) {
+        logger.warn('Import thumbnail enqueue error:', e instanceof Error ? e.message : String(e));
+      }
       jsonResp(res, 200, { ok: true, imported });
       // 后台生成缩略图（不影响封面显示）
       imported.forEach((id: any) => {

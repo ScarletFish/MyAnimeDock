@@ -6,6 +6,7 @@
   import { onMount } from 'svelte';
   import { initScrollDots } from '../../lib/scroll-dots.js';
   import { tr } from '../../lib/anime-utils.js';
+  import { watchThumb } from '../../lib/thumb-manager.js';
 
   let { anime = null, episodes = [], lastPlayedEp = null, onPlay, onToggleWatched } = $props();
 
@@ -116,11 +117,25 @@
     gridEl.querySelectorAll('.episode-card-bg[data-src]').forEach((bg) => applyThumb(bg));
   }
 
+  // 缩略图改为「就绪才加载」：warm 触发服务端调度（202 不挂等），由 thumb-manager 轮询
+  // status 直到 ready/missing 后才设置 src，避免生成中误判缺失。
   function applyThumb(el) {
     const src = el.dataset.src;
     if (!src) return;
-    // <img> 通过 src 加载；onload/onerror 由模板绑定处理（onload 移除 data-src，onerror 落占位）
-    el.src = src;
+    const filePath = el.dataset.path;
+    if (!filePath) return;
+    watchThumb({
+      path: filePath,
+      time: el.dataset.time || 'mid',
+      onReady: (url) => {
+        el.removeAttribute('data-src');
+        el.src = url;
+      },
+      onMissing: () => {
+        el.removeAttribute('data-src');
+        el.closest('.episode-card-thumb')?.classList.add('is-missing');
+      },
+    });
   }
 </script>
 
@@ -141,9 +156,9 @@
         oncontextmenu={(e) => { e.preventDefault(); e.stopPropagation(); onToggleWatched(ep.number, !ep.watched); }}
       >
         <div class="episode-card-thumb">
-          <img class="episode-card-bg" data-src={thumbUrl} alt=""
+          <img class="episode-card-bg" data-src={thumbUrl} data-path={ep.filePath} data-time="mid" alt=""
                onload={(e) => e.currentTarget.removeAttribute('data-src')}
-               onerror={(e) => { e.currentTarget.removeAttribute('data-src'); e.currentTarget.closest('.episode-card-thumb')?.classList.add('is-missing'); }} />
+               onerror={(e) => e.currentTarget.removeAttribute('data-src')} />
           <div class="episode-card-missing" aria-hidden="true">
             <svg viewBox="0 0 48 48" fill="currentColor" aria-hidden="true">
               <g transform="rotate(0 24 24)"><ellipse cx="24" cy="15" rx="6.5" ry="11"/></g>

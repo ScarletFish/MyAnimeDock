@@ -1,6 +1,6 @@
 # 剧集缩略图生成统一方案（设计文档）
 
-> 状态：已确认，待实现
+> 状态：已确认，已实现（含"生成与加载解耦"202 no-wait 里程碑）
 > 背景：详情页打开时 ffmpeg 进程风暴导致卡顿
 > 相关代码：`server/thumbnail-queue.ts`、`server/routes/playback.ts`
 
@@ -19,7 +19,7 @@
 
 - 所有缩略图生成走**一条带闸门的管线**（统一并发闸门）。
 - 常态命中缓存（后台空闲预生成兜底）。
-- miss 有兜底：入队高优先级 + 去重，前端占位自动替换，**前端零改动**。
+- miss 有兜底：`202 {status:'pending'}` no-wait + 入队受闸生成（`scheduleGeneration` priority=ondemand）+ status 三态轮询判定就绪，**前端零改动**。
 - 消除"边播放边开详情页卡 30s"问题（mpv 暂停只作用于后台项）。
 
 ## 3. 方案设计
@@ -30,42 +30,44 @@
 后台预生成（空闲）                         按需请求（用户正在看）
   扫描/入库 enqueue ─────────────┐        /api/thumbnail (time=mid)
   详情页打开 enqueue(anime,true) ─┼─┐     cache 命中 → 直接返回 ✅
-                                 ▼  ▼     cache miss → 入队高优先级 + 等待
-                    ┌─ ThumbnailQueue（唯一闸门，并发=4）───────────┐
-                    │ • 优先级：按需 miss > 详情页插队 > 后台预生成    │
-                    │ • single-flight：Map<thumbPath, Promise> 去重  │
-                    │ • mpv 播放时：仅暂停后台项，按需项照常处理       │
-                    │ • 生成完成 → resolve 等待方 → 返回图片          │
-                    └─────────────────────────────────────────────┘
+                                  ▼  ▼     cache miss → 202 pending + 后台受闸生成
+                     ┌─ ThumbnailQueue（唯一闸门，并发=4）───────────┐
+                     │ • 优先级：按需 miss > 详情页插队 > 后台预生成    │
+                     │ • single-flight：thumbPath 去重                │
+                     │ • mpv 播放时：仅暂停后台项，按需项照常处理       │
+                     │ • 生成完成 → 写盘（status 端点返 ready）        │
+                     └─────────────────────────────────────────────┘
 ```
 
 ### 3.2 统一生成管线（`server/thumbnail-queue.ts`）
 
 **队列项加类型标记**：`{ type: 'ondemand' | 'background', resolve?, reject? }`
 
-**新增 `ensureGenerated(filePath, time, cacheKey, timeout)`**（供按需端点调用，`time` 为显式目标时间，直接作为 ffmpeg `-ss` 值）：
-1. 缓存文件已存在 → 立即 resolve
-2. **single-flight 去重**：`_ongoing: Map<thumbKey, Promise>`，同文件并发请求共享一次生成（thumbKey = 最终 thumbPath）
-3. 否则以 `ondemand` 类型高优先级入队 + 立即 drain + 返回带超时（30s）的 Promise
+**新增 `scheduleGeneration(filePath, opts?)`**（统一入队入口，返回 `'cached' | 'queued' | 'added'`）：
+- `opts`: `{ time?, cacheKey?, animeId?, episodeNumber?, priority?, prepend? }`；默认 `cacheKey=THUMB_HASH_SEED`、`priority='background'`、`prepend=false`
+1. 缓存文件已存在 → `'cached'`（不入队）
+2. **single-flight 去重**：已在 `_enqueuedThumbs`（入队）或 `_ongoing`（生成中）→ `'queued'`，不再重复入队
+3. 否则新建 item 入队（`prepend ? unshift : push`）→ `'added'`；`priority==='ondemand'` 立即 `_drain()`，`background` 走 200ms 合并 `_scheduleDrain()`
 
-**time 语义**：`_generate` 用 `item.time ?? (item.duration ? Math.floor(duration/2) : 探测)`——ondemand 项用显式 time，background 项（`enqueue`）从 duration 取 mid。**duration 缺失（NULL）时先 `_probeDuration` 探测真实时长再取中点**；**探测失败直接报错（`duration unknown`），不兜底 60s**。探测结果缓存于 `_durCache`，且**探测到的真实时长会写回 DB**（`updateEpisodeProgress(animeId, episodeNumber, { duration })`）——一次探测双用途：既算缩略图 mid 时间点，又补全 `ep.duration` 供前端（看完判断、继续观看缩略图时间点）使用。
+**time 语义**：`_generate` 用 `item.time ?? (item.duration ? Math.floor(duration/2) : 探测)`——ondemand 项带显式 time 则直接用；**不带 time（mid 语义）→ 队列内部 `_probeDuration` 探测真实时长取中点**。探测结果缓存于 `_durCache`，且**探测到的真实时长会写回 DB**（`updateEpisodeProgress(animeId, episodeNumber, { duration })`）——一次探测双用途：既算缩略图 mid 时间点，又补全 `ep.duration` 供前端（看完判断、继续观看缩略图时间点）使用。**探测失败直接报错（`duration unknown`），不兜底 60s**。`_probeDuration`/`_durCache` 是全代码库**唯一**的时长探测源。
 
-**`enqueue(anime, prepend)` 保留**（后台预生成/详情页插队），增加**入队去重**：已在队列中或已在生成中的 thumbKey 跳过。
+**`enqueue(anime, prepend)` / `enqueueMissingForLibrary(library)` 改为薄包装**：保留原有去重语义（已缓存/已入队/生成中跳过）与批量日志，内部逐集调 `scheduleGeneration`（静态 type=background）。
 
 **mpv 暂停改为按项判断**：`_drain` 中当 mpv 播放时，仅跳过 `background` 类型项；`ondemand` 项照常处理。
 
-**`_generate` 完成后 resolve/reject 等待方**（调用 `item.resolve()` / `item.reject()`）。
+**`_generate` 完成/失败统一走 `_settle` 结算**：写盘成功即缓存可用（status 端点 `ready`）；失败打 warn（`item.resolve?/reject?` 保留为接口兼容，scheduleGeneration 项不再挂等待方）。
 
 **并发数**：`_concurrency` 3 → **4**（剧集一页默认 4 个，一次生成可覆盖首屏）。
 
 ### 3.3 按需端点（`server/routes/playback.ts`）
 
-`handleThumbnail` cache miss 时**不再直接 spawn ffmpeg**：
-- `time=mid` → `thumbnailQueue.ensureGenerated(path, time, THUMB_HASH_SEED, 30000)`（`time = Math.floor(dur/2)`）
-- 自定义 `time`（Library 继续播放卡片）→ `thumbnailQueue.ensureGenerated(path, time, String(time), 30000)`
-- await Promise → `serveImage`；超时/失败 → 500
-- `_probeDuration` 保留（`_durCache` 已去重）；时长探测失败 fallback 60s 逻辑不变
-- 原 `_generateThumb` 直连 spawn 已删除
+`handleThumbnail` **绝不等待生成**：请求路径 0 探测、0 spawn：
+- cache 命中（`_thumbPath` 文件存在）→ 直接 `serveThumbWithRevalidate`（200 + ETag/no-cache）
+- cache miss → `res.setHeader('Cache-Control','no-store')` 后 `jsonResp(res, 202, { status: 'pending' })`，同时入队后台受闸生成：
+  - `time=mid` → `scheduleGeneration(videoPath, { priority: 'ondemand' })`（不传 time/cacheKey，队列内部探测取中点，缓存键默认 THUMB_HASH_SEED）
+  - 自定义 `time`（Library 继续播放卡片）→ `scheduleGeneration(videoPath, { time, cacheKey: String(time), priority: 'ondemand' })`
+
+**新增 `handleThumbnailStatus`**（GET `/api/thumbnail/status?path=...&time=mid|数值`）：纯只读三态轮询，绝不触发生成/探测——缓存文件存在 → `{ status: 'ready' }`；`_enqueuedThumbs`/`_ongoing` 命中 → `{ status: 'generating' }`；否则/文件不存在/无效 time → `{ status: 'missing' }`。前端据此决定何时重发缩略图请求。
 
 **范围**：mid（详情页 EpisodeHeatmap）+ 自定义 time（Library 继续播放卡片）**都走统一管线**。自定义 time 是播放进度帧，天然按需（无法预生成），但纳入统一闸门 + single-flight，消除库页加载时最多 10 个并发直连 spawn。
 
@@ -81,14 +83,16 @@
 
 ### 3.5 前端
 
-**零改动**。占位机制已有：`lazyBg`（`frontend/src/lib/lazy-bg.js`）设 CSS 背景 → 浏览器请求挂起直到服务端响应 → 占位期间显示 CSS 底色 → 图片就绪自动出现。本地应用持几个挂起 HTTP 连接无压力，**不需要 SSE 推送**。
+**本次改动范围不含前端**（仅后端 + 文档，按需求确认表）。冷缩略图请求**不再挂起**：cache miss 立即返回 `202 {status:'pending'}`（`Cache-Control: no-store`）；就绪判定走 `GET /api/thumbnail/status` 三态轮询（`ready` / `generating` / `missing`），ready 后重发缩略图请求即可命中缓存的成图。占位观感依赖前端既有占位机制，**不需要 SSE 推送**。
 
 ## 4. 改动范围
 
 | 文件 | 改动 |
 |------|------|
-| `server/thumbnail-queue.ts` | 核心：类型标记、`ensureGenerated`（显式 time）、single-flight 去重、入队去重、按项暂停、并发 4、ffmpeg 优化 |
-| `server/routes/playback.ts` | 按需端点 mid + 自定义 time 都改走队列，删直连 spawn（`_generateThumb`） |
+| `server/thumbnail-queue.ts` | 核心：类型标记、`scheduleGeneration` 统一入队入口（`'cached'/'queued'/'added'`）、`enqueue`/`enqueueMissingForLibrary` 改薄包装、删除 `ensureGenerated`、single-flight 去重、按项暂停、并发 4、ffmpeg 优化 |
+| `server/routes/playback.ts` | `handleThumbnail` 冷缓存 202 no-wait（请求路径 0 探测 0 spawn）、新增 `handleThumbnailStatus` 三态端点、删除模块级 `_probeDuration`/`_durCache`/`THUMB_MIDPOINT_RATIO` |
+| `server/routes/discovery.ts` | handleImport 导入完成钩子：`enqueueMissingForLibrary(data.library)` 一次 readdir 对账（缺口③） |
+| `server/server.ts` | 注册 `GET /api/thumbnail/status` 路由 |
 | 前端 | 无 |
 
 **不动**：`library.ts` / `discovery.ts` 的 `enqueue` 调用、缓存键（md5(path+seed)）、空闲自动生成、mpv 暂停（仅针对后台项）。
@@ -106,9 +110,11 @@
 - 并发数 = 4（剧集一页默认 4 个，一次生成覆盖首屏）
 - 纳入 ffmpeg 全部优化（`-skip_frame nokey` + `-threads 2` + `-frames:v 1`）
 - 自定义 time 请求（Library 继续播放卡片）**纳入统一管线**（显式 time 参数），消除库页加载时最多 10 个并发直连 spawn
-- 按需 miss 采用阻塞等待（single-flight Promise），不引入 SSE 推送
-- 修复：`ensureGenerated` 参数语义为显式 `time`（非 duration），避免 mid 双半 bug
+- 按需 miss **不阻塞等待**：冷缓存立即 `202 {status:'pending'}` + `scheduleGeneration(..., { priority:'ondemand' })` 后台受闸生成，前端经 `GET /api/thumbnail/status` 三态轮询判定就绪；不引入 SSE 推送
+- 重构：**统一入队入口 `scheduleGeneration`**（返回 `'cached'/'queued'/'added'`），`enqueue`/`enqueueMissingForLibrary` 降级为薄包装；删除 `ensureGenerated`
+- 重构：**请求路径 0 探测 0 spawn**——删除 `playback.ts` 模块级 `_probeDuration`/`_durCache`/`THUMB_MIDPOINT_RATIO`；mid 时长探测全部收敛到队列内部（`_probeDuration`/`_durCache` 唯一存活处）
+- 缺口③：导入完成钩子 `enqueueMissingForLibrary(data.library)` —— 一次 readdir 对账，新增动画在首次点开前就有预生成
 - 修复：后台项 duration 为 NULL 时 `_probeDuration` 探测真实时长取中点（否则回退 60s 落在 OP 画面、多集重复）
 - 修复：ffmpeg 加 `-vf scale=480:-2` 降采样（卡片不需要 1080P）
-- 修复：缩略图生成时 duration null 则 `_probeDuration` 探测真实时长取中点，**查不到直接报错，不兜底 60s**（on-demand mid 探测失败 500、自定义 time 解析失败 400）
+- 修复：缩略图生成时 duration null 则 `_probeDuration` 探测真实时长取中点，**查不到直接报错，不兜底 60s**（自定义 time 解析失败 400）
 - 重构：**时长探测收敛到缩略图队列**——导入流程不再额外探测（移除 `_probeEpisodes`），队列生成缩略图时探测到的 duration 顺便写回 DB（`updateEpisodeProgress`），一次探测双用途。导入响应零探测开销，`ep.duration` 由后台队列补齐

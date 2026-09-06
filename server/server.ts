@@ -327,6 +327,7 @@ const routeTable = [
   { method: 'POST', path: '/api/progress', handler: H.handleProgress },
   { method: 'GET', path: '/api/mpv-status', handler: H.handleMpvStatus },
   { method: 'GET', path: '/api/thumbnail', handler: H.handleThumbnail },
+  { method: 'GET', path: '/api/thumbnail/status', handler: H.handleThumbnailStatus },
   // MyList
   { method: 'GET', path: '/api/mylist', handler: H.handleGetMyList },
   { method: 'PUT', pattern: /^\/api\/mylist\/([^/]+)\/status$/, handler: H.handleUpdateMyListStatus },

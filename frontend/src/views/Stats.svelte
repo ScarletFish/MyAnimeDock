@@ -1,8 +1,6 @@
 <script module>
-  // ─── Stats 视图（Svelte 迁移版）───
-  // 渐进迁移：把 index.html 的 #statsView + src/js/stats.js 迁移为 Svelte 组件。
-  // 复用现有 CSS 类名（视觉不变），与 vanilla 版共存（后续清理阶段再删 vanilla）。
-  // 挂载由 orchestrator 统一处理（与 Settings 相同：导出 statsOpen store，main.js/App 桥接）。
+  // ─── Stats 视图 ───
+  // 挂载由 orchestrator 统一处理：导出 statsOpen store，main.js/App 桥接。
   import { writable } from 'svelte/store';
 
   // 跨组件打开开关：orchestrator 在 main.js 桥接 window.openStats → statsOpen.set(true)

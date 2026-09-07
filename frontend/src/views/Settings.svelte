@@ -1,7 +1,5 @@
 <script module>
-  // ─── Settings 视图（Svelte 迁移版）───
-  // 渐进迁移的第一个视图：把 index.html 的 #settingsModal + src/js/settings.js 迁移为 Svelte 组件。
-  // 复用现有 CSS 类名（视觉不变），与 vanilla 版共存（后续清理阶段再删 vanilla）。
+  // ─── Settings 视图 ───
   import { writable } from 'svelte/store';
 
   // 跨组件打开开关：调用方直接 import settingsOpen 并 set(true)
@@ -50,7 +48,7 @@
   let bangumiUrl = $state('https://api.bgm.tv');
   let bangumiClientId = $state('');
   let bangumiClientSecret = $state('');
-  // bangumi auth（当前 HTML 无对应 UI，逻辑保留迁移）
+  // bangumi auth
   let authStatusText = $state('');
   let authStatusColor = $state('var(--text3)');
   let authBound = $state(false);

@@ -38,7 +38,7 @@
   }
 
   // 滚动到目标剧集：lastPlayedEp 有进度→滚到它；已看完→滚到下一未观看；没有→不动
-  // 暴露给父组件：数据刷新后重定位（vanilla renderEpisodeHeatmap 的对应行为）
+  // 暴露给父组件：数据刷新后重定位
   export function scrollToLastPosition() {
     if (!gridEl) return -1;
     let scrollEp = null;
@@ -62,8 +62,8 @@
     return scrollIdx;
   }
 
-  // 每次渲染/数据刷新后重定位到目标剧集（vanilla renderEpisodeHeatmap 的对应行为，
-  // onMount 只跑一次，重进入详情页组件不重建，定位必须挂在 $effect 上）。
+  // 每次渲染/数据刷新后重定位到目标剧集。
+  // onMount 只跑一次，重进入详情页组件不重建，定位必须挂在 $effect 上。
   // 双 rAF：等容器可见 + scroll-dots 写完 --cols（布局稳定）后再定位 ——
   // 否则 display:none 恢复首帧按旧布局换算，scrollLeft 会逐次塌缩减半。
   let settleRun = 0;

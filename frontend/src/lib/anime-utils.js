@@ -1,5 +1,5 @@
-// ─── 共享动漫工具（Svelte 迁移 Chunk A）───
-// 纯逻辑抽取：从 Library.svelte / Mylist.svelte 抽出可复用积木。
+// ─── 共享动漫工具 ───
+// 从 Library.svelte / Mylist.svelte 抽出的可复用积木。
 
 import { showDetail } from './router.js';
 export { API as api } from './api.js';

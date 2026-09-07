@@ -1,5 +1,5 @@
 <script module>
-  // ─── Library 视图（Svelte 迁移版）───
+  // ─── Library 视图 ───
   // 跨组件打开开关：router.js 的 showView 同步 libraryOpen store。
   import { writable } from 'svelte/store';
 
@@ -21,10 +21,7 @@
 </script>
 
 <script>
-  // ─── Library 视图（Svelte 迁移版）───
-  // 把 index.html 的 #libraryView + src/js/library.js 迁移为 Svelte 组件。
-  // 复用现有 CSS 类名（视觉不变），与 vanilla 版共存（后续清理阶段再删 vanilla）。
-  // 核心逻辑（网格渲染/排序/空状态/继续观看）用 runes 重写；
+  // 核心逻辑（网格渲染/排序/空状态/继续观看）用 runes 实现；
   // 跨视图副作用（showDetail/openStatusModal/showView/mmOpenModal 等）通过 window 桥接现有全局。
   import { onMount, tick } from 'svelte';
   import { showToast } from '../components/Toast.svelte';
@@ -99,14 +96,14 @@
   });
 
   // ─── 打开时加载数据（避免启动时全量 fetch）───
-  // fromViewSwitch=true：视图切换进入（从详情/其他视图返回），恢复 vanilla 保存的滚动位置；
+  // fromViewSwitch=true：视图切换进入（从详情/其他视图返回），恢复保存的滚动位置；
   // fromViewSwitch=false：库页已显示时的就地刷新（状态变更等），保留当前滚动。
   // store 已有数据时跳过 fetch，直接用缓存渲染（返回列表页不再 loading）；
   // 首次打开（数据为空）或 mutation 回调强制刷新时才发请求。
   $effect(() => {
     if ($libraryOpen && $libraryData.length === 0) loadLibraryImpl(true);
   });
-  //命中缓存的滚动条刷新
+  // 命中缓存的滚动刷新
   let scrollRestored = false;
   $effect(() => {
     if (!$libraryOpen) {
@@ -213,8 +210,8 @@
   // ─── 继续观看（/api/continue-watching 瘦 payload，服务端已解析好 continueEpisode）───
   let continueItems = $state([]);
 
-  // 继续观看缩略图改「就绪才加载」：冷图 202 会无声空白（CSS 背景图无 error 事件），
-  // 不再直出 URL，改由 thumb-manager 负责 warm + 轮询 status，就绪后才写 background-image。
+  // 继续观看缩略图「就绪才加载」：冷图 202 会无声空白（CSS 背景图无 error 事件），
+  // thumb-manager 负责 warm + 轮询 status，就绪后才写 background-image。
   // %27 单引号转义由 watchThumb 内部处理（URL 会放进 CSS url('...')）。
   // key=a.id；known-ready 会话缓存保证 loadContinue 重取后同 id 立即可用（不闪烁）。
   const contBgUrls = $state({});
@@ -225,7 +222,7 @@
     for (const a of items) {
       const ep = a.continueEpisode;
       if (!ep) continue;
-      // 与旧 continueBg 同一 time 规则：有进度→min(round(progress), duration-10)，阈值 0→60；无进度→'mid'
+      // time 规则：有进度→min(round(progress), duration-10)，阈值 0→60；无进度→'mid'
       let time = 'mid';
       if (ep.progress > 0 && ep.duration > 0) {
         time = Math.min(Math.round(ep.progress), ep.duration - 10);
@@ -267,10 +264,10 @@
     return tr('library.episodeProgress', { current: ep ? ep.number : '?', total });
   }
 
-  // ─── 继续观看：GSAP 交错入场（对齐 vanilla library.js renderContinueSectionFull animate=true）
+  // ─── 继续观看：GSAP 交错入场 ───
   // 与模块级 fade 行为一致：只在视图打开时播一次；从详情页返回（__skipViewEnter）跳过；
   // 刷新/状态变更不重播（continueAnimated 标记，置位时机在视图关闭时复位）。
-  // 注意：vanilla 此动画没有 prefers-reduced-motion 守卫，这里同样不加。
+  // 注意：不加 prefers-reduced-motion 守卫（与全站其它入场动画一致）。
   let continueAnimated = false;
   $effect(() => {
     const open = $libraryOpen;
@@ -307,7 +304,7 @@
     });
   });
 
-  // ─── 继续观看横向滚动分页圆点（对齐 vanilla library.js renderContinueSectionFull）───
+  // ─── 继续观看横向滚动分页圆点 ───
   $effect(() => {
     const items = continueItems;
     if (loading) return;

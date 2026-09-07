@@ -1,5 +1,5 @@
 <script>
-  // ─── LocalAnimeSection（Svelte 迁移 Chunk C）───
+  // ─── LocalAnimeSection ───
   // Library 的「本地动漫模块」投影组件。只认 props，不查全局数组。
   import { onDestroy, tick } from 'svelte';
   import { get } from 'svelte/store';

@@ -1,6 +1,5 @@
 <script>
-  // ─── StatusModal（Svelte 迁移 Chunk B）───
-  // 基于 Mylist.svelte 的组件内状态弹窗（逻辑 + 模板），不基于 vanilla mylist.js。
+  // ─── StatusModal ───
   // 只认 props，不 fetch、不查 libraryData/mylistData store。
   import { tr, api, coverSrc, localDateStr, todayStr } from '../lib/anime-utils.js';
   import { getStatusLabels } from '../lib/sort.js';
@@ -47,7 +46,7 @@
     const watchedCount = src.episodesWatched ?? src.episodes?.filter((e) => e.watched).length ?? 0;
     const progVal = storedProgress != null ? storedProgress : watchedCount || '';
     progressVal = progVal !== '' ? String(progVal) : '—';
-    // 进度上限 = episodeCount（ListItem）；兼容旧富对象回退 episodes.length；未知回退 999
+    // 进度上限 = episodeCount（ListItem）；缺失时回退 episodes.length；未知回退 999
     progressMax = (src.episodeCount ?? src.episodes?.length ?? 0) || 999;
 
     const storedStart = it.startedAt ? it.startedAt : null;

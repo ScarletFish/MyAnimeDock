@@ -22,7 +22,7 @@
     pending: tr('metamatch.statusPending'),
   };
 
-  // ─── 封面（vanilla 582：localCover 绝对路径 → /covers/ 前缀；远程 URL 原样）───
+  // ─── 封面（localCover 绝对路径 → /covers/ 前缀；远程 URL 原样）───
   let coverSrc = $derived.by(() => {
     const coverPath = item?.meta?.localCover || item?.localCover || item?.coverUrl;
     if (!coverPath) return '';
@@ -41,7 +41,7 @@
     return parts.join(' · ');
   });
 
-  // ─── 简介过滤（vanilla mmFilterSummary）───
+  // ─── 简介过滤 ───
   let summaryText = $derived.by(() => {
     if (!item?.meta?.summary) return '';
     return mmFilterSummary(item.meta.summary);
@@ -62,7 +62,7 @@
     return text;
   }
 
-  // ─── 双源数据完整性（vanilla 614-668）───
+  // ─── 双源数据完整性 ───
   let bgmOk = $derived(!!(item?.meta?.bangumiId && item?.meta?.bangumiTitle && item?.meta?.localCover));
   let alId = $derived(item?.anilistId);
   let banner = $derived(item?.anilistBanner);
@@ -78,7 +78,7 @@
   // ─── 关键词（pending）───
   let keywords = $derived([item?.title, item?.folderName].filter(Boolean));
 
-  // ─── Fix 默认关键词（vanilla 696）───
+  // ─── Fix 默认关键词 ───
   let defaultKeyword = $derived((item?.specialSuffix || item?.title || item?.folderName || '').replace(/[~～]/g, '').trim());
 
   // 条目切换时重置局部 fix 状态
@@ -95,7 +95,7 @@
     }
   });
 
-  // ─── Fix 搜索（vanilla mmSearchForFix）───
+  // ─── Fix 搜索 ───
   async function searchForFix() {
     const keyword = fixKeyword.trim();
     if (!keyword) {
@@ -118,7 +118,7 @@
     }
   }
 
-  // ─── Fix 结果渲染辅助（vanilla 764-784）───
+  // ─── Fix 结果渲染辅助 ───
   const typeMap = {
     1: tr('metamatch.typeBook'),
     2: 'TV',

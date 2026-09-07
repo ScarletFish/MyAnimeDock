@@ -1,5 +1,5 @@
 <script>
-  // ─── StatusSection（Svelte 迁移 Chunk A）───
+  // ─── StatusSection ───
   // 通用状态分区容器。variant 只映射 class 名，不碰样式。
   let {
     label,

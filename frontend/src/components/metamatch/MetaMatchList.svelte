@@ -11,7 +11,7 @@
     pending: tr('metamatch.statusPending'),
   };
 
-  // 空状态文案（对应 vanilla mmRenderList 195-208）
+  // 空状态文案
   let emptyText = $derived.by(() => {
     if (emptyMsg) return emptyMsg;
     if (totalCount === 0) return tr('metamatch.libraryEmpty');

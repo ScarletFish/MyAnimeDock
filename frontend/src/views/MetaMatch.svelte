@@ -184,11 +184,11 @@
     panelVisible = false;
   }
 
-  // Shift=切换多选（vanilla 547-550）
+  // Shift=切换多选
   function toggleSelect(animeId) {
     if (selectedIds.includes(animeId)) {
       selectedIds = selectedIds.filter((id) => id !== animeId);
-      // deselect 面板条目时切到最近选中或关闭（vanilla 377-383）
+      // deselect 面板条目时切到最近选中或关闭
       if (panelVisible && animeId === selectedId) {
         if (selectedIds.length > 0) {
           selectForPanel(selectedIds[selectedIds.length - 1]);
@@ -198,7 +198,7 @@
       }
     } else {
       selectedIds = [...selectedIds, animeId];
-      // 新增选中时让详情面板跟随最后点击的条目（vanilla 388）
+      // 新增选中时让详情面板跟随最后点击的条目
       selectForPanel(animeId);
     }
   }
@@ -208,16 +208,16 @@
     if (panelVisible) deselectPanel();
   }
 
-  // 行点击（vanilla mmRowClick）
+  // 行点击
   function rowClick(animeId, shiftKey) {
-    if (syncInProgress) return; // 同步中行不可点（vanilla 545）
+    if (syncInProgress) return; // 同步中行不可点
 
     if (shiftKey) {
       toggleSelect(animeId);
       return;
     }
 
-    // 单击已选中的单项=取消选中（vanilla 553-556）
+    // 单击已选中的单项=取消选中
     if (selectedIds.includes(animeId) && selectedIds.length === 1) {
       selectedIds = [];
       if (panelVisible && selectedId === animeId) deselectPanel();
@@ -227,7 +227,7 @@
     }
   }
 
-  // ─── 主按钮（vanilla mmMainAction）───
+  // ─── 主按钮 ───
   function handleMainAction() {
     if (syncInProgress) return;
 
@@ -497,7 +497,7 @@
 
   // ─── Modal 生命周期 ───
   function closeModal() {
-    // 同步中关闭弹窗 → 确认对话框（vanilla 28-52）
+    // 同步中关闭弹窗 → 确认对话框
     if (syncInProgress) {
       showConfirm(tr('metamatch.confirmAbort')).then((ok) => {
         if (!ok) return; // 用户取消关闭

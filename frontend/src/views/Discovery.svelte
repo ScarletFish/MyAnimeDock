@@ -1,8 +1,6 @@
 <script module>
-  // ─── Discovery 视图（Svelte 迁移版）───
-  // 渐进迁移：把 index.html 的 #discoveryView + src/js/discovery.js 迁移为 Svelte 组件。
-  // 复用现有 CSS 类名（视觉不变），与 vanilla 版共存（后续清理阶段再删 vanilla）。
-  // 挂载由 orchestrator 统一处理（不修改 App.svelte / main.js / index.html）。
+  // ─── Discovery 视图 ───
+  // 挂载由 orchestrator 统一处理。
   import { writable } from 'svelte/store';
 
   // 跨组件可见性开关：router.js 的 showView 同步 discoveryOpen store。
@@ -155,8 +153,8 @@
     });
   });
 
-  // 卡片入场动画（对齐 vanilla discovery.js:202-204）
-  // 只依赖数据变化（rows），不依赖视图开关——切走再切回不重新动画，与 vanilla 一致
+  // 卡片入场动画
+  // 只依赖数据变化（rows），不依赖视图开关——切走再切回不重新动画
   $effect(() => {
     if (rows.length === 0) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -252,7 +250,7 @@
   }
 
   function renderDiscovery() {
-    // 用原始数据判断空状态（对齐 vanilla discovery.js:123），避免过滤后为空时误判
+    // 用原始数据判断空状态，避免过滤后为空时误判
     if (discoveryData.length === 0) {
       emptyVisible = true;
       emptyText = tr('discovery.noAnimeFound');

@@ -1,7 +1,5 @@
 <script module>
-  // ─── My List 视图（Svelte 迁移版）───
-  // 渐进迁移：把 index.html 的 #mylistView + src/js/mylist.js 迁移为 Svelte 组件。
-  // 复用现有 CSS 类名（视觉不变），与 vanilla 版共存（后续清理阶段再删 vanilla）。
+  // ─── My List 视图 ───
   import { writable } from 'svelte/store';
 
   // 跨组件打开开关：router.js 的 showView 同步 mylistOpen store。
@@ -113,7 +111,7 @@
 
   onMount(() => {
     // 外部流程（saveStatusModal/detail.js 等）调裸 loadMyList() 时，
-    // 路由到这里刷新 Svelte 我的列表页（in-place，保留当前滚动）。
+    // 路由到这里刷新我的列表页（in-place，保留当前滚动）。
     setLoadMyList((fromViewSwitch) => loadMyListImpl(fromViewSwitch));
   });
 
@@ -338,7 +336,7 @@
     });
   });
 
-  // ─── 卡片级：网格卡片 ScrollTrigger 视口渐显（替换原 cardReveal）───
+  // ─── 卡片级：网格卡片 ScrollTrigger 视口渐显 ───
   // 每个分区（.mylist-section）建一个 ScrollTrigger，网格进入视口时卡片交错渐显（once:true）。
   // 数据重载/过滤/排序后先 kill 旧触发器再重建，避免重复触发/泄漏。
   let cardTriggers = [];

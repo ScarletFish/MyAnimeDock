@@ -1,5 +1,5 @@
-// ─── 共享排序逻辑（Svelte 迁移 Chunk A）───
-// 从 Mylist.svelte 逐字节抽取，禁止优化，保持行为一致。
+// ─── 共享排序逻辑 ───
+// 保持与 Mylist.svelte 使用处行为一致（禁止顺手改动）。
 import { tr } from './anime-utils.js';
 
 // Lazy: computed after initI18n() sets globalThis.t
@@ -55,7 +55,7 @@ export function sortAnimeItems(items, sortMode) {
     return (a.bangumiTitleJp || a.bangumiTitle || a.title || '').toLowerCase();
   }
   function getLastWatched(a) {
-    // ListItem 新字段 lastPlayedAt（旧 episodes 数组上的 updatedAt 字段已不存在）
+    // ListItem 用 lastPlayedAt 字段（episodes.* 已无 updatedAt）
     return a.lastPlayedAt || '';
   }
   function getBlockScore(block, key) {

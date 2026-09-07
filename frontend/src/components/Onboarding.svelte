@@ -8,8 +8,7 @@
 
 <script>
   // ─── Onboarding（首启引导，fixed overlay）───
-  // 由 vanilla onboarding.js 迁移而来，复用现有 onboarding.css 类名，视觉零变化。
-  // 初始 class:hidden 避免首屏闪现；configCache 刷新已丢弃（无消费者）。
+  // 初始 class:hidden 避免首屏闪现。
   import { showToast } from './Toast.svelte';
   import { tr } from '../lib/anime-utils.js';
   import { showView } from '../lib/router.js';

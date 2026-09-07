@@ -10,7 +10,7 @@
   let pendingOpen = null;
 
   /**
-   * 打开详情视图（与 vanilla showDetail 签名兼容）。
+   * 打开详情视图。
    * 供 orchestrator / 内联 onclick 桥接调用。
    */
   export function openDetail(id, fromRect, fromSrc, sourceView = 'library') {
@@ -694,8 +694,8 @@
       // 就地 patch 库页（继续观看/网格/状态分区立即反映新进度），不再等下次整库重取
       patchLibraryItem(updated);
       refreshStats();
-      // 剧集列表重定位到最新进度（vanilla renderEpisodeHeatmap 的对应行为：
-      // lastPlayedEp 有进度→滚到它；已看完→滚到下一未观看）
+      // 剧集列表重定位到最新进度：
+      // lastPlayedEp 有进度→滚到它；已看完→滚到下一未观看
       episodeHeatmapRef?.scrollToLastPosition();
       checkAndShowFinishConfirm(anime);
       showToast(tr('detail.playEndedUpdated'), 'success');

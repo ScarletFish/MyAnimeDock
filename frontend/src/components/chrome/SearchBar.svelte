@@ -21,8 +21,7 @@
 
 <script>
   // ─── Titlebar 全局搜索（动漫 + 设置）───
-  // 由 vanilla search.js 迁移而来，复用现有 titlebar.css 类名，视觉零变化。
-  // 下拉用 Svelte {#each} 渲染（自动转义），不再手动拼 HTML 字符串。
+  // 下拉用 Svelte {#each} 渲染（自动转义 HTML）。
   import { onMount, onDestroy } from 'svelte';
   import { tr } from '../../lib/anime-utils.js';
   import { filterTags, tagZh, tagSearchFields } from '../../lib/tag-utils.js';

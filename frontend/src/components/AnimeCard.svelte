@@ -1,5 +1,5 @@
 <script>
-  // ─── AnimeCard（Svelte 迁移 Chunk A）───
+  // ─── AnimeCard ───
   // 基于 Mylist.svelte 的 card snippet（唯一无嵌套的正确结构）。
   // 只认 props，不查全局、不 import 全局，只发事件。
   import { tr, coverSrc, initialOf } from '../lib/anime-utils.js';

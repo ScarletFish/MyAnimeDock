@@ -85,7 +85,7 @@ export function getMyListScrollTop() {
   return mylistScrollTop;
 }
 
-// 打开详情视图（与 vanilla showDetail 签名兼容）。
+// 打开详情视图。
 // 所有调用方（SearchBar/anime-utils/Library/Mylist）都调 showDetail(id, rect, imgSrc, sourceView)。
 export function showDetail(id, fromRect, fromSrc, sourceView) {
   openDetail(id, fromRect, fromSrc, sourceView);

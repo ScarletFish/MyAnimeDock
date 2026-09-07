@@ -1,6 +1,6 @@
 <script>
   // ─── Svelte 根组件 ───
-  // 承载 Svelte 组件库骨架（Toast/Modal）+ 已迁移视图。
+  // 承载组件库骨架（Toast/Modal）+ 各视图。
   // 视图可见性由 main.js 的 __svelteViewSync 驱动（store.set(v === view)）。
   import Toast from './components/Toast.svelte';
   import Modal from './components/Modal.svelte';

@@ -9,7 +9,6 @@
 
 <script>
   // ─── Titlebar（窗口控制 + 拖拽 + 双击最大化 + 返回按钮 + 品牌/详情上下文切换）───
-  // 由 vanilla titlebar.js 迁移而来，复用现有 titlebar.css 类名，视觉零变化。
   import { onMount, onDestroy } from 'svelte';
   import SearchBar from './SearchBar.svelte';
   import { tr } from '../../lib/anime-utils.js';

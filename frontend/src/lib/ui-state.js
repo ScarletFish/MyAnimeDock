@@ -1,5 +1,5 @@
 // ─── 跨组件共享状态（Svelte store）───
-// 渐进迁移收敛：组件间通过 window.* 全局通信的副产物，统一收口到这里的 writable store。
+// 组件间通过 window.* 全局通信的收敛点：统一收口到这里的 writable store。
 // 单一事实源（统一刷新管线）：
 //   mylistData   唯一可写 store = 全集（/api/mylist）。所有增删改（patch/remove）只动它。
 //   libraryData  derived = 本地子集（animeId 非空 && hasLocalFiles，语义同 ?filter=local）。

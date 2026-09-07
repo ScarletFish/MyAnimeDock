@@ -1,9 +1,7 @@
 <script>
-  // ─── Sidebar（Svelte 迁移）───
-  // 忠实迁移 index.html 的 vanilla <aside class="sidebar">，视觉零改动。
+  // ─── Sidebar ───
   // 保留全部 class / id / data-tip / data-i18n-attr，供 router.js（按 id 切 .active）继续工作。
-  // 侧栏悬浮 tooltip 逻辑原在 tooltip.js 的第二个 IIFE（load 时 querySelectorAll 绑定），
-  // 因 Sidebar 由 Svelte 挂载（晚于 tooltip.js）而失效，故移入本组件 onMount 后绑定。
+  // 侧栏悬浮 tooltip 由本组件在 onMount 后手动绑定。
   import { onMount } from 'svelte';
   import { showView } from '../lib/router.js';
   import { openVisualDock } from './ThemeDock.svelte';

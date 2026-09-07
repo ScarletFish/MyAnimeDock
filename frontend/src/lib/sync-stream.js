@@ -1,11 +1,9 @@
-// ─── SSE 流式同步控制器（metamatch.js 迁移步骤 0）───
-// 从 mmSyncViaSSE 抽取的纯逻辑、无 DOM 依赖模块。
-// 只负责 EventSource 生命周期与终态报告，不处理任何业务逻辑
-// （不碰 items、不碰 syncLog）。
+// ─── SSE 流式同步控制器 ───
+// 纯逻辑、无 DOM 依赖：只负责 EventSource 生命周期与终态报告，
+// 不处理业务逻辑（不碰 items、不碰 syncLog）。
 //
-// 核心坑修复：EventSource.close() 不会触发 error 事件，因此取消时
-// 必须显式 resolve，否则 done Promise 永久悬挂（vanilla 用全局
-// mmSyncResolve 绕过，这里收敛为模块内的 resolveDone）。
+// EventSource.close() 不会触发 error 事件，取消时必须显式 resolve，
+// 否则 done Promise 永久悬挂（收敛为模块内的 resolveDone）。
 
 /**
  * 创建一条 SSE 同步流。

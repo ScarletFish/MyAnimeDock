@@ -17,5 +17,5 @@ export async function openDialog(options) {
   return null;
 }
 
-// Bridge: Onboarding.svelte and other vanilla callers use window.openDialog
+// Bridge: 对外暴露 window.openDialog 供组件调用
 window.openDialog = openDialog;

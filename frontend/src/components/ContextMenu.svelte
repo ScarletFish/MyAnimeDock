@@ -1,5 +1,5 @@
 <script>
-  // ─── ContextMenu（Svelte 迁移 Chunk B）───
+  // ─── ContextMenu ───
   // 外壳照搬 Mylist.svelte 右键菜单（定位 + 模板），菜单项由调用方注入。
   // 只认 props，不处理 oncontextmenu 事件本身。
   import { tick, onMount, onDestroy } from 'svelte';

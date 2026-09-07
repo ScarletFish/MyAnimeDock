@@ -1,7 +1,6 @@
 <script module>
-  // ─── KbdHelp（Svelte 迁移）───
-  // 键盘快捷键帮助浮层。原为 index.html 手写 HTML + keyboard.js 切 .hidden。
-  // 迁移为 store 驱动组件：keyboard.js 通过 kbdHelpOpen store 开关。
+  // ─── KbdHelp ───
+  // 键盘快捷键帮助浮层，store 驱动：keyboard.js 通过 kbdHelpOpen store 开关。
   // 用 tr() 而非 data-i18n，因 bindDom() 在启动时先于本组件渲染执行。
   import { writable } from 'svelte/store';
 

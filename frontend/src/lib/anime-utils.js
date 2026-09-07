@@ -60,5 +60,13 @@ export function navigateToDetail(id, el, source) {
   showDetail(id, rect, imgSrc, source);
 }
 
+/** 预计总集数（Bangumi 元数据；eps 可能是数组或数字，未知返回 null） */
+export function expectedEpCount(a) {
+  if (!a) return null;
+  const v = a.totalEpisodes ?? (Array.isArray(a.eps) ? a.eps.length : a.eps);
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
 export const STATUS_SECTIONS_LIBRARY = ['watching', 'wish', 'completed'];
 export const STATUS_SECTIONS_MYLIST = ['watching', 'wish', 'completed', 'on_hold', 'dropped'];

@@ -1,7 +1,8 @@
 // server/routes/continue-watching.ts — 继续播放列表
-// 候选/排序/继续集解析严格镜像 frontend/src/views/Library.svelte 的 continueItems 逻辑。
+// 续播卡片独立拉取端点（前端 Library.svelte 消费瘦 payload，候选/排序/继续集解析仅此一份）。
 import { jsonResp } from '../lib/utils';
 import { enrichAnime } from '../lib/enrich';
+import { isChasing } from '../lib/anime-meta';
 import type { AnimeEpisode, ContinueWatchingItem, ServerState } from '../types';
 
 export function handleGetContinueWatching(req: any, res: any, state: ServerState): void {
@@ -13,7 +14,9 @@ export function handleGetContinueWatching(req: any, res: any, state: ServerState
       if (!a.episodes || a.episodes.length === 0) return false;
       const watchedCount = a.episodes.filter((e) => e.watched).length;
       const inProgress = a.episodes.some((e) => e.progress != null && e.progress > 0 && !e.watched);
-      return inProgress || (watchedCount > 0 && watchedCount < a.episodes.length);
+      // 追番中（本地已全部看完、等下一集）：保留卡片，方便回到最新一集
+      const chasingAllWatched = watchedCount > 0 && watchedCount >= a.episodes.length && isChasing(a);
+      return inProgress || (watchedCount > 0 && watchedCount < a.episodes.length) || chasingAllWatched;
     });
     candidates.forEach((a) => enrichAnime(a, data));
     const items: ContinueWatchingItem[] = candidates
@@ -31,6 +34,10 @@ export function handleGetContinueWatching(req: any, res: any, state: ServerState
         }
         if (!ep) {
           ep = anime.episodes.find((e) => !e.watched) ?? null;
+        }
+        if (!ep && anime.lastPlayedEp) {
+          // 追番全看完（无未看集）：回退到最后一次播放的视频
+          ep = anime.episodes.find((e) => e.number === anime.lastPlayedEp) ?? null;
         }
         return {
           id: anime.id,

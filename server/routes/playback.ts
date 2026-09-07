@@ -4,6 +4,7 @@ import fs from 'fs';
 import crypto from 'crypto';
 import { jsonResp, readBody, serveImage, THUMB_HASH_SEED } from '../lib/utils';
 import { DATA_DIR, MAX_PLAY_SESSIONS } from '../lib/config';
+import { isChasing } from '../lib/anime-meta';
 import { Logger } from '../logger';
 import type { ServerState } from '../types';
 const logger: Logger = require('../logger').child('[Playback]');
@@ -150,8 +151,9 @@ async function handlePlay(req: any, res: any, state: State) {
             }
             if (active.anime) {
               const myEntry = (data.myList || []).find(m => m.animeId === active.anime.id);
-              const allWatched = active.anime.episodes && active.anime.episodes.length > 0
-                && active.anime.episodes.every(e => e.watched);
+              const eps = active.anime.episodes;
+              // 追番中（预计总集数已知但本地集数不足）：看完本地最后一集不算完结，等下一集
+              const allWatched = !!eps && eps.length > 0 && eps.every(e => e.watched) && !isChasing(active.anime);
               if (allWatched && myEntry) {
                 myEntry.status = 'completed';
                 myEntry.completedAt = new Date().toISOString();

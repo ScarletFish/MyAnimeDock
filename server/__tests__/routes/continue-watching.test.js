@@ -146,6 +146,58 @@ describe('continue-watching route handlers', () => {
       assert.strictEqual(res._body[0].continueEpisode.number, 3);
     });
 
+    it('keeps chasing anime (all local watched, expected total higher) and falls back to lastPlayedEp', () => {
+      const state = mockState({
+        data: {
+          library: [{
+            id: 'a1', title: 'Anime A', downloaded: true, totalEpisodes: 12,
+            episodes: [ep(1, { watched: true }), ep(2, { watched: true })],
+          }],
+          playSessions: [{ animeId: 'a1', episodeNumber: 2, startTime: '2026-08-01T10:00:00.000Z' }],
+        },
+      });
+      const req = mockReq({ url: '/api/continue-watching' });
+      const res = mockRes();
+      cw.handleGetContinueWatching(req, res, state);
+      assert.strictEqual(res._status, 200);
+      assert.strictEqual(res._body.length, 1);
+      assert.strictEqual(res._body[0].id, 'a1');
+      assert.deepStrictEqual(res._body[0].continueEpisode, { number: 2, filePath: '/media/a/ep2.mkv', progress: 0, duration: null });
+    });
+
+    it('does not keep chasing anime with zero watched episodes', () => {
+      const state = mockState({
+        data: {
+          library: [{
+            id: 'a1', title: 'Anime A', downloaded: true, totalEpisodes: 12,
+            episodes: [ep(1), ep(2)],
+          }],
+        },
+      });
+      const req = mockReq({ url: '/api/continue-watching' });
+      const res = mockRes();
+      cw.handleGetContinueWatching(req, res, state);
+      assert.strictEqual(res._status, 200);
+      assert.deepStrictEqual(res._body, []);
+    });
+
+    it('excludes fully watched anime even when totalEpisodes matches local count', () => {
+      const state = mockState({
+        data: {
+          library: [{
+            id: 'a1', title: 'Anime A', downloaded: true, totalEpisodes: 2,
+            episodes: [ep(1, { watched: true }), ep(2, { watched: true })],
+          }],
+          playSessions: [{ animeId: 'a1', episodeNumber: 2, startTime: '2026-08-01T10:00:00.000Z' }],
+        },
+      });
+      const req = mockReq({ url: '/api/continue-watching' });
+      const res = mockRes();
+      cw.handleGetContinueWatching(req, res, state);
+      assert.strictEqual(res._status, 200);
+      assert.deepStrictEqual(res._body, []);
+    });
+
     it('caps the response at 10 items when more than 10 candidates qualify', () => {
       const library = Array.from({ length: 12 }, (_, i) => ({
         id: `a${i}`, title: `Anime ${i}`, downloaded: true,

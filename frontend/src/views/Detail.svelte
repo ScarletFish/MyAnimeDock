@@ -44,7 +44,7 @@
   import { ANILIST_TAG_DATA } from '../lib/tag-data.js';
   import { filterTags, tagZh } from '../lib/tag-utils.js';
   import { searchTag } from '../components/chrome/SearchBar.svelte';
-  import { tr, escapeHtml, STATUS_SECTIONS_LIBRARY, initialOf } from '../lib/anime-utils.js';
+  import { tr, escapeHtml, STATUS_SECTIONS_LIBRARY, initialOf, expectedEpCount } from '../lib/anime-utils.js';
   import { sortAnimeItems } from '../lib/sort.js';
   import { libraryData, mylistData, librarySortMode, mylistSortMode, pendingAutoPlay, pendingFinishAnimeId, finishConfirmMode, ignoreLocalFileMissing, patchLibraryItem, removeLibraryItemFromStore } from '../lib/ui-state.js';
   import { refreshStats } from './Library.svelte';
@@ -115,7 +115,7 @@
   let episodeCount = $derived.by(() => {
     if (!anime || !anime.episodes || anime.episodes.length === 0) return '';
     const localCount = anime.episodes.length;
-    const totalCount = anime.totalEpisodes || anime.eps;
+    const totalCount = expectedEpCount(anime);
     return totalCount
       ? tr('detail.episodeCountTotal', { localCount, totalCount })
       : tr('detail.episodeCountLocal', { localCount });
@@ -127,14 +127,12 @@
   // 播放按钮
   let playBtn = $derived.by(() => {
     if (!anime || !anime.episodes || anime.episodes.length === 0) return null;
-    const result = findTargetEpisode(anime);
-    const targetEp = result.episode;
-    const allWatched = result.allWatched;
+    const targetEp = findTargetEpisode(anime);
     const hasViewHistory = anime.episodes.some((e) => e.watched || e.progress > 0);
+    // 有观看痕迹一律"继续播放"，从未看过才"开始播放"
     let text;
-    if (allWatched) text = tr('detail.replay');
-    else if (targetEp.progress > 0 || hasViewHistory) text = tr('detail.continue');
-    else text = tr('detail.startPlay');
+    if (!hasViewHistory && targetEp.progress <= 0) text = tr('detail.startPlay');
+    else text = tr('detail.continue');
     return { text, path: targetEp.filePath, pos: targetEp.progress || 0, epIdx: anime.episodes.indexOf(targetEp) };
   });
 
@@ -229,16 +227,20 @@
     if (!a.episodes || a.episodes.length === 0) return null;
     if (a.lastPlayedEp) {
       const ep = a.episodes.find((e) => e.number === a.lastPlayedEp);
-      if (ep && !ep.watched) return { episode: ep, allWatched: false };
+      if (ep && !ep.watched) return ep;
     }
     for (let i = 0; i < a.episodes.length; i++) {
-      if (!a.episodes[i].watched) return { episode: a.episodes[i], allWatched: false };
+      if (!a.episodes[i].watched) return a.episodes[i];
     }
-    return { episode: a.episodes[0], allWatched: true };
+    // 全部看完：续播最后一次播放的视频
+    if (a.lastPlayedEp) {
+      const ep = a.episodes.find((e) => e.number === a.lastPlayedEp);
+      if (ep) return ep;
+    }
+    return a.episodes[0];
   }
   function findWatchEpisode(a) {
-    const r = findTargetEpisode(a);
-    return r ? r.episode : null;
+    return findTargetEpisode(a);
   }
 
   async function playEpisode(filePath, position = 0) {
@@ -696,11 +698,6 @@
       // lastPlayedEp 有进度→滚到它；已看完→滚到下一未观看）
       episodeHeatmapRef?.scrollToLastPosition();
       checkAndShowFinishConfirm(anime);
-      const allDone = anime.episodes && anime.episodes.length > 0 && anime.episodes.every((e) => e.watched);
-      if (allDone && anime.myListStatus === 'completed') {
-        showToast(tr('detail.playEndedAllWatched'), 'success');
-        return;
-      }
       showToast(tr('detail.playEndedUpdated'), 'success');
     });
     return true;

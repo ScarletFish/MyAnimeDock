@@ -46,7 +46,7 @@
     const tc = getThemeColors();
     const pct = totalEp > 0 ? watchedEp / totalEp : 0;
     const rect = container.getBoundingClientRect();
-    const size = Math.max(Math.min(rect.width || 200, 220), 140);
+    const size = Math.max(Math.min(rect.width || 200, 300), 170);
     const outerR = size * 0.38;
     const innerR = outerR * 0.72;
     const svg = d3.select(container).append('svg')

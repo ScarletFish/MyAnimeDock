@@ -27,7 +27,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 120px;
+  min-width: 200px;
 }
 
 .ws-donut-wrap svg {
@@ -37,7 +37,7 @@
 .ws-right {
   display: flex;
   align-items: stretch;
-  min-height: 160px;
+  min-height: 240px;
 }
 
 /* ─── Area chart ─── */

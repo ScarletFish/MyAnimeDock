@@ -295,3 +295,120 @@
   background: rgba(var(--accent-secondary-rgb), var(--alpha-subtle));
   color: var(--accent-secondary);
 }
+
+/* ─── Section Skeleton（占位骨架，纯静态不发 API） ─── *
+ * 供 LazySection 未触发时与 RelationList loading 态复用，贴合真实区块形态与高度，
+ * 避免触发/加载时 layout shift。全部用 token，禁写死值。
+ * 骨架块 animation 在 prefers-reduced-motion 下禁用（见 base.css 的既有处理块）。
+ */
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@utility skeleton-block {
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  animation: skeleton-pulse 1.6s var(--ease-out) infinite;
+}
+
+/* 区块外壳：贴合真实 section-card + 间距 */
+.sk-section {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  padding: var(--space-5) var(--space-6);
+  margin-top: var(--space-6);
+}
+
+.sk-header { display: flex; align-items: center; }
+.sk-line { height: calc(1rem * var(--scale)); }
+.sk-line--title {
+  width: calc(140px * var(--scale));
+  height: calc(1.313rem * var(--scale));
+}
+.sk-line--short { width: 60%; height: calc(0.85rem * var(--scale)); }
+
+/* 角色：3 列卡（60×80 头像 + 文字条） */
+.sk-char-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+.sk-char-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  background: var(--bg-canvas);
+}
+.sk-char-avatar {
+  width: 60px;
+  height: 80px;
+  flex-shrink: 0;
+}
+.sk-char-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+/* 关联/推荐：横滑一行 3/4 比封面卡（匹配 --card-w:235px 档位，与 detail-banner.css 真实区块同源） */
+.sk-section--hscroll {
+  --card-w: 235px;
+  --cols: 5; /* 静态兜底；运行期由 JS 依 computeColsFor 写回真实列数 */
+  --gap: var(--space-3);
+}
+.sk-section-header {
+  margin-bottom: var(--space-2); /* 对齐真实关系区块 header → 卡片间距（detail-banner.css） */
+}
+.sk-hscroll {
+  display: flex;
+  overflow: hidden;
+  gap: var(--space-3);
+  padding: var(--space-1) 0 var(--space-2) 0;
+}
+.sk-cover-card {
+  flex-shrink: 0;
+  width: calc((100% - var(--gap, var(--space-3)) * (var(--cols, 5) - 1)) / var(--cols, 5));
+}
+.sk-cover {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+}
+
+/* 失败态：外部源（AniList）请求失败时的静态占位，非骨架动画。
+ * 复用 .sk-section--hscroll 外壳（同一 .sk-section 卡片外观 + --card-w/--cols 几何），
+ * header 直显区块标题；内容区高度对齐封面行（JS 依同源列数推导 min-height）。 */
+.sk-section--failed {
+  display: flex;
+  flex-direction: column;
+  color: var(--fg-muted);
+}
+.sk-failed-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  /* 对齐封面行高（aspect-ratio 3/4 × 卡宽）由 JS 依同源列数写回内联 min-height，此处仅兜底 */
+  min-height: calc(313px * var(--scale));
+}
+.sk-failed-icon {
+  width: 48px;
+  height: 48px;
+  color: var(--fg-muted);
+  opacity: 0.5;
+}
+.sk-failed-icon svg {
+  width: 100%;
+  height: 100%;
+}
+.sk-failed-label {
+  font-size: var(--text-md);
+  color: var(--fg-muted);
+}

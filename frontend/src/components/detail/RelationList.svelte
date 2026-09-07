@@ -18,12 +18,12 @@
   import { tr } from '../../lib/anime-utils.js';
   import { openDetail } from '../../views/Detail.svelte';
   import { API as api } from '../../lib/api.js';
+  import SectionSkeleton from './SectionSkeleton.svelte';
 
   let { animeId = null, kind = 'relations' } = $props();
 
   let items = $state([]);
   let loading = $state(true);
-  let failed = $state(false);
   let scrollEl = $state(null);
 
   const isRecs = $derived(kind === 'recommendations');
@@ -69,7 +69,7 @@
       items = list;
       cacheSet(cacheKey, list);
     } catch (e) {
-      failed = true;
+      // 失败或空：不写缓存，items 保持空数组，渲染统一占位（无隐藏路线）
     } finally {
       loading = false;
       initDots();
@@ -77,7 +77,7 @@
   });
 </script>
 
-{#if !loading && !failed && items.length > 0}
+{#if !loading && items.length > 0}
   <div id={sectionId} class="detail-section hscroll-section">
     <div class="detail-section-header">
       <span class="detail-section-title">{tr(isRecs ? 'detail.recommendations' : 'detail.related', isRecs ? '推荐' : '关联作品')}</span>
@@ -101,4 +101,8 @@
       {/each}
     </div>
   </div>
+{:else if loading}
+  <SectionSkeleton variant="relations" title={tr(isRecs ? 'detail.recommendations' : 'detail.related', isRecs ? '推荐' : '关联作品')} />
+{:else}
+  <SectionSkeleton variant="failed" title={tr(isRecs ? 'detail.recommendations' : 'detail.related', isRecs ? '推荐' : '关联作品')} label={tr(isRecs ? 'detail.recommendationsFailed' : 'detail.relatedFailed', isRecs ? '推荐暂不可用' : '关联作品暂不可用')} />
 {/if}

@@ -9,6 +9,22 @@
 // 窗口尺寸一变（ResizeObserver）即重算。
 
 /**
+ * 纯函数：按基准卡宽 + 容器宽算整数列数（与 patterns.css .hscroll-card calc 契约同源）。
+ * 不写回、无量测渲染尺寸。被 initScrollDots 与详情骨架屏共用，保证真实/骨架列数同源对齐。
+ * @param {HTMLElement} el - 横向滚动容器
+ * @param {{baselineW?: number, gap?: number}} [opts] - baselineW=基准卡宽(--card-w)，gap=卡间距
+ * @returns {number} 整数列数
+ */
+export function computeColsFor(el, { baselineW = 320, gap } = {}) {
+  const cs = getComputedStyle(el);
+  const g = gap ?? (parseFloat(cs.gap) || parseFloat(cs.columnGap) || 12);
+  const padX = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
+  const contentW = Math.max(0, el.clientWidth - padX);
+  if (contentW <= 0) return parseInt(el.style.getPropertyValue('--cols'), 10) || 1;
+  return Math.max(1, Math.floor((contentW + g) / (baselineW + g)));
+}
+
+/**
  * 为水平滚动容器初始化分页圆点
  * @param {object} opts
  * @param {HTMLElement} opts.scroll - flex 水平滚动容器
@@ -40,10 +56,9 @@ export function initScrollDots(opts) {
   // 恢复显示首帧卡宽按满宽布局参与 scroll-snap / scrollLeft 换算，反复进出详情页
   // 会令剧集列表滚动位置逐次塌缩减半（详情页重进入 9→5→3→2→1）。
   function computeCols() {
-    const contentW = getContentW();
-    if (contentW <= 0) return parseInt(scroll.style.getPropertyValue('--cols'), 10) || 1;
-    const gap = getGap();
-    const cols = Math.max(1, Math.floor((contentW + gap) / (getBaselineW() + gap)));
+    // 容器隐藏（宽为 0）时不重算、不写回（见上方注释），由 computeColsFor 返回守卫值
+    if (getContentW() <= 0) return parseInt(scroll.style.getPropertyValue('--cols'), 10) || 1;
+    const cols = computeColsFor(scroll, { baselineW: getBaselineW(), gap: getGap() });
     const prev = scroll.style.getPropertyValue('--cols');
     if (String(cols) !== prev) scroll.style.setProperty('--cols', String(cols));
     return cols;

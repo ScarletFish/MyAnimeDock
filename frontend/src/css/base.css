@@ -342,6 +342,7 @@ html.theme-transitioning .theme-dock {
   .episode-card:hover .episode-card-watched,
   .episode-card:hover .episode-card-progress-bar { opacity: 1 !important; }
   .episode-dot { transition: none !important; }
+  .skeleton-block { animation: none !important; }
 }
 
 /* ─── Manual reduced-motion toggle (mirrors @media block above) ─── */
@@ -385,6 +386,7 @@ html[data-reduce-motion="true"] .status-dd-menu {
 
 html[data-reduce-motion="true"] .heatmap-cell { animation: none !important; }
 html[data-reduce-motion="true"] .settings-panel { animation: none !important; }
+html[data-reduce-motion="true"] .skeleton-block { animation: none !important; }
 
 /* ─── Episode card reduced motion ─── */
 html[data-reduce-motion="true"] .episode-card,

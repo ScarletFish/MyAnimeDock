@@ -38,6 +38,7 @@
   import WatchStats from '../components/detail/WatchStats.svelte';
   import RelationList from '../components/detail/RelationList.svelte';
   import LazySection from '../components/detail/LazySection.svelte';
+  import SectionSkeleton from '../components/detail/SectionSkeleton.svelte';
   import SyncModal from '../components/detail/SyncModal.svelte';
   import FinishConfirmModal from '../components/detail/FinishConfirmModal.svelte';
   import { ANILIST_TAG_DATA } from '../lib/tag-data.js';
@@ -822,21 +823,30 @@
           </div>
           <EpisodeHeatmap bind:this={episodeHeatmapRef} anime={anime} episodes={anime.episodes} lastPlayedEp={anime.lastPlayedEp} onPlay={playEpisode} onToggleWatched={toggleWatched} />
         </div>
-        <LazySection delay={350}>
-          <Characters chars={anime.characters} />
-        </LazySection>
-        <LazySection delay={450}>
-          {#if watchStatsVisible}
-            <div class="watch-stats" id="svelte-watchStats">
-              <div class="ws-header"><h3>{tr('detail.watchStats')}</h3></div>
-              <WatchStats anime={anime} />
-            </div>
-          {/if}
-        </LazySection>
-        <LazySection delay={450}>
+        {#snippet charSkeleton()}
+          <SectionSkeleton variant="characters" />
+        {/snippet}
+        {#snippet relSkeleton()}
+          <SectionSkeleton variant="relations" title={tr('detail.related', '关联作品')} />
+        {/snippet}
+        {#snippet recSkeleton()}
+          <SectionSkeleton variant="relations" title={tr('detail.recommendations', '推荐')} />
+        {/snippet}
+        {#if (anime.characters || []).length > 0}
+          <LazySection skeleton={charSkeleton}>
+            <Characters chars={anime.characters} />
+          </LazySection>
+        {/if}
+        {#if watchStatsVisible}
+          <div class="watch-stats" id="svelte-watchStats">
+            <div class="ws-header"><h3>{tr('detail.watchStats')}</h3></div>
+            <WatchStats anime={anime} />
+          </div>
+        {/if}
+        <LazySection skeleton={relSkeleton}>
           <RelationList animeId={anime.id} kind="relations" />
         </LazySection>
-        <LazySection delay={450}>
+        <LazySection skeleton={recSkeleton}>
           <RelationList animeId={anime.id} kind="recommendations" />
         </LazySection>
       </div>

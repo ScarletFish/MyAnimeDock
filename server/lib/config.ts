@@ -115,7 +115,7 @@ const DEFAULT_CONFIG: ConfigShape = {
   startupFullscreen: false,
   closeBehavior: 'tray',
   apiSources: [
-    { type: 'bangumi', url: 'https://api.bangumi.lol', key: '' },
+    { type: 'bangumi', url: 'https://api.bgm.tv', key: '' },
     { type: 'anilist', url: '', key: '' },
   ],
   qbPort: 8080,
@@ -173,7 +173,7 @@ function loadConfig(): ConfigShape {
       if (cfg.scrapers.bangumi?.enabled !== false) {
         sources.push({
           type: 'bangumi',
-          url: cfg.scrapers.bangumi?.apiBase || 'https://api.bangumi.lol',
+          url: cfg.scrapers.bangumi?.apiBase || 'https://api.bgm.tv',
           key: '',
         });
       }

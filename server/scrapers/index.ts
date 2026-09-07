@@ -482,7 +482,7 @@ export class ScraperRegistry {
     if (config.scrapers?.bangumi?.enabled !== false) {
       sources.push({
         type: 'bangumi',
-        url: config.scrapers.bangumi?.apiBase || 'https://api.bangumi.lol',
+        url: config.scrapers.bangumi?.apiBase || 'https://api.bgm.tv',
         key: '',
       });
     }

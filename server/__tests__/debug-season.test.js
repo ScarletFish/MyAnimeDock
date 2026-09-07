@@ -24,7 +24,7 @@ const FOLDERS = [
 const CONFIG = {
   apiSources: [
     { type: 'anilist', url: 'https://graphql.anilist.co', key: '' },
-    { type: 'bangumi', url: 'https://api.bangumi.lol', key: '' },
+    { type: 'bangumi', url: 'https://api.bgm.tv', key: '' },
   ],
 };
 

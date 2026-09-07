@@ -13,7 +13,7 @@ class BangumiScraper {
 
   constructor() {
     this.name = 'bangumi';
-    this.apiBase = 'https://api.bangumi.lol';
+    this.apiBase = 'https://api.bgm.tv';
   }
 
   /**

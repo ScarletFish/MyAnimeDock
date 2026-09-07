@@ -8,6 +8,6 @@
   "uiScale": 1,
   "reduceMotion": false,
   "apiSources": [
-    { "type": "bangumi", "url": "https://api.bangumi.lol", "key": "" }
+    { "type": "bangumi", "url": "https://api.bgm.tv", "key": "" }
   ]
 }

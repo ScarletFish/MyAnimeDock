@@ -86,6 +86,15 @@
   let mikanExclude = $state([]);
   let mikanLangOptions = $state([]);
 
+  // tap 自动补全：输入框聚焦且为空时，用 placeholder 里的默认值补全（bind:value 依赖 input 事件同步）
+  function tapFillDefault(e) {
+    const el = e.currentTarget;
+    if (!el.value.trim() && el.placeholder) {
+      el.value = el.placeholder;
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  }
+
   function isRegexValid(r) {
     try {
       new RegExp(r);
@@ -893,7 +902,7 @@
           </div>
           <div class="form-group">
             <label for="bangumiUrl">{tr('settings.bangumiApi')}</label>
-            <input type="text" id="bangumiUrl" placeholder="https://api.bgm.tv" bind:value={bangumiUrl} onblur={() => onFieldBlur('bangumiUrl', bangumiUrl)} class:invalid={fieldErrors.bangumiUrl}>
+            <input type="text" id="bangumiUrl" placeholder="https://api.bgm.tv" bind:value={bangumiUrl} onfocus={tapFillDefault} onblur={() => onFieldBlur('bangumiUrl', bangumiUrl)} class:invalid={fieldErrors.bangumiUrl}>
             {#if fieldErrors.bangumiUrl}<span class="field-error">{fieldErrors.bangumiUrl}</span>{/if}
           </div>
           <div class="form-group">
@@ -1098,7 +1107,7 @@
           <div class="form-group">
             <label>蜜柑计划</label>
             <p class="form-hint mt-0">{tr('settings.mikanMirrorHint')}</p>
-            <input type="text" id="mikanMirror" placeholder="https://mikanime.tv" bind:value={mikanMirror}>
+            <input type="text" id="mikanMirror" placeholder="https://mikanime.tv" bind:value={mikanMirror} onfocus={tapFillDefault}>
           </div>
           <div class="form-group">
             <label>{tr('settings.mikanTagLibrary')}</label>

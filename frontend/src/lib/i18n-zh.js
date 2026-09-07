@@ -199,7 +199,6 @@ export const I18N_ZH = {
   'settings.progressConfirmHint': '观看进度超过90%未标记时',
   'settings.confirmPrompt': '弹窗确认',
   'settings.bangumiApi': 'Bangumi API 地址',
-  'settings.bangumiHint': '默认 api.bangumi.lol，官方源 api.bgm.tv',
   'settings.anilist': 'AniList 双源匹配',
   'settings.enableAnilist': '启用 AniList',
   'settings.anilistBanner': '横幅图',

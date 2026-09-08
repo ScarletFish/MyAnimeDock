@@ -41,6 +41,90 @@ function resolveFolderParsed(anime: any) {
   return fp;
 }
 
+// 磁盘对账纯函数：对比磁盘视频与 DB episodes，标记缺失（读时计算、不持久化）、追加新集、更新 fileSize。
+// 返回是否有需要落盘的变更（新增 / fileSize 变化）。missing 每次全量重算，防止内存对象旧值残留。
+export function reconcileEpisodes(
+  anime: any,
+  diskVideos: { path: string; name: string; size: number }[]
+): boolean {
+  const { isExtraVideo } = require('../scanner') as typeof import('../scanner');
+  const videos = diskVideos.filter((v) => !isExtraVideo(v.name));
+  const episodes: any[] = anime.episodes || [];
+
+  const diskByPath = new Map(videos.map((v) => [v.path, v]));
+  let changed = false;
+
+  // 全量重算 missing，并对比 fileSize（size 变化需要落盘）
+  for (const e of episodes) {
+    const disk = diskByPath.get(e.filePath);
+    if (!disk) {
+      e.missing = true;
+    } else {
+      e.missing = false;
+      if (disk.size !== e.fileSize) {
+        e.fileSize = disk.size;
+        changed = true;
+      }
+    }
+  }
+
+  const existingPaths = new Set(episodes.map((e) => e.filePath));
+  const newFiles = videos.filter((v) => !existingPaths.has(v.path));
+
+  if (newFiles.length > 0) {
+    // 以现有所有记录的 max number 为基准（防清理中间记录后撞唯一索引）
+    const startNum = Math.max(0, ...episodes.map((e) => e.number)) + 1;
+    for (let i = 0; i < newFiles.length; i++) {
+      episodes.push({
+        number: startNum + i,
+        filePath: newFiles[i].path,
+        fileName: newFiles[i].name,
+        fileSize: newFiles[i].size,
+        duration: null,
+        watched: false,
+        progress: 0,
+      });
+    }
+    changed = true;
+  }
+
+  return changed;
+}
+
+// 编号空洞压缩：按当前 number 排序后重排为连续 1..N（watched/progress 跟随文件对象）。
+// 用于删除残留空洞后的自动修正（删除时 + 进详情页读取时），返回 old→new 映射供 playSessions 同步。
+export function renumberEpisodes(anime: any): { oldToNew: Map<number, number>; changed: boolean } {
+  const oldToNew = new Map<number, number>();
+  const episodes: any[] = anime.episodes || [];
+  const sorted = episodes.slice().sort((a: any, b: any) => a.number - b.number);
+  let changed = false;
+  sorted.forEach((e: any, i: number) => {
+    const next = i + 1;
+    if (e.number !== next) changed = true;
+    oldToNew.set(e.number, next);
+    e.number = next;
+  });
+  return { oldToNew, changed };
+}
+
+// 重排后同步该番 playSessions 的集号引用（指向已删/空缺号的会话保留原值，continue-watching 自然回退）。
+export function shiftPlaySessionsForRenumber(
+  data: any,
+  animeId: string,
+  oldToNew: Map<number, number>
+): boolean {
+  let changed = false;
+  for (const s of (data.playSessions || [])) {
+    if (s.animeId !== animeId) continue;
+    const next = oldToNew.get(s.episodeNumber);
+    if (next !== undefined && next !== s.episodeNumber) {
+      s.episodeNumber = next;
+      changed = true;
+    }
+  }
+  return changed;
+}
+
 export async function handleGetAnimeDetail(req: any, res: any, state: ServerState) {
   const { data, db, logger } = state;
   const id = decodeURIComponent(req.url.slice('/api/anime/'.length));
@@ -58,33 +142,40 @@ export async function handleGetAnimeDetail(req: any, res: any, state: ServerStat
 
   enrichAnime(anime, data);
 
-  // 增量检测本地新集：对比文件夹中的视频文件与 DB 中 episodes，有新增则追加
-  if (anime.downloaded && anime.folderPath) {
+  // 磁盘对账：缺失标记（读时计算）、追加新集、更新 fileSize
+  if (anime.folderPath && fs.existsSync(anime.folderPath)) {
     try {
       const { findVideos, isExtraVideo } = require('../scanner') as typeof import('../scanner');
       const videos = await findVideos(anime.folderPath);
       const episodeFiles = videos.filter((v: any) => !isExtraVideo(v.name));
-      const existingPaths = new Set((anime.episodes || []).map((e: any) => e.filePath));
-      const newFiles = episodeFiles.filter((v: any) => !existingPaths.has(v.path));
-      if (newFiles.length > 0) {
-        const startNum = (anime.episodes || []).length;
-        for (let i = 0; i < newFiles.length; i++) {
-          anime.episodes.push({
-            number: startNum + i + 1,
-            filePath: newFiles[i].path,
-            fileName: newFiles[i].name,
-            fileSize: newFiles[i].size,
-            duration: null,
-            watched: false,
-            progress: 0,
-          });
-        }
+      if (reconcileEpisodes(anime, episodeFiles)) {
         db.saveLibrary(data, new Set([anime.id])).catch((e: any) => {
           logger.error('Failed to save episodes after local scan:', e.message);
         });
       }
     } catch (e: any) {
       logger.warn(`Local file scan failed for ${anime.title}: ${e.message}`);
+    }
+  } else if ((anime.episodes || []).length > 0) {
+    // 本地文件夹不存在（未下载/已删）：所有集一律标记缺失（读时计算，不落盘）
+    for (const e of (anime.episodes as any[])) {
+      if (!e.missing) e.missing = true;
+    }
+    // missing 是响应时派生字段，不需要 saveLibrary（无需落盘）
+  }
+
+  // 编号空洞自动修正：读详情页即自愈（历史删除/迁移残留的空洞 → 重排为连续 1..N 并落盘）。
+  // 仅在有旧空洞时触发一次，之后编号连续不再重复落盘。
+  const renum = renumberEpisodes(anime);
+  if (renum.changed) {
+    const sessionsChanged = shiftPlaySessionsForRenumber(data, anime.id, renum.oldToNew);
+    db.saveLibrary(data, new Set([anime.id])).catch((e: any) => {
+      logger.warn(`Failed to persist episode renumber for ${anime.title}: ${e.message}`);
+    });
+    if (sessionsChanged) {
+      db.savePlaySessions(data).catch((e: any) => {
+        logger.warn(`Failed to persist renumbered playSessions for ${anime.title}: ${e.message}`);
+      });
     }
   }
 
@@ -123,6 +214,33 @@ export function handleDeleteAnime(req: any, res: any, state: ServerState) {
 }
 
 // GET /api/anime/:id/sessions is in stats.js
+
+// DELETE /api/anime/:id/episode/:number — 手动清理缺失/残留集
+export async function handleDeleteEpisode(req: any, res: any, state: ServerState) {
+  const { data, db } = state;
+  const m = req.url.match(/\/api\/anime\/(.+?)\/episode\/(\d+)/);
+  if (!m) { jsonResp(res, 400, { error: 'Invalid URL' }); return; }
+  const id = decodeURIComponent(m[1]);
+  const episodeNumber = parseInt(m[2], 10);
+  const anime = data.library.find((a: any) => a.id === id);
+  if (!anime) { jsonResp(res, 404, { error: 'Anime not found' }); return; }
+  if (!(anime.episodes || []).some((e: any) => e.number === episodeNumber)) {
+    jsonResp(res, 404, { error: 'Episode not found' }); return;
+  }
+  try {
+    const removedNumber = episodeNumber;
+    anime.episodes = (anime.episodes || []).filter((e: any) => e.number !== removedNumber);
+    // 重排：删除后按现有顺序重新编号，保持 1..N 连续（填补空洞，集号跟随文件而非旧编号）
+    const renum = renumberEpisodes(anime);
+    // 同步该番播放会话的集号，避免 continue-watching 指向不存在的集号
+    const sessionsChanged = shiftPlaySessionsForRenumber(data, anime.id, renum.oldToNew);
+    await db.saveLibrary(data, new Set([anime.id]));
+    if (sessionsChanged) await db.savePlaySessions(data);
+    jsonResp(res, 200, anime);
+  } catch (e: any) {
+    jsonResp(res, 500, { error: e.message });
+  }
+}
 
 export function handleLibrarySyncStream(req: any, res: any, state: ServerState) {
   const { data, config, db, logger, cancelledSyncSessions } = state;

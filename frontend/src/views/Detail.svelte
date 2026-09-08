@@ -326,6 +326,22 @@
     }
   }
 
+  // ─── 删除缺失集 ───
+  async function deleteEpisode(epNumber) {
+    if (!anime) return;
+    const ok = await showConfirm(tr('detail.confirmDeleteMissing', { num: epNumber, title: escapeHtml(anime.title) }));
+    if (!ok) return;
+    try {
+      const updated = await api.del('/api/anime/' + encodeURIComponent(anime.id) + '/episode/' + epNumber);
+      anime = updated;
+      patchLibraryItem(updated);
+      refreshStats();
+      showToast(tr('detail.epDeleted'), 'success');
+    } catch (e) {
+      showToast(tr('detail.epDeleteFailed', { error: e.message }), 'error');
+    }
+  }
+
   // ─── 同步元数据（打开由父控制，搜索/附加在 SyncModal 内部）───
   function syncBangumiMetadata() {
     if (!anime) return;
@@ -818,7 +834,7 @@
               <span class="episode-count" id="episodeCount">{episodeCount}</span>
             </div>
           </div>
-          <EpisodeHeatmap bind:this={episodeHeatmapRef} anime={anime} episodes={anime.episodes} lastPlayedEp={anime.lastPlayedEp} onPlay={playEpisode} onToggleWatched={toggleWatched} />
+          <EpisodeHeatmap bind:this={episodeHeatmapRef} anime={anime} episodes={anime.episodes} lastPlayedEp={anime.lastPlayedEp} onPlay={playEpisode} onToggleWatched={toggleWatched} onDeleteEpisode={deleteEpisode} />
         </div>
         {#snippet charSkeleton()}
           <SectionSkeleton variant="characters" />

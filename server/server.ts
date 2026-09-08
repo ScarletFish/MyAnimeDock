@@ -321,6 +321,8 @@ const routeTable = [
   { method: 'GET', pattern: /^\/api\/anime\/(.+?)\/relations$/, handler: H.handleAnimeRelations },
   { method: 'GET', pattern: /^\/api\/anime\/(.+?)\/recommendations$/, handler: H.handleAnimeRecommendations },
   { method: 'GET', pattern: /^\/api\/anime\/(.+)$/, handler: H.handleGetAnimeDetail },
+  // order matters: specific episode DELETE must precede generic anime DELETE (generic (.+)$ would swallow it)
+  { method: 'DELETE', pattern: /^\/api\/anime\/(.+?)\/episode\/(\d+)$/, handler: H.handleDeleteEpisode },
   { method: 'DELETE', pattern: /^\/api\/anime\/(.+)$/, handler: H.handleDeleteAnime },
   // Playback
   { method: 'POST', path: '/api/play', handler: H.handlePlay },

@@ -8,9 +8,27 @@
   import { tr } from '../../lib/anime-utils.js';
   import { watchThumb } from '../../lib/thumb-manager.js';
 
-  let { anime = null, episodes = [], lastPlayedEp = null, onPlay, onToggleWatched } = $props();
+  let { anime = null, episodes = [], lastPlayedEp = null, onPlay, onToggleWatched, onDeleteEpisode } = $props();
 
   let gridEl = $state(null);
+
+  function handleCardClick(ep) {
+    if (!ep.missing) {
+      // 正常集：播放
+      onPlay(ep.filePath, ep.progress || 0);
+      return;
+    }
+    // 缺失集：单击 → 父组件弹确认框后删除
+    onDeleteEpisode?.(ep.number);
+  }
+
+  function handleCardContext(e, ep) {
+    e.preventDefault();
+    e.stopPropagation();
+    // 缺失集：右键不操作
+    if (ep.missing) return;
+    onToggleWatched(ep.number, !ep.watched);
+  }
 
   // 暴露给父组件：滚动到指定索引（playEpisodeFromCover 用）
   export function scrollToIndex(idx) {
@@ -148,19 +166,23 @@
       {@const thumbUrl = '/api/thumbnail?path=' + encodeURIComponent(ep.filePath) + '&time=mid'}
       {@const epNum = String(ep.number).padStart(2, '0')}
       {@const epPct = ep.progress > 0 && !ep.watched && ep.duration > 0 ? Math.min(100, Math.max(0, Math.round(ep.progress / ep.duration * 100))) : 0}
+      {@const isMissing = !!ep.missing}
       <div
-        class="episode-card"
+        class="episode-card{isMissing ? ' is-missing-card' : ''}"
         data-index={idx}
         data-ep={ep.number}
-        onclick={() => onPlay(ep.filePath, ep.progress || 0)}
-        oncontextmenu={(e) => { e.preventDefault(); e.stopPropagation(); onToggleWatched(ep.number, !ep.watched); }}
+        onclick={() => handleCardClick(ep)}
+        oncontextmenu={(e) => handleCardContext(e, ep)}
       >
-        <div class="episode-card-thumb">
-          <img class="episode-card-bg" data-src={thumbUrl} data-path={ep.filePath} data-time="mid" alt=""
-               onload={(e) => e.currentTarget.removeAttribute('data-src')}
-               onerror={(e) => e.currentTarget.removeAttribute('data-src')} />
+        <div class="episode-card-thumb{isMissing ? ' is-missing' : ''}">
+          {#if !isMissing}
+            <img class="episode-card-bg" data-src={thumbUrl} data-path={ep.filePath} data-time="mid" alt=""
+                 onload={(e) => e.currentTarget.removeAttribute('data-src')}
+                 onerror={(e) => e.currentTarget.removeAttribute('data-src')} />
+          {/if}
           <div class="episode-card-missing" aria-hidden="true">
-            <svg viewBox="0 0 48 48" fill="currentColor" aria-hidden="true">
+            <!-- 默认占位：花瓣 -->
+            <svg class="episode-card-missing-petal" viewBox="0 0 48 48" fill="currentColor" aria-hidden="true">
               <g transform="rotate(0 24 24)"><ellipse cx="24" cy="15" rx="6.5" ry="11"/></g>
               <g transform="rotate(72 24 24)"><ellipse cx="24" cy="15" rx="6.5" ry="11"/></g>
               <g transform="rotate(144 24 24)"><ellipse cx="24" cy="15" rx="6.5" ry="11"/></g>
@@ -168,18 +190,24 @@
               <g transform="rotate(288 24 24)"><ellipse cx="24" cy="15" rx="6.5" ry="11"/></g>
               <circle cx="24" cy="24" r="4.2" fill="var(--bg-surface)"/>
             </svg>
+            <!-- hover 可删信号：垃圾桶取代花瓣（点击卡片弹确认框） -->
+            <svg class="episode-card-missing-trash" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+            </svg>
           </div>
           <div class="episode-card-overlay"></div>
           <div class="episode-card-num">{epNum}</div>
-          {#if ep.watched}
+          {#if ep.watched && !isMissing}
             <div class="episode-card-watched">{tr('detail.watchedTag')}</div>
           {/if}
-          {#if epPct > 0}
+          {#if epPct > 0 && !isMissing}
             <div class="episode-card-progress-bar"><div class="episode-card-progress-fill" style="width: {epPct}%"></div></div>
           {/if}
-          <button class="episode-card-play" onclick={(e) => { e.stopPropagation(); onPlay(ep.filePath, ep.progress || 0); }}>
-            <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg>
-          </button>
+          {#if !isMissing}
+            <button class="episode-card-play" onclick={(e) => { e.stopPropagation(); onPlay(ep.filePath, ep.progress || 0); }}>
+              <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+            </button>
+          {/if}
         </div>
         <div class="episode-card-info">
           <div class="episode-card-title" data-tooltip={epTitle}>{epTitle}</div>

@@ -240,3 +240,41 @@
   text-overflow: ellipsis;
   line-height: 1.35;
 }
+
+/* ─── Missing Episode: deletable signal ─── */
+/* Hover on a missing card shows the delete visual (red border + red icon) — no play signal. */
+.episode-card.is-missing-card:hover {
+  border-color: var(--error);
+  box-shadow:
+    0 0 0 1px var(--error),
+    0 0 24px rgba(var(--error-rgb), var(--alpha-strong));
+}
+/* 缺失占位图标：默认花瓣；hover 切换为垃圾桶（可删信号）。
+   两个 SVG 在卡片正中心重叠，hover 交叉淡入淡出。 */
+.episode-card-missing-petal,
+.episode-card-missing-trash {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  transition: opacity 0.3s var(--ease-out);
+}
+.episode-card-missing svg.episode-card-missing-trash {
+  opacity: 0;
+}
+.episode-card.is-missing-card:hover .episode-card-missing-petal {
+  opacity: 0;
+}
+.episode-card.is-missing-card:hover .episode-card-missing-trash {
+  opacity: 1;
+}
+/* Hover: missing placeholder icon turns red to signal deletable */
+.episode-card.is-missing-card:hover .episode-card-missing {
+  background:
+    radial-gradient(130% 130% at 30% 20%, rgba(var(--error-rgb), var(--alpha-subtle)), transparent 60%),
+    linear-gradient(145deg, rgba(var(--error-rgb), var(--alpha-faint)), transparent 55%),
+    var(--bg-surface);
+  color: var(--error);
+}
+.episode-card.is-missing-card:hover .episode-card-missing svg {
+  filter: drop-shadow(0 0 calc(8px * var(--scale)) rgba(var(--error-rgb), var(--alpha-strong)));
+}

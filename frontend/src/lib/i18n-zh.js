@@ -507,6 +507,9 @@ export const I18N_ZH = {
   'detail.episodeCountLocal': '{{localCount}} 集',
   'detail.episodeNumber': '第{{number}}集',
   'detail.watchedTag': '已看',
+  'detail.confirmDeleteMissing': '确定删除「{{title}}」缺失的第 {{num}} 集吗？删除后观看记录将一并移除。',
+  'detail.epDeleted': '已删除缺失集',
+  'detail.epDeleteFailed': '删除失败: {{error}}',
   'detail.loading': '加载中...',
   'detail.minutes': '{{minutes}} 分钟',
 

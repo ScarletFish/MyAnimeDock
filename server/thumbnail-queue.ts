@@ -51,6 +51,8 @@ class ThumbnailQueue {
   _activePlays: Map<unknown, unknown>;
   _drainTimer: NodeJS.Timeout | null = null;
   _concurrency = 4;
+  /** 详情页流程排查开关读取器：返回当前 debugDetailFlow（延迟求值，追随配置变更） */
+  _debugDetailFlow: (() => boolean) | undefined;
   /** single-flight：thumbPath -> 进行中的 Promise，同 thumbPath 并发请求共享一次生成 */
   _ongoing: Map<string, Promise<string>> = new Map();
   /** 已入队（含生成中）的 thumbPath，用于入队去重 */
@@ -60,9 +62,11 @@ class ThumbnailQueue {
 
   /**
    * @param activePlays — server.js 的 activePlays Map，用于空闲检测
+   * @param debugDetailFlow — 可选；返回当前 debugDetailFlow 开关状态（详情页流程排查）
    */
-  constructor(activePlays: Map<unknown, unknown>) {
+  constructor(activePlays: Map<unknown, unknown>, debugDetailFlow?: () => boolean) {
     this._activePlays = activePlays;
+    this._debugDetailFlow = debugDetailFlow;
   }
 
   /**
@@ -74,6 +78,9 @@ class ThumbnailQueue {
    */
   enqueue(anime: any, prepend = false): void {
     if (!anime?.episodes) return;
+    if (this._debugDetailFlow?.()) {
+      console.log(`[thumb-queue] ${JSON.stringify({ animeId: anime.id, priority: prepend ? 'high' : 'background', queueLen: this._queue.length })}`);
+    }
     let added = 0;
     for (const ep of anime.episodes) {
       if (!ep.filePath || !fs.existsSync(ep.filePath)) continue;
@@ -303,12 +310,24 @@ class ThumbnailQueue {
         for (const item of batch) {
           this._enqueuedThumbs.delete(this._thumbPathFor(item.filePath, item.cacheKey ?? THUMB_HASH_SEED));
         }
+        const tBatch = Date.now();
         await Promise.all(batch.map(item => this._generate(item)));
+        if (this._debugDetailFlow?.()) {
+          console.log(`[thumb-batch] ${JSON.stringify({ batchMs: Date.now() - tBatch, pending: this._queue.length })}`);
+        }
       }
     } finally {
       this._processing = false;
     }
     logger.info('Thumbnail queue drained');
+  }
+
+  /** 单张缩略图落盘/收尾同步段耗时打点（仅 >20ms 的才打，避免每张刷屏；debugDetailFlow 门控） */
+  _logThumbWrite(item: ThumbItem, t0: number): void {
+    const ms = Date.now() - t0;
+    if (ms > 20 && this._debugDetailFlow?.()) {
+      console.log(`[thumb-write] ${JSON.stringify({ animeId: item.animeId ?? null, ms })}`);
+    }
   }
 
   /** 生成完成/失败后统一结算：resolve/reject 等待方并清理去重集合 */
@@ -388,18 +407,24 @@ class ThumbnailQueue {
           const luma = await this._probeLuminance(thumbPath);
           if (luma === null) {
             // 亮度探测失败 → 无法验证，视为失败，不留下未验证帧
+            const tW = Date.now();
             _cleanupZeroByte(thumbPath);
             this._settle(item, null, new Error('luminance probe failed'));
+            this._logThumbWrite(item, tW);
             return resolve();
           }
           if (luma >= THUMB_BLACK_LUMA) {
             // 非黑帧，采纳
+            const tW = Date.now();
             this._settle(item, thumbPath, null);
+            this._logThumbWrite(item, tW);
             return resolve();
           }
           // 黑屏 → 清除并 +1s 重采
           logger.warn(`Black thumbnail (YAVG=${luma.toFixed(1)}) at ${t}s, retrying ${filePath}`);
+          const tW = Date.now();
           if (fs.existsSync(thumbPath)) fs.unlinkSync(thumbPath);
+          this._logThumbWrite(item, tW);
           t += 1;
         }
         // 全部黑屏

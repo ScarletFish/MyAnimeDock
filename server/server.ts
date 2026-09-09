@@ -94,9 +94,9 @@ process.on('uncaughtException', (err: any) => {
 let pendingNotifications: any[] = [];
 const activePlays = new Map();
 const cancelledSyncSessions = new Map();
-const thumbnailQueue = new ThumbnailQueue(activePlays);
-const sseClients = new Set(); // SSE 连接池，用于推送 mpv-status 等事件
 let config: any = loadConfig();
+const thumbnailQueue = new ThumbnailQueue(activePlays, () => !!config.debugDetailFlow);
+const sseClients = new Set(); // SSE 连接池，用于推送 mpv-status 等事件
 let data: any;
 let startupTime: any;
 
@@ -142,17 +142,17 @@ const H: any = Object.assign(
 );
 
 // ── 内联 handler（封面、静态文件、CORS）──
-function handleCoverImage(req: any, res: any, _state: any) {
+function handleCoverImage(req: any, res: any, state: ServerState) {
   const urlPath = new URL(req.url, 'http://localhost').pathname;
   const coverPath = path.join(DATA_DIR, decodeURIComponent(urlPath));
-  serveImage(coverPath, req.url, res);
+  serveImage(coverPath, req.url, res, false, !!state.config?.debugDetailFlow);
 }
 
-function handleBannerImage(req: any, res: any, _state: any) {
+function handleBannerImage(req: any, res: any, state: ServerState) {
   const urlPath = new URL(req.url, 'http://localhost').pathname;
   const bannerPath = path.join(DATA_DIR, decodeURIComponent(urlPath));
   fs.stat(bannerPath, (err, stats) => {
-    if (err) { serveImage(bannerPath, req.url, res, true); return; }
+    if (err) { serveImage(bannerPath, req.url, res, true, !!state.config?.debugDetailFlow); return; }
     const etag = `"${stats.size}-${stats.mtimeMs}"`;
     if (req.headers['if-none-match'] === etag) {
       res.writeHead(304);
@@ -160,7 +160,7 @@ function handleBannerImage(req: any, res: any, _state: any) {
       return;
     }
     res.setHeader('ETag', etag);
-    serveImage(bannerPath, req.url, res, true);
+    serveImage(bannerPath, req.url, res, true, !!state.config?.debugDetailFlow);
   });
 }
 
@@ -275,14 +275,30 @@ function handleCorsPreflight(req: any, res: any) {
   res.end();
 }
 
-function handleStaticFiles(req: any, res: any, _state: any) {
+function handleStaticFiles(req: any, res: any, state: ServerState) {
   const urlPath = new URL(req.url, 'http://localhost').pathname;
   let filePath = path.join(ASSET_DIR, 'frontend', 'dist', decodeURIComponent(urlPath));
   if (fs.existsSync(filePath) && fs.statSync(filePath).isDirectory()) {
     filePath = path.join(filePath, 'index.html');
   }
+  const t0 = Date.now();
+  const debugDetailFlow = !!state.config?.debugDetailFlow;
+  // 只记两类静态请求：index.html / 耗时 >200ms（同受 debugDetailFlow 门控）
+  const trackable = debugDetailFlow && (filePath.endsWith('index.html') || urlPath === '/');
+  let logged = false;
+  const logStatic = () => {
+    if (!trackable || logged) return;
+    logged = true;
+    const ms = Date.now() - t0;
+    if (urlPath === '/' || filePath.endsWith('index.html')) {
+      console.log(`[static-html] ${JSON.stringify({ path: urlPath, ms })}`);
+    } else if (ms > 200) {
+      console.log(`[static-slow] ${JSON.stringify({ path: urlPath, ms })}`);
+    }
+  };
   fs.readFile(filePath, (e: any, d: any) => {
     if (e) {
+      logStatic();
       bootLog(`STATIC 404: ${filePath} (ASSET_DIR=${ASSET_DIR}, url=${req.url})`);
       res.writeHead(404); res.end('Not found'); return;
     }
@@ -293,6 +309,7 @@ function handleStaticFiles(req: any, res: any, _state: any) {
       'Cache-Control': cacheCtrl,
     });
     res.end(d);
+    logStatic();
   });
 }
 
@@ -302,6 +319,7 @@ const routeTable = [
   { method: 'GET', path: '/api/config', handler: H.handleGetConfig },
   { method: 'POST', path: '/api/config', handler: H.handlePostConfig },
   { method: 'POST', path: '/api/config/validate', handler: H.handleConfigValidate },
+  { method: 'POST', path: '/api/debug-log', handler: H.handleDebugLog },
   
   { method: 'GET', path: '/api/notifications', handler: H.handleGetNotifications },
   // Discovery
@@ -388,7 +406,11 @@ const routeTable = [
 ];
 
 // ── HTTP 服务器 ──
-let server: any;
+// IPv6 回退修复:Chromium 解析 localhost 先试 ::1;若 server 仅监听 127.0.0.1,
+// 每次新连接都会先连 ::1 失败再回退 127.0.0.1(≈300ms 黑洞,表现为此前偶发 ~330ms 卡顿)。
+// 双实例分别监听两个回环地址(仅本机,不暴露局域网),修复该问题。
+let server: any;    // IPv4 实例(export/makeState 引用)
+let serverV6: any;  // IPv6 实例
 
 function makeState(): ServerState {
   return {
@@ -399,7 +421,7 @@ function makeState(): ServerState {
   };
 }
 
-server = http.createServer((req: any, res: any) => {
+function handleRequest(req: any, res: any) {
   const urlPath = new URL(req.url, 'http://localhost').pathname;
 
   for (const route of routeTable) {
@@ -424,7 +446,10 @@ server = http.createServer((req: any, res: any) => {
 
   // No API match → try static files
   handleStaticFiles(req, res, makeState());
-});
+}
+
+server = http.createServer(handleRequest);
+serverV6 = http.createServer(handleRequest);
 
 
 
@@ -487,10 +512,32 @@ function migrateLegacyDataPaths(data: any): boolean {
   return changed;
 }
 
+// ── 事件循环心跳探测（debugDetailFlow 开启时启动）──
+// setInterval 回调本身若被同步代码阻塞，Date.now() 差分 gap 自动变大 → 直接量出阻塞时长。
+// 不能用递归 setTimeout 防漂移：就是要让 gap 反映真实事件循环延迟。
+let lastBeatAt = 0;
+function startEventLoopBeat(): void {
+  if (!config.debugDetailFlow) return;
+  lastBeatAt = 0;
+  setInterval(() => {
+    const now = Date.now();
+    const gap = lastBeatAt ? now - lastBeatAt - 1000 : 0;
+    lastBeatAt = now;
+    if (gap > 80) {
+      console.log(`[beat-gap] ${JSON.stringify({ gapMs: Math.round(gap), from: now - gap, to: now })}`);
+    }
+    console.log(`[beat] ${JSON.stringify({ t: now, gapMs: Math.max(0, gap) })}`);
+  }, 1000);
+}
+
 // ── 初始化 ──
 async function init() {
   const startTime = Date.now();
   startupTime = startTime;
+
+  // 详情页流程排查：开启心跳 + 同步落库耗时打点
+  db.setDebugSyncLog(!!config.debugDetailFlow);
+  startEventLoopBeat();
 
   // Phase 1: Parallel init
   await db.ensureSchema().catch((e: any) => logger.warn('Schema ensure skipped:', e.message));
@@ -562,8 +609,24 @@ async function init() {
     const candidate = BASE_PORT + i;
     try {
       await new Promise<void>((resolve, reject) => {
-        const s = server.listen(candidate, '127.0.0.1', () => { actualPort = candidate; resolve(); });
-        s.on('error', (e: any) => { if (e.code === 'EADDRINUSE') reject(e); else reject(e); });
+        let ready = 0;
+        let failed = false;
+        const onError = (e: any) => {
+          if (failed) return;
+          failed = true;
+          // 两个实例都要尝试绑定;任一失败则整个 candidate 放弃
+          try { server.close(); } catch { /* not listening */ }
+          try { serverV6.close(); } catch { /* not listening */ }
+          reject(e);
+        };
+        const onListening = () => {
+          ready++;
+          if (ready === 2) { actualPort = candidate; resolve(); }
+        };
+        server.once('error', onError);
+        serverV6.once('error', onError);
+        server.listen(candidate, '127.0.0.1', onListening);
+        serverV6.listen(candidate, '::1', onListening);
       });
       break;
     } catch (e: any) {

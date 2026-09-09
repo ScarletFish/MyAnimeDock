@@ -126,10 +126,16 @@ export function shiftPlaySessionsForRenumber(
 }
 
 export async function handleGetAnimeDetail(req: any, res: any, state: ServerState) {
-  const { data, db, logger } = state;
+  const { data, db, logger, config } = state;
+  const t0 = Date.now();
+  const debug = !!config.debugDetailFlow;
   const id = decodeURIComponent(req.url.slice('/api/anime/'.length));
   const anime = data.library.find((a: any) => a.id === id);
   if (!anime) { jsonResp(res, 404, { error: 'Anime not found' }); return; }
+
+  if (debug) {
+    console.log(`[detail-open] ${JSON.stringify({ phase: 'enter', t0, id, hasLocalFiles: !!anime.folderPath && fs.existsSync(anime.folderPath) })}`);
+  }
 
   // 检测文件存在性，不一致时写 DB（懒维护 downloaded 字段）
   const fileExists = !!anime.folderPath && fs.existsSync(anime.folderPath);
@@ -144,6 +150,7 @@ export async function handleGetAnimeDetail(req: any, res: any, state: ServerStat
 
   // 磁盘对账：缺失标记（读时计算）、追加新集、更新 fileSize
   if (anime.folderPath && fs.existsSync(anime.folderPath)) {
+    const tScan = Date.now();
     try {
       const { findVideos, isExtraVideo } = require('../scanner') as typeof import('../scanner');
       const videos = await findVideos(anime.folderPath);
@@ -155,6 +162,9 @@ export async function handleGetAnimeDetail(req: any, res: any, state: ServerStat
       }
     } catch (e: any) {
       logger.warn(`Local file scan failed for ${anime.title}: ${e.message}`);
+    }
+    if (debug) {
+      console.log(`[detail-open] ${JSON.stringify({ phase: 'findVideos', id, ms: Date.now() - tScan })}`);
     }
   } else if ((anime.episodes || []).length > 0) {
     // 本地文件夹不存在（未下载/已删）：所有集一律标记缺失（读时计算，不落盘）
@@ -177,6 +187,10 @@ export async function handleGetAnimeDetail(req: any, res: any, state: ServerStat
         logger.warn(`Failed to persist renumbered playSessions for ${anime.title}: ${e.message}`);
       });
     }
+  }
+
+  if (debug) {
+    console.log(`[detail-open] ${JSON.stringify({ phase: 'send', id, totalMs: Date.now() - t0 })}`);
   }
 
   jsonResp(res, 200, anime);

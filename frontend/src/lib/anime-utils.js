@@ -2,6 +2,7 @@
 // 从 Library.svelte / Mylist.svelte 抽出的可复用积木。
 
 import { showDetail } from './router.js';
+import { __debug } from './debug.js';
 export { API as api } from './api.js';
 
 // i18n 辅助（复用全局 t()）
@@ -49,6 +50,7 @@ export function todayStr() {
 }
 
 export function navigateToDetail(id, el, source) {
+  __debug.log('nav-detail', 'enter', { animeId: id });
   const img = el.querySelector('img');
   let rect = null;
   let imgSrc = null;
@@ -57,6 +59,7 @@ export function navigateToDetail(id, el, source) {
     if (rect.width && rect.height) imgSrc = img.currentSrc || img.src;
   }
   if (!rect) rect = el.getBoundingClientRect();
+  __debug.log('nav-detail', 'rect-ready', { hasImg: !!img && img.naturalWidth > 0 });
   showDetail(id, rect, imgSrc, source);
 }
 

@@ -95,6 +95,9 @@ export interface ConfigShape {
   // 蜜柑订阅默认必选项 / 排除项（key 列表）
   mikanDefaultRequired: string[];
   mikanDefaultExcluded: string[];
+  // 详情页流程性能排查开关（运行时字段，仅测试用）：开启后输出 detail-open/static-slow/
+  // cover-resized/thumb-queue 等打点日志用于"生产模式偶发白屏"排查。默认关闭（未开启时零额外日志）。
+  debugDetailFlow?: boolean;
   // 运行时由 server.ts / routes 注入的字段（可选）
   reduceMotion?: boolean;
   bangumiAccessToken?: string;

@@ -231,9 +231,9 @@ function handleMpvStatus(req: any, res: any, state: State) {
 // ETag + no-cache 重新验证缩略图：磁盘上的缩略图可能被重新生成（如黑屏重试），
 // 若用 max-age 强缓存，浏览器会缓存旧图（旧黑图）长达 24h 且无法更新（WebView2 持久化）。
 // 参考 handleBannerImage 的 banner 模式：文件变了返回新图，没变返回 304。
-function serveThumbWithRevalidate(req: any, res: any, filePath: string, url: string): void {
+function serveThumbWithRevalidate(req: any, res: any, filePath: string, url: string, debugDetailFlow = false): void {
   fs.stat(filePath, (err, stats) => {
-    if (err) { serveImage(filePath, url, res, true); return; }
+    if (err) { serveImage(filePath, url, res, true, debugDetailFlow); return; }
     const etag = `"${stats.size}-${stats.mtimeMs}"`;
     if (req.headers['if-none-match'] === etag) {
       res.writeHead(304);
@@ -241,7 +241,7 @@ function serveThumbWithRevalidate(req: any, res: any, filePath: string, url: str
       return;
     }
     res.setHeader('ETag', etag);
-    serveImage(filePath, url, res, true);
+    serveImage(filePath, url, res, true, debugDetailFlow);
   });
 }
 
@@ -249,6 +249,7 @@ function handleThumbnail(req: any, res: any, state: State) {
   const params = new URL(req.url, 'http://localhost').searchParams;
   const videoPath = params.get('path');
   const timeRaw = params.get('time');
+  const debugDetailFlow = !!state.config?.debugDetailFlow;
   logger.debug(`[THUMB-DEBUG] req.url=${req.url}`);
   logger.debug(`[THUMB-DEBUG] videoPath=${videoPath} timeRaw=${timeRaw}`);
   logger.debug(`[THUMB-DEBUG] exists=${videoPath ? fs.existsSync(videoPath) : 'n/a'}`);
@@ -258,7 +259,7 @@ function handleThumbnail(req: any, res: any, state: State) {
     // 与缩略图队列共享缓存键：命中直接返回，避免重复跑 ffmpeg + 时长探测
     const cached = _thumbPath(videoPath, THUMB_HASH_SEED);
     logger.debug(`[THUMB-DEBUG] mid cached=${fs.existsSync(cached)} path=${cached}`);
-    if (fs.existsSync(cached)) { serveThumbWithRevalidate(req, res, cached, req.url); return; }
+    if (fs.existsSync(cached)) { serveThumbWithRevalidate(req, res, cached, req.url, debugDetailFlow); return; }
     // 冷缓存：绝不等待生成。立即 202，由队列闸门后台生成（status 端点可查询进度）。
     // 不传 time → 队列内部探测时长取中点（mid 语义），缓存键沿用 THUMB_HASH_SEED。
     if (state.thumbnailQueue) {
@@ -273,7 +274,7 @@ function handleThumbnail(req: any, res: any, state: State) {
     if (Number.isNaN(time)) { jsonResp(res, 400, { error: 'invalid time' }); return; }
     logger.debug(`[THUMB-DEBUG] exit time=${time} cacheKey=${String(time)}`);
     const cached = _thumbPath(videoPath, String(time));
-    if (fs.existsSync(cached)) { serveThumbWithRevalidate(req, res, cached, req.url); return; }
+    if (fs.existsSync(cached)) { serveThumbWithRevalidate(req, res, cached, req.url, debugDetailFlow); return; }
     // 自定义 time 也走统一队列（single-flight + 并发闸门）；冷缓存立即 202，不挂等。
     if (state.thumbnailQueue) {
       res.setHeader('Cache-Control', 'no-store');

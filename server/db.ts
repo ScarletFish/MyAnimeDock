@@ -24,6 +24,13 @@ if (process.pkg) {
 }
 const logger: Logger = require('./logger').child('[DB]');
 
+// ── 详情页流程排查：同步落库耗时打点开关 ──
+// 由 server.ts 启动时按 config.debugDetailFlow 设置；关闭时零额外日志/零行为变化。
+let debugSyncLog = false;
+function setDebugSyncLog(v: boolean): void {
+  debugSyncLog = v;
+}
+
 // 数据目录：pkg 模式在 %APPDATA%/MyAnimeDock（可写），开发模式在项目根 data/（与 lib/config.ts 对齐）
 const DATA_DIR = process.pkg
   ? path.join(process.env.APPDATA || process.env.HOME || '.', 'MyAnimeDock')
@@ -398,6 +405,12 @@ function upsertAnime(d: any, id: any, data: any) {
 
 async function saveLibrary(data: any, changedIds: any = null) {
   if (!data) return;
+  const t0 = Date.now();
+  const dbLog = (phase: 'start' | 'done' | 'error') => {
+    if (!debugSyncLog) return;
+    console.log(`[db-save] ${JSON.stringify({ phase, ids: changedIds?.size ?? 'full', animeCount: data.library?.length, ms: Date.now() - t0 })}`);
+  };
+  dbLog('start');
   try {
     const d = getDb();
     const txn = d.transaction((dataInner: any, changedIdsInner: any) => {
@@ -513,7 +526,9 @@ async function saveLibrary(data: any, changedIds: any = null) {
     txn(data, changedIds);
     const savedCount = changedIds ? changedIds.size : data.library.length;
     logger.info(`Synced library: ${savedCount} anime${changedIds ? ` (incremental, ${data.library.length} total)` : ''}`);
+    dbLog('done');
   } catch (e: any) {
+    dbLog('error');
     logger.error('SQLite library save error:', e.message);
     throw e;
   }
@@ -615,6 +630,12 @@ async function updateMyItemStatus(animeId: any, status: any) {
 
 async function savePlaySessions(data: any) {
   if (!data) return;
+  const t0 = Date.now();
+  const dbLog = (phase: 'start' | 'done' | 'error') => {
+    if (!debugSyncLog) return;
+    console.log(`[db-write] ${JSON.stringify({ phase, count: (data.playSessions || []).length, ms: Date.now() - t0 })}`);
+  };
+  dbLog('start');
   try {
     const d = getDb();
     const txn = d.transaction((dataInner: any) => {
@@ -651,7 +672,9 @@ async function savePlaySessions(data: any) {
     });
 
     txn(data);
+    dbLog('done');
   } catch (e: any) {
+    dbLog('error');
     logger.error('SQLite playSessions save error:', e.message);
     throw e;
   }
@@ -840,6 +863,7 @@ export {
   clearSessions,
   vacuum,
   reset,
+  setDebugSyncLog,
   getMikanSubscription,
   getMikanSubscriptionById,
   getMikanSubscriptionsByBgmId,

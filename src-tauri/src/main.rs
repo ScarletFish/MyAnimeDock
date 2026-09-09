@@ -460,6 +460,15 @@ fn main() {
                 .resizable(true)
                 .decorations(false)
                 .background_color(bg_color)
+                // WebView2：additional_browser_args 为"替换"语义，必须补回 wry 默认 features；
+                // 防闲置节流——本应用无轮询流量，闲置 ~26s 后浏览器网络栈休眠，
+                // 首个请求内部排队 ~330ms 才发出（reqDelay↑, connTime=0，后端全程无辜）
+                .additional_browser_args(
+                    "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection \
+                     --disable-background-timer-throttling \
+                     --disable-renderer-backgrounding \
+                     --disable-backgrounding-occluded-windows",
+                )
                 .visible(false)
                 .build()
                 {

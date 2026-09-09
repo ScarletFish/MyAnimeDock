@@ -50,6 +50,7 @@
   import { refreshStats } from './Library.svelte';
   import { refreshDiscovery } from './Discovery.svelte';
   import { showView } from '../lib/router.js';
+  import { __debug } from '../lib/debug.js';
   import { titlebarContext } from '../components/chrome/Titlebar.svelte';
   import { API as api } from '../lib/api.js';
 
@@ -154,8 +155,39 @@
 
   async function loadAndShow(id, fromRect, fromSrc) {
     resetDetailEnter();
+    __debug.openDetail(id);
+    let tFetchStart = 0; // performance.now() 基准（高精度 fetch 全程）
     try {
+      tFetchStart = performance.now();
+      if (__debug.enabled) performance.clearResourceTimings(); // 清空缓冲：只留本轮 fetch 条目，避免热条被顶出后 .at(-1) 抓到陈旧条目
+      __debug.log('detail', 'fetch-start', { id, perf: Math.round(tFetchStart) });
       anime = await api.get('/api/anime/' + encodeURIComponent(id));
+      const fetchDt = Math.round(performance.now() - tFetchStart); // 纯 fetch 时长（resolve 一到即算，不受下方 50ms 等待污染）
+      // Resource Timing 测量（仅调试开启时）：等 resourcetiming buffer 落入条目后
+      // 读最近一次 /api/anime/ 请求，全部字段相对 tFetchStart 取整，不泄漏绝对时间戳。
+      if (__debug.enabled) {
+        await new Promise((r) => setTimeout(r, 50)); // 让 resource timing entry 落定时缓冲区
+        const e = performance.getEntriesByType('resource')
+          .filter((x) => x.name.endsWith('/api/anime/' + id)).at(-1); // 精确后缀匹配，排除 /sessions 等
+        const rtMs = Math.round(performance.now() - tFetchStart);
+        if (e) {
+          __debug.log('detail', 'res-timing', {
+            ms: __debug.ms(),
+            dt: rtMs, // 含 50ms 等待的总耗时
+            fetchDt, // 纯 fetch 时长（无等待），与 dt 对照
+            entryName: e.name.slice(0, 120),
+            initiatorType: e.initiatorType,
+            reqDelay: Math.round(e.requestStart - tFetchStart), // fetch 调用→真正发出（内含浏览器内部排队）
+            connTime: Math.round((e.connectEnd || 0) - (e.connectStart || 0)), // 重建连接耗时，复用连接为 0
+            respDelay: Math.round(e.responseStart - tFetchStart), // 到收到首字节总耗时
+            duration: Math.round(e.duration), // 资源全程
+            xferSize: e.transferSize,
+          });
+        } else {
+          __debug.log('detail', 'res-timing-miss', { ms: __debug.ms(), dt: rtMs, fetchDt });
+        }
+      }
+      __debug.log('detail', 'data-ready', { ms: __debug.ms(), dt: fetchDt });
       if (anime && anime.downloaded === false && !get(ignoreLocalFileMissing)) {
         showToast(tr('detail.fileMissing'), 'warning');
       }
@@ -163,8 +195,10 @@
       coverFailed = false;
       tagsExpanded = false;
       enterActive = true;
+      __debug.log('detail', 'enter-active', { ms: __debug.ms() });
       await tick(); // Svelte 渲染 DOM，img 进 DOM 开始加载
       detailReady = true; // DOM 就绪，显示视图（与旧版 showView 时序一致）
+      __debug.log('detail', 'ready', { ms: __debug.ms() });
       await tick(); // 等 detailReady 的 DOM 更新 flush，动画起点/终点 rect 才能拿到正确布局
       if (fromRect) {
         // 从卡片点击进入：hero 封面展开动画接管 cover 可见性
@@ -175,6 +209,7 @@
         if (wrap) { wrap.style.opacity = '1'; wrap.style.transform = 'scale(1)'; }
         setEntranceDelays(0.04, 0);
         showContent = true;
+        __debug.log('detail', 'show-content', { ms: __debug.ms() });
       }
       if ($pendingFinishAnimeId === id) {
         pendingFinishAnimeId.set(null);
@@ -186,6 +221,7 @@
         if (ep) setTimeout(() => playEpisode(ep.filePath, ep.progress), 400);
       }
     } catch (e) {
+      __debug.log('detail', 'load-failed', { ms: __debug.ms(), dt: Math.round(performance.now() - tFetchStart), error: String(e) });
       showToast(tr('detail.loadFailed', { error: e.message }), 'error');
     }
   }
@@ -461,6 +497,8 @@
   async function slideToAnime(id, direction) {
     if (isSliding) return;
     isSliding = true;
+    __debug.openDetail(id);
+    __debug.log('detail', 'nav-slide', { direction, ms: __debug.ms() });
     const navOverlay = document.getElementById('svelte-detailNavOverlay');
     if (navOverlay) navOverlay.style.pointerEvents = 'none';
     resetDetailNav();
@@ -539,6 +577,7 @@
       }
       setEntranceDelays(0.04, 0);
       showContent = true;
+      __debug.log('detail', 'show-content', { ms: __debug.ms(), nav: true });
     } catch (err) {
       // 调试：定位左右切换白屏根因（#key 重建期间子组件抛错会中断本流程）
       console.error('[Detail] slideToAnime apply phase error:', err);
@@ -633,6 +672,7 @@
   }
 
   async function animateHeroCoverFlip(fromRect, fromSrc) {
+    __debug.log('detail', 'anim-start', { ms: __debug.ms() });
     const wrap = document.getElementById('svelte-detailCover');
     const img = wrap ? wrap.querySelector('img') : null;
     if (wrap) { wrap.style.visibility = 'hidden'; wrap.style.opacity = '0'; }
@@ -669,10 +709,12 @@
       // 若不延迟，任一同步读都会在动画启动前强制整树布局（旧 getBR 48ms / gsap.set 61ms）。
       // 起点 fromRect / 终点 toRect 布局稳定，一次测量即可，每帧不重复测量。
       await nextFrame();
+      __debug.log('detail', 'raf-gate-passed', { ms: __debug.ms() });
       gsap.set(hero, { transformOrigin: '0 0' });
       setEntranceDelays(0.05, 0.04);
       const toRect = wrap ? wrap.getBoundingClientRect() : { left: 0, top: 0, width: 0, height: 0 };
       showContent = true;
+      __debug.log('detail', 'show-content', { ms: __debug.ms() });
       gsap.to(hero, {
         x: toRect.left - fromRect.left,
         y: toRect.top - fromRect.top,
@@ -688,7 +730,9 @@
       hero.remove();
       if (wrap) { wrap.style.visibility = ''; wrap.style.opacity = '1'; }
       await nextFrame();
+      __debug.log('detail', 'raf-gate-passed', { ms: __debug.ms() });
       showContent = true;
+      __debug.log('detail', 'show-content', { ms: __debug.ms() });
       setEntranceDelays(0.04, 0);
     }
   }

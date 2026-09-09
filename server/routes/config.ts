@@ -217,9 +217,54 @@ async function handleConfigValidate(req: any, res: any, _state: State) {
     }
 }
 
+// ── 调试日志端点：接收前端打点并落盘（仅 debugDetailFlow 开启时生效）──
+// 用于"生产模式偶发白屏"排查：前端把详情页打开时间线上的耗时打点发到这里，
+// 后端统一输出为 [debug-log] JSON 单行日志（pkg 模式重定向进 %APPDATA%/MyAnimeDock/server.log）。
+export interface DebugLogEntry {
+  tag: string;
+  ts: number;
+  ms: number;
+  msg: string;
+}
+
+async function handleDebugLog(req: any, res: any, state: State) {
+  // 开关关闭时 204 静默丢弃，零生产影响
+  if (!state.config?.debugDetailFlow) {
+    res.writeHead(204);
+    res.end();
+    return;
+  }
+  try {
+    const raw = await readBody(req);
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== 'object' || parsed === null) {
+      res.writeHead(204);
+      res.end();
+      return;
+    }
+    const body = parsed as { tag?: unknown; ts?: unknown; ms?: unknown; msg?: unknown };
+    if (
+      typeof body.tag !== 'string' ||
+      typeof body.ts !== 'number' ||
+      typeof body.ms !== 'number' ||
+      typeof body.msg !== 'string'
+    ) {
+      res.writeHead(204);
+      res.end();
+      return;
+    }
+    console.log(`[frontend:${body.tag}] ${JSON.stringify({ ts: body.ts, ms: body.ms, msg: body.msg })}`);
+  } catch {
+    // 解析失败：丢弃
+  }
+  res.writeHead(204);
+  res.end();
+}
+
 export {
     handleGetConfig,
     handleGetNotifications,
     handlePostConfig,
     handleConfigValidate,
+    handleDebugLog,
 };

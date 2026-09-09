@@ -34,6 +34,10 @@ export function showView(view) {
   const prevView = currentView;
   __skipViewEnter = prevView === 'detail' && (view === 'library' || view === 'mylist');
 
+  if (view === 'detail') {
+    __debug.log('router', 'showView-detail', { from: prevView });
+  }
+
   // Save library/mylist scroll BEFORE toggling view visibility
   if (currentView === 'library' && view !== 'library' && mc) {
     libraryScrollTop = mc.scrollTop;
@@ -70,6 +74,8 @@ export function showView(view) {
   mylistOpen.set(view === 'mylist');
   downloadOpen.set(view === 'download');
   detailOpen.set(view === 'detail');
+
+  __debug.log('router', 'view-switched', { view });
 }
 
 export function goBack() {

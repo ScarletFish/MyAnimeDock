@@ -85,7 +85,7 @@ function preGenerateCovers(coverPath: string): void {
 }
 
 // --- Image serving (with ffmpeg resize when ?w= param present) ---
-function serveImage(filePath: string, url: string, res: any, noCache = false): void {
+function serveImage(filePath: string, url: string, res: any, noCache = false, debugDetailFlow = false): void {
   const params = new URL(url, 'http://localhost').searchParams;
   const w = parseInt(params.get('w') ?? '');
   const q = parseInt(params.get('q') ?? '') || 75;
@@ -95,6 +95,14 @@ function serveImage(filePath: string, url: string, res: any, noCache = false): v
     const cacheDir = path.join(path.dirname(filePath), '.resized');
     const cacheName = `thumb_${w}_q${q}_${path.basename(filePath)}`;
     const cachePath = path.join(cacheDir, cacheName);
+
+    // 封面缩放耗时打点（debugDetailFlow 门控，零影响）
+    const tReq = Date.now();
+    let cacheHit = false;
+    const logResizedMiss = (ok: boolean) => {
+      if (!debugDetailFlow) return;
+      console.log(`[cover-resized] ${JSON.stringify({ hit: false, ms: Date.now() - tReq, ok })}`);
+    };
 
     const onCacheHit = () => {
       const stream = fs.createReadStream(cachePath);
@@ -106,11 +114,17 @@ function serveImage(filePath: string, url: string, res: any, noCache = false): v
         });
       });
       stream.on('data', (chunk: Buffer) => { res.write(chunk); });
-      stream.on('end', () => { res.end(); });
+      stream.on('end', () => {
+        res.end();
+        // 仅真实缓存命中（fs.stat 命中分支）在此打 hit 日志，避免与 miss 分支重复
+        if (debugDetailFlow && cacheHit) {
+          console.log(`[cover-resized] ${JSON.stringify({ hit: true, path: filePath, ms: Date.now() - tReq })}`);
+        }
+      });
     };
 
     fs.stat(cachePath, (statErr) => {
-      if (!statErr) { onCacheHit(); return; }
+      if (!statErr) { cacheHit = true; onCacheHit(); return; }
 
       fs.mkdir(cacheDir, { recursive: true }, () => {
         const ffq = Math.max(2, Math.min(31, Math.round(2 + (31 - 2) * (100 - q) / 100)));
@@ -127,17 +141,21 @@ function serveImage(filePath: string, url: string, res: any, noCache = false): v
             if (done) return; done = true;
             if (code === 0) {
               onCacheHit();
+              logResizedMiss(true);
             } else {
               serveRaw(filePath, res, noCache);
+              logResizedMiss(false);
             }
           });
           ff.on('error', () => {
             if (done) return; done = true;
             serveRaw(filePath, res, noCache);
+            logResizedMiss(false);
           });
         } catch (e) {
           if (done) return; done = true;
           serveRaw(filePath, res, noCache);
+          logResizedMiss(false);
         }
       });
     });

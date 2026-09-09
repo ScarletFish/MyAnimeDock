@@ -40,6 +40,13 @@ const knownReady = new Set(); // key → 该 (path,time) 缩略图已就绪（�
 const entries = new Map(); // key → { key, path, time, warming, has202, settled, watchers }
 let timer = null; // 轮询 setInterval（惰性启停）
 
+// ─── Warm-miss 监听（详情页调试用：EpisodeHeatmap 汇总 202，单个 null-check，零业务影响）───
+let _warmMissListener = null;
+export function onWarmMiss(fn) {
+  _warmMissListener = fn;
+  return () => { _warmMissListener = null; };
+}
+
 function entryOf(path, time) {
   const key = keyOf(path, time);
   let entry = entries.get(key);
@@ -79,7 +86,7 @@ function ensurePoller() {
 }
 
 /** 终态结算：触发全部活 watcher，卸载 entry（known-ready 兜底 / 允许重新 warm） */
-function settleEntry(entry, type) {
+function settleEntry(entry, type, readyUrl) {
   const live = [];
   for (const t of entry.watchers.values()) {
     if (!t.disposed) live.push(t);
@@ -87,7 +94,7 @@ function settleEntry(entry, type) {
   entry.watchers.clear();
   entries.delete(entry.key);
   for (const t of live) {
-    if (type === 'ready') t.onReady(warmUrl(entry.path, entry.time));
+    if (type === 'ready') t.onReady(readyUrl || warmUrl(entry.path, entry.time));
     else t.onMissing();
   }
   stopPollerIfIdle();
@@ -103,16 +110,24 @@ async function warm(entry) {
     return;
   }
   if (res.status === 200) {
-    // 已就绪：跳过轮询，直接 onReady，记入 known-ready
+    // 已就绪：直接 onReady。warm 的 200 响应即完整图片字节，
+    // 转 objectURL 直喂 <img>，避免 <img> 再独立请求同一 URL 造成双倍传输
+    // （warm 用 cache:'no-store'，且服务端对 thumb 强制 no-cache，img 二次请求逃不掉）。
+    let readyUrl = warmUrl(entry.path, entry.time);
+    try {
+      const blob = await res.blob();
+      if (blob && blob.size > 0) readyUrl = URL.createObjectURL(blob);
+    } catch { /* blob 失败回退 warmUrl（走正常 img 加载） */ }
     knownReady.add(entry.key);
     entry.settled = true;
     entry.warming = false;
-    settleEntry(entry, 'ready');
+    settleEntry(entry, 'ready', readyUrl);
   } else if (res.status === 202) {
     // 服务端已在后台生成：watcher 已注册，轮询器接管
     entry.warming = false;
     entry.has202 = true;
     ensurePoller();
+    if (_warmMissListener) _warmMissListener();
   } else {
     // 意外状态码（500 等）：按 warm 失败处理，下次 watch 可重试
     entry.warming = false;

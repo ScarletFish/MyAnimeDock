@@ -3,14 +3,36 @@
   // 根元素保留 id="svelte-episodeHeatmapGrid"（CSS/选择器契约）。
   // 缩略图全量预加载：首帧可见的立即加载，其余动画结束后（350ms）批量加载（见 loadVisibleThumbs）。
   // 写 inline style，满足 detail-episodes.css:88 opacity 规则。
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { initScrollDots } from '../../lib/scroll-dots.js';
   import { tr } from '../../lib/anime-utils.js';
-  import { watchThumb } from '../../lib/thumb-manager.js';
+  import { __debug } from '../../lib/debug.js';
+  import { watchThumb, onWarmMiss } from '../../lib/thumb-manager.js';
 
   let { anime = null, episodes = [], lastPlayedEp = null, onPlay, onToggleWatched, onDeleteEpisode } = $props();
 
   let gridEl = $state(null);
+
+  // ─── Warm-miss 汇总（调试旁路：202 计数一次性打，不逐张刷屏）───
+  let warmMissCount = 0;
+  let _warmMissFirstLogged = false;
+  let _warmMissTimer = null;
+  let _unregWarmMiss = null;
+
+  function handleWarmMiss() {
+    if (!__debug.enabled) return; // 调试关闭时零额外工作
+    warmMissCount++;
+    if (!_warmMissFirstLogged) {
+      _warmMissFirstLogged = true;
+      __debug.log('heatmap', 'warm-miss', { count: warmMissCount, ms: __debug.ms() });
+    }
+    if (_warmMissTimer === null) {
+      _warmMissTimer = setTimeout(() => {
+        _warmMissTimer = null;
+        if (warmMissCount > 0) __debug.log('heatmap', 'warm-miss', { count: warmMissCount, ms: __debug.ms() });
+      }, 2000);
+    }
+  }
 
   function handleCardClick(ep) {
     if (!ep.missing) {
@@ -94,11 +116,21 @@
       if (settleRun !== runId) return;
       const startIdx = scrollToLastPosition();
       loadVisibleThumbs(startIdx);
-      setTimeout(loadAllThumbs, 350);
+      __debug.log('heatmap', 'schedule-load-all', { ms: __debug.ms(), n: episodes.length });
+      setTimeout(() => {
+        __debug.log('heatmap', 'load-all-thumbs', { ms: __debug.ms(), n: episodes.length });
+        loadAllThumbs();
+      }, 350);
     }));
   });
 
   onMount(() => {
+    __debug.log('heatmap', 'mount', { ms: __debug.ms(), eps: episodes.length });
+    // Warm-miss 汇总监听（只能在 onMount 注册，onDestroy 注销）
+    warmMissCount = 0;
+    _warmMissFirstLogged = false;
+    if (_warmMissTimer !== null) { clearTimeout(_warmMissTimer); _warmMissTimer = null; }
+    _unregWarmMiss = onWarmMiss(handleWarmMiss);
     if (!gridEl) return;
     // I4: 每次渲染重置滚动位置（真实定位见上方 $effect，双 rAF 等布局稳定）
     gridEl.scrollLeft = 0;
@@ -108,6 +140,11 @@
       total: episodes.length,
       dotsParent: document.querySelector('#svelte-episodeHeatmap .episode-list-header'),
     });
+  });
+
+  onDestroy(() => {
+    if (_unregWarmMiss) { _unregWarmMiss(); _unregWarmMiss = null; }
+    if (_warmMissTimer !== null) { clearTimeout(_warmMissTimer); _warmMissTimer = null; }
   });
 
   // 按当前集数索引加载视口内卡片（最精准，不依赖几何测量）。

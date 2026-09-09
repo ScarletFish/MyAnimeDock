@@ -31,6 +31,7 @@ const STATUS = (p, t) => '/api/thumbnail/status?path=' + encodeURIComponent(p).r
 beforeEach(() => {
   resetThumbCache();
   vi.useFakeTimers();
+  vi.stubGlobal('URL', { ...globalThis.URL, createObjectURL: vi.fn(() => 'blob:mock-url'), revokeObjectURL: vi.fn() });
 });
 
 afterEach(() => {
@@ -40,7 +41,7 @@ afterEach(() => {
 });
 
 describe('watchThumb', () => {
-  it('warm 200 → 直接 onReady（URL 含 %27 转义），跳过轮询；known-ready 后不再发请求', async () => {
+  it('warm 200 → 直接 onReady（objectURL 直喂 img，URL 含 %27 转义），跳过轮询；known-ready 后不再发请求', async () => {
     const { calls } = installFetch(async () => new Response('img', { status: 200 }));
     const p = "C:\\a\\b'c.mp4";
     const onReady = vi.fn();
@@ -52,10 +53,10 @@ describe('watchThumb', () => {
     expect(calls[0].url).toBe(WARM(p, 'mid'));
     expect(calls[0].opts.cache).toBe('no-store');
     expect(onReady).toHaveBeenCalledTimes(1);
-    expect(onReady).toHaveBeenCalledWith(WARM(p, 'mid'));
+    expect(onReady).toHaveBeenCalledWith('blob:mock-url');
     expect(onMissing).not.toHaveBeenCalled();
 
-    // known-ready：第二个 watch 不再发请求，直接异步 onReady
+    // known-ready：第二个 watch 不再发请求，直接异步 onReady（warmUrl）
     const onReady2 = vi.fn();
     const d2 = watchThumb({ path: p, time: 'mid', onReady: onReady2 });
     await vi.advanceTimersByTimeAsync(0);

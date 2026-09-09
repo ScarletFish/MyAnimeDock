@@ -114,18 +114,28 @@
     const runId = ++settleRun;
     requestAnimationFrame(() => requestAnimationFrame(() => {
       if (settleRun !== runId) return;
-      const startIdx = scrollToLastPosition();
-      loadVisibleThumbs(startIdx);
-      __debug.log('heatmap', 'schedule-load-all', { ms: __debug.ms(), n: episodes.length });
+      // 首屏预加载：先滚动定位，再按视口几何测量并加载首屏可见（含前序）集。
+      // 曾在此直接用 gridEl.clientWidth 测量，但详情页入场动画/隐藏阶段容器宽为 0，
+      // visibleCount 会塌缩成 1，只预加载前 1-2 张，其余干等 350ms 全量批次（见日志：
+      // visible-thumbs {clientWidth:0, visibleCount:1, to:2}）。改用探针：等容器布局出
+      // 真实宽度后再测量，保证首屏按真实列数全量预加载；探针受 runId 守卫，卸载/重跑即停，
+      // 且 350ms loadAllThumbs 全量兜底始终覆盖，探针未中也不缺口。
+      const probeThumbs = (tries) => {
+        if (settleRun !== runId) return; // 新一轮 $effect 已取代本次
+        if (!gridEl) return;             // 卸载后 gridEl 置 null，停止探针
+        if (tries <= 0) return;          // 探针超时：放弃首屏提前，交给 350ms 全量兜底
+        if (gridEl.clientWidth <= 0) { requestAnimationFrame(() => probeThumbs(tries - 1)); return; }
+        const startIdx = scrollToLastPosition();
+        loadVisibleThumbs(startIdx);
+      };
+      probeThumbs(120); // ~2s 上限，正常布局数百 ms 内必中
       setTimeout(() => {
-        __debug.log('heatmap', 'load-all-thumbs', { ms: __debug.ms(), n: episodes.length });
         loadAllThumbs();
       }, 350);
     }));
   });
 
   onMount(() => {
-    __debug.log('heatmap', 'mount', { ms: __debug.ms(), eps: episodes.length });
     // Warm-miss 汇总监听（只能在 onMount 注册，onDestroy 注销）
     warmMissCount = 0;
     _warmMissFirstLogged = false;
@@ -159,6 +169,7 @@
     const cs = getComputedStyle(gridEl);
     const gap = parseFloat(cs.gap) || parseFloat(cs.columnGap) || 14;
     const step = cards[0].offsetWidth + gap;
+    // 探针已保证此处 clientWidth 为真实布局宽度（>0），visibleCount 不会因隐藏期宽为 0 而塌缩。
     const visibleCount = Math.max(1, Math.ceil(gridEl.clientWidth / step));
     const to = Math.min(cards.length, (startIdx >= 0 ? startIdx : 0) + visibleCount + 1);
     for (let i = 0; i < to; i++) {

@@ -243,7 +243,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg-elevated);
+  /* 无背景：露出 .detail-cover-wrap 的 --bg-card 底色，
+     与列表→详情 hero 过渡层底色一致，换手帧不跳色 */
 }
 #detailCover .gray-cover-text,
 #svelte-detailCover .gray-cover-text {

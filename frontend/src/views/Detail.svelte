@@ -678,6 +678,9 @@
     const wrap = document.getElementById('svelte-detailCover');
     const img = wrap ? wrap.querySelector('img') : null;
     if (wrap) { wrap.style.visibility = 'hidden'; wrap.style.opacity = '0'; }
+    // 无封面分支：占位字母元素 + 详情真实占位规格（用于同步 tween 终点）
+    let heroLetterEl = null;
+    let heroLetterTarget = null;
     const hero = document.createElement('div');
     hero.id = 'svelte-heroCover';
     hero.style.cssText = `
@@ -697,7 +700,13 @@
       clone.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
       hero.appendChild(clone);
     } else {
-      hero.innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--bg-card);font-size:2rem;font-weight:700;color:var(--fg-muted)">' + (wrap?.textContent?.trim()?.[0] || '?') + '</div>';
+      heroLetterEl = document.createElement('div');
+      heroLetterEl.style.cssText = 'width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:var(--text-3xl);font-weight:700;color:var(--fg-muted);opacity:0.4;line-height:1;text-align:center';
+      heroLetterEl.textContent = wrap?.textContent?.trim()?.[0] || '?';
+      hero.appendChild(heroLetterEl);
+      // 终点规格直接取自详情真实占位（.gray-cover-text），不引入魔法数字，
+      // 保证 tween 终点与换手后详情占位逐像素一致
+      heroLetterTarget = wrap?.querySelector('.gray-cover-text') || null;
     }
     document.body.appendChild(hero);
     const gsap = globalThis.gsap;
@@ -717,17 +726,31 @@
       const toRect = wrap ? wrap.getBoundingClientRect() : { left: 0, top: 0, width: 0, height: 0 };
       showContent = true;
       __debug.log('detail', 'show-content', { ms: __debug.ms() });
+      const scaleX = toRect.width / fromRect.width;
+      const scaleY = toRect.height / fromRect.height;
       gsap.to(hero, {
         x: toRect.left - fromRect.left,
         y: toRect.top - fromRect.top,
-        scaleX: toRect.width / fromRect.width,
-        scaleY: toRect.height / fromRect.height,
+        scaleX,
+        scaleY,
         duration: 0.35, ease: 'power2.out',
         onComplete: () => {
           if (wrap) { wrap.style.visibility = ''; wrap.style.opacity = '1'; wrap.style.transform = ''; }
           hero.remove();
         },
       });
+      // 占位字母实时缩放：hero 整体 scale（≈0.87，盒子缩小）会让字母连带变小，
+      // 但详情占位字母规格（3.125rem）比卡片（2.25rem）更大——
+      // 这里给字母单独 tween（终点 = 详情规格 ÷ scaleY），与 hero 同 ease 同 duration，
+      // 动画全程字母连续增长，换手帧已等于详情规格，消除"最后一下突然放大"。
+      if (heroLetterEl && heroLetterTarget) {
+        const cs = getComputedStyle(heroLetterTarget);
+        gsap.to(heroLetterEl, {
+          fontSize: parseFloat(cs.fontSize) / scaleY,
+          opacity: parseFloat(cs.opacity),
+          duration: 0.35, ease: 'power2.out',
+        });
+      }
     } else {
       hero.remove();
       if (wrap) { wrap.style.visibility = ''; wrap.style.opacity = '1'; }

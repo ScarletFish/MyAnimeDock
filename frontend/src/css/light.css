@@ -136,12 +136,6 @@
   .detail-cover-wrap {
     box-shadow: 0 4px 16px rgba(0,0,0, var(--alpha-faint));
   }
-  .detail-cover-wrap::before {
-    background: transparent !important;
-  }
-  .detail-cover-wrap::after {
-    opacity: 0 !important;
-  }
 
 
   /* ─── Context Menu ─── */

@@ -735,8 +735,36 @@
         scaleY,
         duration: 0.35, ease: 'power2.out',
         onComplete: () => {
-          if (wrap) { wrap.style.visibility = ''; wrap.style.opacity = '1'; wrap.style.transform = ''; }
-          hero.remove();
+          if (!wrap) { hero.remove(); return; }
+          wrap.style.transform = '';
+          // 换手：同帧瞬间替换（hero 移除 + wrap 立即可见），不做交叉淡入。
+          // 实测结论：交叉淡入期间 wrap 合成层首次光栅化迟到，首帧只能画纯底，
+          // 内容+阴影整块补上 = 闪一下+整个封面刷新；瞬间替换一帧到位，无闪白。
+          // （该行为与 reduced-motion 分支一致，已由用户在减少动画模式下验证。）
+          const settle = () => {
+            wrap.style.visibility = '';
+            wrap.style.opacity = '1';
+            hero.remove();
+          };
+          // 换手前先等 wrap 里的封面图加载完成：hero 用的是卡片已解码的图，
+          // 而 wrap 是 ?w=540&q=80 重转图，首次请求未缓存时可能晚于动画结束。
+          // 不等就直接换手 → 终态先露出空底，img 迟到后硬刷新（闪一下）。
+          const coverImg = wrap.querySelector('img');
+          if (coverImg && !(coverImg.complete && coverImg.naturalWidth > 0)) {
+            let fired = false;
+            const fire = () => {
+              if (fired) return;
+              fired = true;
+              coverImg.removeEventListener('load', fire);
+              coverImg.removeEventListener('error', fire);
+              settle();
+            };
+            coverImg.addEventListener('load', fire);
+            coverImg.addEventListener('error', fire);
+            setTimeout(fire, 2000); // 兜底：图片始终不返回也不能卡死换手
+          } else {
+            settle();
+          }
         },
       });
       // 占位字母实时缩放：hero 整体 scale（≈0.87，盒子缩小）会让字母连带变小，

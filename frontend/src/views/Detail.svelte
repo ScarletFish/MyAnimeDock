@@ -46,7 +46,7 @@
   import { searchTag } from '../components/chrome/SearchBar.svelte';
   import { tr, escapeHtml, STATUS_SECTIONS_LIBRARY, initialOf, expectedEpCount } from '../lib/anime-utils.js';
   import { sortAnimeItems } from '../lib/sort.js';
-  import { libraryData, mylistData, librarySortMode, mylistSortMode, pendingAutoPlay, pendingFinishAnimeId, finishConfirmMode, ignoreLocalFileMissing, patchLibraryItem, removeLibraryItemFromStore } from '../lib/ui-state.js';
+  import { libraryData, mylistData, librarySortMode, mylistSortMode, pendingAutoPlay, pendingFinishAnimeId, finishConfirmMode, ignoreLocalFileMissing, patchLibraryItem, refreshListItem, removeLibraryItemFromStore } from '../lib/ui-state.js';
   import { refreshStats } from './Library.svelte';
   import { refreshDiscovery } from './Discovery.svelte';
   import { showView } from '../lib/router.js';
@@ -332,8 +332,9 @@
       const result = await api.post('/api/progress', { animeId: a.id, episodeNumber: ep.number, watched: true, progress: 0 });
       // 详情视图依赖完整详情（episodes）：变更后重取 /api/anime/:id 刷新对象
       anime = await api.get('/api/anime/' + encodeURIComponent(a.id));
-      // 就地 patch 库页（列表 store 统一 ListItem：mutation 响应 res.item，缺失时回退重取对象）
-      patchLibraryItem(result?.item ?? anime);
+      // 就地 patch 库页（列表 store 统一 ListItem：mutation 响应 res.item，缺失时经 /api/mylist?ids= 取回）
+      if (result?.item) patchLibraryItem(result.item);
+      else refreshListItem(a.id);
       refreshStats();
       scrollToNextUnwatched(anime, ep.number);
       showToast(tr('detail.markedWatched', { number: ep.number }), 'success');
@@ -352,8 +353,9 @@
       const result = await api.post('/api/progress', { animeId: anime.id, episodeNumber: epNumber, watched });
       // 详情视图依赖完整详情（episodes）：变更后重取 /api/anime/:id 刷新对象，本地不手工改图
       anime = await api.get('/api/anime/' + encodeURIComponent(anime.id));
-      // 就地 patch 库页（列表 store 统一 ListItem：mutation 响应 res.item，缺失时回退重取对象）
-      patchLibraryItem(result?.item ?? anime);
+      // 就地 patch 库页（列表 store 统一 ListItem：mutation 响应 res.item，缺失时经 /api/mylist?ids= 取回）
+      if (result?.item) patchLibraryItem(result.item);
+      else refreshListItem(anime.id);
       refreshStats();
       // 手动标记已看：与完工确认一致的"引导到下一未看"（仅标记方向滚动，取消不滚动）
       if (watched) scrollToNextUnwatched(anime, epNumber);
@@ -370,8 +372,8 @@
     try {
       const updated = await api.del('/api/anime/' + encodeURIComponent(anime.id) + '/episode/' + epNumber);
       anime = updated;
-      patchLibraryItem(updated);
-      refreshStats();
+      // 删除响应是原始详情对象（非 ListItem）：经 /api/mylist?ids= 取回统一投影再 patch，避免覆盖丢字段
+      refreshListItem(anime.id).then(() => refreshStats()).catch(function () {});
       showToast(tr('detail.epDeleted'), 'success');
     } catch (e) {
       showToast(tr('detail.epDeleteFailed', { error: e.message }), 'error');
@@ -751,9 +753,9 @@
     if (endedAnimeId && anime.id !== endedAnimeId) return false;
     api.get('/api/anime/' + encodeURIComponent(anime.id)).then((updated) => {
       anime = updated;
-      // 就地 patch 库页（继续观看/网格/状态分区立即反映新进度），不再等下次整库重取
-      patchLibraryItem(updated);
-      refreshStats();
+      // 就地 patch 库页（继续观看/网格/状态分区立即反映新进度），不再等下次整库重取。
+      // 详情响应是原始对象（非 ListItem）：经 /api/mylist?ids= 取回统一投影再 patch，避免覆盖丢字段。
+      refreshListItem(anime.id).then(() => refreshStats()).catch(function () {});
       // 剧集列表重定位到最新进度：
       // lastPlayedEp 有进度→滚到它；已看完→滚到下一未观看
       episodeHeatmapRef?.scrollToLastPosition();

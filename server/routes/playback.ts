@@ -5,6 +5,7 @@ import crypto from 'crypto';
 import { jsonResp, readBody, serveImage, THUMB_HASH_SEED } from '../lib/utils';
 import { DATA_DIR, MAX_PLAY_SESSIONS } from '../lib/config';
 import { isChasing } from '../lib/anime-meta';
+import { buildListItems } from '../lib/list-item';
 import { Logger } from '../logger';
 import type { ServerState } from '../types';
 const logger: Logger = require('../logger').child('[Playback]');
@@ -209,7 +210,9 @@ async function handleProgress(req: any, res: any, state: State) {
     if (duration !== undefined) ep.duration = duration;
     if (watched !== undefined) ep.watched = watched;
     db.updateEpisodeProgress(animeId, episodeNumber, { progress, duration, watched });
-    jsonResp(res, 200, { ok: true, episode: ep });
+    // 返回统一 ListItem（同 mylist mutation 契约）：前端就地 patch store，不传原始详情对象
+    const item = buildListItems(data, { ids: new Set([animeId]) })[0] ?? null;
+    jsonResp(res, 200, { ok: true, episode: ep, item });
   } catch (e) {
     jsonResp(res, 400, { error: 'Invalid request body' });
   }

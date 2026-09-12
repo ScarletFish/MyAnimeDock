@@ -106,6 +106,44 @@ describe('mylist route handlers', () => {
       assert.strictEqual(res._status, 200);
       assert.strictEqual(res._body[0].firstPlayedAt, null);
     });
+
+    it('returns only the item matching ?ids= (playback-end single refresh)', () => {
+      const state = mockState({
+        data: {
+          library: [
+            { id: 'anime-1', title: 'A', downloaded: true, episodes: [{ number: 1, watched: false }] },
+            { id: 'anime-2', title: 'B', downloaded: true, episodes: [{ number: 1, watched: false }] },
+          ],
+          myList: [],
+        },
+      });
+      const req = mockReq({ url: '/api/mylist?ids=anime-1' });
+      const res = mockRes();
+      mylist.handleGetMyList(req, res, state);
+      assert.strictEqual(res._status, 200);
+      assert.ok(Array.isArray(res._body));
+      assert.strictEqual(res._body.length, 1);
+      assert.strictEqual(res._body[0].animeId, 'anime-1');
+      assert.strictEqual(res._body[0].status, null);
+      assert.strictEqual(res._body[0].hasLocalFiles, true);
+    });
+
+    it('returns multiple items when ?ids= is comma-separated', () => {
+      const state = mockState({
+        data: {
+          library: [
+            { id: 'anime-1', title: 'A', downloaded: true, episodes: [] },
+            { id: 'anime-2', title: 'B', downloaded: true, episodes: [] },
+          ],
+          myList: [],
+        },
+      });
+      const req = mockReq({ url: '/api/mylist?ids=anime-1,anime-2' });
+      const res = mockRes();
+      mylist.handleGetMyList(req, res, state);
+      assert.strictEqual(res._status, 200);
+      assert.strictEqual(res._body.length, 2);
+    });
   });
 
   describe('handleUpdateMyListStatus', () => {

@@ -129,6 +129,14 @@ describe('playback route handlers', () => {
       assert.strictEqual(res._body.episode.progress, 0.75);
       assert.strictEqual(res._body.episode.watched, true);
       assert.strictEqual(res._body.episode.duration, 1200);
+      // item: 统一 ListItem 投影（前端就地 patch store 用，非原始详情对象）
+      assert.ok(res._body.item, 'progress response includes ListItem for in-place patch');
+      assert.strictEqual(res._body.item.animeId, 'a1');
+      assert.strictEqual(res._body.item.episodesWatched, 1, 'watched=true reflected in ListItem count');
+      assert.strictEqual(res._body.item.status, null, 'no mylist row → status null');
+      assert.strictEqual(res._body.item.hasLocalFiles, false, 'downloaded unset → hasLocalFiles false');
+      assert.ok(!('episodes' in res._body.item), 'ListItem must not carry episodes[]');
+      assert.ok(!('myListStatus' in res._body.item), 'ListItem must not carry myListStatus');
       // Check in-memory state
       assert.strictEqual(state.data.library[0].episodes[0].progress, 0.75);
       assert.strictEqual(state.data.library[0].episodes[0].watched, true);

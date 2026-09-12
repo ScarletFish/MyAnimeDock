@@ -8,6 +8,7 @@
 //   pendingFinishAnimeId mpv-status.js 写入，Detail.svelte 读取
 import { writable, derived } from 'svelte/store';
 import { localStore } from './local-store.js';
+import { API } from './api.js';
 
 export const mylistData = writable([]);
 export const libraryData = derived(
@@ -89,6 +90,24 @@ export function removeLibraryItemFromStore(id) {
   });
   if (changed) notifyInvalidated('library');
   else if (missDiag) console.warn('[ui-state] removeLibraryItemFromStore 未命中（store 中无该条目）', missDiag);
+}
+
+// ─── 按 ids 拉取单条 ListItem 就地 patch ───
+// 播放结束/删除剧集等场景，后端返回的是原始详情对象（含 episodes）而非 ListItem，
+// 直接 patch 会把 status/hasLocalFiles 覆盖成 undefined（详情对象只有 myListStatus/downloaded），
+// 导致条目在本地库派生中消失、在 Mylist 里显示为「计划中」。
+// 统一走 GET /api/mylist?ids= 取回 ListItem 投影再 patch（与 buildListItems 单一数据源一致）。
+export async function refreshListItem(animeId) {
+  if (!animeId) return null;
+  try {
+    const items = await API.get('/api/mylist?ids=' + encodeURIComponent(animeId));
+    const item = Array.isArray(items) && items.length > 0 ? items[0] : null;
+    if (item) patchLibraryItem(item);
+    return item;
+  } catch (e) {
+    console.warn('[ui-state] refreshListItem 拉取失败:', e && e.message ? e.message : e);
+    return null;
+  }
 }
 
 // ─── 数据失效总线：写入方 notify，消费者 subscribe 后按需刷新 ───

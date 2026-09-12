@@ -8,8 +8,12 @@ import type { ServerState } from '../types';
 function handleGetMyList(req: any, res: any, state: ServerState) {
   const { data, logger } = state;
   try {
-    const localOnly = new URL(req.url, 'http://localhost').searchParams.get('filter') === 'local';
-    jsonResp(res, 200, buildListItems(data, { localOnly }));
+    const sp = new URL(req.url, 'http://localhost').searchParams;
+    const localOnly = sp.get('filter') === 'local';
+    // ?ids=a,b — 单条/多条 ListItem 就地取回（播放结束 / 删除集数后 patch store 用）
+    const idsParam = sp.get('ids');
+    const ids = idsParam ? new Set(idsParam.split(',').map(s => s.trim()).filter(Boolean)) : undefined;
+    jsonResp(res, 200, buildListItems(data, { localOnly, ids }));
   } catch (err) {
     logger.error('[mylist]', err);
     jsonResp(res, 500, { error: (err as Error).message });

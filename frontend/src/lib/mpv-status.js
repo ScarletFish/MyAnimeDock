@@ -7,7 +7,7 @@ import { showToast } from '../components/Toast.svelte';
 import { API } from './api.js';
 import { currentView } from './router.js';
 import { handleDetailPlaybackEnded } from '../views/Detail.svelte';
-import { patchLibraryItem } from './ui-state.js';
+import { refreshListItem } from './ui-state.js';
 import { refreshStats } from '../views/Library.svelte';
 import { pendingFinishAnimeId } from './ui-state.js';
 
@@ -43,13 +43,10 @@ function onGlobalMpvStatus(active, payload) {
   if (endedAnimeId) pendingFinishAnimeId.set(endedAnimeId);
   // 非详情页（如 Dashboard）停留：单条拉取 + 就地 patch，让「继续观看」卡片立即反映最新进度，
   // 只刷 stats 模块（不整库重取、不置 loading）。
+  // 注意：必须经 /api/mylist?ids= 取 ListItem 投影再 patch（refreshListItem 内部处理），
+  // 不能直接 patch 原始详情对象（/api/anime/:id 只有 myListStatus/downloaded，会覆盖丢字段）。
   if (endedAnimeId) {
-    API.get('/api/anime/' + encodeURIComponent(endedAnimeId))
-      .then((updated) => {
-        patchLibraryItem(updated);
-        refreshStats();
-      })
-      .catch(function () {});
+    refreshListItem(endedAnimeId).then(() => refreshStats()).catch(function () {});
   }
 }
 

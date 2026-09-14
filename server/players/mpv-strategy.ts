@@ -62,6 +62,8 @@ class MpvPlayerStrategy extends BasePlayerStrategy {
 
         const args = [
             filePath,
+            // 续播时冻结首帧（--pause），seek 到位后再解除，避免"0:00 裸播一秒→跳续播点"的双初始化观感
+            ...((position || 0) > 0 ? ['--pause=yes'] : []),
             '--keep-open=yes',
             '--ontop',
             `--input-ipc-server=${pipePath}`,
@@ -74,6 +76,8 @@ class MpvPlayerStrategy extends BasePlayerStrategy {
         let isPaused = false;
         // 当前实际播放的文件（mpv 内切换文件/跨集播放时会变化，如 autoload 自动进下一集）
         let currentFilePath = filePath;
+        // IPC seek 目标：time-pos 达到该值附近即解除 --pause 门控
+        let seekTarget: number | null = null;
         const spawnTime = Date.now();
         let mpvProcess: any = null;
         let ipc: any = null;
@@ -99,6 +103,16 @@ class MpvPlayerStrategy extends BasePlayerStrategy {
                 if (msg.name === 'time-pos' && typeof msg.data === 'number') {
                     currentPos = msg.data;
                     if (msg.data > peakPos) peakPos = msg.data;
+                    // seek 已到位：解除 --pause 门控（首帧→目标帧 单次跳变，不再从 0:00 裸播）
+                    if (seekTarget !== null && msg.data >= seekTarget - 0.5) {
+                        seekTarget = null;
+                        try {
+                            ipc.send({ command: ['set', 'pause', 'no'] });
+                            logger.info(`Seek settled at ${msg.data}s, unpaused`);
+                        } catch (e: any) {
+                            logger.warn('unpause failed:', e.message);
+                        }
+                    }
                 } else if (msg.name === 'duration' && typeof msg.data === 'number') {
                     currentDuration = msg.data;
                 } else if (msg.name === 'pause' && typeof msg.data === 'boolean') {
@@ -118,7 +132,8 @@ class MpvPlayerStrategy extends BasePlayerStrategy {
             .then(() => {
                 if (!running) return;
                 if (currentPos > 0) {
-                    logger.info(`Seeking to ${currentPos}s via IPC`);
+                    seekTarget = currentPos;
+                    logger.info(`Seeking to ${currentPos}s via IPC (paused gate)`);
                     ipc.send({ command: ['seek', currentPos, 'absolute'] });
                 }
                 ipc.observeProperty(1, 'time-pos');

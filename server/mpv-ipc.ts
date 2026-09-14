@@ -7,7 +7,12 @@ import { Logger } from './logger';
 
 const logger: Logger = require('./logger').child('[IPC]');
 
-const MAX_RETRIES = 7;
+// mpv 启动后 ~160-200ms 内建好 IPC 管道：首连几乎必 ENOENT，
+// 但等 1000ms 才重试会让续播前 mpv 裸播 ~1s（画面像"初始化两次"）。
+// 改为快速自适应重试：100/150/225/...ms，前几次就命中。
+const MAX_RETRIES = 10;
+const RETRY_BASE_MS = 100;
+const RETRY_CAP_MS = 5000;
 
 class MpvIpcConnection {
     private pipePath: string;
@@ -79,7 +84,7 @@ class MpvIpcConnection {
                 // 连接建立前的错误 → 重试
                 this._retries++;
                 if (this._retries < MAX_RETRIES) {
-                    const delay = Math.min(1000 * Math.pow(1.5, this._retries - 1), 10000);
+                    const delay = Math.min(RETRY_BASE_MS * Math.pow(1.5, this._retries - 1), RETRY_CAP_MS);
                     this._log.info(`Retrying IPC connection in ${delay}ms (${this._retries}/${MAX_RETRIES})`);
                     this._connectTimer = setTimeout(() => this._doConnect(resolve, reject), delay);
                 } else {

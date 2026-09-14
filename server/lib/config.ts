@@ -98,6 +98,10 @@ export interface ConfigShape {
   // 详情页流程性能排查开关（运行时字段，仅测试用）：开启后输出 detail-open/static-slow/
   // cover-resized/thumb-queue 等打点日志用于"生产模式偶发白屏"排查。默认关闭（未开启时零额外日志）。
   debugDetailFlow?: boolean;
+  // 启动流程排查开关（运行时字段，仿 debugDetailFlow，仅测试用）：开启后 Rust 端在
+  // %TEMP%/myanimedock-bootstrap.log 记录启动时间线（窗口创建→app-ready 间隔、直读值）。
+  // 默认关闭（未开启时零额外日志）。
+  debugStartupFlow?: boolean;
   // 运行时由 server.ts / routes 注入的字段（可选）
   reduceMotion?: boolean;
   bangumiAccessToken?: string;

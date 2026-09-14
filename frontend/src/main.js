@@ -39,9 +39,9 @@ bindDom();
 // ─── 窗口就绪信号（顶层注册，避免 Library 先派发导致监听器未就位的竞态）───
 // 关键：app-ready 的监听必须在这里（任何 await / showView 之前）同步注册，
 // 否则 Library 首帧派发 app:library-ready 时会被错过 → app-ready 永不发射 → 3s 兜底。
-// configCache 由下方 async IIFE 填充，emit 时才读取（顶层注册时尚未可用，惰性取）。
 // 用 { once: true }：该事件只消费一次（Library 数据刷新重派发时不再重复发 app-ready）。
-let __configCache = null;
+// app-ready 是纯信号：不携带 payload，窗口初始化偏好（startupFullscreen 等）由 Rust
+// 直读 config.json 处理，前端不参与传递。
 const __isTauri = !!window.__TAURI__?.event;
 
 // 启动页（splash）：仅 Tauri 上下文显示（窗口隐藏期作占位/兜底）；
@@ -64,9 +64,7 @@ window.addEventListener('app:library-ready', () => {
   __hideSplash();
   if (!__isTauri) return;
   if (window.__TAURI__?.event?.emit) {
-    window.__TAURI__.event
-      .emit('app-ready', { startupFullscreen: !!__configCache?.startupFullscreen })
-      .catch(() => {});
+    window.__TAURI__.event.emit('app-ready').catch(() => {});
   }
 }, { once: true });
 
@@ -111,10 +109,8 @@ window.addEventListener('app:library-ready', () => {
   showView('library');
   startGlobalMpvStatus();
 
-  // 窗口就绪信号已由顶层统一注册（见 main.js 顶部），此处仅把 configCache 交给
-  // 顶层 emit 回调惰性读取（startupFullscreen 载荷）。app-ready 等 Library 数据
-  // 就绪（首屏渲染完成）后再发，避免窗口显示瞬间还是骨架屏。
-  __configCache = configCache;
+  // app-ready 已由顶层注册（见 main.js 顶部），等 Library 数据就绪（首屏渲染完成）
+  // 后再发，避免窗口显示瞬间还是骨架屏。
 
   if (configCache?.firstRun) {
     onboardingOpen.set(true);

@@ -9,6 +9,7 @@ use tauri::{
 use std::process::{Command, Stdio};
 use std::path::PathBuf;
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::{Duration, SystemTime};
 use log::{info, warn};
 use std::io::{Write, BufRead, BufReader, Read};
@@ -106,6 +107,57 @@ fn read_theme_mode() -> bool {
         Err(_) => true,
     }
 }
+
+/// 启动最大化偏好（config.json 的 startupFullscreen），true = 创建窗口即最大化。
+/// 缺失/解析失败时默认 false（与 server 端 DEFAULT_CONFIG 一致），保守不最大化。
+fn read_startup_fullscreen() -> bool {
+    let cfg_path = data_dir_path().join("config.json");
+    match std::fs::read_to_string(&cfg_path) {
+        Ok(s) => {
+            if let Ok(v) = serde_json::from_str::<serde_json::Value>(&s) {
+                return v
+                    .get("startupFullscreen")
+                    .and_then(|b| b.as_bool())
+                    .unwrap_or(false);
+            }
+            false
+        }
+        Err(_) => false,
+    }
+}
+
+/// 启动流程调试开关（config.json 的 debugStartupFlow）。
+/// 开启后在 bootstrap 日志（%TEMP%/myanimedock-bootstrap.log）记录启动时间线
+/// （直读值、窗口创建→app-ready 间隔、兜底触发间隔），默认关闭、零额外日志。
+fn read_debug_startup_flow() -> bool {
+    let cfg_path = data_dir_path().join("config.json");
+    match std::fs::read_to_string(&cfg_path) {
+        Ok(s) => {
+            if let Ok(v) = serde_json::from_str::<serde_json::Value>(&s) {
+                return v
+                    .get("debugStartupFlow")
+                    .and_then(|b| b.as_bool())
+                    .unwrap_or(false);
+            }
+            false
+        }
+        Err(_) => false,
+    }
+}
+
+/// 当前 Unix 毫秒（启动时间线打点用）
+fn now_epoch_ms() -> u64 {
+    SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as u64
+}
+
+/// 窗口创建时刻（epoch ms），供 app-ready / 3s 兜底线程计算启动间隔
+static WINDOW_CREATED_AT_MS: AtomicU64 = AtomicU64::new(0);
+
+/// app-ready 是否已到达（3s 兜底据此跳过，避免健康运行的误导性 WARN）
+static APP_READY_RECEIVED: AtomicBool = AtomicBool::new(false);
 
 /// 关闭窗口行为（config.json 的 closeBehavior）。
 /// 返回 true = 最小化到系统托盘，false = 直接关闭软件。
@@ -248,31 +300,46 @@ fn main() {
             bootstrap_log("setup() entered");
             let handle = app.handle();
 
+            // 启动最大化偏好 / 启动流程调试：均由 Rust 直读 config.json（与网络链路无关）
+            let startup_fullscreen = read_startup_fullscreen();
+            let debug_flow = read_debug_startup_flow();
+            if debug_flow {
+                bootstrap_log(&format!(
+                    "startupFullscreen (Rust direct config read) = {}",
+                    startup_fullscreen
+                ));
+            }
+
             // 系统托盘（图标 + 菜单：显示主窗口 / 退出）
             if let Err(e) = build_tray(handle) {
                 bootstrap_log(&format!("ERROR build_tray: {}", e));
             }
 
             // 前端渲染完成后显示窗口（窗口先隐藏，避免启动闪烁）。
-            // 启动最大化偏好由前端随 app-ready payload 传入（{ startupFullscreen: bool }），
-            // 在 show() 之前同步 maximize —— 本窗口是自绘标题栏（decorations(false)），
+            // 启动最大化偏好由 Rust 创建窗口时直读 config.json（startupFullscreen）并通过
+            // builder.maximized() 同步应用；本窗口是自绘标题栏（decorations(false)），
             // 玻璃无边框形态下"全屏"的期望是最大化（占满工作区、标题栏融入自绘栏、
             // 保留原生可缩放/还原），而非传统独占全屏；独占全屏会丢失缩放能力。
-            // 注意：不能在前端隐藏窗口期异步调 maximize（show 时会失效）。
-            // 布局列数为纯函数（--card-w 设计常量 + 容器宽），不依赖窗口尺寸
-            // 时序，前端无需在最大化前完成任何锚定；前端仅保证 app-ready 携带
-            // 该 payload 时首屏已渲染完成（避免显示瞬间还是骨架屏）。
+            // app-ready 只作"首屏已渲染"的纯信号用于 show()，不携带 payload；
+            // 窗口初始化所需偏好一律由 Rust 直读 config，不依赖前端拉取链路。
             let ready_handle = handle.clone();
-            handle.listen("app-ready", move |event| {
-                bootstrap_log("app-ready received, showing window");
+            handle.listen("app-ready", move |_event| {
+                APP_READY_RECEIVED.store(true, Ordering::Relaxed);
+                if debug_flow {
+                    let created = WINDOW_CREATED_AT_MS.load(Ordering::Relaxed);
+                    let delta = if created > 0 {
+                        now_epoch_ms().saturating_sub(created)
+                    } else {
+                        0
+                    };
+                    bootstrap_log(&format!(
+                        "app-ready received, showing window (+{}ms since window created)",
+                        delta
+                    ));
+                } else {
+                    bootstrap_log("app-ready received, showing window");
+                }
                 if let Some(window) = ready_handle.get_webview_window("main") {
-                    let fullscreen = serde_json::from_str::<serde_json::Value>(event.payload())
-                        .ok()
-                        .and_then(|v| v.get("startupFullscreen").and_then(|b| b.as_bool()))
-                        .unwrap_or(false);
-                    if fullscreen {
-                        let _ = window.maximize();
-                    }
                     let _ = window.show();
                 }
             });
@@ -470,18 +537,38 @@ fn main() {
                      --disable-backgrounding-occluded-windows",
                 )
                 .visible(false)
+                .maximized(startup_fullscreen)
                 .build()
                 {
                     Ok(_) => {
                         bootstrap_log("window created OK");
+                        WINDOW_CREATED_AT_MS.store(now_epoch_ms(), Ordering::Relaxed);
                         // 安全兜底：3 秒后仍未收到前端 app-ready 事件则强制显示窗口，避免永久黑屏。
-                        // 正常流程前端渲染完必发 app-ready；触发此兜底说明 app-ready 链路异常（需排查）。
+                        // 正常流程前端渲染完必发 app-ready；app-ready 已到达则跳过（窗口已由正常路径
+                        // 显示，再 show 是 no-op），且不打 WARN —— 避免健康运行产生误导性告警日志。
                         let fb = handle_clone.clone();
+                        let fb_debug = debug_flow;
                         std::thread::spawn(move || {
                             std::thread::sleep(Duration::from_secs(3));
+                            if APP_READY_RECEIVED.load(Ordering::Relaxed) {
+                                return;
+                            }
                             match fb.get_webview_window("main") {
                                 Some(w) => {
-                                    bootstrap_log("WARN fallback: showing window (app-ready not received in 3s)");
+                                    if fb_debug {
+                                        let created = WINDOW_CREATED_AT_MS.load(Ordering::Relaxed);
+                                        let delta = if created > 0 {
+                                            now_epoch_ms().saturating_sub(created)
+                                        } else {
+                                            0
+                                        };
+                                        bootstrap_log(&format!(
+                                            "WARN fallback: showing window (app-ready not received in 3s, +{}ms since window created)",
+                                            delta
+                                        ));
+                                    } else {
+                                        bootstrap_log("WARN fallback: showing window (app-ready not received in 3s)");
+                                    }
                                     let _ = w.show();
                                 }
                                 None => bootstrap_log("ERROR fallback: window 'main' not found"),

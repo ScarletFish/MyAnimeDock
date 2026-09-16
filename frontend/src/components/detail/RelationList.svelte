@@ -24,6 +24,7 @@
 
   let items = $state([]);
   let loading = $state(true);
+  let failed = $state(false);
   let scrollEl = $state(null);
 
   const isRecs = $derived(kind === 'recommendations');
@@ -66,10 +67,16 @@
     try {
       const res = await api.get('/api/anime/' + encodeURIComponent(animeId) + '/' + endpoint);
       const list = res[endpoint] || [];
-      items = list;
-      cacheSet(cacheKey, list);
+      if (res?.error) {
+        // 后端明确失败（AniList 拉取异常）：失败≠空，留占位
+        failed = true;
+      } else {
+        items = list;
+        cacheSet(cacheKey, list); // 空数据也缓存（合法空 → 区块隐藏）
+      }
     } catch (e) {
-      // 失败或空：不写缓存，items 保持空数组，渲染统一占位（无隐藏路线）
+      // 网络/HTTP 错误：不写缓存，留失败占位
+      failed = true;
     } finally {
       loading = false;
       initDots();
@@ -77,7 +84,7 @@
   });
 </script>
 
-{#if !loading && items.length > 0}
+{#if !loading && !failed && items.length > 0}
   <div id={sectionId} class="detail-section hscroll-section">
     <div class="detail-section-header">
       <span class="detail-section-title">{tr(isRecs ? 'detail.recommendations' : 'detail.related', isRecs ? '推荐' : '关联作品')}</span>
@@ -103,6 +110,6 @@
   </div>
 {:else if loading}
   <SectionSkeleton variant="relations" title={tr(isRecs ? 'detail.recommendations' : 'detail.related', isRecs ? '推荐' : '关联作品')} />
-{:else}
+{:else if failed}
   <SectionSkeleton variant="failed" title={tr(isRecs ? 'detail.recommendations' : 'detail.related', isRecs ? '推荐' : '关联作品')} label={tr(isRecs ? 'detail.recommendationsFailed' : 'detail.relatedFailed', isRecs ? '推荐暂不可用' : '关联作品暂不可用')} />
 {/if}

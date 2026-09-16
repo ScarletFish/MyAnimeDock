@@ -933,6 +933,12 @@
           </div>
           <EpisodeHeatmap bind:this={episodeHeatmapRef} anime={anime} episodes={anime.episodes} lastPlayedEp={anime.lastPlayedEp} onPlay={playEpisode} onToggleWatched={toggleWatched} onDeleteEpisode={deleteEpisode} />
         </div>
+        {#if watchStatsVisible}
+          <div class="watch-stats" id="svelte-watchStats">
+            <div class="ws-header"><h3>{tr('detail.watchStats')}</h3></div>
+            <WatchStats anime={anime} />
+          </div>
+        {/if}
         {#snippet charSkeleton()}
           <SectionSkeleton variant="characters" />
         {/snippet}
@@ -946,12 +952,6 @@
           <LazySection skeleton={charSkeleton}>
             <Characters chars={anime.characters} />
           </LazySection>
-        {/if}
-        {#if watchStatsVisible}
-          <div class="watch-stats" id="svelte-watchStats">
-            <div class="ws-header"><h3>{tr('detail.watchStats')}</h3></div>
-            <WatchStats anime={anime} />
-          </div>
         {/if}
         <LazySection skeleton={relSkeleton}>
           <RelationList animeId={anime.id} kind="relations" />

@@ -75,6 +75,8 @@
   width: 60px;
   height: 80px;
   flex-shrink: 0;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
 }
 
 .detail-char-avatar {
@@ -89,6 +91,8 @@
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.3s var(--ease-out);
+  transform: scale(1.15);
+  transform-origin: top center;
 }
 .detail-char-avatar.is-loaded { opacity: 1; }
 

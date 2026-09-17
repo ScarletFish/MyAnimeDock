@@ -342,6 +342,21 @@ async function handleMikanSubscription(req: any, res: any, state: ServerState) {
   }
 }
 
+/**
+ * GET /api/mikan/subscriptions
+ * 列出全部订阅（按动漫名排序）
+ */
+async function handleMikanSubscriptions(_req: any, res: any, state: ServerState) {
+  const { logger, db } = state;
+  try {
+    const subs = db.getAllMikanSubscriptions();
+    jsonResp(res, 200, subs || []);
+  } catch (e: any) {
+    logger.error('[MIKAN] List subscriptions failed:', e);
+    jsonResp(res, 500, { error: e.message });
+  }
+}
+
 module.exports = {
   handleMikanWeekly,
   handleMikanSeason,
@@ -350,4 +365,5 @@ module.exports = {
   handleMikanSubscribe,
   handleMikanUnsubscribe,
   handleMikanSubscription,
+  handleMikanSubscriptions,
 };

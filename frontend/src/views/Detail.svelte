@@ -367,7 +367,10 @@
   // ─── 删除缺失集 ───
   async function deleteEpisode(epNumber) {
     if (!anime) return;
-    const ok = await showConfirm(tr('detail.confirmDeleteMissing', { num: epNumber, title: escapeHtml(anime.title) }));
+    const ok = await showConfirm({
+      title: tr('detail.confirmDeleteMissingTitle', { num: epNumber, title: escapeHtml(anime.title) }),
+      hint: tr('detail.confirmDeleteMissingHint'),
+    });
     if (!ok) return;
     try {
       const updated = await api.del('/api/anime/' + encodeURIComponent(anime.id) + '/episode/' + epNumber);
@@ -397,7 +400,10 @@
   // ─── 删除 ───
   async function deleteAnime() {
     if (!anime) return;
-    const ok = await showConfirm(tr('detail.deleteConfirm', { title: escapeHtml(anime.title) }));
+    const ok = await showConfirm({
+      title: tr('detail.deleteConfirmTitle', { title: escapeHtml(anime.title) }),
+      hint: tr('detail.deleteConfirmHint'),
+    });
     if (!ok) return;
     try {
       await api.del('/api/anime/' + encodeURIComponent(anime.id));

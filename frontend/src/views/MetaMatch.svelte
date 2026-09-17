@@ -499,7 +499,10 @@
   function closeModal() {
     // 同步中关闭弹窗 → 确认对话框
     if (syncInProgress) {
-      showConfirm(tr('metamatch.confirmAbort')).then((ok) => {
+      showConfirm({
+        title: tr('metamatch.confirmAbortTitle'),
+        hint: tr('metamatch.confirmAbortHint'),
+      }).then((ok) => {
         if (!ok) return; // 用户取消关闭
         doClose();
       });

@@ -186,7 +186,10 @@
 
   async function unsubscribe(subgroup) {
     if (!subgroup.subscription) return;
-    const confirmed = await showConfirm(tr('mikan.unsubscribeConfirm'));
+    const confirmed = await showConfirm({
+      title: tr('mikan.unsubscribeConfirmTitle'),
+      hint: tr('mikan.unsubscribeConfirmHint'),
+    });
     if (!confirmed) return;
     try {
       await api.post('/api/mikan/unsubscribe', { subscriptionId: subgroup.subscription.id });

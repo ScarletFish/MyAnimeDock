@@ -479,7 +479,10 @@
     closeCtx();
     if (!item) return;
     const name = item.bangumiTitle || item.title || item.id;
-    const confirmed = await showConfirm(tr('library.confirmRemove', { title: escapeHtml(name) }));
+    const confirmed = await showConfirm({
+      title: tr('library.confirmRemoveTitle', { title: escapeHtml(name) }),
+      hint: tr('library.confirmRemoveHint'),
+    });
     if (!confirmed) return;
     try {
       // ListItem.id 可能是 mylist 行 id 或 anime id，删除 API 要 anime id → animeId 优先

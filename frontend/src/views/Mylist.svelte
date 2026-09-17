@@ -253,7 +253,10 @@
     closeCtx();
     if (!item) return;
     const name = item.bangumiTitle || item.title || item.id;
-    const confirmed = await showConfirm(tr('library.confirmRemove', { title: escapeHtml(name) }));
+    const confirmed = await showConfirm({
+      title: tr('library.confirmRemoveTitle', { title: escapeHtml(name) }),
+      hint: tr('library.confirmRemoveHint'),
+    });
     if (!confirmed) return;
     try {
       await api.del('/api/anime/' + encodeURIComponent(item.animeId || item.id));

@@ -22,6 +22,12 @@ import { slide } from 'svelte/transition';
   let es = $state(null);
   let prevOpen = $state(false);
 
+  let activeTab = $state('torrents');
+  let subscriptions = $state([]);
+  let subsLoading = $state(false);
+  let prevMikanOpen = $state(false);
+  let expandedSubId = $state(null);
+
   let sourceFilter = $state('all');
   let statusFilter = $state('all');
 
@@ -48,6 +54,35 @@ import { slide } from 'svelte/transition';
       uploaded += t.uploaded || 0;
     }
     return { dlSpeed, upSpeed, downloaded, uploaded };
+  });
+
+  // 保存路径归一：统一分隔符、去尾斜杠、转小写（qB 的 save_path 可能带尾斜杠）
+  function normalizePath(p) {
+    return String(p || '').replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+  }
+
+  // 订阅分组：按动漫名聚合全部蜜柑订阅；组内归属 = 路径归一相等（强信号）/ 名称包含（兜底）
+  const subscriptionGroups = $derived.by(() => {
+    const groups = subscriptions
+      .map((sub) => ({ ...sub, torrents: [] }))
+      .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'zh'));
+    for (const t of torrents) {
+      if (t.category !== 'anime-mikan') continue;
+      const tPath = normalizePath(t.save_path);
+      const tName = String(t.name || '').toLowerCase();
+      for (const sub of groups) {
+        const hit = (tPath && tPath === normalizePath(sub.savePath))
+          || (tName && sub.name && tName.includes(String(sub.name).toLowerCase()));
+        if (hit) {
+          sub.torrents.push(t);
+          break;
+        }
+      }
+    }
+    for (const g of groups) {
+      g.torrents.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'zh'));
+    }
+    return groups;
   });
 
   const STATUS_MAP = {
@@ -166,6 +201,41 @@ import { slide } from 'svelte/transition';
     }
   }
 
+  async function loadSubscriptions() {
+    subsLoading = true;
+    try {
+      const rows = await api.get('/api/mikan/subscriptions');
+      subscriptions = Array.isArray(rows) ? rows : [];
+    } catch (e) {
+      // 静默失败：qB / 后端暂不可用时保留空列表，不打扰用户
+      subscriptions = [];
+    } finally {
+      subsLoading = false;
+    }
+  }
+
+  // ─── 订阅组展开/折叠（单值手风琴，与种子行 toggleRow 语义一致） ───
+  function toggleSubExpanded(id) {
+    if (!configured) return;
+    expandedSubId = expandedSubId === id ? null : id;
+  }
+
+  async function unsubscribeSub(sub) {
+    const confirmed = await showConfirm({
+      title: tr('download.unsubscribeConfirmTitle', { name: escapeHtml(sub.name) }),
+      hint: tr('download.unsubscribeConfirmHint'),
+    });
+    if (!confirmed) return;
+    try {
+      await api.post('/api/mikan/unsubscribe', { animeId: sub.animeId });
+      const idx = subscriptions.findIndex((s) => s.id === sub.id);
+      if (idx !== -1) subscriptions.splice(idx, 1);
+      showToast(tr('mikan.unsubscribed'), 'success');
+    } catch (e) {
+      showToast(tr('mikan.unsubscribeFailed', { error: e.message }), 'error');
+    }
+  }
+
   async function addMagnet() {
     const url = magnetInput.trim();
     if (!url) return;
@@ -199,7 +269,9 @@ import { slide } from 'svelte/transition';
   }
 
   async function deleteTorrent(torrent) {
-    const confirmed = await showConfirm(tr('download.confirmDelete', { name: escapeHtml(torrent.name) }));
+    const confirmed = await showConfirm({
+      title: tr('download.confirmDelete', { name: escapeHtml(torrent.name) }),
+    });
     if (!confirmed) return;
     try {
       await api.post('/api/qb/action', {
@@ -274,6 +346,40 @@ import { slide } from 'svelte/transition';
     }
     prevOpen = open;
   });
+
+  // 切到订阅管理 tab 时拉取订阅列表
+  $effect(() => {
+    if (activeTab === 'subscriptions') {
+      loadSubscriptions();
+    }
+  });
+
+  // 蜜柑弹窗关闭（订阅/取消订阅后）同步订阅列表
+  $effect(() => {
+    const open = $mikanModalOpen;
+    if (!open && prevMikanOpen) {
+      loadSubscriptions();
+    }
+    prevMikanOpen = open;
+  });
+
+  // 手风琴联动清理：仅在组展开状态变化（收起/切换）时清扫——
+  // 组被收起/切换导致其内种子详情区卸载，expandedHash 若已不在当前展开组内则清空，
+  // 避免下次展开该组时残留幽灵详情；种子列表 tab 单独展开行（expandedHash 变化）不受影响
+  let prevSubId = null;
+  $effect(() => {
+    const cur = expandedSubId;
+    const groupChanged = cur !== prevSubId;
+    prevSubId = cur;
+    if (!groupChanged || expandedHash == null) return;
+    const group = subscriptionGroups.find((g) => g.id === cur);
+    const stillVisible = group ? group.torrents.some((t) => t.hash === expandedHash) : false;
+    if (!stillVisible) {
+      expandedHash = null;
+      torrentFiles = [];
+      filesOpen = false;
+    }
+  });
 </script>
 
 <section class="view download-view" class:hidden={!$downloadOpen}>
@@ -303,7 +409,76 @@ import { slide } from 'svelte/transition';
     </div>
   </div>
 
-  {#if loading}
+  <div class="download-tabs" role="group" aria-label="下载视图">
+    <button class="filter-btn {activeTab === 'torrents' ? 'filter-btn--active' : ''}" onclick={() => activeTab = 'torrents'}>{tr('download.tabTorrents')}</button>
+    <button class="filter-btn {activeTab === 'subscriptions' ? 'filter-btn--active' : ''}" onclick={() => activeTab = 'subscriptions'}>{tr('download.tabSubscriptions')}</button>
+  </div>
+
+  {#if activeTab === 'subscriptions'}
+    <div class="sub-view">
+      <div class="sub-overview">{tr('download.subTotal', { count: subscriptionGroups.length })}</div>
+      {#if !configured}
+        <div class="sub-sub-hint">{tr('download.subQbOffline')}</div>
+      {/if}
+      {#if subsLoading && subscriptionGroups.length === 0}
+        <div class="download-loading">
+          <svg class="spinning" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 6v6l4 2"/>
+          </svg>
+          <span>{tr('common.loading')}</span>
+        </div>
+      {:else if subscriptionGroups.length === 0}
+        <div class="download-empty sub-empty-state">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          <p>{tr('download.subEmpty')}</p>
+          <button class="btn btn-primary" onclick={() => mikanModalOpen.set(true)}>{tr('download.subEmptyHint')}</button>
+        </div>
+      {:else}
+        <div class="sub-groups">
+          {#each subscriptionGroups as sub (sub.id)}
+            <div class="sub-group-wrap">
+              <div
+                class="sub-group"
+                class:expanded={expandedSubId === sub.id}
+                class:sub-group--inactive={!configured}
+              >
+                <div
+                  class="sub-group-header"
+                  role="button"
+                  tabindex="0"
+                  onclick={() => toggleSubExpanded(sub.id)}
+                  onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSubExpanded(sub.id); } }}
+                >
+                  <span class="sub-group-name" data-tooltip={sub.name}>{sub.name}</span>
+                  {#if configured}
+                    <span class="sub-group-count">{tr('download.subEpisodes', { count: sub.torrents.length })}</span>
+                  {/if}
+                  <button class="btn btn-sm btn-outline" onclick={(e) => { e.stopPropagation(); unsubscribeSub(sub); }}>{tr('download.unsubscribe')}</button>
+                </div>
+              </div>
+              {#if expandedSubId === sub.id && configured && sub.torrents.length > 0}
+                <div class="sub-group-detail" transition:slide={{ duration: 120 }}>
+                  {#each sub.torrents as t (t.hash)}
+                    {@render torrentRow(t)}
+                  {/each}
+                </div>
+              {:else if expandedSubId === sub.id && configured}
+                <div class="sub-group-detail sub-group-detail--empty" transition:slide={{ duration: 120 }}>
+                  {tr('download.subNoEpisodes')}
+                </div>
+              {/if}
+            </div>
+          {/each}
+        </div>
+      {/if}
+    </div>
+  {:else}
+    {#if loading}
     <div class="download-loading">
       <svg class="spinning" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="10"/>
@@ -357,86 +532,7 @@ import { slide } from 'svelte/transition';
         </div>
       {:else}
         {#each filteredTorrents as t (t.hash)}
-          {@const statusInfo = getStatusInfo(t.state)}
-          <div
-            class="download-item"
-            class:expanded={expandedHash === t.hash}
-            role="button"
-            tabindex="0"
-            onclick={() => toggleRow(t)}
-            onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleRow(t); } }}
-          >
-            <div class="download-item-main">
-              <div class="download-item-info">
-                <span class="download-item-name" data-tooltip={t.name}>{t.name}</span>
-                <span class="download-item-meta">
-                  <span class="download-item-size">{formatSize(t.size)}</span>
-                  {#if t.num_seeds > 0}
-                    <span class="download-item-seeds">P:{t.num_seeds}</span>
-                  {/if}
-                </span>
-              </div>
-              <div class="download-item-progress">
-                <div class="download-progress-bar">
-                  <div class="download-progress-fill" style="width: {Math.min(t.progress * 100, 100)}%"></div>
-                </div>
-                <span class="download-progress-text">{formatProgress(t.progress)}</span>
-              </div>
-              <span class="download-status {statusInfo.cls}">{statusInfo.label}</span>
-              <div class="download-item-speed">
-                {#if t.dlspeed > 0}
-                  <span class="download-speed-down">↓{formatSpeed(t.dlspeed)}</span>
-                {/if}
-                {#if t.upspeed > 0}
-                  <span class="download-speed-up">↑{formatSpeed(t.upspeed)}</span>
-                {/if}
-              </div>
-              <div class="download-item-actions">
-                <button class="btn-icon" onclick={(e) => { e.stopPropagation(); togglePause(t); }} data-tooltip={isTorrentPaused(t.state) ? tr('download.resume') : tr('download.pause')}>
-                  {#if isTorrentPaused(t.state)}
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                  {:else}
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
-                  {/if}
-                </button>
-                <button class="btn-icon btn-danger" onclick={(e) => { e.stopPropagation(); deleteTorrent(t); }} data-tooltip={tr('download.delete')}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-                </button>
-              </div>
-            </div>
-          </div>
-          {#if expandedHash === t.hash}
-            <div class="download-detail" bind:this={detailEl} transition:slide={{ duration: 120 }}>
-              <div class="download-detail-grid">
-                <div class="download-detail-field download-detail-field--path">
-                  <span class="download-detail-label">{tr('download.detailPath')}</span>
-                  <span class="download-detail-value">{t.save_path || '—'}</span>
-                </div>
-                <div class="download-detail-short">
-                  <div class="download-detail-field"><span class="download-detail-label">{tr('download.detailRatio')}</span><span class="download-detail-value">{t.ratio != null ? String(Math.round(t.ratio)) : '—'}</span></div>
-                  <div class="download-detail-field"><span class="download-detail-label">{tr('download.detailEta')}</span><span class="download-detail-value">{formatEta(t.eta)}</span></div>
-                  <div class="download-detail-field download-detail-field--date"><span class="download-detail-label">{tr('download.detailAdded')}</span><span class="download-detail-value">{t.added_on ? localDateStr(new Date(t.added_on * 1000).toISOString()) : '—'}</span></div>
-                  <div class="download-detail-field"><span class="download-detail-label">{tr('download.detailSeeding')}</span><span class="download-detail-value">{formatDuration(t.seeding_time)}</span></div>
-                </div>
-              </div>
-              <button type="button" class="download-files-toggle" onclick={(e) => { e.stopPropagation(); filesOpen = !filesOpen; }}>{tr('download.detailFiles', { count: torrentFiles.length })}</button>
-              {#if filesOpen && filesLoading}
-                <div class="download-detail-loading"><svg class="spinning" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
-              {:else if filesOpen && torrentFiles.length}
-                <ul class="download-file-list" transition:slide={{ duration: 120 }}>
-                  {#each torrentFiles as f}
-                    <li class="download-file-row">
-                      <span class="download-file-name">{f.name}</span>
-                      <span class="download-file-size">{formatSize(f.size)}</span>
-                      <span class="download-file-progress">{formatProgress(f.progress)}</span>
-                    </li>
-                  {/each}
-                </ul>
-              {:else if filesOpen}
-                <div class="download-detail-empty" transition:slide={{ duration: 120 }}>{tr('download.detailNoFiles')}</div>
-              {/if}
-            </div>
-          {/if}
+          {@render torrentRow(t)}
         {/each}
       {/if}
     </div>
@@ -463,6 +559,90 @@ import { slide } from 'svelte/transition';
       </div>
     {/if}
   {/if}
+  {/if}
 </section>
+
+{#snippet torrentRow(t)}
+  {@const statusInfo = getStatusInfo(t.state)}
+  <div
+    class="download-item"
+    class:expanded={expandedHash === t.hash}
+    role="button"
+    tabindex="0"
+    onclick={() => toggleRow(t)}
+    onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleRow(t); } }}
+  >
+    <div class="download-item-main">
+      <div class="download-item-info">
+        <span class="download-item-name" data-tooltip={t.name}>{t.name}</span>
+        <span class="download-item-meta">
+          <span class="download-item-size">{formatSize(t.size)}</span>
+          {#if t.num_seeds > 0}
+            <span class="download-item-seeds">P:{t.num_seeds}</span>
+          {/if}
+        </span>
+      </div>
+      <div class="download-item-progress">
+        <div class="download-progress-bar">
+          <div class="download-progress-fill" style="width: {Math.min(t.progress * 100, 100)}%"></div>
+        </div>
+        <span class="download-progress-text">{formatProgress(t.progress)}</span>
+      </div>
+      <span class="download-status {statusInfo.cls}">{statusInfo.label}</span>
+      <div class="download-item-speed">
+        {#if t.dlspeed > 0}
+          <span class="download-speed-down">↓{formatSpeed(t.dlspeed)}</span>
+        {/if}
+        {#if t.upspeed > 0}
+          <span class="download-speed-up">↑{formatSpeed(t.upspeed)}</span>
+        {/if}
+      </div>
+      <div class="download-item-actions">
+        <button class="btn-icon" onclick={(e) => { e.stopPropagation(); togglePause(t); }} data-tooltip={isTorrentPaused(t.state) ? tr('download.resume') : tr('download.pause')}>
+          {#if isTorrentPaused(t.state)}
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          {:else}
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+          {/if}
+        </button>
+        <button class="btn-icon btn-danger" onclick={(e) => { e.stopPropagation(); deleteTorrent(t); }} data-tooltip={tr('download.delete')}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+  {#if expandedHash === t.hash}
+    <div class="download-detail" bind:this={detailEl} transition:slide={{ duration: 120 }}>
+      <div class="download-detail-grid">
+        <div class="download-detail-field download-detail-field--path">
+          <span class="download-detail-label">{tr('download.detailPath')}</span>
+          <span class="download-detail-value">{t.save_path || '—'}</span>
+        </div>
+        <div class="download-detail-short">
+          <div class="download-detail-field"><span class="download-detail-label">{tr('download.detailRatio')}</span><span class="download-detail-value">{t.ratio != null ? String(Math.round(t.ratio)) : '—'}</span></div>
+          <div class="download-detail-field"><span class="download-detail-label">{tr('download.detailEta')}</span><span class="download-detail-value">{formatEta(t.eta)}</span></div>
+          <div class="download-detail-field download-detail-field--date"><span class="download-detail-label">{tr('download.detailAdded')}</span><span class="download-detail-value">{t.added_on ? localDateStr(new Date(t.added_on * 1000).toISOString()) : '—'}</span></div>
+          <div class="download-detail-field"><span class="download-detail-label">{tr('download.detailSeeding')}</span><span class="download-detail-value">{formatDuration(t.seeding_time)}</span></div>
+        </div>
+      </div>
+      <button type="button" class="download-files-toggle" onclick={(e) => { e.stopPropagation(); filesOpen = !filesOpen; }}>{tr('download.detailFiles', { count: torrentFiles.length })}</button>
+      {#if filesOpen && filesLoading}
+        <div class="download-detail-loading"><svg class="spinning" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
+      {:else if filesOpen && torrentFiles.length}
+        <ul class="download-file-list" transition:slide={{ duration: 120 }}>
+          {#each torrentFiles as f}
+            <li class="download-file-row">
+              <span class="download-file-name">{f.name}</span>
+              <span class="download-file-size">{formatSize(f.size)}</span>
+              <span class="download-file-progress">{formatProgress(f.progress)}</span>
+            </li>
+          {/each}
+        </ul>
+      {:else if filesOpen}
+        <div class="download-detail-empty" transition:slide={{ duration: 120 }}>{tr('download.detailNoFiles')}</div>
+      {/if}
+    </div>
+  {/if}
+{/snippet}
 
 <MikanModal />

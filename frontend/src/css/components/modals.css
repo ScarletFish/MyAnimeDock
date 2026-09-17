@@ -23,9 +23,9 @@ body:has(#modal-root .modal-overlay.show) > :not(#modal-root):not(#globalTooltip
   }
 }
 
-/* 确认弹窗：层级高于普通模态框（250），避免被设置等模态框遮挡 */
+/* 确认弹窗：层级高于普通模态框，避免被设置等模态框遮挡 */
 @utility modal-overlay--confirm {
-  z-index: var(--z-modal);
+  z-index: calc(var(--z-modal) + 1);
 }
 
 @utility modal {
@@ -119,6 +119,45 @@ body:has(#modal-root .modal-overlay.show) > :not(#modal-root):not(#globalTooltip
   justify-content: flex-end;
   gap: var(--space-3);
   padding: var(--space-5) var(--space-6) var(--space-6);
+}
+
+/* ─── Confirm Dialog ─── */
+/* 确认框：内容自适应宽度（替代基类 90% 视口宽）；短文案保底不显小，长文案撑开用掉两侧留白（≤600px 消除无效换行） */
+@utility modal--confirm {
+  width: fit-content;
+  min-width: 480px;
+  max-width: 600px;
+  padding: var(--space-8);
+}
+
+/* 按钮区由容器内边距承托，无需再叠加 modal-actions 自身 padding */
+.modal--confirm .modal-actions {
+  padding: var(--space-6) 0 0;
+}
+
+/* 确认/取消按钮加大，配 min-w 保证等宽从容 */
+.modal--confirm .btn {
+  padding: var(--space-2) var(--space-6);
+}
+
+/* 标题：大一号、加粗、承载 escapeHtml 后的用户内容 */
+.confirm-title {
+  font-family: var(--font-body);
+  font-size: var(--text-xl);
+  font-weight: var(--fw-semibold);
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+  color: var(--fg-primary);
+  margin: 0;
+}
+
+/* 提示：弱化次级文案；pre-line 让 i18n 里的 \n\n 分段如实换行 */
+.confirm-hint {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-sm);
+  line-height: 1.7;
+  color: var(--fg-secondary);
+  white-space: pre-line;
 }
 
 .error-msg {
@@ -216,7 +255,18 @@ body:has(#modal-root .modal-overlay.show) > :not(#modal-root):not(#globalTooltip
 .status-modal-footer .btn { padding: var(--space-2) var(--space-8); font-size: var(--text-base); }
 
 /* ─── Settings Modal — Tabbed Layout ─── */
-.modal.modal--settings { padding: 0; max-width: 640px; border: none; }
+/* 自身不滚动（overflow: hidden 掐掉基类 overflow-y:auto 的外层滚动条），
+   完整高度 = header + tabs + 620px 内容区 + actions；视口不够高时 max-height 收缩，由 panels 内部滚动消化 */
+.modal.modal--settings {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+  max-width: 900px;
+  height: 830px;
+  max-height: calc(100vh - var(--space-6) * 2);
+  border: none;
+}
 .settings-header { padding: var(--space-6) var(--space-6) 0; }
 
 .settings-header-top {
@@ -282,9 +332,20 @@ body:has(#modal-root .modal-overlay.show) > :not(#modal-root):not(#globalTooltip
 }
 
 .settings-panels {
-  position: relative; padding: var(--space-5) var(--space-6) 0;
-  height: 320px;
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+  padding: var(--space-5) var(--space-6) 0;
   overflow-y: auto;
+}
+
+/* 外壳固定件（header/tabs/actions）不参与收缩：视口不足时只有 panels 收缩并内部滚动，
+   保证只留一根滚动条且按钮区永不溢出视口 */
+.settings-header,
+.settings-tabs,
+.modal.modal--settings .modal-actions {
+  flex-shrink: 0;
 }
 .settings-panel { display: none; animation: settings-fade-in 250ms var(--ease-out) both; }
 .settings-panel.active { display: block; }

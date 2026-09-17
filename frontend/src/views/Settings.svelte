@@ -746,7 +746,10 @@
   async function dbRestore(input) {
     const file = input.files[0];
     if (!file) return;
-    const confirmed = await showConfirm(tr('app.confirmRestoreBackup'));
+    const confirmed = await showConfirm({
+      title: tr('app.confirmRestoreBackupTitle'),
+      hint: tr('app.confirmRestoreBackupHint'),
+    });
     if (!confirmed) {
       input.value = '';
       return;
@@ -777,7 +780,10 @@
   }
 
   async function dbClearSessions() {
-    const confirmed = await showConfirm(tr('app.confirmClearSessions'));
+    const confirmed = await showConfirm({
+      title: tr('app.confirmClearSessionsTitle'),
+      hint: tr('app.confirmClearSessionsHint'),
+    });
     if (!confirmed) return;
     try {
       const res = await api.post('/api/db/clear-sessions', {});
@@ -791,7 +797,10 @@
   }
 
   async function dbVacuum() {
-    const confirmed = await showConfirm(tr('app.confirmVacuum'));
+    const confirmed = await showConfirm({
+      title: tr('app.confirmVacuumTitle'),
+      hint: tr('app.confirmVacuumHint'),
+    });
     if (!confirmed) return;
     try {
       const res = await api.post('/api/db/vacuum', {});
@@ -806,9 +815,15 @@
   }
 
   async function dbReset() {
-    const step1 = await showConfirm(tr('app.confirmResetDbStep1'));
+    const step1 = await showConfirm({
+      title: tr('app.confirmResetDbStep1Title'),
+      hint: tr('app.confirmResetDbStep1Hint'),
+    });
     if (!step1) return;
-    const step2 = await showConfirm(tr('app.confirmResetDbStep2'));
+    const step2 = await showConfirm({
+      title: tr('app.confirmResetDbStep2Title'),
+      hint: tr('app.confirmResetDbStep2Hint'),
+    });
     if (!step2) return;
     try {
       const res = await api.post('/api/db/reset', {});
@@ -825,7 +840,10 @@
 
   async function dbClearCache(target) {
     const label = { thumbs: tr('app.cacheLabelThumbs'), covers: tr('app.cacheLabelCovers'), banners: tr('app.cacheLabelBanners'), all: tr('app.cacheLabelAll') }[target] || target;
-    const confirmed = await showConfirm(tr('app.confirmClearCache', { label }));
+    const confirmed = await showConfirm({
+      title: tr('app.confirmClearCacheTitle', { label }),
+      hint: tr('app.confirmClearCacheHint'),
+    });
     if (!confirmed) return;
     try {
       const res = await api.post('/api/db/clear-cache', { target: target === 'all' ? undefined : target });

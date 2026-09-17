@@ -8,12 +8,12 @@
 
   /**
    * 显示确认弹窗，返回 Promise<boolean>
-   * @param {string} message 提示文案
+   * @param {{ title: string, hint?: string }} opts 结构化文案：标题（必填，大一号）+ 提示（可选，附属说明）
    * @returns {Promise<boolean>}
    */
-  export function showConfirm(message) {
+  export function showConfirm({ title, hint } = {}) {
     return new Promise(resolve => {
-      confirmStore.set({ message, resolve });
+      confirmStore.set({ title, hint, resolve });
     });
   }
 
@@ -38,15 +38,20 @@
     onclick={(e) => { if (e.target === e.currentTarget) resolveConfirm(false); }}
     onkeydown={(e) => { if (e.key === 'Escape') resolveConfirm(false); }}
   >
-    <div class="modal" style="max-width:380px;padding:var(--space-6) var(--space-8) var(--space-5)">
-      <p style="margin:0 0 18px;line-height:1.7;font-size:15px;text-align:left" class="text-content">
-        {@html $confirmStore.message}
+    <div class="modal modal--confirm">
+      <p class="confirm-title">
+        {@html $confirmStore.title}
       </p>
+      {#if $confirmStore.hint}
+        <p class="confirm-hint">
+          {@html $confirmStore.hint}
+        </p>
+      {/if}
       <div class="modal-actions flex items-center justify-between">
-        <button class="btn btn-ghost confirm-cancel min-w-[80px]" onclick={() => resolveConfirm(false)}>
+        <button class="btn btn-ghost confirm-cancel min-w-[100px]" onclick={() => resolveConfirm(false)}>
           {tr('common.cancel')}
         </button>
-        <button class="btn btn-danger confirm-ok min-w-[80px]" onclick={() => resolveConfirm(true)}>
+        <button class="btn btn-danger confirm-ok min-w-[100px]" onclick={() => resolveConfirm(true)}>
           {tr('common.confirm')}
         </button>
       </div>

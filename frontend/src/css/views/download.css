@@ -509,3 +509,146 @@
 .spinning {
   animation: spin 1s linear infinite;
 }
+
+/* ─── View Tabs (种子列表 / 订阅管理) ─── */
+
+.download-tabs {
+  display: inline-flex;
+  align-self: flex-start;
+  flex-shrink: 0;
+  margin-bottom: var(--space-3);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--overlay-glass);
+}
+
+/* ─── Subscriptions View ─── */
+
+.sub-view {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.sub-overview {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-bottom: var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-medium);
+  color: var(--fg-secondary);
+}
+
+.sub-sub-hint {
+  flex-shrink: 0;
+  margin-bottom: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid rgba(var(--warning-rgb), var(--alpha-emphasis));
+  border-radius: var(--radius-md);
+  background: rgba(var(--warning-rgb), var(--alpha-faint));
+  color: var(--warning);
+  font-size: var(--text-sm);
+}
+
+.sub-groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding-bottom: var(--space-2);
+}
+
+/* 每个动漫 = "行 + 详情"上下两块（同 qB 的 download-item → download-detail 兄弟结构）：
+   块内 gap 小（行与归属面板贴合），动漫与动漫之间 gap 大，节奏"行-详情-行-详情"分明 */
+.sub-group-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.sub-group {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+
+/* 与种子行 .download-item:hover / .expanded 同语言：边框强调 + 展开态 accent 底色 */
+.sub-group:hover:not(.sub-group--inactive) {
+  border-color: rgba(var(--accent-rgb), var(--alpha-emphasis));
+}
+
+.sub-group.expanded:not(.sub-group--inactive) {
+  border-color: var(--accent);
+  background: rgba(var(--accent-rgb), var(--alpha-faint));
+}
+
+/* 离线态：无剧集数据可展示，去掉可展开暗示与反馈 */
+.sub-group--inactive .sub-group-header {
+  cursor: default;
+}
+
+.sub-group-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  cursor: pointer;
+  user-select: none;
+}
+
+.sub-group-name {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-base);
+  font-weight: var(--fw-semibold);
+  color: var(--fg-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sub-group-count {
+  flex-shrink: 0;
+  font-size: var(--text-xs);
+  font-weight: var(--fw-medium);
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), var(--alpha-faint));
+  border-radius: var(--radius-pill);
+  padding: var(--space-050) var(--space-2);
+  white-space: nowrap;
+}
+
+/* 剧集归属面板：与 .download-detail 同款独立块（surface 底 + 1px 边 + inset accent 左竖线），
+   作为动漫行的兄弟节点挂在其下；内部紧凑种子行样式保持不动 */
+.sub-group-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: inset 3px 0 0 var(--accent), var(--shadow-sm);
+}
+
+/* 组内种子行比主列表略紧凑，形成"动漫名 + 剧集"的嵌套层级 */
+.sub-group-detail .download-item {
+  padding: var(--space-2) var(--space-250);
+}
+
+.sub-group-detail .download-detail {
+  margin-top: 0;
+}
+
+/* 无剧集占位：同款归属面板，面板内居中弱化文案，展开时才出现 */
+.sub-group-detail--empty {
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  color: var(--fg-muted);
+  font-size: var(--text-sm);
+  text-align: center;
+}

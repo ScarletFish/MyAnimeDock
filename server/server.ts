@@ -395,6 +395,7 @@ const routeTable = [
   { method: 'POST', path: '/api/mikan/subscribe', handler: H.handleMikanSubscribe },
   { method: 'POST', path: '/api/mikan/unsubscribe', handler: H.handleMikanUnsubscribe },
   { method: 'GET', path: '/api/mikan/subscription', handler: H.handleMikanSubscription },
+  { method: 'GET', path: '/api/mikan/subscriptions', handler: H.handleMikanSubscriptions },
   // Covers
   { method: 'GET', prefix: '/covers/', handler: handleCoverImage },
   // Banners

@@ -34,7 +34,7 @@
   import { getDashboardLayout } from '../lib/dashboard-layout.js';
   import { tr, escapeHtml } from '../lib/anime-utils.js';
   import { watchThumb } from '../lib/thumb-manager.js';
-  import { libraryData, mylistData, pendingAutoPlay, consumeStartupLibraryPromise, patchLibraryItem, removeLibraryItemFromStore, onInvalidated } from '../lib/ui-state.js';
+  import { libraryData, mylistData, pendingAutoPlay, consumeStartupLibraryPromise, patchLibraryItem, removeLibraryItemFromStore, getMylistItem, onInvalidated } from '../lib/ui-state.js';
   import { showView, showDetail, getLibraryScrollTop, __skipViewEnter } from '../lib/router.js';
   import { settingsOpen } from './Settings.svelte';
   import { metaMatchOpen } from './MetaMatch.svelte';
@@ -435,7 +435,7 @@
   function openContextMenu(e, id) {
     e.preventDefault();
     e.stopPropagation();
-    const item = $libraryData.find((a) => a.id === id);
+    const item = getMylistItem(id);
     if (!item) return;
     ctxItem = item;
     ctxX = e.clientX;

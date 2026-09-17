@@ -290,9 +290,10 @@ export function handleLibrarySyncStream(req: any, res: any, state: ServerState) 
     const coverDir = path.join(DATA_DIR, 'covers');
     const bannerDir = path.join(DATA_DIR, 'banners');
     const toSync = [];
+    const libraryById = new Map(data.library.map((a) => [a.id, a]));
     for (const animeId of animeIds) {
       if (cancelledSyncSessions.get(sessionId) || res.writableEnded) { send('cancelled', { ok: true }); break; }
-      const anime = data.library.find((a: any) => a.id === animeId);
+      const anime = libraryById.get(animeId);
       if (!anime) { send('progress', { animeId, success: false, error: 'Anime not found' }); continue; }
       toSync.push({ animeId, anime });
     }

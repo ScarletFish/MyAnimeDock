@@ -4,7 +4,7 @@ import { Logger } from './logger';
 const logger: Logger = require('./logger').child('[BGM-SYNC]');
 import BangumiPersonal = require('./scrapers/bangumi-personal');
 const { BGM_TYPE_TO_STATUS, STATUS_TO_BGM_TYPE } = BangumiPersonal.STATUS_MAP;
-import type { AppData, MyListItem } from './types';
+import type { Anime, AppData, MyListItem } from './types';
 
 class BangumiSync {
   /** BangumiPersonal 实例 */
@@ -53,14 +53,16 @@ class BangumiSync {
       result.pulled = remoteItems.length;
       logger.info(`MyList 同步：拉取到 ${remoteItems.length} 条收藏`);
 
-      const animeByBgmId = new Map();
+      const animeByBgmId = new Map<string, Anime>();
+      const libraryById = new Map<string, Anime>();
       for (const a of (data.library || [])) {
+        libraryById.set(a.id, a);
         if (a.bangumiId) animeByBgmId.set(String(a.bangumiId), a);
       }
 
       const myListByBgmId = new Map();
       for (const m of (data.myList || [])) {
-        const anime = (data.library || []).find((a) => a.id === m.animeId);
+        const anime = m.animeId ? libraryById.get(m.animeId) : undefined;
         if (anime && anime.bangumiId) {
           myListByBgmId.set(String(anime.bangumiId), m);
         }
@@ -100,7 +102,7 @@ class BangumiSync {
       }
 
       for (const localItem of (data.myList || [])) {
-        const anime = (data.library || []).find((a) => a.id === localItem.animeId);
+        const anime = localItem.animeId ? libraryById.get(localItem.animeId) : undefined;
         if (!anime || !anime.bangumiId) continue;
 
         const bgmId = String(anime.bangumiId);

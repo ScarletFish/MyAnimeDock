@@ -46,7 +46,7 @@
   import { searchTag } from '../components/chrome/SearchBar.svelte';
   import { tr, escapeHtml, STATUS_SECTIONS_LIBRARY, initialOf, expectedEpCount } from '../lib/anime-utils.js';
   import { sortAnimeItems } from '../lib/sort.js';
-  import { libraryData, mylistData, librarySortMode, mylistSortMode, pendingAutoPlay, pendingFinishAnimeId, finishConfirmMode, ignoreLocalFileMissing, patchLibraryItem, refreshListItem, removeLibraryItemFromStore } from '../lib/ui-state.js';
+  import { libraryData, mylistData, librarySortMode, mylistSortMode, pendingAutoPlay, pendingFinishAnimeId, finishConfirmMode, ignoreLocalFileMissing, patchLibraryItem, refreshListItem, removeLibraryItemFromStore, libraryItemChanged, getMylistItem } from '../lib/ui-state.js';
   import { refreshStats } from './Library.svelte';
   import { refreshDiscovery } from './Discovery.svelte';
   import { showView } from '../lib/router.js';
@@ -162,6 +162,7 @@
       if (__debug.enabled) performance.clearResourceTimings(); // 清空缓冲：只留本轮 fetch 条目，避免热条被顶出后 .at(-1) 抓到陈旧条目
       __debug.log('detail', 'fetch-start', { id, perf: Math.round(tFetchStart) });
       anime = await api.get('/api/anime/' + encodeURIComponent(id));
+      syncLibraryItem(anime);
       const fetchDt = Math.round(performance.now() - tFetchStart); // 纯 fetch 时长（resolve 一到即算，不受下方 50ms 等待污染）
       // Resource Timing 测量（仅调试开启时）：等 resourcetiming buffer 落入条目后
       // 读最近一次 /api/anime/ 请求，全部字段相对 tFetchStart 取整，不泄漏绝对时间戳。
@@ -502,6 +503,18 @@
     }
   }
 
+  // 详情打开（磁盘对账已完成，响应附 item 投影）后同步到库页 store：
+  // 仅语义变化（新集/集数/进度等）时 patch + 发失效，对账无变化静默跳过（零额外请求）。
+  // store 未加载该条目时直接跳过——库页自身的视图打开补刷/全量加载路径兜底。
+  function syncLibraryItem(result) {
+    const item = result && result.item;
+    if (!item) return;
+    // id 索引直查（ListItem.id 与 animeId 双形态均已建索引），不做线性 find
+    const stored = getMylistItem(item.id);
+    if (!stored || !libraryItemChanged(stored, item)) return;
+    patchLibraryItem(item);
+  }
+
   async function slideToAnime(id, direction) {
     if (isSliding) return;
     isSliding = true;
@@ -556,6 +569,7 @@
     const detailSection = document.getElementById('svelte-detailView');
     if (detailSection) detailSection.style.visibility = 'hidden';
     anime = result;
+    syncLibraryItem(result);
     if (result && result.downloaded === false && !get(ignoreLocalFileMissing)) {
       showToast(tr('detail.fileMissing'), 'warning');
     }

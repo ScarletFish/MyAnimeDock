@@ -4,6 +4,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as crypto from 'crypto';
 import { jsonResp } from '../lib/utils';
+import { buildListItems } from '../lib/list-item';
 import { saveScannedTree, DATA_DIR } from '../lib/config';
 import { enrichAnime } from '../lib/enrich';
 import { computePinyinTitle } from '../lib/pinyin';
@@ -193,7 +194,11 @@ export async function handleGetAnimeDetail(req: any, res: any, state: ServerStat
     console.log(`[detail-open] ${JSON.stringify({ phase: 'send', id, totalMs: Date.now() - t0 })}`);
   }
 
-  jsonResp(res, 200, anime);
+  // 磁盘对账后附上 ListItem 投影（与 /api/mylist?ids= 同一构建入口）：
+  // 前端详情页打开时拿这份投影就地 patch 库页 store（新集/集数变化随详情刷新推送到库页），
+  // 投影须在 reconcile/renumber 之后构建，episodeCount/episodesWatched 才是对账后的值。
+  const item = buildListItems(data, { ids: new Set([anime.id]) })[0] ?? null;
+  jsonResp(res, 200, { ...anime, item });
 
   // 后台预生成缩略图（详情页查看时插队到队列最前）
   state.thumbnailQueue?.enqueue(anime, true);
@@ -249,7 +254,7 @@ export async function handleDeleteEpisode(req: any, res: any, state: ServerState
     // 同步该番播放会话的集号，避免 continue-watching 指向不存在的集号
     const sessionsChanged = shiftPlaySessionsForRenumber(data, anime.id, renum.oldToNew);
     await db.saveLibrary(data, new Set([anime.id]));
-    if (sessionsChanged) await db.savePlaySessions(data);
+if (sessionsChanged) await db.savePlaySessions(data);
     jsonResp(res, 200, anime);
   } catch (e: any) {
     jsonResp(res, 500, { error: e.message });

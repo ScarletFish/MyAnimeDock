@@ -16,6 +16,22 @@ export const libraryData = derived(
   ($ml) => $ml.filter((it) => it.animeId !== null && it.hasLocalFiles),
   [],
 );
+
+// ─── mylistData 的 id 索引 ───
+// 查找场景（详情打开同步守卫等）按 id 直查，不做线性 find。
+// 键覆盖两种形态：ListItem.id（mylist 行 id 或 anime id）与 animeId，与既有
+// `a.id === X || a.animeId === X` 匹配语义一致。mylistData 每次变更后同步重建。
+const mylistById = new Map();
+mylistData.subscribe((list) => {
+  mylistById.clear();
+  for (const it of list) {
+    if (it && it.id) mylistById.set(it.id, it);
+    if (it && it.animeId) mylistById.set(it.animeId, it);
+  }
+});
+export function getMylistItem(id) {
+  return id ? (mylistById.get(id) ?? null) : null;
+}
 export const pendingAutoPlay = writable(null);
 export const pendingFinishAnimeId = writable(null);
 
@@ -73,6 +89,38 @@ export function patchLibraryItem(updatedAnime) {
   if (changed) notifyInvalidated('library');
   else if (missDiag) console.warn('[ui-state] patchLibraryItem 未命中（触发调用方全量兜底）', missDiag);
   return changed;
+}
+
+// ─── ListItem 语义变化守卫 ───
+// 详情页打开会对账磁盘（追加新集/更新 fileSize），响应附相同的 ListItem 投影。
+// 对账无变化时不应触发 patch/失效（空转刷新）；有变化（新集/集数/进度等）才需要同步库页。
+// 参与比较的字段 = buildListItems 投影里会随对账/状态变化而变的部分（episodes 不下发，用计数代替）。
+const LIST_ITEM_SYNC_FIELDS = [
+  'hasLocalFiles', 'episodeCount', 'episodesWatched',
+  'title', 'bangumiTitle', 'bangumiTitleJp', 'localCover', 'coverUrl', 'summary',
+  'status', 'userRating', 'rating', 'progress', 'startedAt', 'completedAt',
+  'thoughts', 'notes', 'season', 'matchedSeason', 'platform', 'pinyinTitle',
+  'anilistTags', 'importedAt', 'firstPlayedAt', 'lastPlayedAt',
+];
+// 语义变化 → true：调用方才 patchLibraryItem + 发失效；否则静默跳过（零请求）。
+// 数组字段（anilistTags 等）按内容比较：详情响应与 store 值来自两次独立 JSON fetch，
+// 引用必然不同，用 !== 会误判"有变化"导致每次打开详情都空转通知。
+function libraryItemFieldChanged(a, b) {
+  if (Array.isArray(a) && Array.isArray(b)) {
+    if (a.length !== b.length) return true;
+    for (let i = 0; i < a.length; i++) {
+      if ((a[i] ?? null) !== (b[i] ?? null)) return true;
+    }
+    return false;
+  }
+  return (a ?? null) !== (b ?? null);
+}
+export function libraryItemChanged(a, b) {
+  if (!a || !b) return true;
+  for (const f of LIST_ITEM_SYNC_FIELDS) {
+    if (libraryItemFieldChanged(a[f], b[f])) return true;
+  }
+  return false;
 }
 
 // 单条目删除：从唯一事实源 mylistData 移除（删除 API 已成功时调用），

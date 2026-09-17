@@ -99,5 +99,40 @@ describe('library route handlers', () => {
       assert.strictEqual(res._status, 200);
       assert.strictEqual(res._body.downloaded, false);
     });
+
+    it('attaches reconciled ListItem projection (item) used to sync the library page', async () => {
+      const tmpDir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'test-'));
+      const state = mockState({
+        data: {
+          library: [{
+            id: 'anime-3',
+            title: 'Test Anime',
+            folderPath: tmpDir,
+            episodes: [
+              { number: 1, filePath: path.join(tmpDir, 'ep1.mkv'), fileName: 'ep1.mkv', fileSize: 1, watched: true, progress: 0.5 },
+              { number: 2, filePath: path.join(tmpDir, 'ep2.mkv'), fileName: 'ep2.mkv', fileSize: 1, watched: false, progress: 0 },
+            ],
+          }],
+          myList: [{ id: 'm1', animeId: 'anime-3', status: 'watching', progress: 30 }],
+        },
+        thumbnailQueue: { enqueue: () => {} },
+      });
+      const req = mockReq({ url: '/api/anime/anime-3' });
+      const res = mockRes();
+      await lib.handleGetAnimeDetail(req, res, state);
+      assert.strictEqual(res._status, 200);
+      assert.ok(res._body.item, 'detail response should carry item projection');
+      assert.strictEqual(res._body.item.id, 'm1', 'item uses mylist row id');
+      assert.strictEqual(res._body.item.animeId, 'anime-3');
+      assert.strictEqual(res._body.item.hasLocalFiles, true);
+      assert.strictEqual(res._body.item.status, 'watching');
+      assert.strictEqual(res._body.item.episodeCount, 2);
+      assert.strictEqual(res._body.item.episodesWatched, 1);
+      // 原有详情字段保持（spread 兼容既有消费方）
+      assert.strictEqual(res._body.title, 'Test Anime');
+      assert.strictEqual(res._body.downloaded, true);
+      assert.strictEqual(res._body.episodes.length, 2);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    });
   });
 });

@@ -124,6 +124,17 @@
     }
     scrollRestored = true;
   });
+  // 视图打开时静默补刷续播（打开沿检测，仅带缓存返回时触发）：详情页打开可能已对账出新集
+  // 并 patch 库页，但当时库页若未挂载则收不到失效事件；返回时轻量补一次，保证继续播放不陈旧。
+  // 首次打开（store 空）由 loadLibraryImpl 的 Promise.all 一并覆盖，跃迁后不再重复拉取。
+  let wasContinueRefreshed = false;
+  $effect(() => {
+    const open = $libraryOpen;
+    if (open && !wasContinueRefreshed && !loading && $libraryData.length > 0) {
+      loadContinue();
+    }
+    wasContinueRefreshed = open;
+  });
   // ─── 视图切换入场：容器淡入───
   // 视图打开时整块淡入。Library 已有模块级 fade+rise（模块浮起），容器只做淡入（y:0），
   // 避免「容器浮起 + 内部模块浮起」双层位移叠加过重。store 触发天然 once（每次打开播一次）。

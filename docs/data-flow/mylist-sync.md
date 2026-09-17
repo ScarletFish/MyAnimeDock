@@ -16,6 +16,20 @@ GET /api/mylist[?filter=local]
   → 纯推导、不落盘；仅当用户在弹窗保存时才随 startedAt 写入 MyList
 ```
 
+### Detail-open reconcile projection（详情页打开对账投影）
+```
+GET /api/anime/:id
+  → routes/library.ts:handleGetAnimeDetail()
+  → 打开详情页时对账：findVideos 追加新集 / 更新 fileSize、renumber 填补编号空洞、懒维护 downloaded
+  → 对账/重排后附 item = buildListItems(data, { ids: [anime.id] })[0]（与 /api/mylist?ids= 同一投影入口）
+  → Detail.svelte:syncLibraryItem：比对前端 lib/ui-state.js libraryItemChanged 的语义字段
+      ├─ 有变化 → patchLibraryItem(item) 就地 patch 库页 store + 发失效（续播卡片/集数徽标联动刷新）
+      └─ 无变化 → 静默跳过，零请求零通知（不重复拉 /api/mylist）
+  意义：详情页对账发现的磁盘变更（新集、进度、本地状态）随详情响应推送到库页，
+  无需重开 App / 强制刷新即可在库列表看到最新集数与续播进度。
+  边界：详情页打开时库页未挂载、事件无人接收 → Library.svelte 视图打开沿静默补刷 loadContinue()。
+```
+
 ### Status Change（手动）
 ```
 PUT /api/mylist/:id/status

@@ -297,7 +297,7 @@
 .mm-row--selected,
 .mm-row--batch {
   background: rgba(var(--accent-rgb), var(--alpha-faint)) !important;
-  box-shadow: inset var(--space-075) 0 0 var(--accent);
+  box-shadow: inset var(--accent-bar-w) 0 0 var(--accent);
 }
 .mm-row--matching { background: rgba(var(--accent-rgb), var(--alpha-faint)); }
 .mm-row-dot {
@@ -650,7 +650,7 @@
 }
 .modal-m-topbar h2::before {
   content: ''; position: absolute; left: 0; top: 2px; bottom: 2px;
-  width: 3px; border-radius: var(--radius-xs); background: var(--accent);
+  width: var(--accent-bar-w); border-radius: var(--radius-xs); background: var(--accent);
 }
 .modal-m-badges { display: flex; gap: 6px; align-items: center; }
 .modal-m-progress {

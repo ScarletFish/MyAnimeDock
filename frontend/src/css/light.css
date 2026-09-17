@@ -297,11 +297,11 @@
   .mm-left { background: var(--bg-base); }
   .mm-row--selected {
     background: var(--accent-faint) !important;
-    box-shadow: inset 3px 0 0 var(--accent);
+    box-shadow: inset var(--accent-bar-w) 0 0 var(--accent);
   }
   .mm-row--batch {
     background: var(--accent-faint) !important;
-    box-shadow: inset 3px 0 0 var(--accent);
+    box-shadow: inset var(--accent-bar-w) 0 0 var(--accent);
   }
 
   .mm-panel { box-shadow: -2px 0 12px rgba(0,0,0, var(--alpha-faint)); }

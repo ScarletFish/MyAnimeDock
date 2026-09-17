@@ -386,7 +386,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: var(--space-3) var(--space-4);
-  box-shadow: inset 3px 0 0 var(--accent), var(--shadow-sm);
+  box-shadow: inset var(--accent-bar-w) 0 0 var(--accent), var(--shadow-sm);
 }
 
 .download-detail-grid {
@@ -632,7 +632,7 @@
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  box-shadow: inset 3px 0 0 var(--accent), var(--shadow-sm);
+  box-shadow: inset var(--accent-bar-w) 0 0 var(--accent), var(--shadow-sm);
 }
 
 /* 组内种子行比主列表略紧凑，形成"动漫名 + 剧集"的嵌套层级 */

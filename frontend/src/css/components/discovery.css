@@ -480,7 +480,7 @@
   left: -10px;
   top: 0;
   bottom: 0;
-  width: 3px;
+  width: var(--accent-bar-w);
   background: var(--accent-soft);
   border-radius: var(--radius-xs);
   opacity: 0.6;

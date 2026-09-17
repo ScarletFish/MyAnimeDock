@@ -140,8 +140,8 @@
     left: 0;
     top: var(--space-1);
     bottom: var(--space-1);
-    width: 3px;
-    border-radius: var(--radius-sm);
+    width: var(--accent-bar-w);
+    border-radius: var(--radius-xs);
     background: var(--accent);
   }
 }

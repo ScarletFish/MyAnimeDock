@@ -101,6 +101,9 @@ input, textarea, [contenteditable] { -webkit-user-select: auto; user-select: aut
   --radius-lg: calc(1rem * var(--scale));
   --radius-pill: 999px;
 
+  /* ─── 竖向 accent 条宽度（A 族 ::before 直条 / B 族 inset 弯条 共享）─── */
+  --accent-bar-w: 3px;
+
   /* ─── Z-Index ─── */
   --z-base: 0;          /* 组件内部堆叠 */
   --z-sticky: 10;       /* 粘性元素 */

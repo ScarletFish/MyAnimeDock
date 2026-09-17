@@ -119,7 +119,7 @@
   left: 0;
   top: 0;
   bottom: 0;
-  width: 3px;
+  width: var(--accent-bar-w);
   border-radius: var(--radius-sm) 0 0 var(--radius-sm);
 }
 

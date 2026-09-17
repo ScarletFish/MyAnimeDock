@@ -61,8 +61,8 @@ body:has(#modal-root .modal-overlay.show) > :not(#modal-root):not(#globalTooltip
       left: 0;
       top: 2px;
       bottom: 2px;
-      width: 3px;
-      border-radius: var(--radius-sm);
+      width: var(--accent-bar-w);
+      border-radius: var(--radius-xs);
       background: var(--accent);
     }
   }

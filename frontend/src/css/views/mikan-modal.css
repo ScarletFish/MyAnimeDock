@@ -142,7 +142,7 @@
   left: 0;
   top: 4px;
   bottom: 4px;
-  width: 3px;
+  width: var(--accent-bar-w);
   border-radius: var(--radius-xs);
   background: var(--accent);
 }
@@ -406,7 +406,7 @@
   left: 0;
   top: 4px;
   bottom: 4px;
-  width: 3px;
+  width: var(--accent-bar-w);
   border-radius: var(--radius-xs);
   background: var(--accent);
 }
@@ -448,7 +448,7 @@
 }
 
 .mikan-resource--hit {
-  box-shadow: inset 3px 0 0 var(--accent);
+  box-shadow: inset var(--accent-bar-w) 0 0 var(--accent);
 }
 
 .mikan-resource-name {

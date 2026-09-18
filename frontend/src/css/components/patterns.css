@@ -164,6 +164,45 @@
   gap: var(--space-2);
 }
 
+/* ─── Filter Pill (outline pill toggle) ─── *
+ * Shared recipe for filter/tab pills: Discovery/Download `.filter-btn` and
+ * Mylist `.mylist-status-item`. Active = solid accent fill (Mylist-established
+ * high-contrast state; borders + text carry the idle→hover emphasis, no weak
+ * background tints). Consumers apply the pieces with @apply — the recipe lives
+ * HERE once, never hand-duplicated:
+ *   base:   @apply filter-pill;
+ *   hover:  @apply filter-pill-hover;
+ *   active: @apply filter-pill-active;
+ */
+@utility filter-pill {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-medium);
+  font-family: inherit;
+  color: var(--fg-muted);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  user-select: none;
+  white-space: nowrap;
+}
+
+@utility filter-pill-hover {
+  border-color: var(--fg-muted);
+  color: var(--fg-primary);
+}
+
+@utility filter-pill-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
 /* ─── Segment Control (pill-style toggle group) ─── */
 @utility seg-control {
   display: flex;

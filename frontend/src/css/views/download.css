@@ -510,17 +510,29 @@
   animation: spin 1s linear infinite;
 }
 
-/* ─── View Tabs (种子列表 / 订阅管理) ─── */
+/* ─── Toolbar: Filters + Tabs on one row, tabs at far right ─── */
+
+.download-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+  flex-shrink: 0;
+}
+
+.download-toolbar .download-filters {
+  margin-bottom: 0;
+}
+
+.download-toolbar .sub-overview {
+  margin-bottom: 0;
+}
 
 .download-tabs {
   display: inline-flex;
-  align-self: flex-start;
-  flex-shrink: 0;
-  margin-bottom: var(--space-3);
-  overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--overlay-glass);
+  gap: var(--space-150);
+  margin-left: auto;
 }
 
 /* ─── Subscriptions View ─── */

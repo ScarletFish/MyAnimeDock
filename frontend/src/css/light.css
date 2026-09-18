@@ -259,16 +259,6 @@
     background: rgba(var(--success-rgb), var(--alpha-faint));
   }
 
-  /* ─── Filters ─── */
-  .filter-group { border-color: rgba(0,0,0, var(--alpha-subtle)); }
-  .filter-btn {
-    color: var(--fg-secondary);
-  }
-  .filter-btn:hover {
-    background: rgba(0,0,0, var(--alpha-faint));
-    color: var(--fg-primary);
-  }
-
   /* ─── Context Menu ─── */
   .context-menu {
     background: var(--bg-elevated);

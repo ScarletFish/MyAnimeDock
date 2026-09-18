@@ -76,35 +76,25 @@
   color: var(--fg-secondary);
 }
 
-/* ─── Discovery Filter ─── */
+/* ─── Discovery Filter ─── *
+ * Filter group is a bare flex row — each option is its own rounded pill
+ * (.filter-btn → filter-pill in patterns.css), so corners always render.
+ */
 @utility filter-group {
-  @apply flex overflow-hidden;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  @apply flex items-center;
+  gap: var(--space-150);
 }
 
-@utility filter-btn {
-  padding: var(--space-1) var(--space-4);
-  font-size: var(--text-sm);
-  font-weight: var(--fw-medium);
-  background: transparent;
-  border: none;
-  color: var(--fg-muted);
-  cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-out);
-  font-family: inherit;
-  line-height: 1.4;
-  white-space: nowrap;
+.filter-btn {
+  @apply filter-pill;
 }
 
-.filter-btn:hover {
-  color: var(--fg-primary);
-  background: var(--bg-surface);
+.filter-btn:hover:not(.filter-btn--active) {
+  @apply filter-pill-hover;
 }
 
 .filter-btn--active {
-  color: var(--accent);
-  background: rgba(var(--accent-rgb), var(--alpha-faint));
+  @apply filter-pill-active;
 }
 
 /* ─── Discovery Actions Bar ─── */

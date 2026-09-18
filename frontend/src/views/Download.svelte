@@ -409,14 +409,35 @@ import { slide } from 'svelte/transition';
     </div>
   </div>
 
-  <div class="download-tabs" role="group" aria-label="下载视图">
-    <button class="filter-btn {activeTab === 'torrents' ? 'filter-btn--active' : ''}" onclick={() => activeTab = 'torrents'}>{tr('download.tabTorrents')}</button>
-    <button class="filter-btn {activeTab === 'subscriptions' ? 'filter-btn--active' : ''}" onclick={() => activeTab = 'subscriptions'}>{tr('download.tabSubscriptions')}</button>
+  <div class="download-toolbar">
+    {#if activeTab === 'torrents' && torrents.length > 0}
+      <div class="download-filters">
+        <div class="filter-group" role="group" aria-label="来源">
+          <button class="filter-btn {sourceFilter === 'all' ? 'filter-btn--active' : ''}" onclick={() => sourceFilter = 'all'}>{tr('download.filterAll')}</button>
+          <button class="filter-btn {sourceFilter === 'anime-mikan' ? 'filter-btn--active' : ''}" onclick={() => sourceFilter = 'anime-mikan'}>{tr('download.filterSubscribed')}</button>
+          <button class="filter-btn {sourceFilter === 'manual' ? 'filter-btn--active' : ''}" onclick={() => sourceFilter = 'manual'}>{tr('download.filterManual')}</button>
+        </div>
+        <div class="filter-group" role="group" aria-label="状态">
+          <button class="filter-btn {statusFilter === 'all' ? 'filter-btn--active' : ''}" onclick={() => statusFilter = 'all'}>{tr('download.filterAll')}</button>
+          <button class="filter-btn {statusFilter === '下载中' ? 'filter-btn--active' : ''}" onclick={() => statusFilter = '下载中'}>{tr('download.filterDownloading')}</button>
+          <button class="filter-btn {statusFilter === '做种' ? 'filter-btn--active' : ''}" onclick={() => statusFilter = '做种'}>{tr('download.filterSeeding')}</button>
+          <button class="filter-btn {statusFilter === '已完成' ? 'filter-btn--active' : ''}" onclick={() => statusFilter = '已完成'}>{tr('download.filterCompleted')}</button>
+          <button class="filter-btn {statusFilter === '已暂停' ? 'filter-btn--active' : ''}" onclick={() => statusFilter = '已暂停'}>{tr('download.filterPaused')}</button>
+          <button class="filter-btn {statusFilter === '出错' ? 'filter-btn--active' : ''}" onclick={() => statusFilter = '出错'}>{tr('download.filterError')}</button>
+        </div>
+      </div>
+    {/if}
+    {#if activeTab === 'subscriptions'}
+      <div class="sub-overview">{tr('download.subTotal', { count: subscriptionGroups.length })}</div>
+    {/if}
+    <div class="download-tabs" role="group" aria-label="下载视图">
+      <button class="filter-btn {activeTab === 'torrents' ? 'filter-btn--active' : ''}" onclick={() => activeTab = 'torrents'}>{tr('download.tabTorrents')}</button>
+      <button class="filter-btn {activeTab === 'subscriptions' ? 'filter-btn--active' : ''}" onclick={() => activeTab = 'subscriptions'}>{tr('download.tabSubscriptions')}</button>
+    </div>
   </div>
 
   {#if activeTab === 'subscriptions'}
     <div class="sub-view">
-      <div class="sub-overview">{tr('download.subTotal', { count: subscriptionGroups.length })}</div>
       {#if !configured}
         <div class="sub-sub-hint">{tr('download.subQbOffline')}</div>
       {/if}
@@ -499,23 +520,6 @@ import { slide } from 'svelte/transition';
       </button>
     </div>
   {:else}
-    {#if torrents.length > 0}
-      <div class="download-filters">
-        <div class="filter-group" role="group" aria-label="来源">
-          <button class="filter-btn {sourceFilter === 'all' ? 'filter-btn--active' : ''}" onclick={() => sourceFilter = 'all'}>{tr('download.filterAll')}</button>
-          <button class="filter-btn {sourceFilter === 'anime-mikan' ? 'filter-btn--active' : ''}" onclick={() => sourceFilter = 'anime-mikan'}>{tr('download.filterSubscribed')}</button>
-          <button class="filter-btn {sourceFilter === 'manual' ? 'filter-btn--active' : ''}" onclick={() => sourceFilter = 'manual'}>{tr('download.filterManual')}</button>
-        </div>
-        <div class="filter-group" role="group" aria-label="状态">
-          <button class="filter-btn {statusFilter === 'all' ? 'filter-btn--active' : ''}" onclick={() => statusFilter = 'all'}>{tr('download.filterAll')}</button>
-          <button class="filter-btn {statusFilter === '下载中' ? 'filter-btn--active' : ''}" onclick={() => statusFilter = '下载中'}>{tr('download.filterDownloading')}</button>
-          <button class="filter-btn {statusFilter === '做种' ? 'filter-btn--active' : ''}" onclick={() => statusFilter = '做种'}>{tr('download.filterSeeding')}</button>
-          <button class="filter-btn {statusFilter === '已完成' ? 'filter-btn--active' : ''}" onclick={() => statusFilter = '已完成'}>{tr('download.filterCompleted')}</button>
-          <button class="filter-btn {statusFilter === '已暂停' ? 'filter-btn--active' : ''}" onclick={() => statusFilter = '已暂停'}>{tr('download.filterPaused')}</button>
-          <button class="filter-btn {statusFilter === '出错' ? 'filter-btn--active' : ''}" onclick={() => statusFilter = '出错'}>{tr('download.filterError')}</button>
-        </div>
-      </div>
-    {/if}
     <div class="download-list">
       {#if torrents.length === 0}
         <div class="download-empty">

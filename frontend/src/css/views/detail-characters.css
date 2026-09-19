@@ -2,6 +2,7 @@
 .detail-characters {
   @apply section-card;
   padding: var(--space-5) var(--space-6);
+  margin-top: var(--space-6);
 }
 
 .detail-section-header {

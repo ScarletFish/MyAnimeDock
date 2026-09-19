@@ -155,6 +155,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-4);
+  /* 行内容高度基线 2.5rem —— 与 .sub-group-header 保持一致（两 tab 首行等高约束） */
   min-height: 2.5rem;
 }
 
@@ -184,7 +185,14 @@
 }
 
 .download-item-size {
+  font-size: var(--text-sm);
+  font-weight: var(--fw-medium);
+  color: var(--fg-secondary);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  width: 76px;
+  text-align: right;
+  flex-shrink: 0;
 }
 
 /* ─── Progress Bar ─── */
@@ -548,11 +556,16 @@
 .sub-overview {
   display: flex;
   align-items: center;
+  gap: var(--space-150);
   flex-shrink: 0;
   margin-bottom: var(--space-3);
-  font-size: var(--text-sm);
-  font-weight: var(--fw-medium);
-  color: var(--fg-secondary);
+}
+
+/* 只读统计 pill：复用 filter-pill 配方（patterns.css），与种子 tab 的 .filter-btn 同高同节奏；
+   纯展示计数，去掉交互态暗示（无 hover/active、cursor 默认箭头） */
+.sub-overview-stat {
+  @apply filter-pill;
+  cursor: default;
 }
 
 .sub-sub-hint {
@@ -610,6 +623,8 @@
   gap: var(--space-3);
   cursor: pointer;
   user-select: none;
+  /* 行内容高度基线 2.5rem —— 与 .download-item-main 同值（两 tab 首行等高约束） */
+  min-height: 2.5rem;
 }
 
 .sub-group-name {

@@ -85,6 +85,11 @@ import { slide } from 'svelte/transition';
     return groups;
   });
 
+  // 展示用派生统计（纯计数，无请求/逻辑变更）：订阅组内归属种子的总数
+  const subTorrentTotal = $derived(
+    subscriptionGroups.reduce((n, g) => n + g.torrents.length, 0)
+  );
+
   const STATUS_MAP = {
     downloading: { label: '下载中', cls: 'qb-status--downloading' },
     metaDL: { label: '下载中', cls: 'qb-status--downloading' },
@@ -428,7 +433,10 @@ import { slide } from 'svelte/transition';
       </div>
     {/if}
     {#if activeTab === 'subscriptions'}
-      <div class="sub-overview">{tr('download.subTotal', { count: subscriptionGroups.length })}</div>
+      <div class="sub-overview" role="status">
+        <span class="sub-overview-stat">{tr('download.subTotal', { count: subscriptionGroups.length })}</span>
+        <span class="sub-overview-stat">{tr('download.subTorrentCount', { count: subTorrentTotal })}</span>
+      </div>
     {/if}
     <div class="download-tabs" role="group" aria-label="下载视图">
       <button class="filter-btn {activeTab === 'torrents' ? 'filter-btn--active' : ''}" onclick={() => activeTab = 'torrents'}>{tr('download.tabTorrents')}</button>
@@ -580,12 +588,12 @@ import { slide } from 'svelte/transition';
       <div class="download-item-info">
         <span class="download-item-name" data-tooltip={t.name}>{t.name}</span>
         <span class="download-item-meta">
-          <span class="download-item-size">{formatSize(t.size)}</span>
           {#if t.num_seeds > 0}
             <span class="download-item-seeds">P:{t.num_seeds}</span>
           {/if}
         </span>
       </div>
+      <span class="download-item-size">{formatSize(t.size)}</span>
       <div class="download-item-progress">
         <div class="download-progress-bar">
           <div class="download-progress-fill" style="width: {Math.min(t.progress * 100, 100)}%"></div>

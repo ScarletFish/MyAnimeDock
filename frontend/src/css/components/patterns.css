@@ -182,6 +182,8 @@
   font-size: var(--text-sm);
   font-weight: var(--fw-medium);
   font-family: inherit;
+  /* 统一行高，保证 button/div/span 元素渲染一致 */
+  line-height: 1.65;
   color: var(--fg-muted);
   background: transparent;
   border: 1px solid var(--border);

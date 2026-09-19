@@ -674,6 +674,7 @@ export const I18N_ZH = {
   'download.tabTorrents': '种子列表',
   'download.tabSubscriptions': '订阅管理',
   'download.subTotal': '共 {{count}} 部订阅',
+  'download.subTorrentCount': '{{count}} 个种子',
   'download.subEpisodes': '{{count}} 集',
   'download.subNoEpisodes': '暂无剧集',
   'download.subQbOffline': 'qBittorrent 未连接，无法显示剧集数据',

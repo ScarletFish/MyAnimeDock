@@ -99,6 +99,7 @@ export interface MetaMatchItem {
   anilistId: number | null;
   anilistBanner: string | null;
   anilistTags: AniListTag[] | null;
+  searchTerms: string[];
 }
 
 // ─── MyListItem（data.myList 行）───

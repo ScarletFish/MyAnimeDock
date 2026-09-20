@@ -75,11 +75,13 @@
     return { cls: 'none', text: tr('metamatch.noBanner') };
   });
 
-  // ─── 关键词（pending）───
-  let keywords = $derived([item?.title, item?.folderName].filter(Boolean));
+  // ─── 最终检索词（pending）───
+  // 后端按 folderName 解析并预计算的自动匹配实际检索词；缺省（旧后端）回退到 title+folderName
+  let searchTerms = $derived(item?.searchTerms?.length ? item.searchTerms : [item?.title, item?.folderName].filter(Boolean));
 
   // ─── Fix 默认关键词 ───
-  let defaultKeyword = $derived((item?.specialSuffix || item?.title || item?.folderName || '').replace(/[~～]/g, '').trim());
+  // 预填与后端最终检索词第一个词（最精确词）对齐，保证手动搜索与自动匹配同基准
+  let defaultKeyword = $derived(((item?.searchTerms?.[0]) || item?.specialSuffix || item?.title || item?.folderName || '').replace(/[~～]/g, '').trim());
 
   // 条目切换时重置局部 fix 状态
   let prevItemId = $state(null);
@@ -219,9 +221,9 @@
 
   {#if item.status === 'pending'}
     <div>
-      <div class="mm-panel-label">{tr('metamatch.parseKeywords')}</div>
+      <div class="mm-panel-label">{tr('metamatch.finalSearchTerms')}</div>
       <div class="mm-panel-keywords">
-        {#each keywords as kw}
+        {#each searchTerms as kw}
           <span class="mm-panel-keyword">{kw}</span>
         {/each}
       </div>
@@ -231,14 +233,6 @@
   {#if !syncInProgress}
     <div class="mm-fix-section">
       <div class="mm-panel-label">{tr('metamatch.fixMatch')}</div>
-      {#if item.status === 'matched'}
-        <div class="mm-fix-research">
-          <button class="btn mm-fix-research-btn" onclick={() => onResearch(item.animeId)} title={tr('metamatch.researchTitle')}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-            {tr('metamatch.researchAgain')}
-          </button>
-        </div>
-      {/if}
       <div class="mm-fix-search">
         <input
           type="text"
@@ -246,9 +240,14 @@
           bind:value={fixKeyword}
           onkeydown={(e) => { if (e.key === 'Enter') searchForFix(); }}
         >
-        <button class="btn btn-primary mm-fix-search-btn" onclick={searchForFix}>
+        <button class="btn btn-primary mm-fix-search-btn" onclick={searchForFix} data-tooltip={tr('metamatch.searchHint')}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
         </button>
+        {#if item.status === 'matched'}
+          <button class="btn mm-fix-research-btn" onclick={() => onResearch(item.animeId)} data-tooltip={tr('metamatch.researchTitle')}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          </button>
+        {/if}
       </div>
       <div class="mm-fix-results">
         {#if searching}

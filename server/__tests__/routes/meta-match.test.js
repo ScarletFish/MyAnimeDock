@@ -75,6 +75,9 @@ const expected = {
   anilistId: 111,
   anilistBanner: '/banners/a1.jpg',
   anilistTags,
+  // 与 parseFolderName + buildSearchTerms（自动匹配同源）的真实输出一致：
+  // anitomy 会把 [bgm123] 黏进 cleanTitle（既有行为，"Anime A [bgm123" 无右括号）
+  searchTerms: ['Anime A [bgm123'],
 };
 
 describe('meta-match route handlers', () => {
@@ -88,7 +91,7 @@ describe('meta-match route handlers', () => {
       assert.deepStrictEqual(res._body, []);
     });
 
-    it('returns exactly the 17 slim fields with correct values and episodeCount', () => {
+    it('returns exactly the 18 slim fields with correct values and episodeCount', () => {
       const state = mockState({ data: { library: [richSource] } });
       const req = mockReq({ url: '/api/meta-match' });
       const res = mockRes();
@@ -144,6 +147,27 @@ describe('meta-match route handlers', () => {
       assert.strictEqual(res._body.length, 1);
       assert.strictEqual(res._body[0].episodeCount, 0);
       assert.ok(!Object.hasOwn(res._body[0], 'episodes'));
+    });
+
+    it('computes searchTerms from folder parse (season + suffix)', () => {
+      const state = mockState({
+        data: {
+          library: [
+            { id: 's3', title: 'Gochuumon wa Usagi Desu ka', folderName: 'Gochuumon wa Usagi Desu ka Season 3' },
+            { id: 'ova', title: 'Title', folderName: 'Title ~OVA~', specialSuffix: '~OVA~' },
+            { id: 'nofolder', title: 'No Folder' },
+          ],
+        },
+      });
+      const req = mockReq({ url: '/api/meta-match' });
+      const res = mockRes();
+      mm.handleGetMetaMatchItems(req, res, state);
+      assert.strictEqual(res._status, 200);
+      assert.deepStrictEqual(res._body[0].searchTerms, ['Gochuumon wa Usagi Desu ka 第3期', 'Gochuumon wa Usagi Desu ka']);
+      // 泛型后缀（OVA/特典）不产生独立检索词，回落到基础标题
+      assert.deepStrictEqual(res._body[1].searchTerms, ['Title']);
+      // 无 folderName → 回落到 title
+      assert.deepStrictEqual(res._body[2].searchTerms, ['No Folder']);
     });
 
     it('passes through season/matchedSeason/specialSuffix semantics like /api/library', () => {

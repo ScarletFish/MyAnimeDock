@@ -135,6 +135,7 @@
         animeId: a.id,
         title: a.title || a.folderName || a.bangumiTitle || tr('metamatch.unknown'),
         folderName: a.folderName || a.title || '',
+        searchTerms: a.searchTerms || [],
         specialSuffix: a.specialSuffix || null,
         parsedSeason: a.matchedSeason || a.season || (a.specialSuffix ? null : 1),
         episodeCount: a.episodeCount ?? 0,
@@ -424,7 +425,7 @@
     matchItems([animeId]);
   }
 
-  // ─── 应用修正匹配（替代 mmApplyFix，单条目直接 fetch）───
+  // ─── 应用手动匹配（替代 mmApplyFix，单条目直接 fetch）───
   async function applyFix(item, result) {
     if (!result || !item) return;
 

@@ -34,7 +34,12 @@
     border-color: rgba(0,0,0, var(--alpha-emphasis));
   }
   .btn-primary { background: var(--accent-gradient); box-shadow: 0 1px 3px rgba(0,0,0, var(--alpha-faint)); }
-  .btn-primary:hover { box-shadow: 0 2px 6px rgba(0,0,0, var(--alpha-faint)); }
+  .btn-primary:hover {
+    box-shadow:
+      0 1px 3px rgba(0,0,0, var(--alpha-faint)),
+      0 0 0 var(--space-050) rgba(var(--accent-rgb), var(--alpha-subtle)),
+      0 var(--space-075) var(--space-2) rgba(var(--accent-rgb), var(--alpha-emphasis));
+  }
   .btn-danger:hover { background: rgba(var(--error-rgb), var(--alpha-faint)); }
   .btn-ghost {
     border-color: rgba(0,0,0, var(--alpha-subtle));

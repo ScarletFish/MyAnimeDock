@@ -42,6 +42,9 @@
   &:hover {
     color: white;
     background: var(--accent-gradient);
+    box-shadow:
+      0 0 0 var(--space-050) rgba(var(--accent-rgb), var(--alpha-subtle)),
+      0 var(--space-075) var(--space-2) rgba(var(--accent-rgb), var(--alpha-emphasis));
   }
 }
 

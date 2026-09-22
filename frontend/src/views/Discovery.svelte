@@ -200,8 +200,8 @@
   // ─── 加载 ───
   async function loadDiscovery(fromViewSwitch = false) {
     emptyVisible = false;
-    statsVisible = false;
-    actionsVisible = false;
+    // 注意：不在入口重置 statsVisible/actionsVisible —— 保留旧状态撑住工具栏占位，
+    // 数据到达后由 renderDiscovery/空分支原位更新，避免 reload 期间 display:none 闪烁。
     scanBtnVisible = true;
     scanBtnText = tr('discovery.scanDir');
     scanBtnDisabled = false;
@@ -222,6 +222,9 @@
         emptyText = tr('discovery.notFound');
         emptyHint = tr('discovery.configureHint');
         scanBtnVisible = false;
+        // 目录失效是真实状态变化 → 显式收起工具栏（原入口重置逻辑移至此处）
+        statsVisible = false;
+        actionsVisible = false;
         await tick();
         if ($discoveryOpen && mc) mc.scrollTop = saved;
         return;
@@ -279,8 +282,7 @@
     scanBtnDisabled = true;
     scanBtnText = tr('discovery.scanning');
     emptyVisible = false;
-    statsVisible = false;
-    actionsVisible = false;
+    // 扫描期间保留 stats/actions 旧状态（数据未变），完成后 loadDiscovery 原位更新
 
     try {
       const resp = await fetch('/api/scan');
@@ -559,12 +561,13 @@ function setFilter(f) {
       {/if}
     </div>
     <div class="discovery-actions-right">
+      <!-- filter tabs 常驻（容器显隐由 statsVisible 统一控制），reload 期间始终可见可点 -->
+      <div class="filter-group">
+        <button class="filter-btn" class:filter-btn--active={filter === 'all'} data-filter="all" onclick={() => setFilter('all')}>{tr('common.all')}</button>
+        <button class="filter-btn" class:filter-btn--active={filter === 'unimported'} data-filter="unimported" onclick={() => setFilter('unimported')}>{tr('discovery.unimported')}</button>
+        <button class="filter-btn" class:filter-btn--active={filter === 'excluded'} data-filter="excluded" onclick={() => setFilter('excluded')}>{tr('discovery.excluded')}</button>
+      </div>
       {#if actionsVisible}
-        <div class="filter-group">
-          <button class="filter-btn" class:filter-btn--active={filter === 'all'} data-filter="all" onclick={() => setFilter('all')}>{tr('common.all')}</button>
-          <button class="filter-btn" class:filter-btn--active={filter === 'unimported'} data-filter="unimported" onclick={() => setFilter('unimported')}>{tr('discovery.unimported')}</button>
-          <button class="filter-btn" class:filter-btn--active={filter === 'excluded'} data-filter="excluded" onclick={() => setFilter('excluded')}>{tr('discovery.excluded')}</button>
-        </div>
         <div class="filter-group">
           <button class="filter-btn" onclick={expandAll}>{tr('discovery.expandAll')}</button>
           <button class="filter-btn" onclick={collapseAll}>{tr('discovery.collapseAll')}</button>

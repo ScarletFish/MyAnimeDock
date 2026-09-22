@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",
+    "@tanstack/svelte-virtual": "^3.13.39",
     "bits-ui": "^2.18.1",
     "d3": "^7.9.0",
     "tailwindcss": "^4.3.3",

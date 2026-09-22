@@ -28,6 +28,7 @@
   import { mylistData, cardTitleMylist, mylistSortMode, patchLibraryItem, removeLibraryItemFromStore } from '../lib/ui-state.js';
   import { showDetail, getMyListScrollTop, restoreViewScroll, __skipViewEnter } from '../lib/router.js';
   import { refreshStats } from './Library.svelte';
+  import { createScrollAnim } from '../lib/scroll-anim.js';
   import { Select } from 'bits-ui';
   import { API as api } from '../lib/api.js';
 
@@ -42,9 +43,6 @@
     mylistSortMode.set(sortMode);
   });
   let loading = $state(false);
-
-  // 本次进入恢复的滚动位置 > 0（从视图中部返回）→ 模块纯淡入，抑制位移动画。
-  let returnedToPosition = $state(false);
 
   // 状态弹窗
   let statusModalItem = $state(null);
@@ -85,7 +83,7 @@
     if (!mc) return;
 
     const saved = getMyListScrollTop(); // 从 router.js 读取保存值
-    returnedToPosition = restoreViewScroll(mc, saved); // 无保存值→显式回到顶部，不复用其他视图的滚动
+    restoreViewScroll(mc, saved); // 无保存值→显式回到顶部，不复用其他视图的滚动
     scrollRestored = true;
   });
 
@@ -120,9 +118,6 @@
     const restore = $mylistOpen && mc
       ? (fromViewSwitch ? (getMyListScrollTop() ?? 0) : mc.scrollTop)
       : 0;
-    // 返回原位置（restore>0）→ 模块纯淡入；顶部进入 → 完整位移动画。
-    // 内容不足被浏览器钳回 0 时 restore>0 为假，自然走完整动画（可接受）。
-    returnedToPosition = fromViewSwitch && restore > 0;
     loading = true;
     try {
       mylistData.set(await api.get('/api/mylist'));
@@ -294,98 +289,41 @@
     }
   }
 
-  // ─── 模块级 fade 入场：视图打开时分区容器整块淡入（交错，与 Library 一致）───
-  // 触发时机是视图打开（$mylistOpen false→true），不是数据变化——用 modulesAnimated 标记
-  // 每次打开只播一次，过滤/排序/刷新不重播；依赖 loading，避免占位渲染期空跑。
-  let modulesAnimated = false;
+  // ─── 滚动驱动入场：区块级（每 section 一个 ScrollTrigger）+ 卡片级（batch 波状）───
+  // 无时间 stagger，滚动到哪、哪批内容进场。数据签名（过滤后 id 列表，含过滤/排序/数据变化）
+  // 未变时不重建——切走再切回、下拉再回滚都不重播；数据变化后 kill 旧 trigger 再重建。
+  const mylistAnim = createScrollAnim();
+  let mylistSig = '';
   $effect(() => {
-    const open = $mylistOpen;
-    if (!open) {
-      modulesAnimated = false;
-      returnedToPosition = false;
-      return;
-    }
-    if (loading) return;
-    if (modulesAnimated) return;
-    // 从详情页返回：跳过本次打开的模块级 fade（标记每次 showView 重算；置 modulesAnimated
-    // 避免后续 effect 重跑时重播，与 reduce-motion 分支行为一致）
-    if (__skipViewEnter) {
-      modulesAnimated = true;
-      return;
-    }
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      modulesAnimated = true;
-      return;
-    }
-    const gsap = globalThis.gsap;
-    if (!gsap) {
-      modulesAnimated = true;
-      return;
-    }
-    tick().then(() => {
-      modulesAnimated = true;
-      const modules = document.querySelectorAll('#svelte-mylistView .mylist-section');
-      if (!modules.length) return;
-      gsap.killTweensOf(modules);
-      // 返回原位置（restore>0）→ 纯淡入（y 偏移 0，无位移）；顶部进入 → 现有 y:16 完整动画。
-      const start = returnedToPosition ? { autoAlpha: 0 } : { autoAlpha: 0, y: 16 };
-      const end = returnedToPosition
-        ? { autoAlpha: 1, duration: 0.5, ease: 'power2.out', stagger: 0.1, clearProps: 'transform,opacity' }
-        : { autoAlpha: 1, y: 0, duration: 0.5, ease: 'power2.out', stagger: 0.1, clearProps: 'transform,opacity' };
-      gsap.fromTo(modules, start, end);
-    });
-  });
-
-  // ─── 卡片级：网格卡片 ScrollTrigger 视口渐显 ───
-  // 每个分区（.mylist-section）建一个 ScrollTrigger，网格进入视口时卡片交错渐显（once:true）。
-  // 数据重载/过滤/排序后先 kill 旧触发器再重建，避免重复触发/泄漏。
-  let cardTriggers = [];
-  $effect(() => {
-    void filtered;
-    if (loading) return;
+    if (!$mylistOpen) return;        // {#if} 卸载期间无 DOM，不建 trigger
+    if (loading) return;             // 加载中 DOM 不完整（kill 由下方 effect 负责）
+    // 签名按分组（状态桶）取 id 列表：状态迁移会带着 keyed 卡片元素换组，flat 列表会漏判
+    const sig = mylistFilter === 'all'
+      ? Object.entries(grouped).map(([s, arr]) => `${s}:${arr.map((a) => a.id).join(',')}`).sort().join('|')
+      : filtered.map((a) => a.id).join(',');
+    if (sig === mylistSig) return;   // 数据未变：不重建、不重播
+    mylistSig = sig;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const gsap = globalThis.gsap;
     if (!gsap || !gsap.ScrollTrigger) return;
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     tick().then(() => {
-      cardTriggers.forEach((t) => t.kill());
-      cardTriggers = [];
-      if (reduce) return; // 减少动态效果：跳过动画，卡片直接显示
-      const scroller = document.querySelector('.main-content');
-      if (!scroller) return;
-      const sections = document.querySelectorAll('#svelte-mylistView .mylist-section');
-      for (const section of sections) {
-        const grid = section.querySelector('.grid-container');
-        if (!grid) continue;
-        const cards = section.querySelectorAll('.anime-card');
-        if (!cards.length) continue;
-        const tween = gsap.fromTo(
-          cards,
-          { autoAlpha: 0, y: 24 },
-          {
-            autoAlpha: 1,
-            y: 0,
-            duration: 0.5,
-            ease: 'power2.out',
-            stagger: 0.05,
-            scrollTrigger: { trigger: grid, start: 'top 92%', once: true, scroller },
-          }
-        );
-        if (tween.scrollTrigger) cardTriggers.push(tween.scrollTrigger);
-      }
+      const root = document.getElementById('svelte-mylistView');
+      if (!root) return;
+      mylistAnim.build({
+        sections: root.querySelectorAll('#svelte-mylistView .mylist-section'),
+        cards: root.querySelectorAll('#svelte-mylistView .anime-card'),
+      });
     });
   });
-
-  // ─── 视图关闭时清理卡片 ScrollTrigger ───
+  // 视图关闭/加载中：kill 全部 trigger 并清除隐藏态内联样式（切走再切回内容直接可见）
   $effect(() => {
-    if ($mylistOpen) return;
-    if (!cardTriggers.length) return;
-    cardTriggers.forEach((t) => t.kill());
-    cardTriggers = [];
+    if ($mylistOpen && !loading) return;
+    mylistAnim.kill();
   });
 </script>
 
 {#if $mylistOpen}
-  <section class="view" id="svelte-mylistView" class:view--static={returnedToPosition}>
+  <section class="view" id="svelte-mylistView">
     <div class="mylist-status-bar" id="svelte-mylistStatusBar">
       <div
         class="mylist-status-item" class:active={mylistFilter === 'all'}

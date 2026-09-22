@@ -8,6 +8,8 @@
   import { getStatusLabels, getAnimeSortOptions, sortAnimeItems } from '../lib/sort.js';
   import { STATUS_SECTIONS_LIBRARY, navigateToDetail, tr } from '../lib/anime-utils.js';
   import { cardTitleLibrary, librarySortMode } from '../lib/ui-state.js';
+  import { createScrollAnim } from '../lib/scroll-anim.js';
+  import { libraryOpen } from './Library.svelte';
   import { Select } from 'bits-ui';
 
   let {
@@ -44,46 +46,37 @@
     }))
   );
 
-  // ─── 卡片级：状态网格卡片 ScrollTrigger 视口渐显（原 Library.svelte 逻辑迁入）───
-  // 适配动态网格（auto-fit 列数/卡片数不定）：每个网格建一个 ScrollTrigger，
-  // 网格进入视口时卡片交错渐显（once:true）。数据重载/排序后先 kill 旧触发器再重建。
-  let cardTriggers = [];
+  // ─── 卡片级：网格卡片 ScrollTrigger.batch 视口波状渐显 ───
+  // 每卡一个 trigger（once:true 进视口即自毁），同一批进入视口的卡片按 stagger 波状显现，
+  // 滚动驱动、无时间 stagger。数据签名（各分区 id 列表，含排序变化）未变时不重建——
+  // 切走再切回不重播；数据重载/排序后 kill 旧 trigger 再重建。
+  // Library 视图隐藏（class:hidden / display:none）期间不建 trigger，否则位置算错。
+  const cardAnim = createScrollAnim();
+  let cardSig = '';
   $effect(() => {
-    void sections;
+    if (!$libraryOpen) return;
+    const sig = sections
+      .map((s) => `${s.status}:${s.items.map((a) => a.id).join(',')}`)
+      .join('|');
+    if (sig === cardSig) return;
+    cardSig = sig;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const gsap = globalThis.gsap;
     if (!gsap || !gsap.ScrollTrigger) return;
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     tick().then(() => {
-      // 清理旧触发器，避免重复触发/泄漏
-      cardTriggers.forEach((t) => t.kill());
-      cardTriggers = [];
-      if (reduce) return; // 减少动态效果：跳过动画，卡片直接显示
-      const scroller = document.querySelector('.main-content');
-      if (!scroller) return;
-      const grids = document.querySelectorAll('#svelte-libraryView .status-section .grid-container');
-      grids.forEach((grid) => {
-        const cards = grid.querySelectorAll('.anime-card');
-        if (!cards.length) return;
-        const tween = gsap.fromTo(
-          cards,
-          { autoAlpha: 0, y: 24 },
-          {
-            autoAlpha: 1,
-            y: 0,
-            duration: 0.5,
-            ease: 'power2.out',
-            stagger: 0.05,
-            scrollTrigger: { trigger: grid, start: 'top 92%', once: true, scroller },
-          }
-        );
-        if (tween.scrollTrigger) cardTriggers.push(tween.scrollTrigger);
-      });
+      const root = document.getElementById('svelte-libraryView');
+      if (!root) return;
+      cardAnim.build({ cards: root.querySelectorAll('.status-section .anime-card') });
     });
+  });
+  // 视图隐藏：kill 全部 trigger 并清除隐藏态内联样式（切走再切回内容直接可见）
+  $effect(() => {
+    if ($libraryOpen) return;
+    cardAnim.kill();
   });
 
   onDestroy(() => {
-    cardTriggers.forEach((t) => t.kill());
-    cardTriggers = [];
+    cardAnim.kill();
   });
 </script>
 

@@ -34,6 +34,7 @@
   import { getDashboardLayout } from '../lib/dashboard-layout.js';
   import { tr, escapeHtml } from '../lib/anime-utils.js';
   import { watchThumb } from '../lib/thumb-manager.js';
+  import { createScrollAnim } from '../lib/scroll-anim.js';
   import { libraryData, mylistData, pendingAutoPlay, consumeStartupLibraryPromise, patchLibraryItem, removeLibraryItemFromStore, getMylistItem, onInvalidated } from '../lib/ui-state.js';
   import { showView, showDetail, getLibraryScrollTop, restoreViewScroll, __skipViewEnter } from '../lib/router.js';
   import { settingsOpen } from './Settings.svelte';
@@ -49,9 +50,6 @@
   let layout = $state([]);
   let loading = $state(false);
   let gridCols = $state('');
-
-  // 本次进入恢复的滚动位置 > 0（从视图中部返回）→ 模块纯淡入，抑制位移动画。
-  let returnedToPosition = $state(false);
 
   // 状态弹窗
   let statusTarget = $state(null);
@@ -118,7 +116,7 @@
     if (!mc) return;
 
     const saved = getLibraryScrollTop();  // 从 router.js 读取保存值
-    returnedToPosition = restoreViewScroll(mc, saved); // 无保存值→显式回到顶部，不复用其他视图的滚动
+    restoreViewScroll(mc, saved); // 无保存值→显式回到顶部，不复用其他视图的滚动
     scrollRestored = true;
   });
   // 视图打开时静默补刷续播（打开沿检测，仅带缓存返回时触发）：详情页打开可能已对账出新集
@@ -156,9 +154,6 @@
     const restore = $libraryOpen && mc
       ? (fromViewSwitch ? (getLibraryScrollTop() ?? 0) : mc.scrollTop)
       : 0;
-    // 返回原位置（restore>0）→ 模块纯淡入；顶部进入 → 完整位移动画。
-    // 内容不足被浏览器钳回 0 时 restore>0 为假，自然走完整动画（可接受）。
-    returnedToPosition = fromViewSwitch && restore > 0;
     loading = true;
     try {
       // 首次加载消费启动预取 promise（并行发起，省串行 RTT）；之后走全新请求。
@@ -344,49 +339,43 @@
     tick().then(signalLibraryReady);
   });
 
-  // ─── 模块级 fade 入场：视图打开时稳定分区容器整块淡入（交错）───
-  // 只动画稳定容器（继续观看分区 + 各状态分区），不动画动态内容。
-  // 触发时机是视图打开（$libraryOpen false→true），不是数据变化——用 modulesAnimated
-  // 标记本次打开只播一次，刷新/状态变更不重播；同时依赖 loading，避免占位渲染期空跑。
-  let modulesAnimated = false;
+  // ─── 模块级：滚动驱动入场（每 section 一个 ScrollTrigger，无时间 stagger）───
+  // 滚动到哪、哪个区块独立 fade + rise（autoAlpha 0→1, y 16→0, once:true）。
+  // 数据签名（布局/续播/库内容）未变时不重建——切走再切回、下拉再回滚都不重播；
+  // 数据/布局变化后 kill 旧 trigger 再重建（沿用现有 kill+重建模式）。
+  const libModuleAnim = createScrollAnim();
+  let libModuleSig = '';
   $effect(() => {
-    const open = $libraryOpen;
-    if (!open) {
-      modulesAnimated = false;
-      returnedToPosition = false;
-      return;
+    if (!$libraryOpen) return;         // 隐藏期间不建 trigger（display:none 时位置算错）
+    if (loading) return;               // 加载中 DOM 不完整（kill 由下方 effect 负责）
+    // 签名取"分区是否存在的粒度"：布局开关 + 续播有无 + 各状态计数（纯元数据 patch 不重建）
+    const counts = {};
+    for (const a of $libraryData) {
+      const s = a.status || 'wish';
+      counts[s] = (counts[s] || 0) + 1;
     }
-    if (loading) return;
-    if (modulesAnimated) return;
-    // 从详情页返回：跳过本次打开的模块级 fade（标记每次 showView 重算；置 modulesAnimated
-    // 避免后续 effect 重跑时重播，与 reduce-motion 分支行为一致）
-    if (__skipViewEnter) {
-      modulesAnimated = true;
-      return;
-    }
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      modulesAnimated = true;
-      return;
-    }
+    const sig = layout.map((s) => `${s.id}:${s.enabled ? 1 : 0}`).join(',')
+      + '|' + (continueItems.length > 0 ? '1' : '0')
+      + '|' + Object.entries(counts).map(([s, n]) => `${s}:${n}`).sort().join(',');
+    if (sig === libModuleSig) return;  // 数据未变：不重建、不重播
+    libModuleSig = sig;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const gsap = globalThis.gsap;
-    if (!gsap) {
-      modulesAnimated = true;
-      return;
-    }
+    if (!gsap || !gsap.ScrollTrigger) return;
     tick().then(() => {
-      modulesAnimated = true;
-      const modules = document.querySelectorAll(
-        '#svelte-libraryView .dashboard-section[data-section="continueWatch"], #svelte-libraryView .status-section'
-      );
-      if (!modules.length) return;
-      gsap.killTweensOf(modules);
-      // 返回原位置（restore>0）→ 纯淡入（y 偏移 0，无位移）；顶部进入 → 现有 y:16 完整动画。
-      const start = returnedToPosition ? { autoAlpha: 0 } : { autoAlpha: 0, y: 16 };
-      const end = returnedToPosition
-        ? { autoAlpha: 1, duration: 0.5, ease: 'power2.out', stagger: 0.1, clearProps: 'transform,opacity' }
-        : { autoAlpha: 1, y: 0, duration: 0.5, ease: 'power2.out', stagger: 0.1, clearProps: 'transform,opacity' };
-      gsap.fromTo(modules, start, end);
+      const root = document.getElementById('svelte-libraryView');
+      if (!root) return;
+      libModuleAnim.build({
+        sections: root.querySelectorAll(
+          '#svelte-libraryView .dashboard-section[data-section="continueWatch"], #svelte-libraryView .status-section'
+        ),
+      });
     });
+  });
+  // 视图关闭/加载中：kill 全部 trigger 并清除隐藏态内联样式（切走再切回内容直接可见）
+  $effect(() => {
+    if ($libraryOpen && !loading) return;
+    libModuleAnim.kill();
   });
 
   // ─── 工具 ───
@@ -515,7 +504,7 @@
   }
 </script>
 
-<section class="view" id="svelte-libraryView" class:hidden={!$libraryOpen} class:view--static={returnedToPosition}>
+<section class="view" id="svelte-libraryView" class:hidden={!$libraryOpen}>
   <div class="view-header">
     <h1>{tr('library.title')}</h1>
     <div class="view-header-right">

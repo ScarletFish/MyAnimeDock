@@ -5,6 +5,9 @@
 
   // 跨组件打开开关：orchestrator 在 main.js 桥接 window.openStats → statsOpen.set(true)
   export const statsOpen = writable(false);
+
+  // 统计 5 图会话内存缓存（view-cache 模块级单例；失效总线/手动刷新逻辑见 view-cache.js）
+  import { getStatsCache, setStatsCache, invalidateStatsCache } from '../lib/view-cache.js';
 </script>
 
 <script>
@@ -15,13 +18,13 @@
   import * as d3 from 'd3';
   import WordCloud from 'wordcloud';
   import { API as api } from '../lib/api.js';
+  import { getViewScrollTop, restoreViewScroll } from '../lib/router.js';
 
   const WORDCLOUD_MAX_WORDS = 60;
 
   // ─── 状态 ───
   let wordcloudLoading = $state(true);
   let wordcloudEmpty = $state(false);
-  let wordcloudLoaded = $state(false);
 
   let chordLoading = $state(true);
   let chordEmpty = $state(false);
@@ -89,40 +92,45 @@
 
   // ─── Word Cloud ───
   async function loadStats(silent = false) {
-    if (!silent) {
-      wordcloudLoading = true;
-      wordcloudEmpty = false;
-      wordcloudLoaded = false;
+    // 缓存命中（含 silent 主题重绘）：直接用缓存数据走原有渲染路径，跳过 fetch、无 spinner
+    let data = getStatsCache().tags;
+    if (data == null) {
+      if (!silent) {
+        wordcloudLoading = true;
+        wordcloudEmpty = false;
+      }
+      try {
+        data = await api.get('/api/stats/tags');
+        setStatsCache('tags', data);
+      } catch (err) {
+        if (!silent) { wordcloudLoading = false; wordcloudEmpty = true; }
+        console.error('Stats load error:', err);
+        return;
+      }
     }
-    try {
-      const data = await api.get('/api/stats/tags');
-      if (!data.tags || Object.keys(data.tags).length === 0) {
-        if (!silent) { wordcloudLoading = false; wordcloudEmpty = true; }
-        return;
-      }
-      const entries = Object.entries(data.tags)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, WORDCLOUD_MAX_WORDS);
-      if (entries.length === 0) {
-        if (!silent) { wordcloudLoading = false; wordcloudEmpty = true; }
-        return;
-      }
-      const maxCount = entries[0][1];
-      const minCount = entries[entries.length - 1][1];
-      const range = Math.max(maxCount - minCount, 1);
-      const list = entries.map(([name, count]) => {
-        const d = ANILIST_TAG_DATA[name];
-        const word = (d && d.zh) || name;
-        const weight = 16 + ((count - minCount) / range) * 22;
-        return [word, Math.round(weight)];
-      });
-      if (!silent) { wordcloudLoading = false; wordcloudLoaded = true; }
-      await tick();
-      renderWordCloud(list);
-    } catch (err) {
+    if (!data.tags || Object.keys(data.tags).length === 0) {
       if (!silent) { wordcloudLoading = false; wordcloudEmpty = true; }
-      console.error('Stats load error:', err);
+      return;
     }
+    const entries = Object.entries(data.tags)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, WORDCLOUD_MAX_WORDS);
+    if (entries.length === 0) {
+      if (!silent) { wordcloudLoading = false; wordcloudEmpty = true; }
+      return;
+    }
+    const maxCount = entries[0][1];
+    const minCount = entries[entries.length - 1][1];
+    const range = Math.max(maxCount - minCount, 1);
+    const list = entries.map(([name, count]) => {
+      const d = ANILIST_TAG_DATA[name];
+      const word = (d && d.zh) || name;
+      const weight = 16 + ((count - minCount) / range) * 22;
+      return [word, Math.round(weight)];
+    });
+    if (!silent) { wordcloudLoading = false; }
+    await tick();
+    renderWordCloud(list);
   }
 
   function renderWordCloud(list) {
@@ -192,25 +200,31 @@
 
   // ─── Watch Activity (D3 Area Chart) ───
   async function loadActivityChart(silent = false) {
-    if (!silent) {
-      activityLoading = true;
-      activityEmpty = false;
-    }
-    try {
-      const data = await api.get('/api/stats/watch-activity');
-      const months = data.months || [];
-      const totalMinutes = months.reduce((s, m) => s + m.minutes, 0);
-      if (totalMinutes === 0) {
+    // 缓存命中（含 silent 主题重绘）：直接用缓存数据走原有渲染路径，跳过 fetch、无 spinner
+    let data = getStatsCache().activity;
+    if (data == null) {
+      if (!silent) {
+        activityLoading = true;
+        activityEmpty = false;
+      }
+      try {
+        data = await api.get('/api/stats/watch-activity');
+        setStatsCache('activity', data);
+      } catch (err) {
         if (!silent) { activityLoading = false; activityEmpty = true; }
+        console.error('Activity chart load error:', err);
         return;
       }
-      if (!silent) activityLoading = false;
-      await tick();
-      renderActivityChart(months);
-    } catch (err) {
-      if (!silent) { activityLoading = false; activityEmpty = true; }
-      console.error('Activity chart load error:', err);
     }
+    const months = data.months || [];
+    const totalMinutes = months.reduce((s, m) => s + m.minutes, 0);
+    if (totalMinutes === 0) {
+      if (!silent) { activityLoading = false; activityEmpty = true; }
+      return;
+    }
+    if (!silent) activityLoading = false;
+    await tick();
+    renderActivityChart(months);
   }
 
   function renderActivityChart(months) {
@@ -340,25 +354,31 @@
 
   // ─── Rating Distribution ───
   async function loadRatingChart(silent = false) {
-    if (!silent) {
-      ratingLoading = true;
-      ratingEmpty = false;
-      ratingData = null;
-    }
-    try {
-      const data = await api.get('/api/stats/ratings');
-      const bins = data.bins || [];
-      const total = bins.reduce((s, v) => s + v, 0);
-      if (total === 0) {
+    // 缓存命中（含 silent 主题重绘）：直接用缓存数据走原有渲染路径，跳过 fetch、无 spinner
+    let data = getStatsCache().rating;
+    if (data == null) {
+      if (!silent) {
+        ratingLoading = true;
+        ratingEmpty = false;
+        ratingData = null;
+      }
+      try {
+        data = await api.get('/api/stats/ratings');
+        setStatsCache('rating', data);
+      } catch (err) {
         if (!silent) { ratingLoading = false; ratingEmpty = true; }
+        console.error('Rating chart load error:', err);
         return;
       }
-      if (!silent) ratingLoading = false;
-      buildRatingData(data.labels || [], bins, total);
-    } catch (err) {
-      if (!silent) { ratingLoading = false; ratingEmpty = true; }
-      console.error('Rating chart load error:', err);
     }
+    const bins = data.bins || [];
+    const total = bins.reduce((s, v) => s + v, 0);
+    if (total === 0) {
+      if (!silent) { ratingLoading = false; ratingEmpty = true; }
+      return;
+    }
+    if (!silent) ratingLoading = false;
+    buildRatingData(data.labels || [], bins, total);
   }
 
   function buildRatingData(labels, bins, total) {
@@ -419,35 +439,41 @@
   }
 
   async function loadSeasonChart(silent = false) {
-    if (!silent) {
-      seasonLoading = true;
-      seasonEmpty = false;
-      seasonData = null;
-    }
-    try {
-      const data = await api.get('/api/stats/seasons');
-      const seasons = data.seasons || {};
-      const tc = getThemeColors();
-      const entries = [
-        { key: 'spring', label: tr('stats.spring'), color: seasonColor(SEASON_HUES.spring, tc.isDark) },
-        { key: 'summer', label: tr('stats.summer'), color: seasonColor(SEASON_HUES.summer, tc.isDark) },
-        { key: 'autumn', label: tr('stats.autumn'), color: seasonColor(SEASON_HUES.autumn, tc.isDark) },
-        { key: 'winter', label: tr('stats.winter'), color: seasonColor(SEASON_HUES.winter, tc.isDark) }
-      ];
-      const items = entries.map(e => ({ ...e, count: seasons[e.key] || 0 }));
-      const total = items.reduce((s, v) => s + v.count, 0) + (seasons.unknown || 0);
-      if (total === 0) {
+    // 缓存命中（含 silent 主题重绘）：直接用缓存数据走原有渲染路径，跳过 fetch、无 spinner
+    let data = getStatsCache().season;
+    if (data == null) {
+      if (!silent) {
+        seasonLoading = true;
+        seasonEmpty = false;
+        seasonData = null;
+      }
+      try {
+        data = await api.get('/api/stats/seasons');
+        setStatsCache('season', data);
+      } catch (err) {
         if (!silent) { seasonLoading = false; seasonEmpty = true; }
+        console.error('Season chart load error:', err);
         return;
       }
-      if (!silent) seasonLoading = false;
-      seasonData = { items, unknown: seasons.unknown || 0, total };
-      await tick();
-      renderSeasonDonut();
-    } catch (err) {
-      if (!silent) { seasonLoading = false; seasonEmpty = true; }
-      console.error('Season chart load error:', err);
     }
+    const seasons = data.seasons || {};
+    const tc = getThemeColors();
+    const entries = [
+      { key: 'spring', label: tr('stats.spring'), color: seasonColor(SEASON_HUES.spring, tc.isDark) },
+      { key: 'summer', label: tr('stats.summer'), color: seasonColor(SEASON_HUES.summer, tc.isDark) },
+      { key: 'autumn', label: tr('stats.autumn'), color: seasonColor(SEASON_HUES.autumn, tc.isDark) },
+      { key: 'winter', label: tr('stats.winter'), color: seasonColor(SEASON_HUES.winter, tc.isDark) }
+    ];
+    const items = entries.map(e => ({ ...e, count: seasons[e.key] || 0 }));
+    const total = items.reduce((s, v) => s + v.count, 0) + (seasons.unknown || 0);
+    if (total === 0) {
+      if (!silent) { seasonLoading = false; seasonEmpty = true; }
+      return;
+    }
+    if (!silent) seasonLoading = false;
+    seasonData = { items, unknown: seasons.unknown || 0, total };
+    await tick();
+    renderSeasonDonut();
   }
 
   function seasonLabel(d) {
@@ -524,25 +550,31 @@
 
   // ─── Tag Co-occurrence (D3 Chord Diagram) ───
   async function loadChordChart(silent = false) {
-    if (!silent) {
-      chordLoading = true;
-      chordEmpty = false;
-    }
-    try {
-      const data = await api.get('/api/stats/tag-cooccurrence');
-      const tags = data.tags || [];
-      const matrix = data.matrix || [];
-      if (tags.length < 2 || matrix.length < 2) {
+    // 缓存命中（含 silent 主题重绘）：直接用缓存数据走原有渲染路径，跳过 fetch、无 spinner
+    let data = getStatsCache().chord;
+    if (data == null) {
+      if (!silent) {
+        chordLoading = true;
+        chordEmpty = false;
+      }
+      try {
+        data = await api.get('/api/stats/tag-cooccurrence');
+        setStatsCache('chord', data);
+      } catch (err) {
         if (!silent) { chordLoading = false; chordEmpty = true; }
+        console.error('Chord chart load error:', err);
         return;
       }
-      if (!silent) chordLoading = false;
-      await tick();
-      renderChordChart(tags, matrix);
-    } catch (err) {
-      if (!silent) { chordLoading = false; chordEmpty = true; }
-      console.error('Chord chart load error:', err);
     }
+    const tags = data.tags || [];
+    const matrix = data.matrix || [];
+    if (tags.length < 2 || matrix.length < 2) {
+      if (!silent) { chordLoading = false; chordEmpty = true; }
+      return;
+    }
+    if (!silent) chordLoading = false;
+    await tick();
+    renderChordChart(tags, matrix);
   }
 
   function renderChordChart(tags, matrix) {
@@ -645,16 +677,29 @@
 
   // ─── 打开时全部加载 + 主题切换静默重绘 ───
   // silent=true：切主题时只重绘颜色，不重置 loading（容器不塌缩，滚动位置不跳）。
-  async function loadAll(silent = false) {
-    loadStats(silent);
-    loadActivityChart(silent);
-    loadRatingChart(silent);
-    loadSeasonChart(silent);
-    loadChordChart(silent);
-  }
+  let pendingStatsRestore = false;
 
+  async function loadAll(silent = false) {
+    await Promise.allSettled([
+      loadStats(silent),
+      loadActivityChart(silent),
+      loadRatingChart(silent),
+      loadSeasonChart(silent),
+      loadChordChart(silent),
+    ]);
+    // 全部图表渲染完成后再恢复滚动：此前页面仍是占位高度，提前归位会被后续高度变化打折
+    if (pendingStatsRestore) {
+      pendingStatsRestore = false;
+      await tick();
+      const mc = document.querySelector('.main-content');
+      if ($statsOpen && mc) restoreViewScroll(mc, getViewScrollTop('stats'));
+    }
+  }
   $effect(() => {
-    if ($statsOpen) loadAll();
+    if ($statsOpen) {
+      pendingStatsRestore = true;
+      loadAll();
+    }
   });
 
   onMount(() => {
@@ -681,11 +726,11 @@
         <div class="stats-card-header">
           <h2>{tr('stats.wordCloud')}</h2>
           <span class="stats-card-subtitle">{tr('stats.wordCloudSubtitle')}</span>
-          <button class="stats-refresh-btn" onclick={loadStats} data-tooltip={tr('stats.refreshWordCloud')} aria-label={tr('stats.refreshWordCloud')}>
+          <button class="stats-refresh-btn" onclick={() => { invalidateStatsCache(); loadStats(); }} data-tooltip={tr('stats.refreshWordCloud')} aria-label={tr('stats.refreshWordCloud')}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
           </button>
         </div>
-        <div class="stats-card-body" class:stats-card-body--loaded={wordcloudLoaded}>
+        <div class="stats-card-body">
           {#if wordcloudLoading}
             <div class="stats-loading" id="svelte-statsLoading">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
@@ -708,11 +753,11 @@
         <div class="stats-card-header">
           <h2>{tr('stats.chord')}</h2>
           <span class="stats-card-subtitle">{tr('stats.chordSubtitle')}</span>
-          <button class="stats-refresh-btn" onclick={loadChordChart} data-tooltip={tr('stats.refreshChart')} aria-label={tr('stats.refreshChart')}>
+          <button class="stats-refresh-btn" onclick={() => { invalidateStatsCache(); loadChordChart(); }} data-tooltip={tr('stats.refreshChart')} aria-label={tr('stats.refreshChart')}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
           </button>
         </div>
-        <div class="stats-card-body" class:stats-card-body--loaded={!chordLoading && !chordEmpty}>
+        <div class="stats-card-body">
           {#if chordLoading}
             <div class="stats-loading" id="svelte-chordLoading">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
@@ -735,11 +780,11 @@
         <div class="stats-card-header">
           <h2>{tr('stats.activity')}</h2>
           <span class="stats-card-subtitle">{tr('stats.activitySubtitle')}</span>
-          <button class="stats-refresh-btn" onclick={loadActivityChart} data-tooltip={tr('stats.refreshChart')} aria-label={tr('stats.refreshChart')}>
+          <button class="stats-refresh-btn" onclick={() => { invalidateStatsCache(); loadActivityChart(); }} data-tooltip={tr('stats.refreshChart')} aria-label={tr('stats.refreshChart')}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
           </button>
         </div>
-        <div class="stats-card-body" class:stats-card-body--loaded={!activityLoading && !activityEmpty}>
+        <div class="stats-card-body">
           {#if activityLoading}
             <div class="stats-loading" id="svelte-activityLoading">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
@@ -762,11 +807,11 @@
         <div class="stats-card-header">
           <h2>{tr('stats.rating')}</h2>
           <span class="stats-card-subtitle">{tr('stats.ratingSubtitle')}</span>
-          <button class="stats-refresh-btn" onclick={loadRatingChart} data-tooltip={tr('stats.refreshChart')} aria-label={tr('stats.refreshChart')}>
+          <button class="stats-refresh-btn" onclick={() => { invalidateStatsCache(); loadRatingChart(); }} data-tooltip={tr('stats.refreshChart')} aria-label={tr('stats.refreshChart')}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
           </button>
         </div>
-        <div class="stats-card-body" class:stats-card-body--loaded={!ratingLoading && !ratingEmpty}>
+        <div class="stats-card-body">
           {#if ratingLoading}
             <div class="stats-loading" id="svelte-ratingLoading">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
@@ -809,11 +854,11 @@
         <div class="stats-card-header">
           <h2>{tr('stats.season')}</h2>
           <span class="stats-card-subtitle">{tr('stats.seasonSubtitle')}</span>
-          <button class="stats-refresh-btn" onclick={loadSeasonChart} data-tooltip={tr('stats.refreshChart')} aria-label={tr('stats.refreshChart')}>
+          <button class="stats-refresh-btn" onclick={() => { invalidateStatsCache(); loadSeasonChart(); }} data-tooltip={tr('stats.refreshChart')} aria-label={tr('stats.refreshChart')}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
           </button>
         </div>
-        <div class="stats-card-body" class:stats-card-body--loaded={!seasonLoading && !seasonEmpty}>
+        <div class="stats-card-body">
           {#if seasonLoading}
             <div class="stats-loading" id="svelte-seasonChartLoading">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>

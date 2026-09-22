@@ -79,14 +79,12 @@
 .stats-card-body {
   padding: var(--space-4) var(--space-6) var(--space-6);
   position: relative;
+  /* 恒保 280px 底线：loading→渲染切换时容器不塌缩，
+     否则 .main-content 滚动容器瞬时变短会被浏览器 clamp scrollTop（滚动跳到中间） */
   min-height: 280px;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.stats-card-body--loaded {
-  min-height: auto;
 }
 
 .stats-loading {

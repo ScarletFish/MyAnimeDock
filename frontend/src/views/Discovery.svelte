@@ -18,8 +18,12 @@
   import { onMount, tick } from 'svelte';
   import { showToast } from '../components/Toast.svelte';
   import { tr } from '../lib/anime-utils.js';
+  import { createScrollAnim } from '../lib/scroll-anim.js';
+  import { getViewScrollTop } from '../lib/router.js';
   import { loadLibrary } from './Library.svelte';
   import { API as api } from '../lib/api.js';
+  import { isDiscoveryDirty, markDiscoveryClean } from '../lib/view-cache.js';
+  import { notifyInvalidated } from '../lib/ui-state.js';
 
   // ─── 状态 ───
   let discoveryData = $state([]);
@@ -129,9 +133,12 @@
     }
   });
 
-  // 可见时加载数据，避免启动时全量 fetch
+  // 可见时加载数据：仅在脏（isDiscoveryDirty，库变更总线/首次打开）时重拉，避免每次打开全量 fetch。
+  // 缓存命中（非脏）时沿用组件内 discoveryData 直接渲染；呈现动画/滚动恢复逻辑不受影响。
+  // 注意：脏标志不是响应式的 —— 库变更发生在视图打开期间不会打断当前展示，下次打开才重拉。
   $effect(() => {
-    if ($discoveryOpen) loadDiscovery();
+    if (!$discoveryOpen) return;
+    if (isDiscoveryDirty()) loadDiscovery(true);
   });
 
   // ─── 视图切换入场：fade + rise（方案 B）───
@@ -153,47 +160,33 @@
     });
   });
 
-  // 卡片入场动画
-  // 只依赖数据变化（rows），不依赖视图开关——切走再切回不重新动画
+  // ─── 卡片入场：ScrollTrigger.batch 视口波状渐显 ───
+  // 滚动驱动、无时间 stagger；每卡一个 trigger（once:true 进视口即自毁）。
+  // 数据签名（过滤/统计/行数）未变时不重建——切走再切回不重播；
+  // 数据重渲染（扫描/过滤/导入/排除）后 kill 旧 trigger 再重建。
+  // 视图隐藏（class:hidden / display:none）期间不建 trigger，否则位置算错。
+  const discAnim = createScrollAnim();
+  let discSig = '';
   $effect(() => {
+    if (!$discoveryOpen) return;
     if (rows.length === 0) return;
+    const sig = `${filter}|${statAnime}|${statImported}|${rows.length}`;
+    if (sig === discSig) return;
+    discSig = sig;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const gsap = globalThis.gsap;
-    if (!gsap) return;
+    if (!gsap || !gsap.ScrollTrigger) return;
     tick().then(() => {
-      const cards = document.querySelectorAll('#svelte-discoveryView .discovery-card');
-      if (!cards.length) return;
-      gsap.killTweensOf(cards);
-      // 目标透明度按卡片状态 class 推导（已导入 0.5/排除 0.6/普通 1），与 CSS 规则一致。
-      // 从 0 淡入到各自真实值，避免统一淡到 1 后 clearProps 瞬间回落到 CSS 值造成「白→浅白」跳变。
-      // 不用 getComputedStyle：切换筛选时上一轮动画可能被 kill 中断，卡片残留 inline opacity
-      // （中间值甚至 0），读取计算样式会得到残留值导致目标透明度错误（0→0 卡死不可见）。
-      const targetOpacities = Array.from(cards).map((c) =>
-        c.classList.contains('discovery-card--imported') ? 0.5
-        : c.classList.contains('discovery-card--excluded') ? 0.6
-        : 1
-      );
-      gsap.fromTo(cards,
-        { opacity: 0, y: 12 },
-        {
-          opacity: (i) => targetOpacities[i],
-          y: 0,
-          stagger: 0.03,
-          duration: 0.3,
-          ease: 'power2.out',
-          clearProps: 'transform',
-        }
-      );
+      const root = document.getElementById('svelte-discoveryView');
+      if (!root) return;
+      discAnim.build({ cards: root.querySelectorAll('.discovery-card') });
     });
   });
-
-  // 视图关闭时清除残留内联样式，避免动画被中断后下次打开卡在 opacity:0
+  // 视图关闭：kill 全部 trigger 并清除残留内联样式（原 close-cleanup 逻辑并入，
+  // 避免动画被中断后下次打开卡在 opacity:0）
   $effect(() => {
     if ($discoveryOpen) return;
-    document.querySelectorAll('#svelte-discoveryView .discovery-card').forEach((c) => {
-      c.style.opacity = '';
-      c.style.transform = '';
-    });
+    discAnim.kill();
   });
 
   onMount(() => {
@@ -205,7 +198,7 @@
   });
 
   // ─── 加载 ───
-  async function loadDiscovery() {
+  async function loadDiscovery(fromViewSwitch = false) {
     emptyVisible = false;
     statsVisible = false;
     actionsVisible = false;
@@ -215,6 +208,11 @@
     // 重置空状态文案，避免陈旧默认值（configureHint）泄漏
     emptyText = tr('discovery.notFound');
     emptyHint = tr('discovery.configureHint');
+    // 进入恢复目标：视图切换用 router 保存值；就地刷新（扫描/过滤/导入）保持当前滚动不跳。
+    const mc = document.querySelector('.main-content');
+    const saved = $discoveryOpen
+      ? (fromViewSwitch ? (getViewScrollTop('discovery') ?? 0) : (mc ? mc.scrollTop : 0))
+      : 0;
 
     try {
       const config = await api.get('/api/config');
@@ -224,6 +222,8 @@
         emptyText = tr('discovery.notFound');
         emptyHint = tr('discovery.configureHint');
         scanBtnVisible = false;
+        await tick();
+        if ($discoveryOpen && mc) mc.scrollTop = saved;
         return;
       }
       mediaDir = config.mediaDir;
@@ -238,10 +238,18 @@
         emptyHint = tr('discovery.clickScanToStart');
         statsVisible = false;
         actionsVisible = false;
+        await tick();
+        if ($discoveryOpen && mc) mc.scrollTop = saved;
         return;
       }
 
+      // 取回新 tree 且非空 → 数据新鲜，清除脏标志（之后打开沿用组件内数据，不再重拉）；
+      // 失败/空树保持脏，下次打开自动重试。
+      markDiscoveryClean();
+
       renderDiscovery();
+      await tick();
+      if ($discoveryOpen && mc) mc.scrollTop = saved;
     } catch (e) {
       // Tauri 初始加载时静默失败
       if (!window.location.origin.startsWith('http')) return;
@@ -372,6 +380,9 @@ function setFilter(f) {
       showToast(tr('discovery.autoAddedToMylist'), 'silent');
       loadDiscovery();
       loadLibrary();
+      // 导入走向 loadLibrary()（全量 mylistData.set），不走 patch/remove 总线；
+      // 显式通知失效，让统计页缓存下次打开自动重取。
+      notifyInvalidated('library');
     } catch (e) {
       showToast(tr('discovery.importFailed', { message: e.message }), 'error');
     }
@@ -387,6 +398,8 @@ function setFilter(f) {
       checkedPaths = s;
       loadDiscovery();
       loadLibrary();
+      // 解除关联同样全量写入，补失效通知（见上）。
+      notifyInvalidated('library');
     } catch (e) {
       showToast(tr('discovery.unlinkFailed', { message: e.message }), 'error');
     }

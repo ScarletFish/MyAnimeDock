@@ -91,6 +91,15 @@ export function getMyListScrollTop() {
   return mylistScrollTop;
 }
 
+// 视图进入时把共享滚动容器定位到本视图保存的位置；saved<=0 视为回到顶部。
+// .main-content 是全部视图共用的滚动容器，切换视图时不会自动复位；若不显式归位，
+// 会继承上一个视图（如 mylist）的滚动位置，导致两视图滚动相互决定。
+// 返回是否恢复到原位置（>0），供视图抑制入场位移动画。
+export function restoreViewScroll(mc, saved) {
+  mc.scrollTop = saved > 0 ? saved : 0;
+  return saved > 0;
+}
+
 // 打开详情视图。
 // 所有调用方（SearchBar/anime-utils/Library/Mylist）都调 showDetail(id, rect, imgSrc, sourceView)。
 export function showDetail(id, fromRect, fromSrc, sourceView) {

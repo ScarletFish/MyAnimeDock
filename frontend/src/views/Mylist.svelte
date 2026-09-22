@@ -26,7 +26,7 @@
   import { calcGridCols, readScale } from '../lib/grid.js';
   import { tr, escapeHtml } from '../lib/anime-utils.js';
   import { mylistData, cardTitleMylist, mylistSortMode, patchLibraryItem, removeLibraryItemFromStore } from '../lib/ui-state.js';
-  import { showDetail, getMyListScrollTop, __skipViewEnter } from '../lib/router.js';
+  import { showDetail, getMyListScrollTop, restoreViewScroll, __skipViewEnter } from '../lib/router.js';
   import { refreshStats } from './Library.svelte';
   import { Select } from 'bits-ui';
   import { API as api } from '../lib/api.js';
@@ -85,10 +85,7 @@
     if (!mc) return;
 
     const saved = getMyListScrollTop(); // 从 router.js 读取保存值
-    if (saved > 0) {
-      mc.scrollTop = saved;
-      returnedToPosition = true;        // 抑制位移动画
-    }
+    returnedToPosition = restoreViewScroll(mc, saved); // 无保存值→显式回到顶部，不复用其他视图的滚动
     scrollRestored = true;
   });
 

@@ -35,7 +35,7 @@
   import { tr, escapeHtml } from '../lib/anime-utils.js';
   import { watchThumb } from '../lib/thumb-manager.js';
   import { libraryData, mylistData, pendingAutoPlay, consumeStartupLibraryPromise, patchLibraryItem, removeLibraryItemFromStore, getMylistItem, onInvalidated } from '../lib/ui-state.js';
-  import { showView, showDetail, getLibraryScrollTop, __skipViewEnter } from '../lib/router.js';
+  import { showView, showDetail, getLibraryScrollTop, restoreViewScroll, __skipViewEnter } from '../lib/router.js';
   import { settingsOpen } from './Settings.svelte';
   import { metaMatchOpen } from './MetaMatch.svelte';
   import { API as api } from '../lib/api.js';
@@ -118,10 +118,7 @@
     if (!mc) return;
 
     const saved = getLibraryScrollTop();  // 从 router.js 读取保存值
-    if (saved > 0) {
-      mc.scrollTop = saved;
-      returnedToPosition = true;          // 抑制位移动画
-    }
+    returnedToPosition = restoreViewScroll(mc, saved); // 无保存值→显式回到顶部，不复用其他视图的滚动
     scrollRestored = true;
   });
   // 视图打开时静默补刷续播（打开沿检测，仅带缓存返回时触发）：详情页打开可能已对账出新集

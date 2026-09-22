@@ -11,6 +11,7 @@ import { slide } from 'svelte/transition';
   import { showConfirm } from '../components/ConfirmDialog.svelte';
   import { tr, escapeHtml, localDateStr } from '../lib/anime-utils.js';
   import { API as api } from '../lib/api.js';
+  import { getViewScrollTop, restoreViewScroll } from '../lib/router.js';
   import { settingsOpen } from './Settings.svelte';
   import MikanModal, { mikanModalOpen } from './MikanModal.svelte';
 
@@ -350,6 +351,15 @@ import { slide } from 'svelte/transition';
       disconnectSSE();
     }
     prevOpen = open;
+  });
+
+  // 进入时恢复本视图滚动位置；loading 未结束前先不归位，避免对占位高度定位
+  $effect(() => {
+    if (!$downloadOpen || loading) return;
+    tick().then(() => {
+      const mc = document.querySelector('.main-content');
+      if (mc) restoreViewScroll(mc, getViewScrollTop('download'));
+    });
   });
 
   // 切到订阅管理 tab 时拉取订阅列表

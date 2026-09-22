@@ -12,8 +12,8 @@ import { detailOpen, openDetail } from '../views/Detail.svelte';
 import { titlebarContext } from '../components/chrome/Titlebar.svelte';
 
 export let currentView = 'library';
-let libraryScrollTop = 0;
-let mylistScrollTop = 0;
+// 每视图滚动记忆：showView 离开时保存，进入后由各视图恢复。detail 不参与（进入总是回到顶部）。
+const viewScrollTops = { library: 0, mylist: 0, discovery: 0, stats: 0, download: 0 };
 export let __skipViewEnter = false;
 let _libraryChangingView = false;
 
@@ -38,12 +38,9 @@ export function showView(view) {
     __debug.log('router', 'showView-detail', { from: prevView });
   }
 
-  // Save library/mylist scroll BEFORE toggling view visibility
-  if (currentView === 'library' && view !== 'library' && mc) {
-    libraryScrollTop = mc.scrollTop;
-  }
-  if (currentView === 'mylist' && view !== 'mylist' && mc) {
-    mylistScrollTop = mc.scrollTop;
+  // 离开视图前保存滚动位置（detail 不参与记忆）
+  if (prevView !== 'detail' && view !== prevView && mc) {
+    viewScrollTops[prevView] = mc.scrollTop;
   }
   __debug.snapshot(currentView + ' → ' + view + ' (after save, before toggle)');
 
@@ -83,12 +80,16 @@ export function goBack() {
   showView(target);
 }
 
+export function getViewScrollTop(viewName) {
+  return viewScrollTops[viewName] ?? 0;
+}
+
 export function getLibraryScrollTop() {
-  return libraryScrollTop;
+  return getViewScrollTop('library');
 }
 
 export function getMyListScrollTop() {
-  return mylistScrollTop;
+  return getViewScrollTop('mylist');
 }
 
 // 视图进入时把共享滚动容器定位到本视图保存的位置；saved<=0 视为回到顶部。

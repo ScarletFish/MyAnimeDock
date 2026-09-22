@@ -29,6 +29,21 @@
   let refreshingDetail = $state(false);
   let forceFullFresh = $state(false);
 
+  // 在途请求的中止控制器：关闭模态/重新加载时 abort，避免后台继续空等或服务端白抓取
+  let weeklyLoad = null;
+  let detailLoad = null;
+  let fullLoad = null;
+
+  function abortAllLoads() {
+    if (weeklyLoad) { weeklyLoad.abort(); weeklyLoad = null; }
+    if (detailLoad) { detailLoad.abort(); detailLoad = null; }
+    if (fullLoad) { fullLoad.abort(); fullLoad = null; }
+  }
+
+  function isAbortError(e) {
+    return e?.name === 'AbortError';
+  }
+
   // Subscribe panel state
   let subscribeMode = $state(false);
   let subscribeTarget = $state(null);
@@ -68,6 +83,7 @@
       loadWeeklyAnime();
     } else {
       document.body.style.overflow = '';
+      abortAllLoads();
       expandedAnime = null;
       bangumiDetail = null;
       selectedSubgroupIdx = 0;
@@ -97,8 +113,11 @@
 
   async function loadWeeklyAnime() {
     loading = true;
+    if (weeklyLoad) weeklyLoad.abort();
+    weeklyLoad = new AbortController();
+    const signal = weeklyLoad.signal;
     try {
-      const resp = await api.get(`/api/mikan/season?year=${selectedYear}&season=${encodeURIComponent(selectedSeason)}`);
+      const resp = await api.get(`/api/mikan/season?year=${selectedYear}&season=${encodeURIComponent(selectedSeason)}`, { signal });
       weeklyAnime = Array.isArray(resp) ? resp : [];
       expandedAnime = null;
       bangumiDetail = null;
@@ -108,7 +127,7 @@
       subscribeTarget = null;
       preview = { matched: [], excluded: [], unmatched: [], total: 0 };
     } catch (e) {
-      showToast(tr('mikan.loadFailed', { error: e.message }), 'error');
+      if (!isAbortError(e)) showToast(tr('mikan.loadFailed', { error: e.message }), 'error');
     } finally {
       loading = false;
     }
@@ -142,13 +161,17 @@
     selectedSubgroupIdx = 0;
     fullResourcesLoaded = new Set();
 
+    if (detailLoad) detailLoad.abort();
+    detailLoad = new AbortController();
+    const signal = detailLoad.signal;
+
     try {
-      const resp = await api.get(`/api/mikan/bangumi?url=${encodeURIComponent(anime.detailUrl)}`);
+      const resp = await api.get(`/api/mikan/bangumi?url=${encodeURIComponent(anime.detailUrl)}`, { signal });
       bangumiDetail = resp;
       await tick();
       detailPanelEl?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     } catch (e) {
-      showToast(tr('mikan.loadResourcesFailed', { error: e.message }), 'error');
+      if (!isAbortError(e)) showToast(tr('mikan.loadResourcesFailed', { error: e.message }), 'error');
     } finally {
       loadingDetail = false;
     }
@@ -159,14 +182,17 @@
     refreshingDetail = true;
     forceFullFresh = true;
     const url = expandedAnime.detailUrl;
+    if (detailLoad) detailLoad.abort();
+    detailLoad = new AbortController();
+    const signal = detailLoad.signal;
     try {
-      const resp = await api.get(`/api/mikan/bangumi?url=${encodeURIComponent(url)}&refresh=1`);
+      const resp = await api.get(`/api/mikan/bangumi?url=${encodeURIComponent(url)}&refresh=1`, { signal });
       bangumiDetail = resp;
       fullResourcesLoaded = new Set();
       await tick();
       detailPanelEl?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     } catch (e) {
-      showToast(tr('mikan.loadResourcesFailed', { error: e.message }), 'error');
+      if (!isAbortError(e)) showToast(tr('mikan.loadResourcesFailed', { error: e.message }), 'error');
     } finally {
       refreshingDetail = false;
     }
@@ -221,16 +247,19 @@
     if (!sg || fullResourcesLoaded.has(sgIdx)) return;
 
     loadingFullSubgroup = sgIdx;
+    if (fullLoad) fullLoad.abort();
+    fullLoad = new AbortController();
+    const signal = fullLoad.signal;
     try {
       const refreshParam = forceFullFresh ? '&refresh=1' : '';
-      const resources = await api.get(`/api/mikan/bangumi/full?url=${encodeURIComponent(expandedAnime.detailUrl)}&subgroupId=${sg.id}${refreshParam}`);
+      const resources = await api.get(`/api/mikan/bangumi/full?url=${encodeURIComponent(expandedAnime.detailUrl)}&subgroupId=${sg.id}${refreshParam}`, { signal });
       if (Array.isArray(resources) && resources.length > 0) {
         bangumiDetail.subgroups[sgIdx].resources = resources;
         fullResourcesLoaded = new Set([...fullResourcesLoaded, sgIdx]);
         forceFullFresh = false;
       }
     } catch (e) {
-      showToast(tr('mikan.loadMoreFailed', { error: e.message }), 'error');
+      if (!isAbortError(e)) showToast(tr('mikan.loadMoreFailed', { error: e.message }), 'error');
     } finally {
       loadingFullSubgroup = null;
     }

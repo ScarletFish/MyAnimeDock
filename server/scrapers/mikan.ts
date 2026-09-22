@@ -172,30 +172,42 @@ function parseDetailPage(html: string): Array<{
 }
 
 /**
- * 发起请求，支持备用域名
+ * 并行请求多个候选 URL（镜像 + 备用域名），任一成功即返回。
+ * 相比顺序尝试，最坏等待时间从 2×timeout 降到 ~timeout，避免详情/种子列表加载长时间卡死。
+ * 全部失败才抛错，并记录各 URL 的具体失败原因。
+ */
+async function raceFetchText(urls: string[], timeoutMs: number): Promise<string> {
+  const errors: string[] = new Array(urls.length).fill('');
+  let remaining = urls.length;
+  return await new Promise<string>((resolve, reject) => {
+    urls.forEach((url, i) => {
+      fetchWithTimeout(url, { headers: { 'User-Agent': USER_AGENT } }, timeoutMs)
+        .then(async (res) => {
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          resolve(await res.text());
+        })
+        .catch((e: unknown) => {
+          const message = e instanceof Error ? e.message : String(e);
+          errors[i] = message;
+          logger.warn(`Mikan fetch error: ${url} - ${message}`);
+          remaining -= 1;
+          if (remaining === 0) {
+            reject(new Error(`Failed to fetch from Mikan (${errors.join('; ')})`));
+          }
+        });
+    });
+  });
+}
+
+/**
+ * 发起请求，支持备用域名（镜像与备用并行，任一成功即用）
  */
 async function fetchWithFallback(path: string, mirror: string): Promise<string> {
   const urls = [
     `${mirror}${path}`,
     `${MIKAN_FALLBACK}${path}`,
   ];
-  
-  for (const url of urls) {
-    try {
-      const res = await fetchWithTimeout(url, {
-        headers: { 'User-Agent': USER_AGENT },
-      }, 10000);
-      
-      if (res.ok) {
-        return await res.text();
-      }
-      logger.warn(`Mikan fetch failed (${res.status}): ${url}`);
-    } catch (e: any) {
-      logger.warn(`Mikan fetch error: ${url} - ${e.message}`);
-    }
-  }
-  
-  throw new Error('Failed to fetch from Mikan');
+  return raceFetchText(urls, 8000);
 }
 
 /**
@@ -237,22 +249,8 @@ async function fetchFullEpisodeList(
 ): Promise<Array<{ name: string; size: string; date: string; downloadUrl: string; type: 'magnet' | 'torrent' }>> {
   const path = `/Home/ExpandEpisodeTable?bangumiId=${bangumiId}&subtitleGroupId=${subgroupId}&take=9999`;
   
-  let html = '';
   const urls = [`${mirror}${path}`, `${MIKAN_FALLBACK}${path}`];
-  for (const url of urls) {
-    try {
-      const res = await fetchWithTimeout(url, {
-        headers: { 'User-Agent': USER_AGENT },
-      }, 15000);
-      if (res.ok) {
-        html = await res.text();
-        break;
-      }
-    } catch {
-      // try next url
-    }
-  }
-  
+  const html = await raceFetchText(urls, 10000).catch(() => '');
   if (!html) return [];
   
   const resources: Array<{ name: string; size: string; date: string; downloadUrl: string; type: 'magnet' | 'torrent' }> = [];
@@ -352,13 +350,13 @@ export async function getBangumiResources(detailUrl: string, mirror: string): Pr
 
 /**
  * 获取指定字幕组的完整资源列表（通过 AJAX，慢但全）
+ * bangumiId 直接从 detailUrl 解析，无需再抓详情页 HTML（避免多一轮 2×timeout 等待）
  */
 export async function getSubgroupFullResources(
   detailUrl: string,
   subgroupId: number,
   mirror: string
 ): Promise<Array<{ name: string; size: string; date: string; downloadUrl: string; type: 'magnet' | 'torrent' }>> {
-  const html = await fetchWithFallback(detailUrl, mirror);
   const bangumiIdMatch = detailUrl.match(/bangumiId=(\d+)/) || detailUrl.match(/\/Bangumi\/(\d+)/);
   const bangumiId = bangumiIdMatch ? bangumiIdMatch[1] : '';
   if (!bangumiId) return [];

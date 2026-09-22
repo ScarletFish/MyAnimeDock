@@ -1,6 +1,5 @@
 <script>
   // ─── StatusModal ───
-  // 只认 props，不 fetch、不查 libraryData/mylistData store。
   import { tr, api, coverSrc, localDateStr, todayStr } from '../lib/anime-utils.js';
   import { getStatusLabels } from '../lib/sort.js';
   import { portal } from '../lib/portal.js';

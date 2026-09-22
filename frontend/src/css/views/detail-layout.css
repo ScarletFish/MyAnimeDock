@@ -12,23 +12,6 @@
   padding-top: calc(1.875rem * var(--scale));
 }
 
-.detail-layout {
-  display: grid;
-  grid-template-columns: clamp(calc(17.5rem * var(--scale)), 22vw, calc(30rem * var(--scale))) 1fr;
-  gap: calc(clamp(1.875rem, 3vw, 3.75rem) * var(--scale));
-  align-items: start;
-  max-width: calc(min(1750px, 85vw) * var(--scale));
-  margin: 0 auto;
-}
-
-.detail-left { position: static; }
-
-.detail-sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
-}
-
 /* ─── Detail Nav Zones (invisible edge hot areas) ─── */
 .detail-nav-overlay {
   position: fixed;
@@ -114,20 +97,7 @@
   display: block;
 }
 
-/* ─── Info Panel ─── */
-.detail-info-panel {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-.detail-info-panel h2 {
-  font-family: var(--font-body);
-  font-size: calc(clamp(1.25rem, 2vw, 1.6rem) * var(--scale));
-  font-weight: var(--fw-bold);
-  letter-spacing: -0.02em;
-  line-height: 1.2;
-}
-
+/* ─── Info Line ─── */
 .detail-info-line {
   display: flex;
   justify-content: space-between;
@@ -183,34 +153,6 @@
 .detail-actions .btn {
   font-size: var(--text-sm);
   padding: var(--space-150) var(--space-350);
-}
-
-.detail-right { min-width: 0; }
-
-.detail-episodes-header {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-3);
-  margin-bottom: var(--space-5);
-  padding-bottom: var(--space-3);
-  border-bottom: 1px solid rgba(var(--accent-secondary-rgb), var(--alpha-subtle));
-}
-.detail-episodes-header h3 {
-  font-family: var(--font-body);
-  font-size: calc(1.563rem * var(--scale));
-  font-weight: var(--fw-semibold);
-  letter-spacing: -0.01em;
-}
-.episode-count {
-  font-size: var(--text-sm);
-  color: var(--fg-muted);
-  font-variant-numeric: tabular-nums;
-}
-
-.detail-episodes-body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
 }
 
 /* ─── Gray cover placeholder ─── */

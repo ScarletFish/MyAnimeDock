@@ -274,10 +274,7 @@ html.theme-transitioning .theme-dock {
   .view-header { flex-direction: column; gap: 1rem; align-items: flex-start; }
   .view-header-right { width: 100%; }
   .search-input { width: 100%; }
-  .detail-layout { grid-template-columns: 1fr; }
-  .detail-left { position: static; }
   .detail-cover-wrap { max-width: 240px; }
-  .detail-episodes-header h3 { font-size: var(--text-lg); }
   .discovery-stats { flex-wrap: wrap; gap: var(--space-2); }
   .discovery-actions { flex-wrap: wrap; }
   .detail-nav-left { width: 30px; }

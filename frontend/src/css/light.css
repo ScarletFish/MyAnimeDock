@@ -264,7 +264,18 @@
     box-shadow: inset var(--accent-bar-w) 0 0 var(--accent);
   }
 
-  .mm-panel { box-shadow: -2px 0 12px rgba(0,0,0, var(--alpha-faint)); }
+  .mm-panel {
+    background: var(--bg-base);
+    box-shadow: -2px 0 12px rgba(0,0,0, var(--alpha-faint));
+  }
+  .mm-panel-header-area { background: var(--bg-base); }
+  .mm-panel-summary,
+  .mm-panel-error,
+  .mm-panel-keywords,
+  .mm-panel-keyword,
+  .mm-panel-ids,
+  .mm-fix-search input,
+  .mm-panel-synclog-summary { background: var(--bg-elevated); }
 
   .mm-filter-dot--active { background: var(--accent-subtle); }
   .mm-progress-fill {

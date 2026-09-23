@@ -88,8 +88,14 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: 0;
   min-height: 0;
+}
+
+/* 行间 1px 细分隔线：种子 tab 与订阅组内共用同一条规则 */
+:where(.download-list, .sub-group-body) .download-item + .download-item,
+:where(.download-list, .sub-group-body) .download-detail + .download-item {
+  border-top: 1px solid var(--border);
 }
 
 .download-empty {
@@ -131,24 +137,24 @@
   font-size: var(--text-body);
 }
 
-/* ─── Torrent Item ─── */
+/* ─── Torrent Item（去卡化：透明底无边框的扁平行，hover/展开用左缘引导线强调） ─── */
 
 .download-item {
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: var(--space-3) var(--space-4);
-  transition: border-color var(--duration-fast) var(--ease-out);
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: var(--space-2) var(--space-4);
+  transition: box-shadow var(--duration-fast) var(--ease-out);
   cursor: pointer;
 }
 
+/* 左缘引导线（inset 不占布局、不位移内容）：hover 软线，展开态强线持续显形 */
 .download-item:hover {
-  border-color: rgba(var(--accent-rgb), var(--alpha-emphasis));
+  box-shadow: inset var(--accent-bar-w) 0 0 var(--accent-soft);
 }
 
 .download-item.expanded {
-  border-color: var(--accent);
-  background: rgba(var(--accent-rgb), var(--alpha-faint));
+  box-shadow: inset var(--accent-bar-w) 0 0 var(--accent-emphasis);
 }
 
 .download-item-main {
@@ -169,7 +175,7 @@
 
 .download-item-name {
   font-size: var(--text-base);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
   color: var(--fg-primary);
   white-space: nowrap;
   overflow: hidden;
@@ -241,22 +247,22 @@
   border-radius: var(--radius-pill);
   white-space: nowrap;
   flex-shrink: 0;
-  width: 64px;
+  min-width: 48px;
+}
+
+/* 已完成/做种：终态/静默态，不做 tag，纯文本简单展示。
+   保留与 pill 相同的 min-width 基准，列内所有行对齐 */
+.qb-status--plain {
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--fg-secondary);
+  min-width: 48px;
 }
 
 .qb-status--downloading {
   color: var(--accent);
   background: rgba(var(--accent-rgb), var(--alpha-subtle));
-}
-
-.qb-status--uploading {
-  color: var(--success);
-  background: rgba(var(--success-rgb), var(--alpha-subtle));
-}
-
-.qb-status--completed {
-  color: var(--status-completed);
-  background: rgba(var(--status-completed-rgb), var(--alpha-subtle));
 }
 
 .qb-status--waiting {
@@ -284,15 +290,21 @@
   background: var(--overlay-glass);
 }
 
-/* ─── Speed ─── */
+/* ─── Speed ───
 
+   固定槽位（80px）：单值显示，按状态分流——下载中只见 ↓、
+   做种/已完成只见 ↑。覆盖最宽常见单值（↓999.9 MB/s ~79px），
+   GB/s 边界值轻微向左裁剪（右对齐保证主要数字可见）；
+   列宽恒定，速度出现/消失与数值长短不改变行内其它列的横向位置 */
 .download-item-speed {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--space-050);
-  width: 100px;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: var(--space-1);
   flex-shrink: 0;
+  white-space: nowrap;
+  width: 80px;
+  overflow: hidden;
 }
 
 .download-speed-down {
@@ -309,7 +321,16 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* ─── Actions ─── */
+/* 全 0 速度占位：填充空槽（固定宽度列无内容时残留空白块），
+   弱化用 muted 色，避免与真实下载/做种的有色速度混淆 */
+.download-speed-zero {
+  font-size: var(--text-sm);
+  font-weight: var(--fw-medium);
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── Actions（常驻显形；hover 仅提升危险按钮色，不参与显隐） ─── */
 
 .download-item-actions {
   display: flex;
@@ -386,15 +407,23 @@
   background: var(--border);
 }
 
-/* ─── Inline Detail Accordion ─── */
+/* ─── Inline Detail Accordion（无独立卡：行下内联分区 + 左侧 accent 引导线，同 Discovery 父链语法） ─── */
 
 .download-detail {
-  margin-top: var(--space-2);
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: var(--space-3) var(--space-4);
-  box-shadow: inset var(--accent-bar-w) 0 0 var(--accent), var(--shadow-sm);
+  margin-top: 0;
+  margin-left: var(--space-4);
+  padding: var(--space-2) var(--space-4) var(--space-3) var(--space-3);
+  background: transparent;
+  border: none;
+  border-left: var(--accent-bar-w) solid var(--accent-soft);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* 组内（embedded）：贴住父行 */
+.download-detail.embedded {
+  margin-top: 0;
+  padding: var(--space-2) var(--space-4) var(--space-3) var(--space-3);
 }
 
 .download-detail-grid {
@@ -446,19 +475,18 @@
 .download-files-toggle {
   margin-top: var(--space-3);
   align-self: flex-start;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: var(--space-1) var(--space-3);
+  background: none;
+  border: none;
+  padding: 0;
   font-size: var(--text-sm);
+  font-weight: var(--fw-medium);
   color: var(--fg-secondary);
   cursor: pointer;
-  transition: border-color var(--duration-fast) var(--ease-out);
+  transition: color var(--duration-fast) var(--ease-out);
 }
 
 .download-files-toggle:hover {
-  border-color: var(--accent);
-  color: var(--fg-primary);
+  color: var(--accent);
 }
 
 .download-file-list {
@@ -582,34 +610,29 @@
 .sub-groups {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-3);
   padding-bottom: var(--space-2);
 }
 
-/* 每个动漫 = "行 + 详情"上下两块（同 qB 的 download-item → download-detail 兄弟结构）：
-   块内 gap 小（行与归属面板贴合），动漫与动漫之间 gap 大，节奏"行-详情-行-详情"分明 */
-.sub-group-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
+/* 每个动漫 = 一张组卡：卡头 + 卡内展开分区（内嵌 body，不再独立卡）。
+   边框只出现在组这一层（轮廓锚点）——去实底背景，透明度直达页面底色；
+   组内全部无框行，靠分隔线/底色差/缩进/引导线表达层级 */
 .sub-group {
-  background: var(--bg-elevated);
+  background: transparent;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  padding: var(--space-3) var(--space-4);
   transition: border-color var(--duration-fast) var(--ease-out);
+  overflow: hidden;
 }
 
-/* 与种子行 .download-item:hover / .expanded 同语言：边框强调 + 展开态 accent 底色 */
+/* 与种子行同语言：hover 边框强调。展开态不再上整卡 tint（透明卡上会泛色扰行），
+   展开强调由 body 分区出现 + 行级 feedback 承担 */
 .sub-group:hover:not(.sub-group--inactive) {
   border-color: rgba(var(--accent-rgb), var(--alpha-emphasis));
 }
 
 .sub-group.expanded:not(.sub-group--inactive) {
-  border-color: var(--accent);
-  background: rgba(var(--accent-rgb), var(--alpha-faint));
+  border-color: rgba(var(--accent-rgb), var(--alpha-subtle));
 }
 
 /* 离线态：无剧集数据可展示，去掉可展开暗示与反馈 */
@@ -621,6 +644,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
   cursor: pointer;
   user-select: none;
   /* 行内容高度基线 2.5rem —— 与 .download-item-main 同值（两 tab 首行等高约束） */
@@ -631,49 +655,72 @@
   flex: 1;
   min-width: 0;
   font-size: var(--text-base);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
   color: var(--fg-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+/* 计数降级：accent 实心 pill → 纯次要文本，让组名成为唯一焦点 */
 .sub-group-count {
   flex-shrink: 0;
   font-size: var(--text-xs);
   font-weight: var(--fw-medium);
-  color: var(--accent);
-  background: rgba(var(--accent-rgb), var(--alpha-faint));
-  border-radius: var(--radius-pill);
-  padding: var(--space-050) var(--space-2);
+  color: var(--fg-secondary);
   white-space: nowrap;
 }
 
-/* 剧集归属面板：与 .download-detail 同款独立块（surface 底 + 1px 边 + inset accent 左竖线），
-   作为动漫行的兄弟节点挂在其下；内部紧凑种子行样式保持不动 */
-.sub-group-detail {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  padding: var(--space-2);
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  box-shadow: inset var(--accent-bar-w) 0 0 var(--accent), var(--shadow-sm);
+/* 退订：ghost 文本钮常驻显形；hover 提升危险色 */
+.sub-group-unsubscribe {
+  flex-shrink: 0;
+  padding: var(--space-050) var(--space-2);
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-medium);
+  color: var(--fg-muted);
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-out);
 }
 
-/* 组内种子行比主列表略紧凑，形成"动漫名 + 剧集"的嵌套层级 */
-.sub-group-detail .download-item {
+.sub-group-unsubscribe:hover {
+  color: var(--error);
+  background: rgba(var(--error-rgb), var(--alpha-faint));
+}
+
+/* 剧集归属分区（组卡内嵌，非独立卡）：透明直达页面底色（组卡也已去实底），
+   靠顶部 1px 分隔线断开卡头 + 行间分隔线 + 缩进表达层级 */
+.sub-group-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: var(--space-1) var(--space-3) var(--space-3);
+  background: transparent;
+  border-top: 1px solid var(--border);
+}
+
+/* 组内种子行：沿用 base 无框行配方（透明底/无边框/行间分隔线/hover 显底），
+   仅收窄内边距让组内更紧凑 */
+.sub-group-body .download-item {
   padding: var(--space-2) var(--space-250);
 }
 
-.sub-group-detail .download-detail {
+/* 组内种子名降级一档，形成「组名 → 剧集名 → 字段值」字重/字号阶梯 */
+.sub-group-body .download-item-name {
+  font-size: var(--text-sm);
+  font-weight: var(--fw-medium);
+  color: var(--fg-secondary);
+}
+
+/* 组内详情分区：贴住父行，仅保留全链唯一一条 accent 引导线 */
+.sub-group-body .download-detail {
   margin-top: 0;
 }
 
-/* 无剧集占位：同款归属面板，面板内居中弱化文案，展开时才出现 */
-.sub-group-detail--empty {
-  align-items: center;
+/* 无剧集占位：同款内嵌分区，居中弱化文案 */
+.sub-group-body--empty {
   padding: var(--space-3) var(--space-4);
   color: var(--fg-muted);
   font-size: var(--text-sm);

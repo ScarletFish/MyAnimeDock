@@ -23,7 +23,7 @@ import { slide } from 'svelte/transition';
   let es = $state(null);
   let prevOpen = $state(false);
 
-  let activeTab = $state('torrents');
+  let activeTab = $state('subscriptions');
   let subscriptions = $state([]);
   let subsLoading = $state(false);
   let prevMikanOpen = $state(false);
@@ -96,12 +96,12 @@ import { slide } from 'svelte/transition';
     metaDL: { label: '下载中', cls: 'qb-status--downloading' },
     allocating: { label: '下载中', cls: 'qb-status--downloading' },
     forcedDL: { label: '下载中', cls: 'qb-status--downloading' },
-    uploading: { label: '做种', cls: 'qb-status--uploading' },
-    stalledUP: { label: '做种', cls: 'qb-status--uploading' },
-    forcedUP: { label: '做种', cls: 'qb-status--uploading' },
-    stoppedUP: { label: '已完成', cls: 'qb-status--completed' },
-    pausedUP: { label: '已完成', cls: 'qb-status--completed' },
-    queuedUP: { label: '已完成', cls: 'qb-status--completed' },
+    uploading: { label: '做种', cls: 'qb-status--plain' },
+    stalledUP: { label: '做种', cls: 'qb-status--plain' },
+    forcedUP: { label: '做种', cls: 'qb-status--plain' },
+    stoppedUP: { label: '已完成', cls: 'qb-status--plain' },
+    pausedUP: { label: '已完成', cls: 'qb-status--plain' },
+    queuedUP: { label: '已完成', cls: 'qb-status--plain' },
     stalledDL: { label: '等待', cls: 'qb-status--waiting' },
     queuedDL: { label: '等待', cls: 'qb-status--waiting' },
     pausedDL: { label: '已暂停', cls: 'qb-status--paused' },
@@ -115,6 +115,8 @@ import { slide } from 'svelte/transition';
     moving: { label: '移动中', cls: 'qb-status--waiting' },
   };
 
+  const upStates = ['uploading', 'stalledUP', 'forcedUP', 'stoppedUP', 'pausedUP', 'queuedUP'];
+
   function getStatusInfo(state) {
     return STATUS_MAP[state] || STATUS_MAP.unknown;
   }
@@ -127,7 +129,6 @@ import { slide } from 'svelte/transition';
 
   // 乐观更新：预判动作后的状态，先给即时反馈（验证阶段会被真实状态覆盖）
   function optimisticState(t, willPause) {
-    const upStates = ['uploading', 'stalledUP', 'forcedUP', 'stoppedUP', 'pausedUP', 'queuedUP'];
     if (willPause) return upStates.includes(t.state) ? 'stoppedUP' : 'stoppedDL';
     return upStates.includes(t.state) ? 'uploading' : 'downloading';
   }
@@ -449,8 +450,8 @@ import { slide } from 'svelte/transition';
       </div>
     {/if}
     <div class="download-tabs" role="group" aria-label="下载视图">
-      <button class="filter-btn {activeTab === 'torrents' ? 'filter-btn--active' : ''}" onclick={() => activeTab = 'torrents'}>{tr('download.tabTorrents')}</button>
       <button class="filter-btn {activeTab === 'subscriptions' ? 'filter-btn--active' : ''}" onclick={() => activeTab = 'subscriptions'}>{tr('download.tabSubscriptions')}</button>
+      <button class="filter-btn {activeTab === 'torrents' ? 'filter-btn--active' : ''}" onclick={() => activeTab = 'torrents'}>{tr('download.tabTorrents')}</button>
     </div>
   </div>
 
@@ -480,35 +481,33 @@ import { slide } from 'svelte/transition';
       {:else}
         <div class="sub-groups">
           {#each subscriptionGroups as sub (sub.id)}
-            <div class="sub-group-wrap">
+            <div
+              class="sub-group"
+              class:expanded={expandedSubId === sub.id}
+              class:sub-group--inactive={!configured}
+            >
               <div
-                class="sub-group"
-                class:expanded={expandedSubId === sub.id}
-                class:sub-group--inactive={!configured}
+                class="sub-group-header"
+                role="button"
+                tabindex="0"
+                onclick={() => toggleSubExpanded(sub.id)}
+                onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSubExpanded(sub.id); } }}
               >
-                <div
-                  class="sub-group-header"
-                  role="button"
-                  tabindex="0"
-                  onclick={() => toggleSubExpanded(sub.id)}
-                  onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSubExpanded(sub.id); } }}
-                >
-                  <span class="sub-group-name" data-tooltip={sub.name}>{sub.name}</span>
-                  {#if configured}
-                    <span class="sub-group-count">{tr('download.subEpisodes', { count: sub.torrents.length })}</span>
-                  {/if}
-                  <button class="btn btn-sm btn-outline" onclick={(e) => { e.stopPropagation(); unsubscribeSub(sub); }}>{tr('download.unsubscribe')}</button>
-                </div>
+                <span class="sub-group-name" data-tooltip={sub.name}>{sub.name}</span>
+                {#if configured}
+                  <span class="sub-group-count">{tr('download.subEpisodes', { count: sub.torrents.length })}</span>
+                {/if}
+                <button class="sub-group-unsubscribe" onclick={(e) => { e.stopPropagation(); unsubscribeSub(sub); }}>{tr('download.unsubscribe')}</button>
               </div>
-              {#if expandedSubId === sub.id && configured && sub.torrents.length > 0}
-                <div class="sub-group-detail" transition:slide={{ duration: 120 }}>
-                  {#each sub.torrents as t (t.hash)}
-                    {@render torrentRow(t)}
-                  {/each}
-                </div>
-              {:else if expandedSubId === sub.id && configured}
-                <div class="sub-group-detail sub-group-detail--empty" transition:slide={{ duration: 120 }}>
-                  {tr('download.subNoEpisodes')}
+              {#if expandedSubId === sub.id && configured}
+                <div class="sub-group-body" transition:slide={{ duration: 120 }}>
+                  {#if sub.torrents.length > 0}
+                    {#each sub.torrents as t (t.hash)}
+                      {@render torrentRow(t, true)}
+                    {/each}
+                  {:else}
+                    <div class="sub-group-body--empty">{tr('download.subNoEpisodes')}</div>
+                  {/if}
                 </div>
               {/if}
             </div>
@@ -584,10 +583,11 @@ import { slide } from 'svelte/transition';
   {/if}
 </section>
 
-{#snippet torrentRow(t)}
+{#snippet torrentRow(t, embedded = false)}
   {@const statusInfo = getStatusInfo(t.state)}
   <div
     class="download-item"
+    class:embedded={embedded}
     class:expanded={expandedHash === t.hash}
     role="button"
     tabindex="0"
@@ -612,11 +612,18 @@ import { slide } from 'svelte/transition';
       </div>
       <span class="download-status {statusInfo.cls}">{statusInfo.label}</span>
       <div class="download-item-speed">
-        {#if t.dlspeed > 0}
-          <span class="download-speed-down">↓{formatSpeed(t.dlspeed)}</span>
-        {/if}
-        {#if t.upspeed > 0}
-          <span class="download-speed-up">↑{formatSpeed(t.upspeed)}</span>
+        {#if upStates.includes(t.state)}
+          {#if t.upspeed > 0}
+            <span class="download-speed-up">↑{formatSpeed(t.upspeed)}</span>
+          {:else}
+            <span class="download-speed-zero">↑0 B/s</span>
+          {/if}
+        {:else}
+          {#if t.dlspeed > 0}
+            <span class="download-speed-down">↓{formatSpeed(t.dlspeed)}</span>
+          {:else}
+            <span class="download-speed-zero">↓0 B/s</span>
+          {/if}
         {/if}
       </div>
       <div class="download-item-actions">
@@ -634,7 +641,7 @@ import { slide } from 'svelte/transition';
     </div>
   </div>
   {#if expandedHash === t.hash}
-    <div class="download-detail" bind:this={detailEl} transition:slide={{ duration: 120 }}>
+    <div class="download-detail" class:embedded={embedded} bind:this={detailEl} transition:slide={{ duration: 120 }}>
       <div class="download-detail-grid">
         <div class="download-detail-field download-detail-field--path">
           <span class="download-detail-label">{tr('download.detailPath')}</span>

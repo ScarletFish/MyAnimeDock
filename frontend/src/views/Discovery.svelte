@@ -47,6 +47,8 @@
   let statAnime = $derived(discoveryData.length);
   let statImported = $derived(discoveryData.filter((n) => n.alreadyImported).length);
   let importCount = $derived(checkedPaths.size);
+  // 排除目标与导入目标同一集合（checkedPaths 已被 $effect 清理为仅含未导入未排除项）
+  let excludeCount = $derived(checkedPaths.size);
 
   // 过滤后的展示数据（派生）
   let displayData = $derived.by(() => {
@@ -407,10 +409,20 @@ function setFilter(f) {
     }
   }
 
-  async function excludeSingle(path) {
+  // ─── 批量排除（工具栏）───
+  async function excludeSelected() {
+    const paths = Array.from(checkedPaths);
+    if (paths.length === 0) {
+      showToast(tr('discovery.selectToExclude'), 'warning');
+      return;
+    }
     try {
-      await api.post('/api/discovery/exclude', { path });
-      showToast(tr('discovery.excludedScan'), 'info');
+      await api.post('/api/discovery/exclude', { paths });
+      showToast(tr('discovery.excludedSelected', { count: paths.length }), 'success');
+      // 排除成功后这些 path 不再可勾选，从 checkedPaths 移除（参照 unlinkSingle 模式）
+      const s = new Set(checkedPaths);
+      paths.forEach((p) => s.delete(p));
+      checkedPaths = s;
       loadDiscovery();
     } catch (e) {
       showToast(tr('discovery.excludeFailed', { message: e.message }), 'error');
@@ -459,6 +471,14 @@ function setFilter(f) {
           <span class="discovery-cb-visual">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           </span>
+        {:else if node.alreadyImported}
+          <button class="discovery-card-slot-btn discovery-card-slot-btn--unlink" onclick={(e) => { e.preventDefault(); e.stopPropagation(); unlinkSingle(node.path); }} data-tooltip={tr('discovery.unlink')}>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/></svg>
+          </button>
+        {:else if excluded}
+          <button class="discovery-card-slot-btn discovery-card-slot-btn--unexclude" onclick={(e) => { e.preventDefault(); e.stopPropagation(); includeSingle(node.path); }} data-tooltip={tr('discovery.unexclude')}>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+          </button>
         {/if}
         <span class="discovery-card-icon">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><path d="M2 9h20"/></svg>
@@ -466,26 +486,6 @@ function setFilter(f) {
         <div class="discovery-card-info">
           <div class="discovery-card-title-row">
             <span class="discovery-card-title" class:discovery-card-title--imported={node.alreadyImported} class:discovery-card-title--excluded={excluded}>{node.parsedTitle}{seasonText}</span>
-            <div class="discovery-card-row-actions">
-              {#if node.alreadyImported}
-                <button class="discovery-card-action discovery-card-unlink" onclick={(e) => { e.preventDefault(); e.stopPropagation(); unlinkSingle(node.path); }} data-tooltip={tr('discovery.unlink')}>
-                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/></svg>
-                  {tr('discovery.unlink')}
-                </button>
-              {/if}
-              {#if !node.alreadyImported && !excluded}
-                <button class="discovery-card-action discovery-card-exclude" onclick={(e) => { e.preventDefault(); e.stopPropagation(); excludeSingle(node.path); }} data-tooltip={tr('discovery.excludeScan')}>
-                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
-                  {tr('discovery.exclude')}
-                </button>
-              {/if}
-              {#if excluded}
-                <button class="discovery-card-action discovery-card-unexclude" onclick={(e) => { e.preventDefault(); e.stopPropagation(); includeSingle(node.path); }} data-tooltip={tr('discovery.unexclude')}>
-                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
-                  {tr('discovery.unexclude')}
-                </button>
-              {/if}
-            </div>
           </div>
           <span class="discovery-card-meta">{tr('discovery.meta', { count: node.videoCount, size: sizeMB })}</span>
         </div>
@@ -551,6 +551,10 @@ function setFilter(f) {
         <button class="btn btn-outline" onclick={importSelected}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
           <span>{tr('discovery.importSelected')}</span> (<span id="svelte-importCount">{importCount}</span>)
+        </button>
+        <button class="btn btn-outline" onclick={excludeSelected}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+          <span>{tr('discovery.excludeSelected')}</span> (<span id="svelte-excludeCount">{excludeCount}</span>)
         </button>
       {/if}
       {#if statsVisible}

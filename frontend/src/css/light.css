@@ -241,26 +241,9 @@
   }
   .discovery-badge--imported { background: rgba(0,0,0, var(--alpha-faint)); }
   .discovery-sibling-group::before { opacity: 0.5; }
-  .discovery-card:hover { border-color: var(--accent-subtle); }
   .discovery-card-toggle:hover { background: rgba(0,0,0, var(--alpha-faint)); }
 
   .discovery-card-file:hover { background: rgba(0,0,0, var(--alpha-faint)); }
-  .discovery-card-action { border-color: rgba(0,0,0, var(--alpha-subtle)); }
-  .discovery-card-unlink:hover {
-    color: var(--error);
-    border-color: rgba(var(--error-rgb), var(--alpha-emphasis));
-    background: rgba(var(--error-rgb), var(--alpha-faint));
-  }
-  .discovery-card-exclude:hover {
-    color: var(--warning);
-    border-color: rgba(var(--warning-rgb), var(--alpha-emphasis));
-    background: rgba(var(--warning-rgb), var(--alpha-faint));
-  }
-  .discovery-card-unexclude:hover {
-    color: var(--success);
-    border-color: rgba(var(--success-rgb), var(--alpha-emphasis));
-    background: rgba(var(--success-rgb), var(--alpha-faint));
-  }
 
   /* ─── Context Menu ─── */
   .context-menu {

@@ -53,31 +53,72 @@ describe('discovery route handlers', () => {
   });
 
   describe('handleDiscoveryExclude', () => {
-    it('returns 400 when path is missing', async () => {
+    it('returns 400 when paths array is missing', async () => {
       const state = mockState();
       const req = mockReq({ url: '/api/discovery/exclude', method: 'POST', body: JSON.stringify({}) });
       const res = mockRes();
       await disc.handleDiscoveryExclude(req, res, state);
       assert.strictEqual(res._status, 400);
+      assert.strictEqual(res._body.error, 'paths array is required');
     });
 
-    it('returns 404 when node not in scanned tree', async () => {
+    it('returns 400 when paths is empty array', async () => {
       const state = mockState({ data: { scannedTree: [] } });
-      const req = mockReq({ url: '/api/discovery/exclude', method: 'POST', body: JSON.stringify({ path: '/missing' }) });
+      const req = mockReq({ url: '/api/discovery/exclude', method: 'POST', body: JSON.stringify({ paths: [] }) });
       const res = mockRes();
       await disc.handleDiscoveryExclude(req, res, state);
-      assert.strictEqual(res._status, 404);
+      assert.strictEqual(res._status, 400);
+      assert.strictEqual(res._body.error, 'paths array is required');
     });
 
-    it('returns 200 and sets excluded=true', async () => {
+    it('returns 200 and sets excluded=true for batch paths', async () => {
+      const state = mockState({
+        data: { scannedTree: [
+          { path: '/media/anime1', excluded: false },
+          { path: '/media/anime2', excluded: false },
+        ] },
+      });
+      const req = mockReq({ url: '/api/discovery/exclude', method: 'POST', body: JSON.stringify({ paths: ['/media/anime1', '/media/anime2'] }) });
+      const res = mockRes();
+      await disc.handleDiscoveryExclude(req, res, state);
+      assert.strictEqual(res._status, 200);
+      assert.ok(res._body.ok);
+      assert.strictEqual(state.data.scannedTree[0].excluded, true);
+      assert.strictEqual(state.data.scannedTree[1].excluded, true);
+    });
+
+    it('skips paths not in scanned tree and still returns 200', async () => {
       const state = mockState({
         data: { scannedTree: [{ path: '/media/anime1', excluded: false }] },
       });
-      const req = mockReq({ url: '/api/discovery/exclude', method: 'POST', body: JSON.stringify({ path: '/media/anime1' }) });
+      const req = mockReq({ url: '/api/discovery/exclude', method: 'POST', body: JSON.stringify({ paths: ['/media/anime1', '/missing'] }) });
       const res = mockRes();
       await disc.handleDiscoveryExclude(req, res, state);
       assert.strictEqual(res._status, 200);
       assert.strictEqual(state.data.scannedTree[0].excluded, true);
+    });
+
+    it('calls saveScannedTree exactly once for a batch', async () => {
+      let saveCount = 0;
+      const configPath = require.resolve('../../dist/lib/config');
+      const mod = require.cache[configPath];
+      const origSave = mod.exports.saveScannedTree;
+      mod.exports.saveScannedTree = async () => { saveCount += 1; };
+      try {
+        const state = mockState({
+          data: { scannedTree: [
+            { path: '/media/anime1', excluded: false },
+            { path: '/media/anime2', excluded: false },
+          ] },
+        });
+        const req = mockReq({ url: '/api/discovery/exclude', method: 'POST', body: JSON.stringify({ paths: ['/media/anime1', '/media/anime2'] }) });
+        const res = mockRes();
+        await disc.handleDiscoveryExclude(req, res, state);
+        assert.strictEqual(res._status, 200);
+        assert.strictEqual(saveCount, 1);
+      } finally {
+        mod.exports.saveScannedTree = origSave;
+      }
     });
   });
 

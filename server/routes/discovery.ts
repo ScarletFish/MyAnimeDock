@@ -244,11 +244,15 @@ async function handleBrowse(req: any, res: any, state: State) {
     const { data } = state;
     try {
       const body = await readBody(req);
-      const { path: folderPath } = JSON.parse(body);
-      if (!folderPath) { jsonResp(res, 400, { error: 'path is required' }); return; }
-      const node = data.scannedTree.find(n => n.path === folderPath);
-      if (!node) { jsonResp(res, 404, { error: 'Node not found in scanned tree' }); return; }
-      node.excluded = true;
+      const { paths } = JSON.parse(body);
+      if (!Array.isArray(paths) || paths.length === 0) {
+        jsonResp(res, 400, { error: 'paths array is required' });
+        return;
+      }
+      for (const p of paths) {
+        const node = data.scannedTree.find(n => n.path === p);
+        if (node) node.excluded = true;
+      }
       await saveScannedTree(data.scannedTree);
       jsonResp(res, 200, { ok: true });
     } catch (e: any) {

@@ -322,15 +322,17 @@
 /* ─── Discovery Card Slot Button（第一列三态槽位）───
  * 横向占位与 checkbox 槽位（.discovery-cb-visual 20px、flex 居中）对齐，
  * 三态行第一列坐标统一：未导入=checkbox / 已导入=unlink / 已排除=unexclude。
- * 透明底 icon 钮：hover 仅做危险/成功色提升，不参与显隐 */
+ * 视觉对齐 checkbox 选中态（实底白勾）：弱衬底 + 粗圆环符号（16px/2.5），
+ * 常态 fg-secondary〔与 checkbox 的 accent 底形成同类不同色〕，
+ * hover 仅做危险/成功色提升，不参与显隐 */
 @utility discovery-card-slot-btn {
   @apply flex items-center justify-center;
   width: 20px;
   height: 20px;
   flex-shrink: 0;
   border-radius: var(--radius-sm);
-  color: var(--fg-muted);
-  background: transparent;
+  color: var(--fg-secondary);
+  background: var(--overlay-glass);
   border: none;
   padding: 0;
   cursor: pointer;
@@ -338,22 +340,22 @@
 }
 
 .discovery-card-slot-btn svg {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   stroke: currentColor;
   fill: none;
-  stroke-width: 2;
+  stroke-width: 2.5;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
-/* 取消导入：hover 提升危险色 */
+/* 取消导入：圆环斜杠「禁止」形，hover 提升危险色 */
 .discovery-card-slot-btn--unlink:hover {
   color: var(--error);
   background: rgba(var(--error-rgb), var(--alpha-faint));
 }
 
-/* 取消排除：hover 提升成功色 */
+/* 取消排除：圆环对勾形，hover 提升成功色 */
 .discovery-card-slot-btn--unexclude:hover {
   color: var(--success);
   background: rgba(var(--success-rgb), var(--alpha-faint));

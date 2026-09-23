@@ -322,17 +322,15 @@
 /* ─── Discovery Card Slot Button（第一列三态槽位）───
  * 横向占位与 checkbox 槽位（.discovery-cb-visual 20px、flex 居中）对齐，
  * 三态行第一列坐标统一：未导入=checkbox / 已导入=unlink / 已排除=unexclude。
- * 视觉对齐 checkbox 选中态（实底白勾）：弱衬底 + 粗圆环符号（16px/2.5），
- * 常态 fg-secondary〔与 checkbox 的 accent 底形成同类不同色〕，
+ * 透明底 icon 钮（不含常驻背景），粗圆环符号 16px/2.5 保持与 checkbox 同权重；
  * hover 仅做危险/成功色提升，不参与显隐 */
 @utility discovery-card-slot-btn {
   @apply flex items-center justify-center;
   width: 20px;
   height: 20px;
   flex-shrink: 0;
-  border-radius: var(--radius-sm);
   color: var(--fg-secondary);
-  background: var(--overlay-glass);
+  background: transparent;
   border: none;
   padding: 0;
   cursor: pointer;

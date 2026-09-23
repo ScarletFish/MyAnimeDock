@@ -154,32 +154,27 @@
   min-height: 100px;
 }
 
-/* ─── Discovery Card ─── */
+/* ─── Discovery Card ───
+ * 去卡化：透明底/无边框/无圆角的扁平行（对齐 download.css 的 .download-item 配方）。
+ * 层级观感由行间 1px 分隔线 + 左侧引导线（parent/sibling）承担，不再以卡片轮廓锚定。
+ */
 @utility discovery-card {
-  @apply flex flex-col overflow-hidden;
+  @apply flex flex-col;
   padding: 0;
-  margin-bottom: 6px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  transition: border-color var(--duration-fast) var(--ease-out);
+  margin: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
 }
 
-.discovery-card:hover {
-  border-color: rgba(var(--accent-rgb), var(--alpha-emphasis));
+/* 行间 1px 细分隔线（与 download.css 同一配方）：grid 内单卡/兄弟组之间 + 兄弟组内卡之间 */
+.discovery-grid > * + *,
+.discovery-sibling-group > .discovery-card + .discovery-card {
+  border-top: 1px solid var(--border);
 }
 
-.discovery-card--imported {
-  opacity: 0.5;
-}
-
-.discovery-card--imported:hover {
-  border-color: var(--border);
-}
-
-.discovery-card--excluded {
-  opacity: 0.6;
-}
+/* 已导入/已排除状态：不再整卡半透明压暗，改由行内弱化表达
+   （title/meta/icon 降级 + 保留 badge，见各组件规则） */
 
 @utility discovery-card-main {
   @apply flex items-stretch;
@@ -198,7 +193,7 @@
 
 .discovery-card-toggle:hover {
   color: var(--fg-primary);
-  background: var(--bg-surface);
+  background: var(--overlay-glass);
 }
 
 .discovery-card-toggle svg {
@@ -225,9 +220,18 @@
   transition: background var(--duration-fast) var(--ease-out);
 }
 
+/* 行 hover 中性显底（与下载页组内种子行同款 --overlay-glass），替代原卡片边框变色；
+   hover 反馈只落在可交互的主行上，toggle/annotation 区不受影响 */
+.discovery-card-row:hover {
+  background: var(--overlay-glass);
+}
+
+/* imported 行无勾选/操作意图（被动行），不显底 */
 .discovery-card--imported .discovery-card-row:hover {
   background: none;
 }
+
+/* excluded 行保留可恢复操作（unexclude），行 hover 显底与普通行一致 */
 
 @utility discovery-cb {
   @apply absolute pointer-events-none;
@@ -277,6 +281,12 @@
   color: var(--accent);
 }
 
+/* 状态行内弱化：图标降为次要色（与 title/meta 的降级配套，badge 仍保留） */
+.discovery-card--imported .discovery-card-icon,
+.discovery-card--excluded .discovery-card-icon {
+  color: var(--fg-muted);
+}
+
 @utility discovery-card-info {
   @apply flex flex-col;
   min-width: 0;
@@ -285,7 +295,8 @@
 
 @utility discovery-card-title {
   font-size: var(--text-base);
-  font-weight: var(--fw-semibold);
+  /* 字重阶梯：与下载页「组名/剧集名 → fw-medium」对齐，字段值靠 meta/badge 弱化 */
+  font-weight: var(--fw-medium);
   color: var(--fg-primary);
   line-height: 1.3;
   overflow: hidden;
@@ -308,15 +319,14 @@
   min-width: 0;
 }
 
+/* 行内操作（unlink/exclude 等）：常驻显形（对齐下载页 .download-item-actions 配方），
+   hover 仅做危险色提升（见各按钮 hover 规则），不参与显隐；
+   margin-left auto 右对齐到标题行右端 */
 @utility discovery-card-row-actions {
   @apply flex items-center;
   gap: var(--space-1);
-  opacity: 0;
-  transition: opacity var(--duration-fast) var(--ease-out);
-}
-
-.discovery-card:hover .discovery-card-row-actions {
-  opacity: 1;
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 @utility discovery-card-action {
@@ -366,13 +376,10 @@
 
 @utility discovery-card-meta {
   font-size: var(--text-xs);
-  color: var(--accent-soft);
+  /* 字段值弱化为 muted（对齐下载页 .download-item-meta 配方），"新"信号交给 badge */
+  color: var(--fg-muted);
   font-weight: var(--fw-medium);
   line-height: 1.3;
-}
-
-.discovery-card--imported .discovery-card-meta {
-  color: var(--fg-muted);
 }
 
 /* ─── Discovery Badge ─── */
@@ -459,7 +466,7 @@
 }
 
 .discovery-card-file:hover {
-  background: rgba(var(--accent-rgb), var(--alpha-faint));
+  background: var(--overlay-glass);
 }
 
 @utility discovery-sibling-group {
@@ -527,26 +534,19 @@
   color: var(--accent-secondary);
 }
 
-/* ─── Discovery Card Actions (corner button) ─── */
+/* ─── Discovery Card Actions (corner button) ───
+ * 常驻显形（对齐下载页配方）；hover 仅做 accent 提升，不参与显隐 */
 @utility discovery-card-actions {
   @apply flex items-center justify-center;
   width: 36px;
   height: 36px;
   border-radius: var(--radius-sm);
   color: var(--fg-muted);
-  opacity: 0;
-  transition: all var(--duration-fast) var(--ease-out);
+  transition: background var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out);
   flex-shrink: 0;
-}
-
-.discovery-card:hover .discovery-card-actions,
-.discovery-card:focus-within .discovery-card-actions {
-  opacity: 1;
-  background: var(--bg-surface);
-  color: var(--fg-primary);
 }
 
 .discovery-card-actions:hover {
   background: var(--accent);
-  color: white;
+  color: var(--on-accent);
 }

@@ -99,7 +99,11 @@
   @apply filter-pill-active;
 }
 
-/* ─── Discovery Actions Bar ─── */
+/* ─── Discovery Actions Bar ───
+ * 实底常驻：不透明 var(--bg-base) 底（页面主背景，浅色下非纯白）+ 1px 中性边框（var(--border)）作区分，
+ * 让它从条目群里立起来，与下载页 toolbar 同节奏（margin-bottom 对齐）。
+ * stuck 吸顶时叠轻 accent 投影作提示；普通态实底无阴影。
+ */
 @utility discovery-actions-sentinel {
   height: 1px;
 }
@@ -107,36 +111,20 @@
 @utility discovery-actions {
   @apply flex items-center justify-between;
   gap: var(--space-3);
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-3);
   padding: var(--space-3) var(--space-4);
-  background: var(--bg-elevated);
-  border: 1px solid rgba(var(--accent-rgb), var(--alpha-subtle));
+  background: var(--bg-base);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
   position: sticky;
   top: 0;
   z-index: var(--z-sticky);
-  box-shadow: var(--shadow-sm);
-}
-
-.discovery-actions::before {
-  content: '';
-  position: absolute;
-  top: -1px;
-  left: 12px;
-  right: 12px;
-  height: 1px;
-  background: linear-gradient(90deg,
-    transparent 0%,
-    rgba(var(--accent-rgb), var(--alpha-emphasis)) 30%,
-    rgba(var(--accent-rgb), var(--alpha-intense)) 50%,
-    rgba(var(--accent-rgb), var(--alpha-emphasis)) 70%,
-    transparent 100%
-  );
-  pointer-events: none;
+  box-shadow: none;
 }
 
 .discovery-actions--stuck {
-  box-shadow: var(--shadow-md), 0 2px 12px rgba(var(--accent-rgb), var(--alpha-faint));
+  background: var(--bg-base);
+  box-shadow: 0 2px 12px rgba(var(--accent-rgb), var(--alpha-faint));
 }
 
 @utility discovery-actions-left {
@@ -467,7 +455,6 @@
   width: var(--accent-bar-w);
   background: var(--accent-soft);
   border-radius: var(--radius-xs);
-  opacity: 0.6;
   pointer-events: none;
 }
 

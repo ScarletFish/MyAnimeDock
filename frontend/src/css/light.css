@@ -25,7 +25,7 @@
 
   /* ─── Buttons ─── */
   /* Explicit surface bg so all btn variants look uniform across containers;
-     --bg-surface (#fff) matches .discovery-actions & .input-with-btn .btn-sm */
+     --bg-surface (#fff) matches .input-with-btn .btn-sm */
   .btn {
     border-color: rgba(0,0,0, var(--alpha-subtle));
     background: var(--bg-surface);
@@ -224,23 +224,7 @@
 
   /* ─── Discovery ─── */
 
-  .discovery-actions {
-    /* --bg-elevated (#fafafa) is slightly darker than surface (#ffffff).
-       Border is the primary separator; bump opacity for visibility. */
-    background: var(--bg-elevated);
-    border-color: var(--accent-emphasis);
-  }
-  .discovery-actions::before {
-    background: linear-gradient(90deg,
-      transparent 0%,
-      var(--accent-emphasis) 30%,
-      var(--accent-strong) 50%,
-      var(--accent-emphasis) 70%,
-      transparent 100%
-    );
-  }
   .discovery-badge--imported { background: rgba(0,0,0, var(--alpha-faint)); }
-  .discovery-sibling-group::before { opacity: 0.5; }
   .discovery-card-toggle:hover { background: rgba(0,0,0, var(--alpha-faint)); }
 
   .discovery-card-file:hover { background: rgba(0,0,0, var(--alpha-faint)); }
